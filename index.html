@@ -27,6 +27,72 @@
   <meta name="twitter:description" content="A Premium Medical Aesthetic Centre — now open in Eluru. Luxury · Expertise · Results." />
   <meta name="twitter:image" content="https://www.dermaluxe.ai/assets/og-image.jpg" />
 
+  <!-- SEO -->
+  <meta name="keywords" content="skin clinic Eluru, dermatologist Eluru, hair transplant Eluru, laser hair removal Eluru, acne treatment, pigmentation, melasma, PRP hair, GFC, botox, fillers, hydrafacial, chemical peel, weight loss clinic Eluru, aesthetic clinic Andhra Pradesh, DermaLuxe, MediCare skin clinic" />
+  <meta name="author" content="DermaLuxe by Medicare" />
+  <meta name="robots" content="index, follow, max-image-preview:large" />
+  <meta name="geo.region" content="IN-AP" />
+  <meta name="geo.placename" content="Eluru, Andhra Pradesh" />
+  <meta name="geo.position" content="16.7107;81.0952" />
+  <meta name="ICBM" content="16.7107, 81.0952" />
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+
+  <!-- Structured data: Medical Clinic (Local SEO) -->
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "MedicalClinic",
+    "@id": "https://www.dermaluxe.ai/#clinic",
+    "name": "DermaLuxe by Medicare",
+    "alternateName": "DermaLuxe — Premium Skin, Hair & Aesthetics",
+    "url": "https://www.dermaluxe.ai/",
+    "logo": "https://www.dermaluxe.ai/assets/logo.png",
+    "image": "https://www.dermaluxe.ai/assets/og-image.jpg",
+    "description": "DermaLuxe by Medicare is a premium medical aesthetic centre in Eluru offering doctor-led skin, hair, nail, aesthetic and weight-loss treatments using USFDA-approved technology.",
+    "telephone": "+91-99491-34666",
+    "email": "support@dermaluxe.ai",
+    "priceRange": "₹₹",
+    "currenciesAccepted": "INR",
+    "medicalSpecialty": ["Dermatology", "CosmeticDermatology", "PlasticSurgery"],
+    "address": {
+      "@type": "PostalAddress",
+      "streetAddress": "Door No. 3-12, Ground Floor, Ramachandra Rao Peta, Kasturi Vari Street, Near Lakshmi Ganapathi Temple",
+      "addressLocality": "Eluru",
+      "addressRegion": "Andhra Pradesh",
+      "postalCode": "534002",
+      "addressCountry": "IN"
+    },
+    "geo": { "@type": "GeoCoordinates", "latitude": 16.7107, "longitude": 81.0952 },
+    "areaServed": { "@type": "State", "name": "Andhra Pradesh" },
+    "openingHoursSpecification": [{
+      "@type": "OpeningHoursSpecification",
+      "dayOfWeek": ["Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"],
+      "opens": "09:00", "closes": "21:00"
+    }],
+    "founder": [
+      { "@type": "Person", "name": "Nagaraju Bandaru", "jobTitle": "Founder & CEO" },
+      { "@type": "Person", "name": "Dr. Meghana Valleti", "jobTitle": "Founder & Medical Director", "honorificSuffix": "MD, DVL" }
+    ],
+    "sameAs": [
+      "https://www.instagram.com/dermaluxe.ai"
+    ],
+    "hasOfferCatalog": {
+      "@type": "OfferCatalog",
+      "name": "Treatments",
+      "itemListElement": [
+        { "@type": "Offer", "itemOffered": { "@type": "MedicalProcedure", "name": "Acne & Acne Scar Treatment" } },
+        { "@type": "Offer", "itemOffered": { "@type": "MedicalProcedure", "name": "Pigmentation & Melasma Treatment" } },
+        { "@type": "Offer", "itemOffered": { "@type": "MedicalProcedure", "name": "Hair Transplant (FUE / DHI)" } },
+        { "@type": "Offer", "itemOffered": { "@type": "MedicalProcedure", "name": "PRP & GFC Hair Therapy" } },
+        { "@type": "Offer", "itemOffered": { "@type": "MedicalProcedure", "name": "Laser Hair Reduction" } },
+        { "@type": "Offer", "itemOffered": { "@type": "MedicalProcedure", "name": "Botox, Fillers & Threads" } },
+        { "@type": "Offer", "itemOffered": { "@type": "MedicalProcedure", "name": "Hydrafacial & Chemical Peels" } },
+        { "@type": "Offer", "itemOffered": { "@type": "MedicalProcedure", "name": "Medical Weight Loss" } }
+      ]
+    }
+  }
+  </script>
+
   <link rel="icon" type="image/png" href="assets/favicon.png" />
   <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
 
@@ -608,8 +674,13 @@
     <div class="footer__bar">
       <div class="container footer__bar-inner">
         <p>© <span id="year"></span> DermaLuxeAI Private Limited · World Class Skin, Hair &amp; Aesthetic Centre.</p>
-        <p class="footer__fine">Results may vary. Treatments are subject to medical consultation.</p>
+        <nav class="footer__legal">
+          <a href="privacy.html">Privacy Policy</a>
+          <a href="terms.html">Terms &amp; Conditions</a>
+          <a href="cookies.html">Cookie Policy</a>
+        </nav>
       </div>
+      <div class="container"><p class="footer__fine">Results may vary. Treatments are subject to medical consultation.</p></div>
     </div>
   </footer>
 
@@ -619,5 +690,6 @@
   </a>
 
   <script src="script.js"></script>
+  <script src="cookies.js"></script>
 </body>
 </html>
