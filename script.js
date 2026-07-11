@@ -92,7 +92,14 @@
   const y = document.getElementById("year");
   if (y) y.textContent = new Date().getFullYear();
 
-  /* ---- Booking form ---- */
+  /* ---- Booking form → lead capture ----
+     Stage 1 (live): sends the lead as a structured WhatsApp message
+     to the clinic number, so no enquiry is ever missed.
+     Stage 2 (optional): set LEAD_WEBHOOK_URL to also POST the lead
+     to clinic software / Google Sheets / CRM. */
+  const CLINIC_WHATSAPP = "919949134666";
+  const LEAD_WEBHOOK_URL = ""; // e.g. clinic software / Apps Script endpoint
+
   const form = document.getElementById("bookingForm");
   const note = document.getElementById("formNote");
   if (form) {
@@ -100,33 +107,61 @@
       e.preventDefault();
       const name = form.name.value.trim();
       const phone = form.phone.value.trim();
+      const email = form.email.value.trim();
       const service = form.service.value;
+      const message = form.message.value.trim();
       note.className = "form__note";
 
       if (!name || !phone || !service) {
-        note.textContent = "Please fill in your name, phone number and treatment.";
+        note.textContent = "Please fill in your name, phone number and treatment. · పేరు, ఫోన్ నంబర్, చికిత్స నింపండి.";
         note.classList.add("err");
         return;
       }
       if (!/^[+\d][\d\s\-()]{6,}$/.test(phone)) {
-        note.textContent = "Please enter a valid phone number.";
+        note.textContent = "Please enter a valid phone number. · సరైన ఫోన్ నంబర్ ఇవ్వండి.";
         note.classList.add("err");
         return;
       }
 
       const btn = form.querySelector('button[type="submit"]');
-      const original = btn.textContent;
       btn.disabled = true;
-      btn.textContent = "Sending…";
 
-      // Simulated submission (wire to your backend / WhatsApp / email service)
-      setTimeout(() => {
-        note.textContent = "Thank you, " + name.split(" ")[0] + "! Our care team will contact you shortly.";
-        note.classList.add("ok");
-        form.reset();
-        btn.disabled = false;
-        btn.textContent = original;
-      }, 900);
+      const lead = {
+        name: name, phone: phone, email: email,
+        service: service, message: message,
+        source: "dermaluxe.ai website", page: location.href,
+        time: new Date().toISOString()
+      };
+
+      // Optional webhook to clinic software / sheet (fire-and-forget)
+      if (LEAD_WEBHOOK_URL) {
+        try {
+          fetch(LEAD_WEBHOOK_URL, {
+            method: "POST",
+            mode: "no-cors",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(lead)
+          });
+        } catch (err) { /* non-blocking */ }
+      }
+
+      // WhatsApp lead message to the clinic
+      const waText =
+        "*New Consultation Request — dermaluxe.ai*%0A" +
+        "----------------------------%0A" +
+        "*Name:* " + encodeURIComponent(name) + "%0A" +
+        "*Phone:* " + encodeURIComponent(phone) + "%0A" +
+        (email ? "*Email:* " + encodeURIComponent(email) + "%0A" : "") +
+        "*Treatment:* " + encodeURIComponent(service) + "%0A" +
+        (message ? "*Message:* " + encodeURIComponent(message) + "%0A" : "") +
+        "----------------------------%0A" +
+        "Please confirm my appointment.";
+      window.open("https://wa.me/" + CLINIC_WHATSAPP + "?text=" + waText, "_blank", "noopener");
+
+      note.textContent = "Thank you, " + name.split(" ")[0] + "! WhatsApp opening — press Send to confirm your request. · వాట్సాప్ లో Send నొక్కండి.";
+      note.classList.add("ok");
+      form.reset();
+      btn.disabled = false;
     });
   }
 })();
