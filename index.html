@@ -137,6 +137,7 @@
       </a>
       <nav class="nav__links" id="navLinks">
         <a href="#home">Home</a>
+        <a href="#ai-analysis" class="nav__ai">AI Analysis ✦</a>
         <a href="#about">About</a>
         <a href="#services">Services</a>
         <a href="#hair-transplant">Hair Transplant</a>
@@ -182,6 +183,149 @@
         </div>
       </div>
       <a href="#highlight" class="hero__scroll" aria-label="Scroll down"><span></span></a>
+    </section>
+
+    <!-- AI SKIN & HAIR ANALYSIS -->
+    <section class="ai section" id="ai-analysis">
+      <div class="container">
+        <div class="ai__grid">
+          <!-- 3D scan visual -->
+          <div class="ai__visual reveal" aria-hidden="true">
+            <div class="ai-scene">
+              <div class="ai-ring ai-ring--1"></div>
+              <div class="ai-ring ai-ring--2"></div>
+              <div class="ai-ring ai-ring--3"></div>
+              <svg class="ai-face" viewBox="0 0 200 240" fill="none">
+                <ellipse cx="100" cy="112" rx="62" ry="82" class="ai-face__outline"/>
+                <path d="M38 112 Q100 92 162 112" class="ai-face__grid"/>
+                <path d="M42 82 Q100 64 158 82" class="ai-face__grid"/>
+                <path d="M46 142 Q100 162 154 142" class="ai-face__grid"/>
+                <path d="M60 176 Q100 196 140 176" class="ai-face__grid"/>
+                <path d="M100 30 V194" class="ai-face__grid"/>
+                <path d="M64 60 Q100 44 136 60" class="ai-face__grid"/>
+                <ellipse cx="74" cy="104" rx="12" ry="6" class="ai-face__feat"/>
+                <ellipse cx="126" cy="104" rx="12" ry="6" class="ai-face__feat"/>
+                <path d="M94 118 Q100 130 106 118" class="ai-face__feat"/>
+                <path d="M84 152 Q100 162 116 152" class="ai-face__feat"/>
+                <g class="ai-face__dots">
+                  <circle cx="74" cy="104" r="2"/><circle cx="126" cy="104" r="2"/>
+                  <circle cx="100" cy="126" r="2"/><circle cx="100" cy="155" r="2"/>
+                  <circle cx="55" cy="130" r="2"/><circle cx="145" cy="130" r="2"/>
+                  <circle cx="66" cy="76" r="2"/><circle cx="134" cy="76" r="2"/>
+                </g>
+              </svg>
+              <div class="ai-scanline"></div>
+              <div class="ai-chip ai-chip--1"><span>Hydration</span><b>78%</b></div>
+              <div class="ai-chip ai-chip--2"><span>Pigmentation</span><b>Scan…</b></div>
+              <div class="ai-chip ai-chip--3"><span>Hair Density</span><b>82%</b></div>
+              <div class="ai-chip ai-chip--4"><span>Texture</span><b>Good</b></div>
+            </div>
+          </div>
+
+          <!-- Pitch -->
+          <div class="ai__content">
+            <span class="chip reveal"><i>✦</i> AI Powered · Claude Vision</span>
+            <h2 class="reveal">AI Skin &amp; Hair <span class="gold-text">Analysis.</span></h2>
+            <p class="head-te te-serif reveal">AI చర్మ &amp; జుట్టు విశ్లేషణ — ఉచితం</p>
+            <p class="lead reveal">Upload a selfie and get an instant, doctor-grade AI pre-assessment of your skin &amp; hair — scores, concerns and personalised treatment suggestions. Verified with OTP, reviewed by our dermatologists at your consultation.
+            <span class="te tsub">సెల్ఫీ అప్‌లోడ్ చేయండి — మీ చర్మం &amp; జుట్టుపై తక్షణ AI నివేదిక పొందండి. OTP తో ధృవీకరించబడుతుంది.</span></p>
+            <ul class="ticklist reveal">
+              <li>Instant AI report with scores &amp; findings<span class="te tsub">స్కోర్లతో తక్షణ AI నివేదిక</span></li>
+              <li>Private &amp; consent-based — OTP verified<span class="te tsub">గోప్యత &amp; సమ్మతితో — OTP ధృవీకరణ</span></li>
+              <li>Personalised treatment suggestions<span class="te tsub">వ్యక్తిగత చికిత్స సూచనలు</span></li>
+            </ul>
+            <button type="button" class="btn btn--gold btn--bi reveal" id="aiStartBtn"><span>Start Free AI Analysis</span><span class="te">ఉచిత AI విశ్లేషణ ప్రారంభించండి</span></button>
+          </div>
+        </div>
+
+        <!-- FLOW -->
+        <div class="ai-flow" id="aiFlow" hidden>
+          <div class="ai-steps" aria-hidden="true">
+            <span class="ai-step is-active" data-step="1">1<i>Details</i></span>
+            <span class="ai-step" data-step="2">2<i>OTP</i></span>
+            <span class="ai-step" data-step="3">3<i>Photos</i></span>
+            <span class="ai-step" data-step="4">4<i>Report</i></span>
+          </div>
+
+          <!-- Step 1: details + consent -->
+          <div class="ai-pane" data-pane="1">
+            <h3>Your Details &amp; Consent <span class="te">· మీ వివరాలు &amp; సమ్మతి</span></h3>
+            <div class="field"><input type="text" id="aiName" placeholder=" " /><label for="aiName">Full Name · పేరు</label></div>
+            <div class="field-row">
+              <div class="field"><input type="tel" id="aiPhone" maxlength="10" placeholder=" " /><label for="aiPhone">Mobile · మొబైల్ నంబర్</label></div>
+              <div class="field"><input type="number" id="aiAge" min="1" max="120" placeholder=" " /><label for="aiAge">Age · వయస్సు</label></div>
+            </div>
+            <div class="field-row">
+              <div class="field">
+                <select id="aiGender" required>
+                  <option value="" disabled selected hidden></option>
+                  <option>Female</option><option>Male</option><option>Other</option>
+                </select>
+                <label for="aiGender" class="label--select">Gender · లింగం</label>
+              </div>
+              <div class="field">
+                <select id="aiConcern" required>
+                  <option value="" disabled selected hidden></option>
+                  <option>Acne / Pimples</option><option>Pigmentation / Dark spots</option>
+                  <option>Hair Fall / Thinning</option><option>Dandruff / Scalp</option>
+                  <option>Ageing / Wrinkles</option><option>General check</option>
+                </select>
+                <label for="aiConcern" class="label--select">Main Concern · ప్రధాన సమస్య</label>
+              </div>
+            </div>
+            <label class="ai-consent"><input type="checkbox" id="aiConsent1" />
+              <span>I consent to my photo being processed by AI for this skin &amp; hair pre-assessment.<span class="te tsub">నా ఫోటోను AI విశ్లేషణ కోసం ఉపయోగించడానికి సమ్మతిస్తున్నాను.</span></span></label>
+            <label class="ai-consent"><input type="checkbox" id="aiConsent2" />
+              <span>I agree to the <a href="privacy.html" target="_blank">Privacy Policy</a> and understand this is not a medical diagnosis.<span class="te tsub">ఇది వైద్య నిర్ధారణ కాదని అర్థం చేసుకున్నాను.</span></span></label>
+            <button type="button" class="btn btn--gold btn--bi btn--full" id="aiSendOtp"><span>Send OTP &amp; Continue</span><span class="te">OTP పంపండి</span></button>
+            <p class="form__note" id="aiNote1" role="status"></p>
+          </div>
+
+          <!-- Step 2: OTP -->
+          <div class="ai-pane" data-pane="2" hidden>
+            <h3>Verify OTP <span class="te">· OTP ధృవీకరించండి</span></h3>
+            <p class="ai-hint">Enter the 6-digit code sent to <b id="aiPhoneEcho"></b> <button type="button" class="ai-link" id="aiEditPhone">Edit</button></p>
+            <div class="field"><input type="tel" id="aiOtp" maxlength="6" placeholder=" " autocomplete="one-time-code" /><label for="aiOtp">6-digit OTP</label></div>
+            <button type="button" class="btn btn--gold btn--bi btn--full" id="aiVerifyOtp"><span>Verify &amp; Continue</span><span class="te">ధృవీకరించండి</span></button>
+            <p class="ai-hint"><button type="button" class="ai-link" id="aiResend">Resend OTP</button></p>
+            <p class="form__note" id="aiNote2" role="status"></p>
+          </div>
+
+          <!-- Step 3: photos -->
+          <div class="ai-pane" data-pane="3" hidden>
+            <h3>Upload Photos <span class="te">· ఫోటోలు అప్‌లోడ్ చేయండి</span></h3>
+            <div class="ai-uploads">
+              <label class="ai-upload" id="aiFaceBox">
+                <input type="file" id="aiFaceInput" accept="image/*" capture="user" hidden />
+                <img id="aiFacePreview" alt="" hidden />
+                <span class="ai-upload__inner" id="aiFaceLabel">
+                  <svg viewBox="0 0 48 48" fill="none"><ellipse cx="24" cy="20" rx="10" ry="12" stroke="currentColor" stroke-width="2"/><path d="M8 42c2-8 8-11 16-11s14 3 16 11" stroke="currentColor" stroke-width="2"/></svg>
+                  <b>Face photo (required)</b><small>ముఖం ఫోటో · clear, good light, no makeup</small>
+                </span>
+              </label>
+              <label class="ai-upload" id="aiHairBox">
+                <input type="file" id="aiHairInput" accept="image/*" hidden />
+                <img id="aiHairPreview" alt="" hidden />
+                <span class="ai-upload__inner" id="aiHairLabel">
+                  <svg viewBox="0 0 48 48" fill="none"><path d="M14 30c0-10 4-20 10-20s10 10 10 20M10 38c2-3 5-4 5-8m23 8c-2-3-5-4-5-8" stroke="currentColor" stroke-width="2"/></svg>
+                  <b>Hair / scalp photo (optional)</b><small>జుట్టు / తలచర్మం ఫోటో</small>
+                </span>
+              </label>
+            </div>
+            <button type="button" class="btn btn--gold btn--bi btn--full" id="aiAnalyze"><span>Analyze with AI</span><span class="te">AI తో విశ్లేషించండి</span></button>
+            <p class="form__note" id="aiNote3" role="status"></p>
+          </div>
+
+          <!-- Step 4: report -->
+          <div class="ai-pane" data-pane="4" hidden>
+            <div class="ai-analyzing" id="aiAnalyzing">
+              <div class="ai-pulse"></div>
+              <p>AI analysing your photos…<span class="te tsub">AI మీ ఫోటోలను విశ్లేషిస్తోంది…</span></p>
+            </div>
+            <div id="aiReport" hidden></div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- HIGHLIGHT BANNER -->
@@ -716,6 +860,7 @@
   </a>
 
   <script src="script.js"></script>
+  <script src="ai-analysis.js"></script>
   <script src="cookies.js"></script>
 </body>
 </html>
