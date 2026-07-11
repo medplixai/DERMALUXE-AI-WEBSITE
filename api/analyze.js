@@ -34,9 +34,12 @@ module.exports = async (req, res) => {
   if (!apiKey) return res.status(501).json({ error: "AI service not configured yet" });
 
   const { token, patient = {}, faceImage, hairImage } = req.body || {};
-  const secret = process.env.OTP_TOKEN_SECRET || process.env.TWILIO_AUTH_TOKEN || "dermaluxe-dev-secret";
-  const phone = verifyToken(token, secret);
-  if (!phone) return res.status(401).json({ error: "Session expired — please verify OTP again" });
+  // OTP gating is currently optional — set REQUIRE_OTP=1 in Vercel env to enforce it.
+  if (process.env.REQUIRE_OTP === "1") {
+    const secret = process.env.OTP_TOKEN_SECRET || process.env.TWILIO_AUTH_TOKEN || "dermaluxe-dev-secret";
+    const phone = verifyToken(token, secret);
+    if (!phone) return res.status(401).json({ error: "Session expired — please verify OTP again" });
+  }
 
   const faceBlock = dataUrlToBlock(faceImage);
   if (!faceBlock) return res.status(400).json({ error: "A clear face photo is required" });

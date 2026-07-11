@@ -242,9 +242,8 @@
         <div class="ai-flow" id="aiFlow" hidden>
           <div class="ai-steps" aria-hidden="true">
             <span class="ai-step is-active" data-step="1">1<i>Details</i></span>
-            <span class="ai-step" data-step="2">2<i>OTP</i></span>
-            <span class="ai-step" data-step="3">3<i>Photos</i></span>
-            <span class="ai-step" data-step="4">4<i>Report</i></span>
+            <span class="ai-step" data-step="2">2<i>Photos</i></span>
+            <span class="ai-step" data-step="3">3<i>Report</i></span>
           </div>
 
           <!-- Step 1: details + consent -->
@@ -277,22 +276,12 @@
               <span>I consent to my photo being processed by AI for this skin &amp; hair pre-assessment.<span class="te tsub">నా ఫోటోను AI విశ్లేషణ కోసం ఉపయోగించడానికి సమ్మతిస్తున్నాను.</span></span></label>
             <label class="ai-consent"><input type="checkbox" id="aiConsent2" />
               <span>I agree to the <a href="privacy.html" target="_blank">Privacy Policy</a> and understand this is not a medical diagnosis.<span class="te tsub">ఇది వైద్య నిర్ధారణ కాదని అర్థం చేసుకున్నాను.</span></span></label>
-            <button type="button" class="btn btn--gold btn--bi btn--full" id="aiSendOtp"><span>Send OTP &amp; Continue</span><span class="te">OTP పంపండి</span></button>
+            <button type="button" class="btn btn--gold btn--bi btn--full" id="aiContinue"><span>Continue to Photos</span><span class="te">ఫోటోలకు కొనసాగండి</span></button>
             <p class="form__note" id="aiNote1" role="status"></p>
           </div>
 
-          <!-- Step 2: OTP -->
+          <!-- Step 2: photos -->
           <div class="ai-pane" data-pane="2" hidden>
-            <h3>Verify OTP <span class="te">· OTP ధృవీకరించండి</span></h3>
-            <p class="ai-hint">Enter the 6-digit code sent to <b id="aiPhoneEcho"></b> <button type="button" class="ai-link" id="aiEditPhone">Edit</button></p>
-            <div class="field"><input type="tel" id="aiOtp" maxlength="6" placeholder=" " autocomplete="one-time-code" /><label for="aiOtp">6-digit OTP</label></div>
-            <button type="button" class="btn btn--gold btn--bi btn--full" id="aiVerifyOtp"><span>Verify &amp; Continue</span><span class="te">ధృవీకరించండి</span></button>
-            <p class="ai-hint"><button type="button" class="ai-link" id="aiResend">Resend OTP</button></p>
-            <p class="form__note" id="aiNote2" role="status"></p>
-          </div>
-
-          <!-- Step 3: photos -->
-          <div class="ai-pane" data-pane="3" hidden>
             <h3>Upload Photos <span class="te">· ఫోటోలు అప్‌లోడ్ చేయండి</span></h3>
             <div class="ai-uploads">
               <label class="ai-upload" id="aiFaceBox">
@@ -316,8 +305,8 @@
             <p class="form__note" id="aiNote3" role="status"></p>
           </div>
 
-          <!-- Step 4: report -->
-          <div class="ai-pane" data-pane="4" hidden>
+          <!-- Step 3: report -->
+          <div class="ai-pane" data-pane="3" hidden>
             <div class="ai-analyzing" id="aiAnalyzing">
               <div class="ai-pulse"></div>
               <p>AI analysing your photos…<span class="te tsub">AI మీ ఫోటోలను విశ్లేషిస్తోంది…</span></p>

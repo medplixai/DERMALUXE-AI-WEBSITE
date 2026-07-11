@@ -1,11 +1,12 @@
 /* DermaLuxe — AI Skin & Hair Analysis flow
-   details+consent → OTP → photos → Claude AI report */
+   details + consent → photos → Claude AI report
+   (OTP step is currently disabled; /api endpoints remain ready for it) */
 (function () {
   "use strict";
   var flow = document.getElementById("aiFlow");
   if (!flow) return;
 
-  var state = { phone: "", token: "", face: "", hair: "", demo: false, patient: {} };
+  var state = { face: "", hair: "", patient: {} };
 
   function $(id) { return document.getElementById(id); }
   function note(id, msg, ok) {
@@ -19,11 +20,6 @@
       s.classList.toggle("is-active", Number(s.dataset.step) <= n);
     });
     flow.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-  function busy(btn, on, label) {
-    btn.disabled = on;
-    if (on) { btn.dataset.orig = btn.innerHTML; btn.innerHTML = "<span>" + (label || "Please wait…") + "</span>"; }
-    else if (btn.dataset.orig) { btn.innerHTML = btn.dataset.orig; }
   }
   function api(path, body) {
     return fetch(path, {
@@ -39,8 +35,8 @@
     goStep(1);
   });
 
-  /* ---- step 1: details + consent → send OTP ---- */
-  $("aiSendOtp").addEventListener("click", function () {
+  /* ---- step 1: details + consent ---- */
+  $("aiContinue").addEventListener("click", function () {
     var name = $("aiName").value.trim();
     var phone = $("aiPhone").value.replace(/\D/g, "");
     var age = $("aiAge").value.trim();
@@ -57,43 +53,12 @@
       return note("aiNote1", "Please accept both consent boxes to continue. · రెండు సమ్మతులు ఇవ్వండి.");
     }
 
-    state.phone = phone;
     state.patient = { name: name, age: age, gender: gender, concern: concern, phone: phone, consent: true, consentTime: new Date().toISOString() };
-
-    var btn = $("aiSendOtp");
-    busy(btn, true, "Sending OTP…");
     note("aiNote1", "");
-    api("/api/send-otp", { phone: phone }).then(function (r) {
-      busy(btn, false);
-      if (!r.ok) return note("aiNote1", r.data.error || "Could not send OTP. Try again.");
-      state.demo = !!r.data.demo;
-      $("aiPhoneEcho").textContent = "+91 " + phone;
-      goStep(2);
-      note("aiNote2", state.demo ? "Demo mode (SMS not configured yet) — use OTP 123456." : "OTP sent to your mobile. · OTP పంపబడింది.", true);
-    }).catch(function () { busy(btn, false); note("aiNote1", "Network error — please try again."); });
+    goStep(2);
   });
 
-  /* ---- step 2: verify OTP ---- */
-  $("aiEditPhone").addEventListener("click", function () { goStep(1); });
-  $("aiResend").addEventListener("click", function () {
-    api("/api/send-otp", { phone: state.phone }).then(function (r) {
-      note("aiNote2", r.ok ? "OTP re-sent. · మళ్ళీ పంపబడింది." : (r.data.error || "Failed"), r.ok);
-    });
-  });
-  $("aiVerifyOtp").addEventListener("click", function () {
-    var code = $("aiOtp").value.replace(/\D/g, "");
-    if (code.length < 4) return note("aiNote2", "Enter the OTP. · OTP ఇవ్వండి.");
-    var btn = $("aiVerifyOtp");
-    busy(btn, true, "Verifying…");
-    api("/api/verify-otp", { phone: state.phone, code: code }).then(function (r) {
-      busy(btn, false);
-      if (!r.ok || !r.data.token) return note("aiNote2", r.data.error || "Incorrect OTP.");
-      state.token = r.data.token;
-      goStep(3);
-    }).catch(function () { busy(btn, false); note("aiNote2", "Network error — please try again."); });
-  });
-
-  /* ---- step 3: photos ---- */
+  /* ---- step 2: photos ---- */
   function wireUpload(inputId, previewId, labelId, key) {
     $(inputId).addEventListener("change", function () {
       var file = this.files && this.files[0];
@@ -124,10 +89,10 @@
 
   $("aiAnalyze").addEventListener("click", function () {
     if (!state.face) return note("aiNote3", "Please upload a clear face photo. · ముఖం ఫోటో అప్‌లోడ్ చేయండి.");
-    goStep(4);
+    goStep(3);
     $("aiAnalyzing").hidden = false;
     $("aiReport").hidden = true;
-    api("/api/analyze", { token: state.token, patient: state.patient, faceImage: state.face, hairImage: state.hair || undefined })
+    api("/api/analyze", { patient: state.patient, faceImage: state.face, hairImage: state.hair || undefined })
       .then(function (r) {
         $("aiAnalyzing").hidden = true;
         if (!r.ok || !r.data.report) {
@@ -146,7 +111,7 @@
       });
   });
 
-  /* ---- step 4: render report ---- */
+  /* ---- step 3: render report ---- */
   function esc(s) { return String(s == null ? "" : s).replace(/[<>&"]/g, function (c) { return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]; }); }
   function scoreBar(label, score) {
     if (score == null) return "";
@@ -163,7 +128,9 @@
   function renderReport(rep) {
     var waText = encodeURIComponent(
       "Hi DermaLuxe! I completed the AI Skin & Hair Analysis on dermaluxe.ai.\n" +
-      "Name: " + state.patient.name + "\nConcern: " + state.patient.concern +
+      "Name: " + state.patient.name + "\nPhone: " + state.patient.phone +
+      "\nAge/Gender: " + state.patient.age + " / " + state.patient.gender +
+      "\nConcern: " + state.patient.concern +
       (rep.skin_score != null ? "\nSkin score: " + rep.skin_score : "") +
       (rep.hair_score != null ? "\nHair score: " + rep.hair_score : "") +
       "\nSuggested: " + (rep.suggested_treatments || []).join(", ") +
