@@ -195,9 +195,9 @@ h3 { font-size: 1.4rem; }
   50%      { opacity: .8; transform: translate(-50%, -50%) scale(1.25); }
 }
 
-.nav__links { display: flex; align-items: center; gap: 1.6rem; }
+.nav__links { display: flex; align-items: center; gap: 1.35rem; }
 .nav__links a:not(.btn) {
-  font-size: .82rem; letter-spacing: 1px; text-transform: uppercase;
+  font-size: .78rem; letter-spacing: .9px; text-transform: uppercase; white-space: nowrap;
   font-weight: 400; color: var(--text); position: relative; padding: .3rem 0;
   transition: color .3s;
 }
@@ -209,7 +209,7 @@ h3 { font-size: 1.4rem; }
 .nav__links a:not(.btn):hover::after,
 .nav__links a.active::after { width: 100%; }
 .nav__links a.active { color: var(--gold-1); }
-.nav__cta { padding: .7rem 1.4rem; }
+.nav__cta { padding: .65rem 1.2rem; }
 
 .nav__toggle { display: none; flex-direction: column; gap: 5px; background: none; border: 0; cursor: pointer; padding: 8px; }
 .nav__toggle span { width: 26px; height: 2px; background: var(--gold-2); border-radius: 2px; transition: all .35s var(--ease); }
@@ -893,10 +893,7 @@ h3 { font-size: 1.4rem; }
   .footer__grid { grid-template-columns: 1fr 1fr; }
 }
 
-@media (max-width: 860px) {
-  .topbar__hide { display: none; }
-  .nav__inner, .nav.scrolled .nav__inner { height: 96px; }
-  .nav__brand img, .nav.scrolled .nav__brand img { height: 74px; }
+@media (max-width: 1180px) {
   .nav__toggle { display: flex; }
   .nav__links {
     position: fixed; inset: 0 0 0 auto; width: min(82%, 340px); height: 100vh;
@@ -905,8 +902,14 @@ h3 { font-size: 1.4rem; }
     transform: translateX(100%); transition: transform .45s var(--ease); z-index: 99;
   }
   .nav__links.open { transform: translateX(0); box-shadow: -20px 0 60px -20px rgba(0,0,0,.9); }
-  .nav__links a:not(.btn) { font-size: 1rem; }
-  .nav__cta { margin-top: .6rem; }
+  .nav__links a:not(.btn) { font-size: 1rem; white-space: normal; }
+  .nav__cta { margin-top: .6rem; padding: 1rem 2rem; }
+}
+
+@media (max-width: 860px) {
+  .topbar__hide { display: none; }
+  .nav__inner, .nav.scrolled .nav__inner { height: 96px; }
+  .nav__brand img, .nav.scrolled .nav__brand img { height: 74px; }
   .about__grid, .contact__grid, .ht__intro { grid-template-columns: 1fr; }
   .ht__visual { max-width: 460px; margin: 0 auto 2rem; width: 100%; }
   .about__media { max-width: 420px; margin: 0 auto 2rem; width: 100%; }
