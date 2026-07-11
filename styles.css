@@ -101,6 +101,12 @@ h3 { font-size: 1.4rem; }
 .ctabanner__te { font-size: clamp(1.4rem, 3vw, 2rem); color: var(--gold-2); font-weight: 500; margin: -0.3rem 0 1rem; }
 .contact__te { font-size: clamp(1.2rem, 2.6vw, 1.7rem); color: var(--gold-2); font-weight: 500; margin: .1rem 0 1rem; }
 .contact__lead-te { display: block; margin-top: .8rem; font-size: .96rem; line-height: 1.7; color: var(--gold-3); }
+.head-te { color: var(--gold-2); font-weight: 500; font-size: clamp(1.1rem, 2.4vw, 1.55rem); line-height: 1.4; margin-top: .55rem; }
+.highlight__te { color: var(--gold-2); font-weight: 500; font-size: clamp(1.15rem, 2.6vw, 1.8rem); line-height: 1.35; margin-top: .8rem; }
+.svc-tab .te { display: block; font-size: .62rem; letter-spacing: .3px; text-transform: none; margin-top: 3px; opacity: .9; }
+.svc-tab.is-active .te { opacity: .85; }
+.label-te { font-family: "Noto Sans Telugu", var(--font-sans); font-weight: 400; font-size: .72rem; letter-spacing: 0; text-transform: none; color: var(--gold-3); }
+.footer__col h4 .te { font-family: "Noto Sans Telugu", var(--font-sans); font-weight: 400; font-size: .72rem; letter-spacing: .5px; text-transform: none; color: var(--gold-4); }
 
 .section { padding: clamp(4.5rem, 9vw, 8rem) 0; }
 
