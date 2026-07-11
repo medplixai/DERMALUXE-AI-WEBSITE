@@ -164,4 +164,48 @@
       btn.disabled = false;
     });
   }
+
+  /* ---- Teleconsultation form → WhatsApp lead ---- */
+  const teleForm = document.getElementById("teleForm");
+  const teleNote = document.getElementById("teleNote");
+  if (teleForm) {
+    teleForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("teleName").value.trim();
+      const phone = document.getElementById("telePhone").value.replace(/\D/g, "");
+      const mode = document.getElementById("teleMode").value;
+      const date = document.getElementById("teleDate").value;
+      const slot = document.getElementById("teleSlot").value;
+      const concern = document.getElementById("teleConcern").value;
+      teleNote.className = "form__note";
+
+      if (!name || !phone || !mode || !slot || !concern) {
+        teleNote.textContent = "Please fill all details. · అన్ని వివరాలు నింపండి.";
+        teleNote.classList.add("err");
+        return;
+      }
+      if (!/^[6-9]\d{9}$/.test(phone)) {
+        teleNote.textContent = "Enter a valid 10-digit mobile number. · సరైన మొబైల్ నంబర్ ఇవ్వండి.";
+        teleNote.classList.add("err");
+        return;
+      }
+
+      const waText =
+        "*Teleconsultation Request — dermaluxe.ai*%0A" +
+        "----------------------------%0A" +
+        "*Name:* " + encodeURIComponent(name) + "%0A" +
+        "*Phone:* " + encodeURIComponent(phone) + "%0A" +
+        "*Mode:* " + encodeURIComponent(mode) + "%0A" +
+        (date ? "*Date:* " + encodeURIComponent(date) + "%0A" : "") +
+        "*Slot:* " + encodeURIComponent(slot) + "%0A" +
+        "*Concern:* " + encodeURIComponent(concern) + "%0A" +
+        "----------------------------%0A" +
+        "Please confirm my teleconsultation.";
+      window.open("https://wa.me/" + CLINIC_WHATSAPP + "?text=" + waText, "_blank", "noopener");
+
+      teleNote.textContent = "Thank you, " + name.split(" ")[0] + "! WhatsApp opening — press Send to confirm. · వాట్సాప్ లో Send నొక్కండి.";
+      teleNote.classList.add("ok");
+      teleForm.reset();
+    });
+  }
 })();

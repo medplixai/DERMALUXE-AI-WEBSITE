@@ -468,6 +468,72 @@
       </div>
     </section>
 
+    <!-- TELECONSULTATION -->
+    <section class="tele section" id="teleconsult">
+      <div class="container">
+        <div class="tele__grid">
+          <div class="tele__content">
+            <p class="eyebrow reveal">Teleconsultation · టెలీకన్సల్టేషన్</p>
+            <h2 class="reveal">Consult our doctors <span class="gold-text">from home.</span></h2>
+            <p class="head-te te-serif reveal">ఇంటి నుండే మా వైద్యులను సంప్రదించండి</p>
+            <p class="lead reveal">Can't visit the clinic? Book a private video or phone consultation with our dermatologists — get expert advice, prescriptions and follow-up care from anywhere.
+            <span class="te tsub">క్లినిక్‌కు రాలేకపోతున్నారా? వీడియో లేదా ఫోన్ ద్వారా మా చర్మ వైద్యులతో ప్రైవేట్ కన్సల్టేషన్ బుక్ చేయండి.</span></p>
+            <ul class="ticklist reveal">
+              <li>Video / phone consult with a qualified dermatologist<span class="te tsub">అర్హత గల చర్మ వైద్యునితో వీడియో / ఫోన్ సంప్రదింపు</span></li>
+              <li>Digital prescription after consultation<span class="te tsub">కన్సల్టేషన్ తర్వాత డిజిటల్ ప్రిస్క్రిప్షన్</span></li>
+              <li>100% private &amp; confidential<span class="te tsub">100% గోప్యత</span></li>
+              <li>Follow-up guidance &amp; in-clinic referral when needed<span class="te tsub">అవసరమైతే క్లినిక్ సందర్శన సూచన</span></li>
+            </ul>
+            <div class="tele__badge reveal"><span class="tele__dot"></span>Doctors available Mon–Sat · 9 AM – 9 PM<span class="te tsub">వైద్యులు అందుబాటులో ఉన్నారు</span></div>
+          </div>
+
+          <form class="tele__form reveal" id="teleForm" novalidate>
+            <h3>Book a Teleconsultation <span class="te" style="font-family:'Noto Serif Telugu',serif;font-size:.95rem;color:var(--gold-3);">· టెలీకన్సల్టేషన్ బుక్ చేయండి</span></h3>
+            <div class="field"><input type="text" id="teleName" placeholder=" " /><label for="teleName">Full Name · పేరు</label></div>
+            <div class="field-row">
+              <div class="field"><input type="tel" id="telePhone" maxlength="10" placeholder=" " /><label for="telePhone">Mobile · మొబైల్</label></div>
+              <div class="field">
+                <select id="teleMode" required>
+                  <option value="" disabled selected hidden></option>
+                  <option>Video Call (వీడియో)</option>
+                  <option>Phone Call (ఫోన్)</option>
+                  <option>WhatsApp Call (వాట్సాప్)</option>
+                </select>
+                <label for="teleMode" class="label--select">Mode · విధానం</label>
+              </div>
+            </div>
+            <div class="field-row">
+              <div class="field"><input type="date" id="teleDate" placeholder=" " /><label for="teleDate" class="label--select">Preferred Date · తేదీ</label></div>
+              <div class="field">
+                <select id="teleSlot" required>
+                  <option value="" disabled selected hidden></option>
+                  <option>Morning 9 AM – 12 PM (ఉదయం)</option>
+                  <option>Afternoon 12 – 4 PM (మధ్యాహ్నం)</option>
+                  <option>Evening 4 – 9 PM (సాయంత్రం)</option>
+                </select>
+                <label for="teleSlot" class="label--select">Time Slot · సమయం</label>
+              </div>
+            </div>
+            <div class="field">
+              <select id="teleConcern" required>
+                <option value="" disabled selected hidden></option>
+                <option>Skin — Acne / Pigmentation / Allergy (చర్మం)</option>
+                <option>Hair — Hair Fall / Dandruff (జుట్టు)</option>
+                <option>Hair Transplant Opinion (జుట్టు మార్పిడి)</option>
+                <option>Nail Problems (గోళ్ళు)</option>
+                <option>Prescription Refill / Follow-up (ఫాలో-అప్)</option>
+                <option>Other (ఇతర)</option>
+              </select>
+              <label for="teleConcern" class="label--select">Concern · సమస్య</label>
+            </div>
+            <button type="submit" class="btn btn--gold btn--full btn--bi"><span>Request Teleconsultation</span><span class="te">టెలీకన్సల్టేషన్ అభ్యర్థించండి</span></button>
+            <p class="form__note" id="teleNote" role="status"></p>
+            <p class="tele__fine">Our team will confirm your slot on WhatsApp / call. <span class="te">మా బృందం వాట్సాప్ / కాల్ ద్వారా నిర్ధారిస్తుంది.</span></p>
+          </form>
+        </div>
+      </div>
+    </section>
+
     <!-- TECHNOLOGY -->
     <section class="tech section" id="technology">
       <div class="container">
@@ -817,6 +883,8 @@
       <div class="footer__col">
         <h4>Clinic <span class="te">· క్లినిక్</span></h4>
         <a href="#about">About Us</a>
+        <a href="#teleconsult">Teleconsultation</a>
+        <a href="#ai-analysis">AI Skin Analysis</a>
         <a href="#technology">Technology</a>
         <a href="#team">Our Doctors</a>
         <a href="#why">Why Choose Us</a>
