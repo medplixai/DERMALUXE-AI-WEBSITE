@@ -91,6 +91,17 @@ h3 { font-size: 1.4rem; }
 
 .lead { font-size: 1.08rem; color: var(--muted); max-width: 54ch; }
 
+/* ---------- Bilingual (Telugu) ---------- */
+.te { font-family: "Noto Sans Telugu", var(--font-sans); }
+.te-serif { font-family: "Noto Serif Telugu", var(--font-serif); }
+.hero__title-te { font-size: clamp(1.5rem, 3.4vw, 2.5rem); font-weight: 500; color: var(--gold-2); line-height: 1.3; margin: -0.6rem 0 1.5rem; }
+.hero__sub-te { display: block; margin-top: .9rem; font-size: 1rem; line-height: 1.7; color: var(--gold-3); }
+.btn--bi { flex-direction: column; gap: .1rem; line-height: 1.15; padding-top: .8rem; padding-bottom: .8rem; }
+.btn--bi .te { font-size: .72rem; letter-spacing: .3px; text-transform: none; opacity: .92; }
+.ctabanner__te { font-size: clamp(1.4rem, 3vw, 2rem); color: var(--gold-2); font-weight: 500; margin: -0.3rem 0 1rem; }
+.contact__te { font-size: clamp(1.2rem, 2.6vw, 1.7rem); color: var(--gold-2); font-weight: 500; margin: .1rem 0 1rem; }
+.contact__lead-te { display: block; margin-top: .8rem; font-size: .96rem; line-height: 1.7; color: var(--gold-3); }
+
 .section { padding: clamp(4.5rem, 9vw, 8rem) 0; }
 
 .section__head { text-align: center; max-width: 720px; margin: 0 auto clamp(2.5rem, 5vw, 4rem); }
