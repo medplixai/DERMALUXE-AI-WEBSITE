@@ -818,6 +818,55 @@ h3 { font-size: 1.4rem; }
   .cookie-btn { flex: 1; text-align: center; }
 }
 
+/* ---------- FAQ ---------- */
+.faq { background: linear-gradient(180deg, var(--ink), var(--ink-2)); border-block: 1px solid var(--line-soft); }
+.faq__list { max-width: 780px; margin: 0 auto; display: grid; gap: .8rem; }
+.faq__item { background: linear-gradient(165deg, var(--panel), var(--ink-2)); border: 1px solid var(--line-soft);
+  border-radius: var(--radius-sm); overflow: hidden; transition: border-color .3s; }
+.faq__item[open] { border-color: var(--line); }
+.faq__item summary { cursor: pointer; list-style: none; padding: 1.1rem 3rem 1.1rem 1.3rem; position: relative;
+  font-family: var(--font-serif); font-size: 1.15rem; font-weight: 600; color: var(--text); }
+.faq__item summary::-webkit-details-marker { display: none; }
+.faq__item summary::after { content: "+"; position: absolute; right: 1.2rem; top: 50%; transform: translateY(-50%);
+  color: var(--gold-2); font-family: var(--font-sans); font-size: 1.3rem; font-weight: 300; transition: transform .3s var(--ease); }
+.faq__item[open] summary::after { transform: translateY(-50%) rotate(45deg); }
+.faq__item summary .tsub { font-size: .78rem; margin-top: .15rem; }
+.faq__item p { padding: 0 1.3rem 1.2rem; color: var(--muted); font-size: .95rem; line-height: 1.7; }
+.faq__item p a { color: var(--gold-2); text-decoration: underline; text-underline-offset: 2px; }
+
+/* ---------- Contact map embed ---------- */
+.contact__mapembed { margin-top: 1.8rem; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden;
+  filter: grayscale(.2) contrast(1.02); }
+.contact__mapembed iframe { display: block; width: 100%; height: 230px; border: 0; }
+
+/* ---------- Mobile quick-action bar ---------- */
+.mbar { position: fixed; left: 0; right: 0; bottom: 0; z-index: 110; display: none;
+  grid-template-columns: 1fr 1fr 1fr; gap: 1px; background: var(--line);
+  border-top: 1px solid var(--line); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+.mbar__btn { display: flex; align-items: center; justify-content: center; gap: .5rem;
+  padding: .95rem 0; background: rgba(12,12,15,.97); color: var(--text);
+  font-size: .8rem; letter-spacing: 1px; text-transform: uppercase; font-weight: 500; }
+.mbar__btn .ic { width: 17px; height: 17px; fill: var(--gold-2); }
+.mbar__btn--wa .ic { fill: #7ed491; }
+.mbar__btn--gold { background: var(--gold-grad); color: #2a1d07; }
+.mbar__btn--gold .ic { fill: #2a1d07; }
+
+/* ---------- Back to top ---------- */
+.totop { position: fixed; right: 22px; bottom: 92px; z-index: 90; width: 44px; height: 44px; border-radius: 50%;
+  border: 1px solid var(--line); background: rgba(18,18,22,.92); color: var(--gold-2); font-size: 1.1rem;
+  cursor: pointer; opacity: 0; pointer-events: none; transform: translateY(8px);
+  transition: opacity .35s var(--ease), transform .35s var(--ease); }
+.totop.is-show { opacity: 1; pointer-events: auto; transform: none; }
+.totop:hover { border-color: var(--gold-3); }
+
+@media (max-width: 860px) {
+  .mbar { display: grid; }
+  body { padding-bottom: 52px; }
+  .fab { display: none; }
+  .cookie-bar { bottom: 64px; }
+  .totop { bottom: 70px; right: 14px; }
+}
+
 /* ---------- Floating WhatsApp ---------- */
 .fab {
   position: fixed; right: 22px; bottom: 22px; z-index: 90; width: 56px; height: 56px;

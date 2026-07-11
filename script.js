@@ -8,6 +8,15 @@
   onScroll();
   window.addEventListener("scroll", onScroll, { passive: true });
 
+  /* ---- Back to top ---- */
+  const toTop = document.getElementById("toTop");
+  if (toTop) {
+    const onTopScroll = () => toTop.classList.toggle("is-show", window.scrollY > 700);
+    onTopScroll();
+    window.addEventListener("scroll", onTopScroll, { passive: true });
+    toTop.addEventListener("click", () => window.scrollTo({ top: 0, behavior: "smooth" }));
+  }
+
   /* ---- Mobile menu ---- */
   const toggle = document.getElementById("navToggle");
   const links = document.getElementById("navLinks");
