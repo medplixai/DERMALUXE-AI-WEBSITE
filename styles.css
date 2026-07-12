@@ -789,18 +789,7 @@ h3 { font-size: 1.4rem; }
 .ai-actions .btn { flex: 1 1 220px; }
 @media (max-width: 560px) { .ai-metrics { grid-template-columns: 1fr; } .ai-report__head { align-items: flex-start; } }
 
-/* Print: only the AI report, dark-on-white */
-@media print {
-  body.print-report * { visibility: hidden; }
-  body.print-report #aiReportCard, body.print-report #aiReportCard * { visibility: visible; }
-  body.print-report #aiReportCard { position: absolute; left: 0; top: 0; width: 100%;
-    background: #fff !important; color: #111 !important; padding: 24px; }
-  body.print-report #aiReportCard h3, body.print-report #aiReportCard h4,
-  body.print-report #aiReportCard p, body.print-report #aiReportCard li,
-  body.print-report #aiReportCard span, body.print-report #aiReportCard b { color: #111 !important; -webkit-text-fill-color: #111 !important; }
-  body.print-report #aiReportCard .ai-score__bar, body.print-report #aiReportCard .ai-metric__bar { background: #eee !important; }
-  body.print-report #aiReportCard .ai-actions { display: none !important; }
-}
+/* (AI report printing now opens a dedicated clean window — see ai-analysis.js) */
 
 @media (max-width: 1024px) {
   .ai__grid { grid-template-columns: 1fr; }

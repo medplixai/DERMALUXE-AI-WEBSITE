@@ -8,6 +8,7 @@
 
   var state = { face: "", hair: "", patient: {} };
   var stageTimer = null;
+  var lastRep = null;
 
   var STAGES = [
     "Initialising DermaLuxe AI… · AI సిద్ధమవుతోంది…",
@@ -246,6 +247,7 @@
 
     $("aiReport").innerHTML = html;
     $("aiReport").hidden = false;
+    lastRep = rep;
     saveHistory(rep);
     sendLead({
       type: "ai_report",
@@ -254,16 +256,90 @@
       treatments: rep.suggested_treatments || []
     });
 
-    $("aiPrint").addEventListener("click", function () {
-      document.body.classList.add("print-report");
-      var cleanup = function () { document.body.classList.remove("print-report"); window.removeEventListener("afterprint", cleanup); };
-      window.addEventListener("afterprint", cleanup);
-      window.print();
-      setTimeout(cleanup, 2000);
-    });
+    $("aiPrint").addEventListener("click", printReport);
     $("aiAgain").addEventListener("click", function () {
       location.hash = "#ai-analysis";
       location.reload();
     });
+  }
+
+  /* ---- printable report (opens a clean dedicated window; 1-2 pages) ---- */
+  function printReport() {
+    if (!lastRep) return;
+    var w = window.open("", "_blank", "width=840,height=980");
+    if (!w) { alert("Please allow pop-ups to download your report."); return; }
+    w.document.write(buildPrintHTML(lastRep));
+    w.document.close();
+    w.focus();
+    setTimeout(function () { try { w.print(); } catch (e) {} }, 500);
+  }
+
+  function buildPrintHTML(rep) {
+    var p = state.patient;
+    var gold = "#a87f3c";
+    function bar(label, val) {
+      if (val == null || isNaN(Number(val))) return "";
+      var pct = Math.max(0, Math.min(100, Number(val)));
+      return '<div class="m"><div class="mh"><span>' + esc(label) + "</span><b>" + pct + "</b></div>" +
+        '<div class="mb"><i style="width:' + pct + '%"></i></div></div>';
+    }
+    var metricsHtml = "";
+    METRICS.forEach(function (pair) {
+      if (rep.metrics) metricsHtml += bar(pair[1].split("·")[0].trim(), rep.metrics[pair[0]]);
+    });
+    function list(title, arr, fmt) {
+      if (!arr || !arr.length) return "";
+      return "<h3>" + title + "</h3><ul>" + arr.map(fmt).join("") + "</ul>";
+    }
+    var findingsF = function (f) {
+      return "<li><b>" + esc(f.name) + "</b> <em class='sev'>(" + esc(f.severity || "") + ")</em> — " + esc(f.note || "") + "</li>";
+    };
+    var html =
+      "<!DOCTYPE html><html><head><meta charset='utf-8'><title>DermaLuxe AI Report — " + esc(p.name) + "</title><style>" +
+      "@page{size:A4;margin:14mm}" +
+      "*{margin:0;padding:0;box-sizing:border-box;-webkit-print-color-adjust:exact;print-color-adjust:exact}" +
+      "body{font-family:Georgia,'Times New Roman',serif;color:#1c1c1c;font-size:12.5px;line-height:1.55;padding:24px}" +
+      ".hdr{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2.5px solid " + gold + ";padding-bottom:14px;margin-bottom:16px}" +
+      ".brand{font-size:26px;letter-spacing:1px;color:" + gold + ";font-weight:700}" +
+      ".brand small{display:block;font-size:11px;color:#555;letter-spacing:2px;font-weight:400;margin-top:2px;text-transform:uppercase}" +
+      ".rtitle{font-size:13px;color:#555;text-align:right}.rtitle b{display:block;font-size:15px;color:#1c1c1c}" +
+      ".pt{display:flex;gap:16px;align-items:center;background:#faf6ee;border:1px solid #e7dcc4;border-radius:8px;padding:12px 16px;margin-bottom:16px}" +
+      ".pt img{width:64px;height:78px;object-fit:cover;border-radius:6px;border:1px solid #d9c9a6}" +
+      ".pt table{font-size:12.5px;border-collapse:collapse}.pt td{padding:2px 18px 2px 0;color:#444}.pt td b{color:#111}" +
+      ".chips{margin:0 0 14px}.chip{display:inline-block;border:1px solid " + gold + ";color:" + gold + ";border-radius:100px;padding:3px 12px;font-size:11.5px;margin-right:8px}" +
+      ".scores{display:flex;gap:24px;margin-bottom:14px}.sc{flex:1}" +
+      ".sc .mh,.m .mh{display:flex;justify-content:space-between;font-size:11.5px;color:#444;margin-bottom:3px}.mh b{color:" + gold + "}" +
+      ".sc .mb,.m .mb{height:8px;background:#eee8da;border-radius:8px;overflow:hidden;border:1px solid #e3d9c2}" +
+      ".sc .mb i,.m .mb i{display:block;height:100%;background:" + gold + "}" +
+      ".mgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px 26px;margin-bottom:6px}" +
+      "h3{font-size:12px;letter-spacing:2px;text-transform:uppercase;color:" + gold + ";margin:16px 0 7px;border-bottom:1px solid #eadfc8;padding-bottom:3px}" +
+      "p.sum{margin-bottom:6px}ul{padding-left:18px}li{margin-bottom:4px}.sev{color:#8a6d3b;font-style:normal;font-size:11px}" +
+      ".treats span{display:inline-block;background:#faf6ee;border:1px solid #e0d3b3;border-radius:100px;padding:3px 12px;font-size:11.5px;margin:0 6px 6px 0;color:#6b5322}" +
+      ".disc{font-size:10.5px;color:#777;font-style:italic;margin-top:14px;border-top:1px solid #eee;padding-top:8px}" +
+      ".ftr{margin-top:16px;border-top:2.5px solid " + gold + ";padding-top:10px;font-size:11px;color:#555;display:flex;justify-content:space-between;gap:14px;flex-wrap:wrap}" +
+      "</style></head><body>" +
+      '<div class="hdr"><div class="brand">DermaLuxe<small>by Medicare · Premium Skin, Hair &amp; Aesthetics</small></div>' +
+      '<div class="rtitle"><b>AI Skin &amp; Hair Analysis Report</b>' + new Date().toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" }) + "</div></div>" +
+      '<div class="pt">' + (state.face ? '<img src="' + state.face + '" alt="" />' : "") +
+      "<table><tr><td>Name: <b>" + esc(p.name) + "</b></td><td>Age / Gender: <b>" + esc(p.age) + " / " + esc(p.gender) + "</b></td></tr>" +
+      "<tr><td>Phone: <b>" + esc(p.phone) + "</b></td><td>Primary Concern: <b>" + esc(p.concern) + "</b></td></tr></table></div>" +
+      '<div class="chips">' +
+      (rep.skin_age != null ? '<span class="chip">Skin Age: ' + esc(rep.skin_age) + "</span>" : "") +
+      (rep.skin_type ? '<span class="chip">Skin Type: ' + esc(rep.skin_type) + "</span>" : "") + "</div>" +
+      '<div class="scores">' +
+      (rep.skin_score != null ? '<div class="sc"><div class="mh"><span>Skin Health</span><b>' + rep.skin_score + '/100</b></div><div class="mb"><i style="width:' + rep.skin_score + '%"></i></div></div>' : "") +
+      (rep.hair_score != null ? '<div class="sc"><div class="mh"><span>Hair Health</span><b>' + rep.hair_score + '/100</b></div><div class="mb"><i style="width:' + rep.hair_score + '%"></i></div></div>' : "") + "</div>" +
+      (rep.summary_en ? '<p class="sum">' + esc(rep.summary_en) + "</p>" : "") +
+      (rep.summary_te ? '<p class="sum">' + esc(rep.summary_te) + "</p>" : "") +
+      (metricsHtml ? "<h3>Detailed Metrics</h3><div class='mgrid'>" + metricsHtml + "</div>" : "") +
+      list("Skin Findings", rep.skin_findings, findingsF) +
+      list("Hair Findings", rep.hair_findings, findingsF) +
+      list("Care Recommendations", rep.recommendations, function (t) { return "<li>" + esc(t) + "</li>"; }) +
+      (rep.suggested_treatments && rep.suggested_treatments.length ? "<h3>Suggested Treatments at DermaLuxe</h3><div class='treats'>" + rep.suggested_treatments.map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") + "</div>" : "") +
+      '<p class="disc">' + esc(rep.disclaimer || "This AI pre-assessment is for informational purposes only and is not a medical diagnosis.") + "</p>" +
+      '<div class="ftr"><span>DermaLuxeAI Private Limited · Rama Mahal, Ramachandra Rao Peta, Kasturi Vari Street, Eluru – 534002</span>' +
+      "<span>+91 99491 34666 · www.dermaluxe.ai</span></div>" +
+      "</body></html>";
+    return html;
   }
 })();
