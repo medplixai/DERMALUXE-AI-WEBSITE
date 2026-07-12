@@ -109,6 +109,16 @@
   const CLINIC_WHATSAPP = "919949134666";
   const LEAD_WEBHOOK_URL = ""; // e.g. clinic software / Apps Script endpoint
 
+  const saveLead = (lead) => {
+    try {
+      fetch("/api/lead", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(Object.assign({ page: location.href }, lead)),
+      }).catch(() => {});
+    } catch (e) {}
+  };
+
   const form = document.getElementById("bookingForm");
   const note = document.getElementById("formNote");
   if (form) {
@@ -141,6 +151,8 @@
         source: "dermaluxe.ai website", page: location.href,
         time: new Date().toISOString()
       };
+
+      saveLead({ type: "booking", name: name, phone: phone, concern: service, message: message });
 
       // Optional webhook to clinic software / sheet (fire-and-forget)
       if (LEAD_WEBHOOK_URL) {
@@ -198,6 +210,8 @@
         teleNote.classList.add("err");
         return;
       }
+
+      saveLead({ type: "teleconsult", name: name, phone: phone, mode: mode, date: date, slot: slot, concern: concern });
 
       const waText =
         "*Teleconsultation Request — dermaluxe.ai*%0A" +

@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leads Dashboard · DermaLuxe</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .ldash { width: min(1200px, 94%); margin: 0 auto; padding: 2.5rem 0 5rem; position: relative; z-index: 1; }
+    .ldash__top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
+    .ldash__top img { height: 64px; width: auto; }
+    .ldash__key { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .ldash__key input { background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 100px;
+      color: var(--text); padding: .65rem 1.2rem; font-family: var(--font-sans); font-size: .9rem; width: 240px; }
+    .ldash__key input:focus { outline: none; border-color: var(--gold-3); }
+    .lstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.6rem; }
+    .lstat { background: linear-gradient(165deg, var(--panel), var(--ink-2)); border: 1px solid var(--line-soft);
+      border-radius: var(--radius-sm); padding: 1.1rem 1.3rem; }
+    .lstat b { display: block; font-family: var(--font-serif); font-size: 1.9rem; background: var(--gold-grad);
+      -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+    .lstat span { font-size: .72rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted-2); }
+    .lfilters { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .lfilter { font-family: var(--font-sans); font-size: .74rem; letter-spacing: 1px; text-transform: uppercase;
+      color: var(--muted); background: transparent; border: 1px solid var(--line-soft); border-radius: 100px;
+      padding: .45rem 1.1rem; cursor: pointer; }
+    .lfilter.on { color: #2a1d07; background: var(--gold-grad); border-color: transparent; }
+    .ltable-wrap { border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; background: rgba(255,255,255,.015); }
+    table.ltable { width: 100%; border-collapse: collapse; font-size: .86rem; min-width: 900px; }
+    .ltable th { text-align: left; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; font-size: .68rem;
+      color: var(--gold-3); padding: .9rem 1rem; border-bottom: 1px solid var(--line); white-space: nowrap; position: sticky; top: 0; background: #131318; }
+    .ltable td { padding: .8rem 1rem; border-bottom: 1px solid var(--line-soft); color: var(--muted); vertical-align: top; }
+    .ltable td b { color: var(--text); font-weight: 500; }
+    .ltable tr:hover td { background: rgba(201,162,92,.04); }
+    .ltag { display: inline-block; font-size: .62rem; letter-spacing: 1px; text-transform: uppercase; border-radius: 100px;
+      padding: .18rem .6rem; border: 1px solid var(--line); color: var(--gold-2); white-space: nowrap; }
+    .ltag--ai_report { color: #9ecbff; } .ltag--booking { color: #8fd6a0; } .ltag--teleconsult { color: #e9b9e2; }
+    .lempty { padding: 3rem; text-align: center; color: var(--muted-2); }
+    .lwa { color: #7ed491 !important; text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+  <main class="ldash">
+    <div class="ldash__top">
+      <a href="index.html"><img src="assets/logo.png" alt="DermaLuxe" /></a>
+      <h1 style="font-size:1.8rem;">Leads <span class="gold-text">Dashboard</span></h1>
+      <div class="ldash__key">
+        <input type="password" id="key" placeholder="Admin key" />
+        <button class="btn btn--gold" id="load" style="padding:.65rem 1.4rem;">Load Leads</button>
+        <button class="btn btn--ghost" id="csv" style="padding:.65rem 1.4rem;" disabled>Export CSV</button>
+      </div>
+    </div>
+
+    <div class="lstats" id="stats" hidden>
+      <div class="lstat"><b id="sTotal">0</b><span>Total Leads</span></div>
+      <div class="lstat"><b id="sToday">0</b><span>Today</span></div>
+      <div class="lstat"><b id="sAi">0</b><span>AI Analyses</span></div>
+      <div class="lstat"><b id="sBook">0</b><span>Bookings</span></div>
+      <div class="lstat"><b id="sTele">0</b><span>Teleconsults</span></div>
+    </div>
+
+    <div class="lfilters" id="filters" hidden>
+      <button class="lfilter on" data-f="all">All</button>
+      <button class="lfilter" data-f="ai_lead">AI Started</button>
+      <button class="lfilter" data-f="ai_report">AI Reports</button>
+      <button class="lfilter" data-f="booking">Bookings</button>
+      <button class="lfilter" data-f="teleconsult">Teleconsults</button>
+    </div>
+
+    <div class="ltable-wrap">
+      <table class="ltable" id="table" hidden>
+        <thead><tr>
+          <th>Time</th><th>Type</th><th>Name</th><th>Phone</th><th>Details</th><th>AI Scores</th><th>Action</th>
+        </tr></thead>
+        <tbody id="rows"></tbody>
+      </table>
+      <div class="lempty" id="empty">Enter your admin key and press <b>Load Leads</b>.</div>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    var LEADS = [], FILTER = "all";
+    var $ = function (id) { return document.getElementById(id); };
+    try { $("key").value = localStorage.getItem("dl_admin_key") || ""; } catch (e) {}
+
+    function fmt(ts) {
+      var d = new Date(ts);
+      return d.toLocaleDateString("en-IN", { day: "2-digit", month: "short" }) + " " +
+             d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
+    }
+    function esc(s) { return String(s == null ? "" : s).replace(/[<>&"]/g, function (c) { return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]; }); }
+
+    function details(l) {
+      var bits = [];
+      if (l.concern) bits.push(esc(l.concern));
+      if (l.age || l.gender) bits.push(esc([l.age, l.gender].filter(Boolean).join(" / ")));
+      if (l.mode) bits.push(esc(l.mode));
+      if (l.date || l.slot) bits.push(esc([l.date, l.slot].filter(Boolean).join(" · ")));
+      if (l.message) bits.push("“" + esc(l.message) + "”");
+      if (l.treatments && l.treatments.length) bits.push("→ " + esc(l.treatments.join(", ")));
+      return bits.join("<br>");
+    }
+    function scores(l) {
+      var b = [];
+      if (l.skin_score != null) b.push("Skin " + l.skin_score);
+      if (l.hair_score != null) b.push("Hair " + l.hair_score);
+      if (l.skin_age != null) b.push("Age " + l.skin_age);
+      if (l.skin_type) b.push(esc(l.skin_type));
+      return b.join(" · ");
+    }
+    function render() {
+      var rows = "";
+      var list = LEADS.filter(function (l) { return FILTER === "all" || l.type === FILTER; });
+      list.forEach(function (l) {
+        rows += "<tr><td>" + fmt(l.ts) + "</td>" +
+          '<td><span class="ltag ltag--' + esc(l.type) + '">' + esc(l.type).replace("_", " ") + "</span></td>" +
+          "<td><b>" + esc(l.name) + "</b></td>" +
+          "<td>" + esc(l.phone) + "</td>" +
+          "<td>" + details(l) + "</td>" +
+          "<td>" + scores(l) + "</td>" +
+          '<td><a class="lwa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">WhatsApp ↗</a></td></tr>';
+      });
+      $("rows").innerHTML = rows;
+      $("table").hidden = !list.length;
+      $("empty").hidden = !!list.length;
+      if (!list.length) $("empty").textContent = "No leads for this filter yet.";
+    }
+    function stats() {
+      var today = new Date(); today.setHours(0, 0, 0, 0);
+      $("sTotal").textContent = LEADS.length;
+      $("sToday").textContent = LEADS.filter(function (l) { return l.ts >= today.getTime(); }).length;
+      $("sAi").textContent = LEADS.filter(function (l) { return l.type === "ai_lead" || l.type === "ai_report"; }).length;
+      $("sBook").textContent = LEADS.filter(function (l) { return l.type === "booking"; }).length;
+      $("sTele").textContent = LEADS.filter(function (l) { return l.type === "teleconsult"; }).length;
+      $("stats").hidden = false;
+      $("filters").hidden = false;
+    }
+
+    $("load").addEventListener("click", function () {
+      var key = $("key").value.trim();
+      if (!key) { $("empty").textContent = "Please enter the admin key."; return; }
+      try { localStorage.setItem("dl_admin_key", key); } catch (e) {}
+      $("empty").textContent = "Loading…";
+      fetch("/api/leads?key=" + encodeURIComponent(key))
+        .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+        .then(function (r) {
+          if (!r.ok) { $("empty").textContent = r.d.error || "Failed to load."; return; }
+          LEADS = r.d.leads || [];
+          $("csv").disabled = !LEADS.length;
+          stats(); render();
+        })
+        .catch(function () { $("empty").textContent = "Network error."; });
+    });
+
+    document.querySelectorAll(".lfilter").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.querySelectorAll(".lfilter").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        FILTER = b.dataset.f;
+        render();
+      });
+    });
+
+    $("csv").addEventListener("click", function () {
+      var cols = ["ts", "type", "name", "phone", "age", "gender", "concern", "mode", "date", "slot", "message", "skin_score", "hair_score", "skin_age", "skin_type", "treatments"];
+      var out = [cols.join(",")];
+      LEADS.forEach(function (l) {
+        out.push(cols.map(function (c) {
+          var v = c === "ts" ? new Date(l.ts).toISOString() : c === "treatments" ? (l.treatments || []).join("; ") : l[c];
+          return '"' + String(v == null ? "" : v).replace(/"/g, '""') + '"';
+        }).join(","));
+      });
+      var blob = new Blob([out.join("\n")], { type: "text/csv" });
+      var a = document.createElement("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = "dermaluxe-leads-" + new Date().toISOString().slice(0, 10) + ".csv";
+      a.click();
+    });
+  })();
+  </script>
+</body>
+</html>

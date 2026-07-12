@@ -52,6 +52,12 @@
       body: JSON.stringify(body),
     }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); });
   }
+  function sendLead(extra) {
+    try {
+      var lead = Object.assign({ page: location.href }, state.patient, extra || {});
+      api("/api/lead", lead).catch(function () {});
+    } catch (e) {}
+  }
   function startStages() {
     var i = 0;
     $("aiStage").textContent = STAGES[0];
@@ -89,6 +95,7 @@
 
     state.patient = { name: name, age: age, gender: gender, concern: concern, phone: phone, consent: true, consentTime: new Date().toISOString() };
     note("aiNote1", "");
+    sendLead({ type: "ai_lead" });
     goStep(2);
   });
 
@@ -240,6 +247,12 @@
     $("aiReport").innerHTML = html;
     $("aiReport").hidden = false;
     saveHistory(rep);
+    sendLead({
+      type: "ai_report",
+      skin_score: rep.skin_score, hair_score: rep.hair_score,
+      skin_age: rep.skin_age, skin_type: rep.skin_type,
+      treatments: rep.suggested_treatments || []
+    });
 
     $("aiPrint").addEventListener("click", function () {
       document.body.classList.add("print-report");
