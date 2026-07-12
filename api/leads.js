@@ -3,8 +3,15 @@
 const LIST_KEY = "dl_leads";
 
 function kvConfig() {
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
+  const env = process.env;
+  let url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
+  let token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) {
+    for (const k of Object.keys(env)) {
+      if (!url && (k.endsWith("KV_REST_API_URL") || k.endsWith("UPSTASH_REDIS_REST_URL"))) url = env[k];
+      if (!token && !k.includes("READ_ONLY") && (k.endsWith("KV_REST_API_TOKEN") || k.endsWith("UPSTASH_REDIS_REST_TOKEN"))) token = env[k];
+    }
+  }
   return url && token ? { url, token } : null;
 }
 
