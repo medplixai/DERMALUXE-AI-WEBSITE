@@ -61,6 +61,14 @@ module.exports = async (req, res) => {
       `{
   "skin_score": <0-100 integer overall skin health impression>,
   "hair_score": <0-100 integer or null if scalp/hair not clearly visible>,
+  "skin_age": <integer estimated cosmetic skin age in years, or null>,
+  "skin_type": <"Oily"|"Dry"|"Combination"|"Normal"|"Sensitive"|null>,
+  "metrics": {
+    "hydration": <0-100 or null>, "texture": <0-100 or null>, "pigmentation": <0-100 or null>,
+    "acne": <0-100 or null>, "wrinkles": <0-100 or null>, "dark_circles": <0-100 or null>,
+    "pores": <0-100 or null>, "redness": <0-100 or null>,
+    "hair_density": <0-100 or null>, "scalp_health": <0-100 or null>
+  },
   "skin_findings": [{"name":"...", "severity":"mild|moderate|significant", "note":"one short sentence"}],
   "hair_findings": [{"name":"...", "severity":"mild|moderate|significant", "note":"one short sentence"}],
   "summary_en": "3-4 sentence friendly summary in English",
@@ -68,6 +76,7 @@ module.exports = async (req, res) => {
   "recommendations": ["4-6 short practical care tips"],
   "suggested_treatments": ["3-5 treatments from: Acne & Scar Treatment, Pigmentation & Melasma, Chemical Peels, Hydrafacial, Laser Skin Resurfacing, MNRF, HIFU, Botox, Dermal Fillers, Skin Boosters, Laser Hair Reduction, Hair Fall Treatment, PRP & GFC Hair Therapy, Hair Transplant (FUE/DHI), Dandruff Management, Medical Weight Loss"]
 }\n` +
+      "Metric scale: 100 = excellent/no concern, 0 = severe concern (e.g. acne 90 means almost clear skin). Use null for anything not clearly assessable from the photos. skin_age should feel plausible vs the stated age — never insulting. " +
       "Be encouraging and specific to what is actually visible. This is a wellness pre-assessment, not a diagnosis.",
   });
 

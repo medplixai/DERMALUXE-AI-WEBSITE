@@ -324,8 +324,16 @@
           <!-- Step 3: report -->
           <div class="ai-pane" data-pane="3" hidden>
             <div class="ai-analyzing" id="aiAnalyzing">
-              <div class="ai-pulse"></div>
-              <p>AI analysing your photos…<span class="te tsub">AI మీ ఫోటోలను విశ్లేషిస్తోంది…</span></p>
+              <div class="ai-scanbox">
+                <img id="aiScanImg" alt="" />
+                <div class="ai-scanbox__grid" aria-hidden="true"></div>
+                <div class="ai-scanbox__line" aria-hidden="true"></div>
+                <span class="ai-corner ai-corner--tl" aria-hidden="true"></span>
+                <span class="ai-corner ai-corner--tr" aria-hidden="true"></span>
+                <span class="ai-corner ai-corner--bl" aria-hidden="true"></span>
+                <span class="ai-corner ai-corner--br" aria-hidden="true"></span>
+              </div>
+              <p class="ai-stage" id="aiStage">Initialising DermaLuxe AI…</p>
             </div>
             <div id="aiReport" hidden></div>
           </div>
