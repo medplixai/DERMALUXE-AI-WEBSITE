@@ -2,7 +2,9 @@
 // { token, patient:{name,age,gender,concern}, faceImage:"data:image/jpeg;base64,...", hairImage?:"..." }
 // Verifies the OTP token, then asks Claude (vision) for a structured
 // skin & hair analysis. Requires ANTHROPIC_API_KEY in Vercel env vars.
+// Protected by origin allowlist + per-IP and global rate limits.
 const crypto = require("crypto");
+const guard = require("./_guard.js");
 
 function verifyToken(tok, secret) {
   try {
@@ -25,15 +27,41 @@ function dataUrlToBlock(dataUrl) {
 }
 
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  // Layer 1: only requests from our own site
+  if (!guard.originAllowed(req)) {
+    return res.status(403).json({ error: "Unauthorized request origin" });
+  }
+
+  // Layer 2: payload size limits (protects bandwidth + tokens)
+  const clen = Number(req.headers["content-length"] || 0);
+  if (clen > 4400000) return res.status(413).json({ error: "Payload too large" });
+
+  // Layer 3: per-IP and global rate limits
+  const cfg = guard.kvConfig();
+  const ip = guard.getIp(req);
+  const hourly = await guard.rateLimit(cfg, `rl:an:h:${ip}`, 5, 3600);
+  if (!hourly.allowed) {
+    return res.status(429).json({ error: "Hourly limit reached — please try again after some time. · గంట పరిమితి దాటింది, కాసేపటి తర్వాత ప్రయత్నించండి." });
+  }
+  const daily = await guard.rateLimit(cfg, `rl:an:d:${ip}`, 12, 86400);
+  if (!daily.allowed) {
+    return res.status(429).json({ error: "Daily limit reached — please visit the clinic or try tomorrow. · రోజు పరిమితి దాటింది." });
+  }
+  const globalCap = await guard.rateLimit(cfg, `rl:an:g:${guard.today()}`, 300, 90000);
+  if (!globalCap.allowed) {
+    return res.status(429).json({ error: "AI analysis is very busy today — please try again tomorrow. · ఈరోజు రద్దీ ఎక్కువగా ఉంది, రేపు ప్రయత్నించండి." });
+  }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(501).json({ error: "AI service not configured yet" });
 
   const { token, patient = {}, faceImage, hairImage } = req.body || {};
+  if (String(faceImage || "").length > 3500000 || String(hairImage || "").length > 3500000) {
+    return res.status(400).json({ error: "Photo too large — please use a smaller photo" });
+  }
   // OTP gating is currently optional — set REQUIRE_OTP=1 in Vercel env to enforce it.
   if (process.env.REQUIRE_OTP === "1") {
     const secret = process.env.OTP_TOKEN_SECRET || process.env.TWILIO_AUTH_TOKEN || "dermaluxe-dev-secret";

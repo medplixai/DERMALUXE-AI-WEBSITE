@@ -1,37 +1,21 @@
 // POST /api/lead — stores a lead in Vercel KV / Upstash Redis.
-// Works with either env pair:
-//   KV_REST_API_URL + KV_REST_API_TOKEN   (Vercel KV)
-//   UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN (Upstash direct)
+// Protected by origin allowlist + per-IP rate limit.
 // If storage is not configured yet, responds {stored:false} without failing the site.
+const guard = require("./_guard.js");
 const LIST_KEY = "dl_leads";
 
-function kvConfig() {
-  const env = process.env;
-  let url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
-  let token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
-  if (!url || !token) {
-    for (const k of Object.keys(env)) {
-      if (!url && (k.endsWith("KV_REST_API_URL") || k.endsWith("UPSTASH_REDIS_REST_URL"))) url = env[k];
-      if (!token && !k.includes("READ_ONLY") && (k.endsWith("KV_REST_API_TOKEN") || k.endsWith("UPSTASH_REDIS_REST_TOKEN"))) token = env[k];
-    }
-  }
-  return url && token ? { url, token } : null;
-}
-
-async function kvCommand(cfg, cmd) {
-  const resp = await fetch(cfg.url, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(cmd),
-  });
-  return resp.json();
-}
-
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  if (!guard.originAllowed(req)) {
+    return res.status(403).json({ error: "Unauthorized request origin" });
+  }
+
+  const cfg = guard.kvConfig();
+  const ip = guard.getIp(req);
+  const rl = await guard.rateLimit(cfg, `rl:ld:h:${ip}`, 15, 3600);
+  if (!rl.allowed) return res.status(429).json({ error: "Too many requests" });
 
   const b = req.body || {};
   const phone = String(b.phone || "").replace(/\D/g, "");
@@ -60,12 +44,11 @@ module.exports = async (req, res) => {
     page: String(b.page || "").slice(0, 200),
   };
 
-  const cfg = kvConfig();
   if (!cfg) return res.status(200).json({ ok: true, stored: false, reason: "storage not configured" });
 
   try {
-    await kvCommand(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)]);
-    await kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
+    await guard.kvCommand(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)]);
+    await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
     return res.status(200).json({ ok: true, stored: true });
   } catch (e) {
     return res.status(200).json({ ok: true, stored: false });

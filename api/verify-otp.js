@@ -11,11 +11,18 @@ function signToken(phone, secret) {
   return Buffer.from(`${payload}.${sig}`).toString("base64url");
 }
 
+const guard = require("./_guard.js");
+
 module.exports = async (req, res) => {
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   if (req.method === "OPTIONS") return res.status(204).end();
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
+
+  if (!guard.originAllowed(req)) {
+    return res.status(403).json({ error: "Unauthorized request origin" });
+  }
+
+  const rlv = await guard.rateLimit(guard.kvConfig(), `rl:vo:h:${guard.getIp(req)}`, 15, 3600);
+  if (!rlv.allowed) return res.status(429).json({ error: "Too many attempts — try later" });
 
   const phone = String((req.body && req.body.phone) || "").replace(/\D/g, "");
   const code = String((req.body && req.body.code) || "").trim();
