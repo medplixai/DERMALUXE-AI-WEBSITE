@@ -817,6 +817,14 @@ h3 { font-size: 1.4rem; }
 .footer__legal { display: flex; gap: 1.4rem; flex-wrap: wrap; }
 .footer__legal a { font-size: .8rem; color: var(--muted); transition: color .3s; }
 .footer__legal a:hover { color: var(--gold-1); }
+.admin-chip {
+  display: inline-flex; align-items: center; gap: .35rem;
+  font-size: .68rem !important; letter-spacing: 1.2px; text-transform: uppercase;
+  color: var(--muted-2) !important; border: 1px solid var(--line-soft); border-radius: 100px;
+  padding: .28rem .75rem; opacity: .7; transition: all .3s var(--ease);
+}
+.admin-chip svg { width: 11px; height: 11px; fill: currentColor; }
+.admin-chip:hover { color: var(--gold-1) !important; border-color: var(--gold-3); opacity: 1; }
 
 /* ---------- Cookie consent banner ---------- */
 .cookie-bar {
