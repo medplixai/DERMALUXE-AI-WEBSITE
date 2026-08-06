@@ -14,5 +14,11 @@ module.exports = async (req, res) => {
     portalUrl: c.portalUrl || null,
     bookingUrl: c.bookingUrl || null,
     clinicConnected: !!c.syncUrl,
+    // booleans only — never the secrets themselves
+    waAgent: {
+      enabled: process.env.WA_AGENT_ENABLED === "1",
+      webhookSecured: !!process.env.WA_WEBHOOK_TOKEN,
+      cloudTokenSet: !!process.env.WA_CLOUD_TOKEN,
+    },
   });
 };
