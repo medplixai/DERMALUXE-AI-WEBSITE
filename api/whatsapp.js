@@ -1,5 +1,7 @@
 // ─── DERMALUXE WHATSAPP AI AGENT ────────────────────────────────────────────
-// POST /api/whatsapp — Twilio WhatsApp inbound webhook.
+// /api/whatsapp — WhatsApp inbound webhook, DUAL MODE:
+//   • Twilio senders  (form-encoded POST → TwiML reply)
+//   • Meta WhatsApp Cloud API (JSON POST → Graph API reply; GET = verification)
 // Claude-powered clinic receptionist: answers in Telugu/English, shares clinic
 // info, captures appointment requests as leads (KV + Medicare Connector).
 //
@@ -7,11 +9,10 @@
 //   ANTHROPIC_API_KEY  – already set (AI analysis)
 //   AI_MODEL           – optional, default claude-sonnet-5
 //   WA_AGENT_ENABLED   – "1" to enable Claude replies (else static fallback)
-//   WA_WEBHOOK_TOKEN   – optional shared secret; when set, webhook URL must be
-//                        /api/whatsapp?token=<value>
+//   WA_WEBHOOK_TOKEN   – shared secret: ?token=<value> on the webhook URL and
+//                        the Verify token for Meta webhook setup
+//   WA_CLOUD_TOKEN     – Meta Cloud API permanent access token (to send replies)
 //   TWILIO_AUTH_TOKEN  – optional; when set, X-Twilio-Signature is validated
-//
-// Until Twilio is connected this endpoint just sits idle — zero impact.
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
@@ -152,36 +153,87 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
   }
 }
 
+// Meta Cloud API: send a text reply via the Graph API.
+async function sendCloud(phoneNumberId, to, text) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to) return false;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to, text: { body: String(text).slice(0, 4000) } }),
+    });
+    return r.ok;
+  } catch (e) {
+    return false;
+  }
+}
+
 module.exports = async (req, res) => {
+  const tok = process.env.WA_WEBHOOK_TOKEN;
+
+  // Meta webhook verification handshake
+  if (req.method === "GET") {
+    const q = req.query || {};
+    if (q["hub.mode"] === "subscribe" && tok && q["hub.verify_token"] === tok) {
+      return res.status(200).send(String(q["hub.challenge"] || ""));
+    }
+    return res.status(403).send("Forbidden");
+  }
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   // Layer 1: shared-secret token (when configured)
-  const tok = process.env.WA_WEBHOOK_TOKEN;
   if (tok && String((req.query || {}).token || "") !== tok) {
     return res.status(403).json({ error: "Forbidden" });
   }
-  // Layer 2: Twilio signature (when configured)
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  if (authToken && !twilioSignatureValid(req, authToken)) {
-    return res.status(403).json({ error: "Bad signature" });
-  }
 
   const b = req.body || {};
-  const from = String(b.From || "");                       // "whatsapp:+919876543210"
-  const digits = from.replace(/\D/g, "").slice(-10);       // local 10-digit
-  const text = String(b.Body || "").slice(0, 1000).trim();
-  const profileName = String(b.ProfileName || "").slice(0, 60);
-  if (!digits || !text) return twiml(res, FALLBACK_REPLY);
+  const isMeta = b && b.object === "whatsapp_business_account";
+
+  let digits = "", text = "", profileName = "", cloud = null;
+  if (isMeta) {
+    const entry = (b.entry && b.entry[0]) || {};
+    const value = ((entry.changes && entry.changes[0]) || {}).value || {};
+    const msg = (value.messages && value.messages[0]) || null;
+    // delivery/read status callbacks etc. — acknowledge and ignore
+    if (!msg || msg.type !== "text") return res.status(200).json({ ok: true });
+    text = String((msg.text && msg.text.body) || "").slice(0, 1000).trim();
+    const fromFull = String(msg.from || "").replace(/\D/g, "");
+    digits = fromFull.slice(-10);
+    profileName = String((value.contacts && value.contacts[0] && value.contacts[0].profile && value.contacts[0].profile.name) || "").slice(0, 60);
+    cloud = { phoneNumberId: (value.metadata && value.metadata.phone_number_id) || "", to: fromFull };
+  } else {
+    // Layer 2 (Twilio only): signature validation when configured
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    if (authToken && !twilioSignatureValid(req, authToken)) {
+      return res.status(403).json({ error: "Bad signature" });
+    }
+    const from = String(b.From || "");                     // "whatsapp:+919876543210"
+    digits = from.replace(/\D/g, "").slice(-10);           // local 10-digit
+    text = String(b.Body || "").slice(0, 1000).trim();
+    profileName = String(b.ProfileName || "").slice(0, 60);
+  }
+
+  // unified reply transport
+  const respond = async (replyText) => {
+    if (isMeta) {
+      await sendCloud(cloud.phoneNumberId, cloud.to, replyText);
+      return res.status(200).json({ ok: true });
+    }
+    return twiml(res, replyText);
+  };
+
+  if (!digits || !text) return respond(FALLBACK_REPLY);
 
   // Layer 3: rate limits — per phone + global daily
   const cfg = guard.kvConfig();
   const perPhone = await guard.rateLimit(cfg, `rl:wa:h:${digits}`, 15, 3600);
-  if (!perPhone.allowed) return twiml(res, "Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.");
+  if (!perPhone.allowed) return respond("Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.");
   const globalCap = await guard.rateLimit(cfg, `rl:wa:g:${guard.today()}`, 400, 90000);
-  if (!globalCap.allowed) return twiml(res, FALLBACK_REPLY);
+  if (!globalCap.allowed) return respond(FALLBACK_REPLY);
 
   if (process.env.WA_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) {
-    return twiml(res, FALLBACK_REPLY);
+    return respond(FALLBACK_REPLY);
   }
 
   const histKey = `wa:h:${digits}`;
@@ -191,7 +243,7 @@ module.exports = async (req, res) => {
   try {
     out = await askClaude(hist, text, profileName);
   } catch (e) {
-    return twiml(res, FALLBACK_REPLY);
+    return respond(FALLBACK_REPLY);
   }
 
   if (out.lead && out.lead.name) {
@@ -201,5 +253,5 @@ module.exports = async (req, res) => {
     hist.push({ u: text, a: out.reply });
     await saveHistory(cfg, histKey, hist);
   }
-  return twiml(res, out.reply);
+  return respond(out.reply);
 };
