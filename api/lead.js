@@ -1,7 +1,9 @@
-// POST /api/lead — stores a lead in Vercel KV / Upstash Redis.
+// POST /api/lead — stores a lead in Vercel KV / Upstash Redis and forwards it
+// to the clinic management platform (Medplix) when CLINIC_SYNC_URL is set.
 // Protected by origin allowlist + per-IP rate limit.
 // If storage is not configured yet, responds {stored:false} without failing the site.
 const guard = require("./_guard.js");
+const clinic = require("./_clinic.js");
 const LIST_KEY = "dl_leads";
 
 module.exports = async (req, res) => {
@@ -44,13 +46,18 @@ module.exports = async (req, res) => {
     page: String(b.page || "").slice(0, 200),
   };
 
-  if (!cfg) return res.status(200).json({ ok: true, stored: false, reason: "storage not configured" });
+  // Forward to the clinic platform first (no-op until CLINIC_SYNC_URL is set),
+  // so the stored copy carries the sync result.
+  const sync = await clinic.forwardLead(cfg, lead);
+  if (sync.attempted) lead.synced = sync.synced;
+
+  if (!cfg) return res.status(200).json({ ok: true, stored: false, synced: sync.synced, reason: "storage not configured" });
 
   try {
     await guard.kvCommand(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)]);
     await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
-    return res.status(200).json({ ok: true, stored: true });
+    return res.status(200).json({ ok: true, stored: true, synced: sync.synced });
   } catch (e) {
-    return res.status(200).json({ ok: true, stored: false });
+    return res.status(200).json({ ok: true, stored: false, synced: sync.synced });
   }
 };

@@ -101,6 +101,7 @@
         <button class="btn btn--gold" id="load" style="padding:.65rem 1.4rem;">Load Leads</button>
         <button class="btn btn--ghost" id="csv" style="padding:.65rem 1.4rem;" disabled>Export CSV</button>
         <button class="btn btn--ghost" id="cleanTest" style="padding:.65rem 1.4rem;" disabled title="Removes Setup/Security/RL test entries">Clean Test Data</button>
+        <button class="btn btn--ghost" id="retrySync" style="padding:.65rem 1.4rem;" title="Re-send failed leads to the clinic system (Medicare Connector)">Retry Sync</button>
       </div>
     </div>
 
@@ -214,7 +215,9 @@
       var list = visible();
       list.forEach(function (l, i) {
         rows += '<tr data-i="' + LEADS.indexOf(l) + '"><td>' + fmt(l.ts) + "</td>" +
-          '<td><span class="ltag ltag--' + esc(l.type) + '">' + esc(l.type).replace("_", " ") + "</span></td>" +
+          '<td><span class="ltag ltag--' + esc(l.type) + '">' + esc(l.type).replace("_", " ") + "</span>" +
+          (l.synced === true ? ' <span title="Synced to clinic system (Medicare Connector)" style="color:#8fd6a0;font-size:.85em">⇅</span>'
+            : l.synced === false ? ' <span title="Clinic sync pending — use Retry Sync" style="color:#d9a441;font-size:.85em">⏳</span>' : "") + "</td>" +
           "<td><b>" + esc(l.name) + "</b></td>" +
           '<td><a class="ltel" href="tel:+91' + esc(l.phone) + '">' + esc(l.phone) + "</a></td>" +
           "<td>" + details(l) + "</td>" +
@@ -352,6 +355,25 @@
     }
     $("cleanTest").addEventListener("click", function () {
       delReq({ testCleanup: true }, "Remove all test entries (Setup Test / Security Test / RL Test)?");
+    });
+
+    $("retrySync").addEventListener("click", function () {
+      var key = $("key").value.trim();
+      if (!key) { alert("Enter the admin key first."); return; }
+      var btn = this; btn.disabled = true; btn.textContent = "Syncing…";
+      fetch("/api/sync-retry", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: key }),
+      }).then(function (r) { return r.json(); })
+        .then(function (d) {
+          btn.disabled = false; btn.textContent = "Retry Sync";
+          if (!d.ok) { alert(d.error || "Sync failed"); return; }
+          if (d.reason) { alert("Medicare Connector not connected yet (CLINIC_SYNC_URL not set)."); return; }
+          alert("Re-sent " + d.retried + " lead(s), " + d.synced + " synced, " + d.remaining + " still pending.");
+          if (LEADS.length) load();
+        })
+        .catch(function () { btn.disabled = false; btn.textContent = "Retry Sync"; alert("Network error"); });
     });
 
     /* row interactions: delete button, or open detail modal */

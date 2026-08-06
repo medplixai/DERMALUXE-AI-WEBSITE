@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Patient Portal · DermaLuxe by Medicare</title>
+  <meta name="description" content="DermaLuxe Patient Portal — view your appointments, prescriptions, medicines and bills securely. Powered by the Medicare clinic system." />
+  <meta name="robots" content="index, follow" />
+  <link rel="canonical" href="https://www.dermaluxe.ai/portal.html" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Jost:wght@300;400;500;600&family=Noto+Sans+Telugu:wght@300;400;500&family=Noto+Serif+Telugu:wght@400;500;600&display=swap" rel="stylesheet" />
+  <script src="analytics.js"></script>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .portal { width: min(880px, 92%); margin: 0 auto; padding: 3rem 0 5rem; position: relative; z-index: 1; }
+    .portal h1 { font-family: var(--font-serif); font-size: clamp(2rem, 4.5vw, 3rem); }
+    .portal .te-serif { display: block; font-size: 1.15rem; margin-top: .3rem; }
+    .portal__intro { color: var(--muted); max-width: 60ch; margin: 1rem 0 2.2rem; }
+    .portal__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 1rem; margin-bottom: 2.4rem; }
+    .pcard { background: linear-gradient(165deg, var(--panel), var(--ink-2)); border: 1px solid var(--line-soft);
+      border-radius: var(--radius-sm); padding: 1.4rem 1.3rem; }
+    .pcard .em { font-size: 1.6rem; display: block; margin-bottom: .55rem; }
+    .pcard b { display: block; color: var(--text); font-weight: 500; font-size: .98rem; }
+    .pcard span.te { display: block; font-size: .8rem; color: var(--gold-2); margin-top: .15rem; }
+    .pcard p { font-size: .8rem; color: var(--muted-2); margin-top: .45rem; }
+    .portal__cta { background: rgba(201,162,92,.06); border: 1px solid rgba(201,162,92,.28);
+      border-radius: var(--radius); padding: 1.8rem; text-align: center; }
+    .portal__cta h3 { font-family: var(--font-serif); font-size: 1.5rem; margin-bottom: .4rem; }
+    .portal__cta p { color: var(--muted); font-size: .92rem; max-width: 52ch; margin: 0 auto 1.2rem; }
+    .portal__actions { display: flex; gap: .8rem; justify-content: center; flex-wrap: wrap; }
+    .portal__soon { display: none; }
+    .portal__note { font-size: .78rem; color: var(--muted-2); margin-top: 1.1rem; }
+  </style>
+</head>
+<body>
+  <div class="bg-glow" aria-hidden="true"></div>
+
+  <header class="legal-nav">
+    <div class="container">
+      <a href="index.html" aria-label="DermaLuxe home"><img src="assets/logo.png" alt="DermaLuxe by Medicare" /></a>
+      <a href="index.html" class="btn btn--ghost">← Back to site</a>
+    </div>
+  </header>
+
+  <main class="portal">
+    <p class="eyebrow">For Our Patients</p>
+    <h1>Patient <span class="gold-text">Portal</span><span class="te-serif te">పేషెంట్ పోర్టల్</span></h1>
+    <p class="portal__intro">One secure place for everything about your care at DermaLuxe by Medicare — powered by the Medicare clinic system.
+      <span class="te tsub">మీ చికిత్సకు సంబంధించిన అన్నీ ఒకే చోట — సురక్షితంగా.</span></p>
+
+    <div class="portal__grid">
+      <div class="pcard"><span class="em">📅</span><b>Appointments</b><span class="te">అపాయింట్‌మెంట్లు</span>
+        <p>Book, view and manage your visits.</p></div>
+      <div class="pcard"><span class="em">💊</span><b>Prescriptions &amp; Medicines</b><span class="te">మందుల చీటీలు</span>
+        <p>Doctor Rx and pharmacy medicines, anytime.</p></div>
+      <div class="pcard"><span class="em">🧾</span><b>Bills &amp; Payments</b><span class="te">బిల్లులు</span>
+        <p>All invoices and payment history.</p></div>
+      <div class="pcard"><span class="em">📈</span><b>Treatment History</b><span class="te">చికిత్స చరిత్ర</span>
+        <p>Your sessions and progress records.</p></div>
+    </div>
+
+    <div class="portal__cta">
+      <h3>Open Your Portal <span class="te">· మీ పోర్టల్ తెరవండి</span></h3>
+      <p id="portalMsg">Sign in with your registered mobile number to see your records.
+        <span class="te tsub">మీ రిజిస్టర్డ్ మొబైల్ నంబర్‌తో లాగిన్ అవ్వండి.</span></p>
+      <div class="portal__actions">
+        <a class="btn btn--gold btn--bi" id="portalOpen" href="#" target="_blank" rel="noopener" hidden><span>Open Patient Portal</span><span class="te">పోర్టల్ తెరవండి</span></a>
+        <a class="btn btn--gold btn--bi portal__soon" id="portalWa" href="https://wa.me/919949134666?text=Hi%20DermaLuxe!%20Please%20share%20my%20patient%20portal%20link%20%2F%20records.%20%E0%B0%A8%E0%B0%BE%20%E0%B0%B0%E0%B0%BF%E0%B0%95%E0%B0%BE%E0%B0%B0%E0%B1%8D%E0%B0%A1%E0%B1%81%E0%B0%B2%E0%B1%81%20%E0%B0%95%E0%B0%BE%E0%B0%B5%E0%B0%BE%E0%B0%B2%E0%B0%BF." target="_blank" rel="noopener"><span>Request My Records on WhatsApp</span><span class="te">వాట్సాప్‌లో అడగండి</span></a>
+        <a class="btn btn--ghost" href="index.html#contact">Book an Appointment</a>
+      </div>
+      <p class="portal__note" id="portalNote" hidden>Online portal access is being connected — until then our team will share your records on WhatsApp within minutes.
+        <span class="te tsub">పోర్టల్ త్వరలో అందుబాటులోకి వస్తుంది — అప్పటివరకు మీ రికార్డులు వాట్సాప్‌లో పంపుతాం.</span></p>
+    </div>
+  </main>
+
+  <footer class="legal__footer">
+    <div class="container">
+      <p>© <span class="year"></span> DermaLuxeAI Private Limited ·
+        <a href="privacy.html">Privacy</a> · <a href="terms.html">Terms</a> · <a href="index.html">Home</a></p>
+    </div>
+  </footer>
+
+  <script>
+  (function () {
+    document.querySelectorAll(".year").forEach(function (e) { e.textContent = new Date().getFullYear(); });
+    var open = document.getElementById("portalOpen");
+    var wa = document.getElementById("portalWa");
+    var note = document.getElementById("portalNote");
+    fetch("/api/config")
+      .then(function (r) { return r.json(); })
+      .then(function (c) {
+        if (c && c.portalUrl) {
+          open.href = c.portalUrl;
+          open.hidden = false;
+          wa.style.display = "none";
+        } else {
+          wa.style.display = "inline-flex";
+          note.hidden = false;
+        }
+      })
+      .catch(function () {
+        wa.style.display = "inline-flex";
+        note.hidden = false;
+      });
+  })();
+  </script>
+  <script src="cookies.js"></script>
+</body>
+</html>

@@ -728,6 +728,12 @@ h3 { font-size: 1.4rem; }
   transition: border-color .25s, color .25s; }
 .ai-upl-btn:hover { border-color: var(--gold-3); color: var(--gold-1); }
 
+/* Medicare Connector — patient portal hints */
+.portal-hint { margin-top: 1.1rem; padding: .85rem 1.15rem; border: 1px dashed rgba(201,162,92,.4);
+  border-radius: 12px; font-size: .84rem; color: var(--muted); line-height: 1.55; }
+.portal-hint a { color: var(--gold-2); text-decoration: none; border-bottom: 1px solid rgba(201,162,92,.4); }
+.portal-hint a:hover { color: var(--gold-1); }
+
 .ai-analyzing { text-align: center; padding: 2.5rem 0; }
 .ai-pulse { width: 74px; height: 74px; margin: 0 auto 1.4rem; border-radius: 50%; border: 2px solid var(--gold-3);
   position: relative; animation: aiPulseRing 1.6s ease-out infinite; }
