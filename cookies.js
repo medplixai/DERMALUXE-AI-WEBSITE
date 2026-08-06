@@ -24,7 +24,10 @@
       bar.classList.add("cookie-bar--hide");
       setTimeout(function () { if (bar.parentNode) bar.parentNode.removeChild(bar); }, 400);
     }
-    bar.querySelector("[data-accept]").addEventListener("click", function () { set("accepted"); });
+    bar.querySelector("[data-accept]").addEventListener("click", function () {
+      set("accepted");
+      if (window.dlGrantAnalytics) window.dlGrantAnalytics();
+    });
     bar.querySelector("[data-decline]").addEventListener("click", function () { set("declined"); });
     requestAnimationFrame(function () { bar.classList.add("cookie-bar--in"); });
   }
