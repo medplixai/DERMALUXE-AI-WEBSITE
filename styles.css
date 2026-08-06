@@ -943,6 +943,12 @@ h3 { font-size: 1.4rem; }
 .fab svg { width: 28px; height: 28px; fill: #1a1206; }
 .fab:hover { transform: scale(1.1); }
 @keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-6px); } }
+/* live dot — the WhatsApp AI assistant answers instantly, 24x7 */
+.fab__dot { position: absolute; top: 3px; right: 3px; width: 12px; height: 12px; border-radius: 50%;
+  background: #25d366; border: 2px solid #1a1206; }
+.fab__dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%;
+  border: 2px solid rgba(37,211,102,.55); animation: fabPulse 2s ease-out infinite; }
+@keyframes fabPulse { 0% { transform: scale(.7); opacity: 1; } 100% { transform: scale(1.5); opacity: 0; } }
 
 /* ---------- Scroll reveal ---------- */
 .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s var(--ease), transform .8s var(--ease); }

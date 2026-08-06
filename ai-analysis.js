@@ -180,7 +180,7 @@
           var msg, extra = "";
           if (r.status === 429) {
             msg = "Today's free AI analyses are used up — please try again tomorrow, or book a consultation directly and our doctors will assess you in person. · ఈరోజు free AI విశ్లేషణలు అయిపోయాయి — రేపు మళ్ళీ ప్రయత్నించండి, లేదా నేరుగా consultation బుక్ చేయండి.";
-            extra = '<a class="btn btn--gold" style="margin-right:.6rem" target="_blank" rel="noopener" href="https://wa.me/919949134666?text=' +
+            extra = '<a class="btn btn--gold" style="margin-right:.6rem" target="_blank" rel="noopener" href="https://wa.me/919959134666?text=' +
               encodeURIComponent("Hi DermaLuxe! I'd like to book a consultation. Name: " + state.patient.name + ", Phone: " + state.patient.phone + ", Concern: " + state.patient.concern) +
               '">Book on WhatsApp</a>';
           } else if (r.status === 403) {
@@ -287,7 +287,7 @@
       (rep.suggested_treatments && rep.suggested_treatments.length ? "<h4>Suggested Treatments at DermaLuxe</h4><div class='ai-treats'>" + rep.suggested_treatments.map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") + "</div>" : "") +
       '<p class="ai-disclaimer">' + esc(rep.disclaimer || "") + "</p>" +
       '<div class="ai-actions">' +
-        '<a class="btn btn--gold btn--bi" target="_blank" rel="noopener" href="https://wa.me/919949134666?text=' + waText + '"><span>Book Consultation with this Report</span><span class="te">ఈ నివేదికతో బుక్ చేయండి</span></a>' +
+        '<a class="btn btn--gold btn--bi" target="_blank" rel="noopener" href="https://wa.me/919959134666?text=' + waText + '"><span>Book Consultation with this Report</span><span class="te">ఈ నివేదికతో బుక్ చేయండి</span></a>' +
         '<button type="button" class="btn btn--ghost" id="aiPrint">Download / Print Report</button>' +
         (navigator.share ? '<button type="button" class="btn btn--ghost" id="aiShare">Share · షేర్</button>' : "") +
         '<button type="button" class="btn btn--ghost" id="aiAgain">New Analysis</button>' +

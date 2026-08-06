@@ -106,7 +106,7 @@
      to the clinic number, so no enquiry is ever missed.
      Stage 2 (optional): set LEAD_WEBHOOK_URL to also POST the lead
      to clinic software / Google Sheets / CRM. */
-  const CLINIC_WHATSAPP = "919949134666";
+  const CLINIC_WHATSAPP = "919959134666";
   const LEAD_WEBHOOK_URL = ""; // e.g. clinic software / Apps Script endpoint
 
   const saveLead = (lead) => {
