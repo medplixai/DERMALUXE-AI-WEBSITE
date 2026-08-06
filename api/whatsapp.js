@@ -231,6 +231,12 @@ module.exports = async (req, res) => {
 
     if (msg.type === "text") {
       text = String((msg.text && msg.text.body) || "").slice(0, 1000).trim();
+      // TEMP (remove after FB page-button setup): surface Meta/FB verification
+      // codes sent to this Cloud API number, since no phone app can show them.
+      if (!/^91\d{10}$/.test(fromFull) || (/\b\d{4,9}\b/.test(text) && /(code|verif|confirm|facebook|whatsapp)/i.test(text))) {
+        console.log("wa: verification-like inbound from", fromFull, ":", text.slice(0, 180));
+        return res.status(200).json({ ok: true }); // don't let the agent chat with service senders
+      }
     } else if (msg.type === "button") {
       text = String((msg.button && msg.button.text) || "").slice(0, 1000).trim();
     } else if (msg.type === "interactive") {
