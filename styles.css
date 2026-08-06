@@ -720,6 +720,13 @@ h3 { font-size: 1.4rem; }
 .ai-upload__inner svg { width: 40px; height: 40px; color: var(--gold-3); margin: 0 auto .6rem; display: block; }
 .ai-upload__inner b { display: block; font-size: .92rem; color: var(--text); font-weight: 500; }
 .ai-upload__inner small { font-size: .74rem; }
+.ai-upl-chips { position: absolute; left: 0; right: 0; bottom: .65rem; display: flex; justify-content: center;
+  gap: .5rem; z-index: 2; pointer-events: none; }
+.ai-upl-btn { pointer-events: auto; font-family: var(--font-sans); font-size: .7rem; letter-spacing: .4px;
+  color: var(--gold-2); background: rgba(13,13,15,.72); border: 1px solid rgba(201,162,92,.45);
+  border-radius: 100px; padding: .34rem .8rem; cursor: pointer; backdrop-filter: blur(3px);
+  transition: border-color .25s, color .25s; }
+.ai-upl-btn:hover { border-color: var(--gold-3); color: var(--gold-1); }
 
 .ai-analyzing { text-align: center; padding: 2.5rem 0; }
 .ai-pulse { width: 74px; height: 74px; margin: 0 auto 1.4rem; border-radius: 50%; border: 2px solid var(--gold-3);

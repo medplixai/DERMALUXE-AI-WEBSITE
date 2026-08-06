@@ -25,6 +25,20 @@ module.exports = async (req, res) => {
     const leads = (data.result || []).map((s) => {
       try { return JSON.parse(s); } catch (e) { return null; }
     }).filter(Boolean);
+
+    // Merge follow-up statuses (HGETALL returns [field, value, ...] over REST)
+    let statuses = {};
+    try {
+      const st = await guard.kvCommand(cfg, ["HGETALL", "dl_status"]);
+      const r = st.result || [];
+      if (Array.isArray(r)) {
+        for (let i = 0; i + 1 < r.length; i += 2) statuses[r[i]] = r[i + 1];
+      } else if (r && typeof r === "object") {
+        statuses = r;
+      }
+    } catch (e) {}
+    leads.forEach((l) => { l.status = statuses[`${l.ts}|${l.phone}`] || "new"; });
+
     return res.status(200).json({ ok: true, count: leads.length, leads });
   } catch (e) {
     return res.status(500).json({ error: "Failed to read leads" });

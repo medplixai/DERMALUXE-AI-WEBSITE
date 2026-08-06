@@ -51,7 +51,7 @@
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
-    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); });
+    }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, status: r.status, data: d }; }); });
   }
   function sendLead(extra) {
     try {
@@ -101,6 +101,17 @@
   });
 
   /* ---- step 2: photos ---- */
+  function avgLuma(canvas) {
+    try {
+      var s = document.createElement("canvas");
+      s.width = 48; s.height = 48;
+      s.getContext("2d").drawImage(canvas, 0, 0, 48, 48);
+      var d = s.getContext("2d").getImageData(0, 0, 48, 48).data;
+      var sum = 0;
+      for (var i = 0; i < d.length; i += 4) sum += 0.299 * d[i] + 0.587 * d[i + 1] + 0.114 * d[i + 2];
+      return sum / (d.length / 4);
+    } catch (e) { return 128; }
+  }
   function wireUpload(inputId, previewId, labelId, key) {
     $(inputId).addEventListener("change", function () {
       var file = this.files && this.files[0];
@@ -109,12 +120,24 @@
       var reader = new FileReader();
       reader.onload = function () {
         img.onload = function () {
+          if (Math.max(img.width, img.height) < 320) {
+            note("aiNote3", "Photo is too small / blurry — please use a clearer photo. · ఫోటో చిన్నగా/అస్పష్టంగా ఉంది, స్పష్టమైన ఫోటో వాడండి.");
+            return;
+          }
           var max = 1280;
           var sc = Math.min(1, max / Math.max(img.width, img.height));
           var c = document.createElement("canvas");
           c.width = Math.round(img.width * sc);
           c.height = Math.round(img.height * sc);
           c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+          var luma = avgLuma(c);
+          if (luma < 38) {
+            note("aiNote3", "Photo looks quite dark — better light gives a better report. · ఫోటో చీకటిగా ఉంది, మంచి వెలుతురులో తీస్తే రిపోర్ట్ బాగుంటుంది.");
+          } else if (luma > 232) {
+            note("aiNote3", "Photo looks over-bright — avoid direct flash/glare. · ఫోటో మరీ ప్రకాశంగా ఉంది, డైరెక్ట్ ఫ్లాష్ వద్దు.");
+          } else {
+            note("aiNote3", "");
+          }
           var dataUrl = c.toDataURL("image/jpeg", 0.85);
           state[key] = dataUrl;
           $(previewId).src = dataUrl;
@@ -129,6 +152,19 @@
   wireUpload("aiFaceInput", "aiFacePreview", "aiFaceLabel", "face");
   wireUpload("aiHairInput", "aiHairPreview", "aiHairLabel", "hair");
 
+  /* camera / gallery chips (toggle capture attr, then open picker) */
+  document.querySelectorAll(".ai-upl-btn").forEach(function (b) {
+    b.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      var input = $(b.dataset.input);
+      if (!input) return;
+      if (b.dataset.cam) input.setAttribute("capture", b.dataset.cam);
+      else input.removeAttribute("capture");
+      input.click();
+    });
+  });
+
   $("aiAnalyze").addEventListener("click", function () {
     if (!state.face) return note("aiNote3", "Please upload a clear face photo. · ముఖం ఫోటో అప్‌లోడ్ చేయండి.");
     goStep(3);
@@ -141,10 +177,21 @@
         stopStages();
         $("aiAnalyzing").hidden = true;
         if (!r.ok || !r.data.report) {
+          var msg, extra = "";
+          if (r.status === 429) {
+            msg = "Today's free AI analyses are used up — please try again tomorrow, or book a consultation directly and our doctors will assess you in person. · ఈరోజు free AI విశ్లేషణలు అయిపోయాయి — రేపు మళ్ళీ ప్రయత్నించండి, లేదా నేరుగా consultation బుక్ చేయండి.";
+            extra = '<a class="btn btn--gold" style="margin-right:.6rem" target="_blank" rel="noopener" href="https://wa.me/919949134666?text=' +
+              encodeURIComponent("Hi DermaLuxe! I'd like to book a consultation. Name: " + state.patient.name + ", Phone: " + state.patient.phone + ", Concern: " + state.patient.concern) +
+              '">Book on WhatsApp</a>';
+          } else if (r.status === 403) {
+            msg = "Please open this page from www.dermaluxe.ai and try again. · దయచేసి www.dermaluxe.ai నుంచి open చేసి ప్రయత్నించండి.";
+          } else {
+            msg = (r.data && r.data.error) || "Analysis failed — please try again. · విశ్లేషణ విఫలమైంది, మళ్ళీ ప్రయత్నించండి.";
+          }
           $("aiReport").hidden = false;
-          $("aiReport").innerHTML = '<p class="form__note err" style="text-align:left">' +
-            (r.data.error || "Analysis failed — please try again.") + "</p>" +
-            '<button type="button" class="btn btn--ghost" onclick="location.hash=\'#ai-analysis\';location.reload()">Try again</button>';
+          $("aiReport").innerHTML = '<p class="form__note err" style="text-align:left">' + msg + "</p>" +
+            extra +
+            '<button type="button" class="btn btn--ghost" onclick="location.hash=\'#ai-analysis\';location.reload()">Try again · మళ్ళీ ప్రయత్నించండి</button>';
           return;
         }
         renderReport(r.data.report);
@@ -242,6 +289,7 @@
       '<div class="ai-actions">' +
         '<a class="btn btn--gold btn--bi" target="_blank" rel="noopener" href="https://wa.me/919949134666?text=' + waText + '"><span>Book Consultation with this Report</span><span class="te">ఈ నివేదికతో బుక్ చేయండి</span></a>' +
         '<button type="button" class="btn btn--ghost" id="aiPrint">Download / Print Report</button>' +
+        (navigator.share ? '<button type="button" class="btn btn--ghost" id="aiShare">Share · షేర్</button>' : "") +
         '<button type="button" class="btn btn--ghost" id="aiAgain">New Analysis</button>' +
       "</div></div>";
 
@@ -257,6 +305,17 @@
     });
 
     $("aiPrint").addEventListener("click", printReport);
+    var shareBtn = $("aiShare");
+    if (shareBtn) {
+      shareBtn.addEventListener("click", function () {
+        var t = "My DermaLuxe AI Skin & Hair Report" +
+          (rep.skin_score != null ? "\nSkin: " + rep.skin_score + "/100" : "") +
+          (rep.hair_score != null ? "\nHair: " + rep.hair_score + "/100" : "") +
+          (rep.skin_age != null ? "\nSkin age: " + rep.skin_age : "") +
+          "\nTry it free: https://www.dermaluxe.ai/#ai-analysis";
+        navigator.share({ title: "DermaLuxe AI Report", text: t }).catch(function () {});
+      });
+    }
     $("aiAgain").addEventListener("click", function () {
       location.hash = "#ai-analysis";
       location.reload();

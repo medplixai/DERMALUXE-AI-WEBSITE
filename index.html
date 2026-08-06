@@ -317,11 +317,15 @@
             <h3>Upload Photos <span class="te">· ఫోటోలు అప్‌లోడ్ చేయండి</span></h3>
             <div class="ai-uploads">
               <label class="ai-upload" id="aiFaceBox">
-                <input type="file" id="aiFaceInput" accept="image/*" capture="user" hidden />
+                <input type="file" id="aiFaceInput" accept="image/*" hidden />
                 <img id="aiFacePreview" alt="" hidden />
                 <span class="ai-upload__inner" id="aiFaceLabel">
                   <svg viewBox="0 0 48 48" fill="none"><ellipse cx="24" cy="20" rx="10" ry="12" stroke="currentColor" stroke-width="2"/><path d="M8 42c2-8 8-11 16-11s14 3 16 11" stroke="currentColor" stroke-width="2"/></svg>
                   <b>Face photo (required)</b><small>ముఖం ఫోటో · clear, good light, no makeup</small>
+                </span>
+                <span class="ai-upl-chips">
+                  <button type="button" class="ai-upl-btn" data-input="aiFaceInput" data-cam="user">📷 Selfie · సెల్ఫీ</button>
+                  <button type="button" class="ai-upl-btn" data-input="aiFaceInput" data-cam="">🖼 Gallery · గ్యాలరీ</button>
                 </span>
               </label>
               <label class="ai-upload" id="aiHairBox">
@@ -330,6 +334,10 @@
                 <span class="ai-upload__inner" id="aiHairLabel">
                   <svg viewBox="0 0 48 48" fill="none"><path d="M14 30c0-10 4-20 10-20s10 10 10 20M10 38c2-3 5-4 5-8m23 8c-2-3-5-4-5-8" stroke="currentColor" stroke-width="2"/></svg>
                   <b>Hair / scalp photo (optional)</b><small>జుట్టు / తలచర్మం ఫోటో</small>
+                </span>
+                <span class="ai-upl-chips">
+                  <button type="button" class="ai-upl-btn" data-input="aiHairInput" data-cam="environment">📷 Camera · కెమెరా</button>
+                  <button type="button" class="ai-upl-btn" data-input="aiHairInput" data-cam="">🖼 Gallery · గ్యాలరీ</button>
                 </span>
               </label>
             </div>

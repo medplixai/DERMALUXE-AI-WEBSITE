@@ -25,17 +25,21 @@ module.exports = async (req, res) => {
     const data = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "4999"]);
     const all = data.result || [];
     let keep;
+    const droppedKeys = [];
     if (b.testCleanup === true) {
       keep = all.filter((s) => {
         try {
           const l = JSON.parse(s);
-          return !TEST_PREFIXES.some((p) => String(l.name || "").startsWith(p));
+          const isTest = TEST_PREFIXES.some((p) => String(l.name || "").startsWith(p));
+          if (isTest) droppedKeys.push(`${l.ts}|${l.phone}`);
+          return !isTest;
         } catch (e) { return false; }
       });
     } else {
       const ts = Number(b.ts);
       const phone = String(b.phone || "");
       if (!ts || !phone) return res.status(400).json({ error: "ts and phone required" });
+      droppedKeys.push(`${ts}|${phone}`);
       keep = all.filter((s) => {
         try {
           const l = JSON.parse(s);
@@ -47,6 +51,11 @@ module.exports = async (req, res) => {
     for (let i = 0; i < keep.length; i += 400) {
       const chunk = keep.slice(i, i + 400);
       if (chunk.length) await guard.kvCommand(cfg, ["RPUSH", LIST_KEY].concat(chunk));
+    }
+    // Tidy up follow-up statuses of removed leads
+    for (let i = 0; i < droppedKeys.length; i += 100) {
+      const chunk = droppedKeys.slice(i, i + 100);
+      if (chunk.length) await guard.kvCommand(cfg, ["HDEL", "dl_status"].concat(chunk)).catch(() => {});
     }
     return res.status(200).json({ ok: true, removed: all.length - keep.length });
   } catch (e) {

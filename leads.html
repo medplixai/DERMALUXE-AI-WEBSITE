@@ -11,39 +11,83 @@
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;600;700&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet" />
   <link rel="stylesheet" href="styles.css" />
   <style>
-    .ldash { width: min(1200px, 94%); margin: 0 auto; padding: 2.5rem 0 5rem; position: relative; z-index: 1; }
+    .ldash { width: min(1240px, 94%); margin: 0 auto; padding: 2.5rem 0 5rem; position: relative; z-index: 1; }
     .ldash__top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
     .ldash__top img { height: 64px; width: auto; }
     .ldash__key { display: flex; gap: .6rem; flex-wrap: wrap; }
     .ldash__key input { background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 100px;
-      color: var(--text); padding: .65rem 1.2rem; font-family: var(--font-sans); font-size: .9rem; width: 240px; }
+      color: var(--text); padding: .65rem 1.2rem; font-family: var(--font-sans); font-size: .9rem; width: 220px; }
     .ldash__key input:focus { outline: none; border-color: var(--gold-3); }
-    .lstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 1rem; margin-bottom: 1.6rem; }
+    .lstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1rem; margin-bottom: 1.6rem; }
     .lstat { background: linear-gradient(165deg, var(--panel), var(--ink-2)); border: 1px solid var(--line-soft);
       border-radius: var(--radius-sm); padding: 1.1rem 1.3rem; }
     .lstat b { display: block; font-family: var(--font-serif); font-size: 1.9rem; background: var(--gold-grad);
       -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
     .lstat span { font-size: .72rem; letter-spacing: 1.2px; text-transform: uppercase; color: var(--muted-2); }
-    .lfilters { display: flex; gap: .5rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+
+    .lchart { background: rgba(255,255,255,.015); border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+      padding: 1rem 1.2rem .7rem; margin-bottom: 1.6rem; }
+    .lchart__title { font-size: .7rem; letter-spacing: 1.4px; text-transform: uppercase; color: var(--muted-2); margin-bottom: .7rem; }
+    .lchart__bars { display: flex; align-items: flex-end; gap: 6px; height: 74px; }
+    .lbar { flex: 1; display: flex; flex-direction: column; align-items: center; gap: .3rem; min-width: 0; }
+    .lbar i { display: block; width: 100%; max-width: 34px; border-radius: 4px 4px 0 0; background: var(--gold-grad);
+      opacity: .85; min-height: 2px; }
+    .lbar.zero i { background: rgba(255,255,255,.08); }
+    .lbar b { font-size: .66rem; color: var(--gold-2); font-weight: 500; line-height: 1; }
+    .lbar span { font-size: .6rem; color: var(--muted-2); line-height: 1; white-space: nowrap; }
+
+    .lcontrols { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .lsearch { flex: 1 1 220px; max-width: 340px; background: rgba(255,255,255,.04); border: 1px solid var(--line);
+      border-radius: 100px; color: var(--text); padding: .55rem 1.1rem; font-family: var(--font-sans); font-size: .88rem; }
+    .lsearch:focus { outline: none; border-color: var(--gold-3); }
+    .lfilters { display: flex; gap: .5rem; flex-wrap: wrap; }
     .lfilter { font-family: var(--font-sans); font-size: .74rem; letter-spacing: 1px; text-transform: uppercase;
       color: var(--muted); background: transparent; border: 1px solid var(--line-soft); border-radius: 100px;
       padding: .45rem 1.1rem; cursor: pointer; }
     .lfilter.on { color: #2a1d07; background: var(--gold-grad); border-color: transparent; }
+    .lrefresh { margin-left: auto; }
+
     .ltable-wrap { border: 1px solid var(--line); border-radius: var(--radius); overflow: auto; background: rgba(255,255,255,.015); }
-    table.ltable { width: 100%; border-collapse: collapse; font-size: .86rem; min-width: 900px; }
+    table.ltable { width: 100%; border-collapse: collapse; font-size: .86rem; min-width: 1020px; }
     .ltable th { text-align: left; font-weight: 500; letter-spacing: 1px; text-transform: uppercase; font-size: .68rem;
-      color: var(--gold-3); padding: .9rem 1rem; border-bottom: 1px solid var(--line); white-space: nowrap; position: sticky; top: 0; background: #131318; }
+      color: var(--gold-3); padding: .9rem 1rem; border-bottom: 1px solid var(--line); white-space: nowrap; position: sticky; top: 0; background: #131318; z-index: 1; }
     .ltable td { padding: .8rem 1rem; border-bottom: 1px solid var(--line-soft); color: var(--muted); vertical-align: top; }
     .ltable td b { color: var(--text); font-weight: 500; }
+    .ltable tbody tr { cursor: pointer; }
     .ltable tr:hover td { background: rgba(201,162,92,.04); }
     .ltag { display: inline-block; font-size: .62rem; letter-spacing: 1px; text-transform: uppercase; border-radius: 100px;
       padding: .18rem .6rem; border: 1px solid var(--line); color: var(--gold-2); white-space: nowrap; }
     .ltag--ai_report { color: #9ecbff; } .ltag--booking { color: #8fd6a0; } .ltag--teleconsult { color: #e9b9e2; }
     .lempty { padding: 3rem; text-align: center; color: var(--muted-2); }
-    .lwa { color: #7ed491 !important; text-decoration: none; }
+    .lwa { color: #7ed491 !important; text-decoration: none; white-space: nowrap; }
+    .ltel { color: var(--gold-2) !important; text-decoration: none; }
     .ldel { background: none; border: 1px solid var(--line-soft); color: #b06a6a; border-radius: 6px;
       cursor: pointer; font-size: .8rem; padding: .15rem .5rem; margin-left: .6rem; }
     .ldel:hover { border-color: #b06a6a; }
+
+    .lsel { font-family: var(--font-sans); font-size: .74rem; letter-spacing: .5px; border-radius: 100px;
+      padding: .3rem .7rem; cursor: pointer; background: rgba(255,255,255,.04); color: var(--text);
+      border: 1px solid var(--line); appearance: auto; }
+    .lsel:focus { outline: none; border-color: var(--gold-3); }
+    .lsel option { background: #17171c; color: #eee; }
+    .lsel--new { color: #e8c98a; border-color: rgba(232,201,138,.5); }
+    .lsel--contacted { color: #9ecbff; border-color: rgba(158,203,255,.45); }
+    .lsel--booked { color: #8fd6a0; border-color: rgba(143,214,160,.45); }
+    .lsel--visited { color: #d8b9f0; border-color: rgba(216,185,240,.45); }
+    .lsel--closed { color: #8f8f98; border-color: rgba(150,150,160,.4); }
+
+    .lmodal { position: fixed; inset: 0; background: rgba(8,8,10,.78); backdrop-filter: blur(4px);
+      display: flex; align-items: center; justify-content: center; z-index: 60; padding: 1rem; }
+    .lmodal[hidden] { display: none; }
+    .lmodal__card { width: min(560px, 100%); max-height: 88vh; overflow: auto; background: linear-gradient(170deg, #17171d, #101014);
+      border: 1px solid var(--line); border-radius: var(--radius); padding: 1.6rem 1.7rem; }
+    .lmodal__card h3 { font-family: var(--font-serif); font-size: 1.5rem; margin-bottom: .2rem; }
+    .lmodal__meta { color: var(--muted-2); font-size: .8rem; margin-bottom: 1rem; }
+    .lmodal__grid { display: grid; grid-template-columns: 130px 1fr; gap: .45rem .9rem; font-size: .88rem; margin-bottom: 1.2rem; }
+    .lmodal__grid dt { color: var(--muted-2); font-size: .72rem; letter-spacing: 1px; text-transform: uppercase; padding-top: .15rem; }
+    .lmodal__grid dd { color: var(--text); margin: 0; word-break: break-word; }
+    .lmodal__actions { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .lmodal__actions .btn { padding: .6rem 1.3rem; font-size: .8rem; }
   </style>
 </head>
 <body>
@@ -63,13 +107,30 @@
     <div class="lstats" id="stats" hidden>
       <div class="lstat"><b id="sTotal">0</b><span>Total Leads</span></div>
       <div class="lstat"><b id="sToday">0</b><span>Today</span></div>
+      <div class="lstat"><b id="sNew">0</b><span>New / Follow-up</span></div>
       <div class="lstat"><b id="sAi">0</b><span>AI Analyses</span></div>
       <div class="lstat"><b id="sBook">0</b><span>Bookings</span></div>
       <div class="lstat"><b id="sTele">0</b><span>Teleconsults</span></div>
     </div>
 
-    <div class="lfilters" id="filters" hidden>
-      <button class="lfilter on" data-f="all">All</button>
+    <div class="lchart" id="chart" hidden>
+      <div class="lchart__title">Leads — last 14 days</div>
+      <div class="lchart__bars" id="chartBars"></div>
+    </div>
+
+    <div class="lcontrols" id="controls" hidden>
+      <input type="search" class="lsearch" id="search" placeholder="Search name / phone…" />
+      <div class="lfilters" id="dateFilters">
+        <button class="lfilter" data-d="1">Today</button>
+        <button class="lfilter" data-d="7">7 Days</button>
+        <button class="lfilter" data-d="30">30 Days</button>
+        <button class="lfilter on" data-d="all">All Time</button>
+      </div>
+      <button class="btn btn--ghost lrefresh" id="refresh" style="padding:.5rem 1.2rem;font-size:.78rem;">⟳ Refresh</button>
+    </div>
+
+    <div class="lfilters" id="filters" hidden style="margin-bottom:1.2rem;">
+      <button class="lfilter on" data-f="all">All Types</button>
       <button class="lfilter" data-f="ai_lead">AI Started</button>
       <button class="lfilter" data-f="ai_report">AI Reports</button>
       <button class="lfilter" data-f="booking">Bookings</button>
@@ -79,7 +140,7 @@
     <div class="ltable-wrap">
       <table class="ltable" id="table" hidden>
         <thead><tr>
-          <th>Time</th><th>Type</th><th>Name</th><th>Phone</th><th>Details</th><th>AI Scores</th><th>Action</th>
+          <th>Time</th><th>Type</th><th>Name</th><th>Phone</th><th>Details</th><th>AI Scores</th><th>Status</th><th>Action</th>
         </tr></thead>
         <tbody id="rows"></tbody>
       </table>
@@ -87,9 +148,14 @@
     </div>
   </main>
 
+  <div class="lmodal" id="modal" hidden>
+    <div class="lmodal__card" id="modalCard"></div>
+  </div>
+
   <script>
   (function () {
-    var LEADS = [], FILTER = "all";
+    var LEADS = [], FILTER = "all", DAYS = "all", QUERY = "";
+    var STATUSES = ["new", "contacted", "booked", "visited", "closed"];
     var $ = function (id) { return document.getElementById(id); };
     try { $("key").value = localStorage.getItem("dl_admin_key") || ""; } catch (e) {}
 
@@ -99,6 +165,22 @@
              d.toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" });
     }
     function esc(s) { return String(s == null ? "" : s).replace(/[<>&"]/g, function (c) { return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]; }); }
+
+    function visible() {
+      var cutoff = 0;
+      if (DAYS !== "all") {
+        var d = new Date(); d.setHours(0, 0, 0, 0);
+        cutoff = d.getTime() - (Number(DAYS) - 1) * 86400000;
+      }
+      var q = QUERY.toLowerCase();
+      return LEADS.filter(function (l) {
+        if (FILTER !== "all" && l.type !== FILTER) return false;
+        if (cutoff && l.ts < cutoff) return false;
+        if (q && String(l.name || "").toLowerCase().indexOf(q) === -1 &&
+            String(l.phone || "").indexOf(q) === -1) return false;
+        return true;
+      });
+    }
 
     function details(l) {
       var bits = [];
@@ -118,36 +200,76 @@
       if (l.skin_type) b.push(esc(l.skin_type));
       return b.join(" · ");
     }
+    function statusSel(l) {
+      var s = STATUSES.indexOf(l.status) !== -1 ? l.status : "new";
+      var opts = STATUSES.map(function (o) {
+        return '<option value="' + o + '"' + (o === s ? " selected" : "") + ">" +
+          o.charAt(0).toUpperCase() + o.slice(1) + "</option>";
+      }).join("");
+      return '<select class="lsel lsel--' + s + '" data-ts="' + l.ts + '" data-phone="' + esc(l.phone) + '">' + opts + "</select>";
+    }
+
     function render() {
       var rows = "";
-      var list = LEADS.filter(function (l) { return FILTER === "all" || l.type === FILTER; });
-      list.forEach(function (l) {
-        rows += "<tr><td>" + fmt(l.ts) + "</td>" +
+      var list = visible();
+      list.forEach(function (l, i) {
+        rows += '<tr data-i="' + LEADS.indexOf(l) + '"><td>' + fmt(l.ts) + "</td>" +
           '<td><span class="ltag ltag--' + esc(l.type) + '">' + esc(l.type).replace("_", " ") + "</span></td>" +
           "<td><b>" + esc(l.name) + "</b></td>" +
-          "<td>" + esc(l.phone) + "</td>" +
+          '<td><a class="ltel" href="tel:+91' + esc(l.phone) + '">' + esc(l.phone) + "</a></td>" +
           "<td>" + details(l) + "</td>" +
           "<td>" + scores(l) + "</td>" +
+          "<td>" + statusSel(l) + "</td>" +
           '<td><a class="lwa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">WhatsApp ↗</a>' +
           '<button class="ldel" data-ts="' + l.ts + '" data-phone="' + esc(l.phone) + '" title="Delete lead">✕</button></td></tr>';
       });
       $("rows").innerHTML = rows;
       $("table").hidden = !list.length;
       $("empty").hidden = !!list.length;
-      if (!list.length) $("empty").textContent = "No leads for this filter yet.";
+      if (!list.length) $("empty").textContent = "No leads match this view.";
     }
+
     function stats() {
       var today = new Date(); today.setHours(0, 0, 0, 0);
       $("sTotal").textContent = LEADS.length;
       $("sToday").textContent = LEADS.filter(function (l) { return l.ts >= today.getTime(); }).length;
+      $("sNew").textContent = LEADS.filter(function (l) { return !l.status || l.status === "new" || l.status === "contacted"; }).length;
       $("sAi").textContent = LEADS.filter(function (l) { return l.type === "ai_lead" || l.type === "ai_report"; }).length;
       $("sBook").textContent = LEADS.filter(function (l) { return l.type === "booking"; }).length;
       $("sTele").textContent = LEADS.filter(function (l) { return l.type === "teleconsult"; }).length;
       $("stats").hidden = false;
       $("filters").hidden = false;
+      $("controls").hidden = false;
     }
 
-    $("load").addEventListener("click", function () {
+    function chart() {
+      var days = [], counts = {}, max = 1;
+      for (var i = 13; i >= 0; i--) {
+        var d = new Date(); d.setHours(0, 0, 0, 0); d.setDate(d.getDate() - i);
+        days.push(d);
+        counts[d.getTime()] = 0;
+      }
+      var start = days[0].getTime();
+      LEADS.forEach(function (l) {
+        if (l.ts < start) return;
+        var d = new Date(l.ts); d.setHours(0, 0, 0, 0);
+        var k = d.getTime();
+        if (counts[k] != null) { counts[k]++; if (counts[k] > max) max = counts[k]; }
+      });
+      var html = "";
+      days.forEach(function (d) {
+        var n = counts[d.getTime()];
+        var h = Math.max(2, Math.round((n / max) * 58));
+        html += '<div class="lbar' + (n ? "" : " zero") + '" title="' + n + ' leads">' +
+          "<b>" + (n || "") + "</b>" +
+          '<i style="height:' + h + 'px"></i>' +
+          "<span>" + d.toLocaleDateString("en-IN", { day: "2-digit" }) + "</span></div>";
+      });
+      $("chartBars").innerHTML = html;
+      $("chart").hidden = false;
+    }
+
+    function load() {
       var key = $("key").value.trim();
       if (!key) { $("empty").textContent = "Please enter the admin key."; return; }
       try { localStorage.setItem("dl_admin_key", key); } catch (e) {}
@@ -159,20 +281,62 @@
           LEADS = r.d.leads || [];
           $("csv").disabled = !LEADS.length;
           $("cleanTest").disabled = !LEADS.length;
-          stats(); render();
+          stats(); chart(); render();
         })
         .catch(function () { $("empty").textContent = "Network error."; });
-    });
+    }
+    $("load").addEventListener("click", load);
+    $("refresh").addEventListener("click", load);
 
-    document.querySelectorAll(".lfilter").forEach(function (b) {
+    document.querySelectorAll("#filters .lfilter").forEach(function (b) {
       b.addEventListener("click", function () {
-        document.querySelectorAll(".lfilter").forEach(function (x) { x.classList.remove("on"); });
+        document.querySelectorAll("#filters .lfilter").forEach(function (x) { x.classList.remove("on"); });
         b.classList.add("on");
         FILTER = b.dataset.f;
         render();
       });
     });
+    document.querySelectorAll("#dateFilters .lfilter").forEach(function (b) {
+      b.addEventListener("click", function () {
+        document.querySelectorAll("#dateFilters .lfilter").forEach(function (x) { x.classList.remove("on"); });
+        b.classList.add("on");
+        DAYS = b.dataset.d;
+        render();
+      });
+    });
+    var st;
+    $("search").addEventListener("input", function () {
+      clearTimeout(st);
+      var v = this.value.trim();
+      st = setTimeout(function () { QUERY = v; render(); }, 180);
+    });
 
+    /* status change */
+    $("rows").addEventListener("change", function (e) {
+      var sel = e.target.closest(".lsel");
+      if (!sel) return;
+      var ts = Number(sel.dataset.ts), phone = sel.dataset.phone, val = sel.value;
+      sel.className = "lsel lsel--" + val;
+      var lead = LEADS.find(function (l) { return l.ts === ts && l.phone === phone; });
+      var prev = lead ? lead.status : "new";
+      if (lead) lead.status = val;
+      stats();
+      fetch("/api/lead-status", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: $("key").value.trim(), ts: ts, phone: phone, status: val }),
+      }).then(function (r) { return r.json(); })
+        .then(function (d) {
+          if (!d.ok) throw new Error(d.error || "failed");
+        })
+        .catch(function () {
+          if (lead) lead.status = prev;
+          sel.value = prev; sel.className = "lsel lsel--" + prev;
+          alert("Could not save status — try again.");
+        });
+    });
+
+    /* delete */
     function delReq(body, msg) {
       if (!confirm(msg)) return;
       body.key = $("key").value.trim();
@@ -182,21 +346,67 @@
         body: JSON.stringify(body),
       }).then(function (r) { return r.json(); })
         .then(function (d) {
-          if (d.ok) { $("load").click(); }
+          if (d.ok) { load(); }
           else alert(d.error || "Delete failed");
         }).catch(function () { alert("Network error"); });
     }
-    document.getElementById("rows").addEventListener("click", function (e) {
-      var b = e.target.closest(".ldel");
-      if (!b) return;
-      delReq({ ts: Number(b.dataset.ts), phone: b.dataset.phone }, "Delete this lead?");
-    });
     $("cleanTest").addEventListener("click", function () {
       delReq({ testCleanup: true }, "Remove all test entries (Setup Test / Security Test / RL Test)?");
     });
 
+    /* row interactions: delete button, or open detail modal */
+    $("rows").addEventListener("click", function (e) {
+      var del = e.target.closest(".ldel");
+      if (del) {
+        delReq({ ts: Number(del.dataset.ts), phone: del.dataset.phone }, "Delete this lead?");
+        return;
+      }
+      if (e.target.closest("a, select, button")) return;
+      var tr = e.target.closest("tr[data-i]");
+      if (!tr) return;
+      openModal(LEADS[Number(tr.dataset.i)]);
+    });
+
+    function row(label, val, isHtml) {
+      if (val == null || val === "" || (Array.isArray(val) && !val.length)) return "";
+      return "<dt>" + label + "</dt><dd>" + (isHtml ? val : esc(Array.isArray(val) ? val.join(", ") : val)) + "</dd>";
+    }
+    function openModal(l) {
+      if (!l) return;
+      var html = "<h3>" + esc(l.name || "Lead") + "</h3>" +
+        '<p class="lmodal__meta">' + fmt(l.ts) + ' · <span class="ltag ltag--' + esc(l.type) + '">' + esc(l.type).replace("_", " ") + "</span></p>" +
+        '<dl class="lmodal__grid">' +
+        row("Phone", l.phone) +
+        row("Age / Gender", [l.age, l.gender].filter(Boolean).join(" / ")) +
+        row("Concern", l.concern) +
+        row("Mode", l.mode) +
+        row("Preferred", [l.date, l.slot].filter(Boolean).join(" · ")) +
+        row("Message", l.message) +
+        row("Skin Score", l.skin_score) +
+        row("Hair Score", l.hair_score) +
+        row("Skin Age", l.skin_age) +
+        row("Skin Type", l.skin_type) +
+        row("Suggested", l.treatments) +
+        row("Status", (l.status || "new").toUpperCase()) +
+        row("Page", l.page) +
+        "</dl>" +
+        '<div class="lmodal__actions">' +
+        '<a class="btn btn--gold" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '?text=' +
+          encodeURIComponent("Hi " + (l.name || "") + ", this is DermaLuxe by Medicare, Eluru. Regarding your enquiry…") + '">WhatsApp</a>' +
+        '<a class="btn btn--ghost" href="tel:+91' + esc(l.phone) + '">Call</a>' +
+        '<button type="button" class="btn btn--ghost" id="modalClose">Close</button>' +
+        "</div>";
+      $("modalCard").innerHTML = html;
+      $("modal").hidden = false;
+      $("modalClose").addEventListener("click", closeModal);
+    }
+    function closeModal() { $("modal").hidden = true; }
+    $("modal").addEventListener("click", function (e) { if (e.target === this) closeModal(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeModal(); });
+
+    /* CSV */
     $("csv").addEventListener("click", function () {
-      var cols = ["ts", "type", "name", "phone", "age", "gender", "concern", "mode", "date", "slot", "message", "skin_score", "hair_score", "skin_age", "skin_type", "treatments"];
+      var cols = ["ts", "type", "status", "name", "phone", "age", "gender", "concern", "mode", "date", "slot", "message", "skin_score", "hair_score", "skin_age", "skin_type", "treatments"];
       var out = [cols.join(",")];
       LEADS.forEach(function (l) {
         out.push(cols.map(function (c) {
