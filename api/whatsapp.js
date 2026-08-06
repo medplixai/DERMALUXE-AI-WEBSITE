@@ -163,8 +163,14 @@ async function sendCloud(phoneNumberId, to, text) {
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ messaging_product: "whatsapp", to, text: { body: String(text).slice(0, 4000) } }),
     });
+    if (!r.ok) {
+      let detail = "";
+      try { detail = (await r.text()).slice(0, 300); } catch (e) {}
+      console.error("wa: sendCloud failed", r.status, detail); // token expiry/quality blocks show up in runtime logs
+    }
     return r.ok;
   } catch (e) {
+    console.error("wa: sendCloud network error", e && e.message);
     return false;
   }
 }
@@ -175,7 +181,7 @@ module.exports = async (req, res) => {
   // Meta webhook verification handshake
   if (req.method === "GET") {
     const q = req.query || {};
-    if (q["hub.mode"] === "subscribe" && tok && q["hub.verify_token"] === tok) {
+    if (q["hub.mode"] === "subscribe" && tok && guard.safeEqual(q["hub.verify_token"], tok)) {
       return res.status(200).send(String(q["hub.challenge"] || ""));
     }
     return res.status(403).send("Forbidden");
@@ -183,25 +189,62 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
 
   // Layer 1: shared-secret token (when configured)
-  if (tok && String((req.query || {}).token || "") !== tok) {
+  if (tok && !guard.safeEqual((req.query || {}).token, tok)) {
     return res.status(403).json({ error: "Forbidden" });
   }
 
   const b = req.body || {};
   const isMeta = b && b.object === "whatsapp_business_account";
+  const cfg = guard.kvConfig();
 
   let digits = "", text = "", profileName = "", cloud = null;
   if (isMeta) {
     const entry = (b.entry && b.entry[0]) || {};
     const value = ((entry.changes && entry.changes[0]) || {}).value || {};
+
+    // Layer 2 (Meta): only serve events addressed to our own number —
+    // forged/foreign payloads are acknowledged but never replied to.
+    const phoneId = String((value.metadata && value.metadata.phone_number_id) || "");
+    const allow = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539")
+      .split(",").map((s) => s.trim()).filter(Boolean);
+    if (phoneId && allow.length && allow.indexOf(phoneId) === -1) {
+      console.log("wa: ignoring event for unknown phone_number_id", phoneId);
+      return res.status(200).json({ ok: true });
+    }
+
     const msg = (value.messages && value.messages[0]) || null;
     // delivery/read status callbacks etc. — acknowledge and ignore
-    if (!msg || msg.type !== "text") return res.status(200).json({ ok: true });
-    text = String((msg.text && msg.text.body) || "").slice(0, 1000).trim();
+    if (!msg) return res.status(200).json({ ok: true });
+
+    // De-dup: Meta redelivers the same message id if we respond slowly.
+    if (cfg && msg.id) {
+      try {
+        const first = await guard.kvCommand(cfg, ["SET", `wa:seen:${msg.id}`, "1", "NX", "EX", "21600"]);
+        if (!first.result) return res.status(200).json({ ok: true });
+      } catch (e) {}
+    }
+
     const fromFull = String(msg.from || "").replace(/\D/g, "");
     digits = fromFull.slice(-10);
     profileName = String((value.contacts && value.contacts[0] && value.contacts[0].profile && value.contacts[0].profile.name) || "").slice(0, 60);
-    cloud = { phoneNumberId: (value.metadata && value.metadata.phone_number_id) || "", to: fromFull };
+    cloud = { phoneNumberId: phoneId, to: fromFull };
+
+    if (msg.type === "text") {
+      text = String((msg.text && msg.text.body) || "").slice(0, 1000).trim();
+    } else if (msg.type === "button") {
+      text = String((msg.button && msg.button.text) || "").slice(0, 1000).trim();
+    } else if (msg.type === "interactive") {
+      const i = msg.interactive || {};
+      text = String((i.button_reply && i.button_reply.title) || (i.list_reply && i.list_reply.title) || "").slice(0, 1000).trim();
+    } else if (["image", "video", "audio", "voice", "document", "location", "contacts"].indexOf(msg.type) !== -1) {
+      // Media/location: politely steer to text instead of silence.
+      await sendCloud(cloud.phoneNumberId, cloud.to,
+        "Namaste! 🙏 Prastutam nenu text messages ki matrame reply cheyagalanu — mee vivaralu type chesi pampandi. Photos ni mana doctors clinic visit lo chustaru.\n· ప్రస్తుతం టెక్స్ట్ మెసేజ్‌లకే రిప్లై చేయగలను — దయచేసి టైప్ చేసి పంపండి.");
+      return res.status(200).json({ ok: true });
+    } else {
+      // reaction / sticker / system / unsupported — ignore silently
+      return res.status(200).json({ ok: true });
+    }
   } else {
     // Layer 2 (Twilio only): signature validation when configured
     const authToken = process.env.TWILIO_AUTH_TOKEN;
@@ -226,7 +269,6 @@ module.exports = async (req, res) => {
   if (!digits || !text) return respond(FALLBACK_REPLY);
 
   // Layer 3: rate limits — per phone + global daily
-  const cfg = guard.kvConfig();
   const perPhone = await guard.rateLimit(cfg, `rl:wa:h:${digits}`, 15, 3600);
   if (!perPhone.allowed) return respond("Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.");
   const globalCap = await guard.rateLimit(cfg, `rl:wa:g:${guard.today()}`, 400, 90000);
@@ -243,6 +285,7 @@ module.exports = async (req, res) => {
   try {
     out = await askClaude(hist, text, profileName);
   } catch (e) {
+    console.error("wa: claude error", e && e.message);
     return respond(FALLBACK_REPLY);
   }
 

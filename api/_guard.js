@@ -1,5 +1,14 @@
 // Shared security helpers for API endpoints.
 // (Underscore-prefixed files in /api are not exposed as routes on Vercel.)
+const crypto = require("crypto");
+
+// Constant-time string comparison for secrets (admin keys, webhook tokens).
+function safeEqual(a, b) {
+  const A = Buffer.from(String(a || ""));
+  const B = Buffer.from(String(b || ""));
+  if (A.length !== B.length) return false;
+  return crypto.timingSafeEqual(A, B);
+}
 
 function kvConfig() {
   const env = process.env;
@@ -71,4 +80,4 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { kvConfig, kvCommand, getIp, originAllowed, rateLimit, today };
+module.exports = { kvConfig, kvCommand, getIp, originAllowed, rateLimit, today, safeEqual };

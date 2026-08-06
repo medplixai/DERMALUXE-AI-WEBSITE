@@ -15,8 +15,10 @@ module.exports = async (req, res) => {
   const rl = await guard.rateLimit(cfg, `rl:ls:h:${ip}`, 30, 3600);
   if (!rl.allowed) return res.status(429).json({ error: "Too many attempts — try later" });
 
-  const key = (req.query && req.query.key) || "";
-  if (key !== adminKey) return res.status(401).json({ error: "Invalid key" });
+  // Prefer the x-admin-key header (keeps the key out of URL/access logs);
+  // ?key= stays supported for backwards compatibility.
+  const key = String(req.headers["x-admin-key"] || (req.query && req.query.key) || "");
+  if (!guard.safeEqual(key, adminKey)) return res.status(401).json({ error: "Invalid key" });
 
   if (!cfg) return res.status(501).json({ error: "Lead storage (Vercel KV / Upstash) not configured" });
 

@@ -278,7 +278,7 @@
       if (!key) { $("empty").textContent = "Please enter the admin key."; return; }
       try { localStorage.setItem("dl_admin_key", key); } catch (e) {}
       $("empty").textContent = "Loading…";
-      fetch("/api/leads?key=" + encodeURIComponent(key))
+      fetch("/api/leads", { headers: { "x-admin-key": key } })
         .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
         .then(function (r) {
           if (!r.ok) { $("empty").textContent = r.d.error || "Failed to load."; return; }

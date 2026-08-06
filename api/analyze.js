@@ -64,7 +64,9 @@ module.exports = async (req, res) => {
   }
   // OTP gating is currently optional — set REQUIRE_OTP=1 in Vercel env to enforce it.
   if (process.env.REQUIRE_OTP === "1") {
-    const secret = process.env.OTP_TOKEN_SECRET || process.env.TWILIO_AUTH_TOKEN || "dermaluxe-dev-secret";
+    // Never fall back to a guessable default secret when OTP is being enforced.
+    const secret = process.env.OTP_TOKEN_SECRET || process.env.TWILIO_AUTH_TOKEN;
+    if (!secret) return res.status(501).json({ error: "OTP enforcement misconfigured (no OTP_TOKEN_SECRET)" });
     const phone = verifyToken(token, secret);
     if (!phone) return res.status(401).json({ error: "Session expired — please verify OTP again" });
   }

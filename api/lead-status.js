@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
   if (!adminKey) return res.status(501).json({ error: "ADMIN_KEY not configured" });
 
   const b = req.body || {};
-  if (String(b.key || "") !== adminKey) return res.status(401).json({ error: "Invalid key" });
+  if (!guard.safeEqual(b.key, adminKey)) return res.status(401).json({ error: "Invalid key" });
 
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(501).json({ error: "Storage not configured" });

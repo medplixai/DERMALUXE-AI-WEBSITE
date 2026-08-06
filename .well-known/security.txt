@@ -1,0 +1,5 @@
+Contact: mailto:support@dermaluxe.ai
+Expires: 2027-08-31T00:00:00.000Z
+Preferred-Languages: en, te
+Canonical: https://www.dermaluxe.ai/.well-known/security.txt
+Policy: https://www.dermaluxe.ai/privacy.html
