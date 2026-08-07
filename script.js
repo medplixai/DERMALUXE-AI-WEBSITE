@@ -246,7 +246,8 @@
   };
   setTimeout(function () {
     hint.hidden = false;
-    requestAnimationFrame(function () { hint.classList.add("on"); });
+    void hint.offsetWidth; // reflow so the slide-in transition runs (rAF stalls in background tabs)
+    hint.classList.add("on");
   }, 3800);
   setTimeout(function () { if (!hint.hidden) hide(false); }, 16000);
   document.getElementById("fabHintX").addEventListener("click", function () { hide(true); });
