@@ -19,6 +19,7 @@ module.exports = async (req, res) => {
       enabled: process.env.WA_AGENT_ENABLED === "1",
       webhookSecured: !!process.env.WA_WEBHOOK_TOKEN,
       cloudTokenSet: !!process.env.WA_CLOUD_TOKEN,
+      voiceEnabled: !!process.env.GEMINI_API_KEY,
     },
   });
 };
