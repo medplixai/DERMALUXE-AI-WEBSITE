@@ -16,6 +16,7 @@
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
+const admin = require("./_admin.js");
 
 const LIST_KEY = "dl_leads";
 const HIST_TTL = 86400; // 24h conversation memory
@@ -458,6 +459,19 @@ module.exports = async (req, res) => {
   };
 
   if (!digits || (!text && !imageId && !audioId)) return respond(FALLBACK_REPLY);
+
+  // Owner/admin commands (ADMIN_PHONES allowlist; explicit commands only —
+  // anything else from the admin falls through to the normal agent).
+  if (isMeta && admin.isAdmin(digits)) {
+    try {
+      const adminReply = await admin.handle(cfg, digits, text,
+        imageId ? { fetch: () => fetchMedia(imageId) } : null);
+      if (adminReply) {
+        await sendCloud(cloud.phoneNumberId, cloud.to, adminReply);
+        return res.status(200).json({ ok: true });
+      }
+    } catch (e) { console.error("wa: admin error", e && e.message); }
+  }
 
   // Layer 3: rate limits — per phone + global daily
   const perPhone = await guard.rateLimit(cfg, `rl:wa:h:${digits}`, 15, 3600);
