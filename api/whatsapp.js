@@ -38,11 +38,24 @@ RULES
 - Booking flow: collect (1) name, (2) concern/treatment, (3) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
 - When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). Otherwise "lead" must be null.
 - If the patient asks for a human / to talk to staff, tell them our team will call back shortly and set lead with concern "Call back request".
+- Patients can send a skin/hair PHOTO here for a quick AI pre-assessment, and VOICE NOTES are understood. If the history shows a photo was analysed earlier, reference those findings naturally when suggesting treatments or booking — don't repeat the whole report.
 
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your whatsapp reply>","lead":null}
 or when booking info is ready:
 {"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>"}}`;
+
+const PHOTO_RULES = `THE PATIENT JUST SENT A PHOTO on WhatsApp. Give a brief cosmetic skin/hair wellness pre-assessment from it (NOT a medical diagnosis).
+Format for WhatsApp, in the patient's language style (from caption/history; default Tenglish), max ~10 short lines:
+1. One warm opening line.
+2. 📊 Approximate scores out of 100 — skin overall; hair only if scalp/hair is clearly visible.
+3. Top 2-3 visible findings with severity (mild/moderate/significant) in simple words.
+4. 💡 One practical care tip.
+5. Suggest 1-2 relevant DermaLuxe treatments (NEVER prices).
+6. Invite them to book a consultation (ask their name if unknown) and mention the free full AI analysis at www.dermaluxe.ai.
+7. End with: "Note: idi medical diagnosis kadu — doctor consultation best. 🙏"
+If the photo is NOT a skin/hair/face/scalp photo (documents, screenshots, objects), politely say you can only assess skin & hair photos — do not invent an assessment.
+Use the SAME JSON output format: {"reply":"...","lead":null} (fill lead only per the booking rules).`;
 
 function xmlEscape(s) {
   return String(s == null ? "" : s).replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[c]));
@@ -125,6 +138,104 @@ async function askClaude(hist, userMsg, profileName) {
   return { reply: text || FALLBACK_REPLY, lead: null };
 }
 
+// Download WhatsApp media (photo/voice) bytes via the Graph API.
+// Returns {base64, mime} | {tooBig:true} | null.
+async function fetchMedia(mediaId) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !mediaId) return null;
+  try {
+    const metaResp = await fetch(`https://graph.facebook.com/v21.0/${mediaId}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    if (!metaResp.ok) { console.error("wa: media meta failed", metaResp.status); return null; }
+    const meta = await metaResp.json();
+    if (!meta.url) return null;
+    if (Number(meta.file_size || 0) > 4500000) return { tooBig: true };
+    const binResp = await fetch(meta.url, { headers: { Authorization: `Bearer ${token}` } });
+    if (!binResp.ok) { console.error("wa: media download failed", binResp.status); return null; }
+    const buf = Buffer.from(await binResp.arrayBuffer());
+    return { base64: buf.toString("base64"), mime: String(meta.mime_type || "").split(";")[0].trim() };
+  } catch (e) {
+    console.error("wa: media fetch error", e && e.message);
+    return null;
+  }
+}
+
+// Voice note → text via Gemini (free tier handles Telugu/Tenglish/English well).
+// Claude's API has no audio input, so this is the transcription leg only —
+// the reply brain stays Claude. Returns null when GEMINI_API_KEY is unset.
+async function transcribeVoice(base64, mime) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key) return null;
+  try {
+    const model = process.env.STT_MODEL || "gemini-2.0-flash";
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          parts: [
+            { text: "Transcribe this WhatsApp voice note exactly. It may be Telugu, Tenglish (Telugu in English letters), English, or mixed. If Telugu is spoken, transcribe in Telugu script. Output ONLY the transcription, nothing else." },
+            { inline_data: { mime_type: mime || "audio/ogg", data: base64 } },
+          ],
+        }],
+      }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+      console.error("wa: stt failed", r.status, d);
+      return null;
+    }
+    const d = await r.json();
+    const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
+    const text = parts.map((p) => p.text || "").join(" ").trim();
+    return text || null;
+  } catch (e) {
+    console.error("wa: stt error", e && e.message);
+    return null;
+  }
+}
+
+// Claude vision — quick skin/hair pre-assessment of a WhatsApp photo.
+async function askClaudeVision(hist, media, caption, profileName) {
+  const mime = ["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(media.mime) !== -1 ? media.mime : "image/jpeg";
+  const messages = [];
+  hist.forEach((t) => {
+    messages.push({ role: "user", content: t.u });
+    messages.push({ role: "assistant", content: t.a });
+  });
+  messages.push({
+    role: "user",
+    content: [
+      { type: "image", source: { type: "base64", media_type: mime, data: media.base64 } },
+      { type: "text", text: (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + (caption || "Photo pampanu — analysis cheyandi.") },
+    ],
+  });
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: process.env.AI_MODEL || "claude-sonnet-5",
+      max_tokens: 800,
+      system: CLINIC_FACTS + "\n\n" + PHOTO_RULES,
+      messages,
+    }),
+  });
+  if (!resp.ok) throw new Error(`claude vision HTTP ${resp.status}`);
+  const data = await resp.json();
+  const text = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
+  try {
+    const m = text.match(/\{[\s\S]*\}/);
+    const parsed = JSON.parse(m ? m[0] : text);
+    if (parsed && typeof parsed.reply === "string") return parsed;
+  } catch (e) {}
+  return { reply: text || FALLBACK_REPLY, lead: null };
+}
+
 async function storeLead(cfg, leadInfo, phone, lastMsg) {
   const lead = {
     ts: Date.now(),
@@ -197,7 +308,7 @@ module.exports = async (req, res) => {
   const isMeta = b && b.object === "whatsapp_business_account";
   const cfg = guard.kvConfig();
 
-  let digits = "", text = "", profileName = "", cloud = null;
+  let digits = "", text = "", profileName = "", cloud = null, imageId = "", audioId = "";
   if (isMeta) {
     const entry = (b.entry && b.entry[0]) || {};
     const value = ((entry.changes && entry.changes[0]) || {}).value || {};
@@ -236,10 +347,17 @@ module.exports = async (req, res) => {
     } else if (msg.type === "interactive") {
       const i = msg.interactive || {};
       text = String((i.button_reply && i.button_reply.title) || (i.list_reply && i.list_reply.title) || "").slice(0, 1000).trim();
-    } else if (["image", "video", "audio", "voice", "document", "location", "contacts"].indexOf(msg.type) !== -1) {
-      // Media/location: politely steer to text instead of silence.
+    } else if (msg.type === "image") {
+      imageId = String((msg.image && msg.image.id) || "");
+      text = String((msg.image && msg.image.caption) || "").slice(0, 500).trim();
+      if (!imageId) return res.status(200).json({ ok: true });
+    } else if (msg.type === "audio" || msg.type === "voice") {
+      audioId = String(((msg.audio || msg.voice || {}).id) || "");
+      if (!audioId) return res.status(200).json({ ok: true });
+    } else if (["video", "document", "location", "contacts"].indexOf(msg.type) !== -1) {
+      // Steer to what the agent CAN handle: text, voice notes, skin/hair photos.
       await sendCloud(cloud.phoneNumberId, cloud.to,
-        "Namaste! 🙏 Prastutam nenu text messages ki matrame reply cheyagalanu — mee vivaralu type chesi pampandi. Photos ni mana doctors clinic visit lo chustaru.\n· ప్రస్తుతం టెక్స్ట్ మెసేజ్‌లకే రిప్లై చేయగలను — దయచేసి టైప్ చేసి పంపండి.");
+        "Namaste! 🙏 Text, voice note leda skin/hair photo pampandi — photo ki instant AI pre-assessment istanu. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే AI విశ్లేషణ ఇస్తాను.");
       return res.status(200).json({ ok: true });
     } else {
       // reaction / sticker / system / unsupported — ignore silently
@@ -266,7 +384,7 @@ module.exports = async (req, res) => {
     return twiml(res, replyText);
   };
 
-  if (!digits || !text) return respond(FALLBACK_REPLY);
+  if (!digits || (!text && !imageId && !audioId)) return respond(FALLBACK_REPLY);
 
   // Layer 3: rate limits — per phone + global daily
   const perPhone = await guard.rateLimit(cfg, `rl:wa:h:${digits}`, 15, 3600);
@@ -283,9 +401,35 @@ module.exports = async (req, res) => {
 
   let out;
   try {
-    out = await askClaude(hist, text, profileName);
+    if (imageId) {
+      // 📸 Photo → Claude vision pre-assessment (shares the site's global AI cap)
+      const imgL = await guard.rateLimit(cfg, `rl:wa:img:${digits}`, 3, 86400);
+      const gCap = await guard.rateLimit(cfg, `rl:an:g:${guard.today()}`, 300, 90000);
+      if (!imgL.allowed || !gCap.allowed) {
+        return respond("Photo analysis limit ayipoindi 🙏 — www.dermaluxe.ai lo FREE full AI analysis try cheyandi, leda mee concern text chesi pampandi.\n· ఫోటో విశ్లేషణ పరిమితి అయిపోయింది — వెబ్‌సైట్‌లో ఉచిత పూర్తి విశ్లేషణ చేయవచ్చు.");
+      }
+      const media = await fetchMedia(imageId);
+      if (media && media.tooBig) return respond("Photo chala pedda undi 🙏 — normal quality photo malli pampandi.\n· ఫోటో చాలా పెద్దగా ఉంది — మామూలు క్వాలిటీలో పంపండి.");
+      if (!media) return respond("Photo download avvaledu 🙏 — konchem sepu agi malli pampandi, leda text type cheyandi.\n· ఫోటో డౌన్‌లోడ్ కాలేదు — మళ్ళీ ప్రయత్నించండి.");
+      out = await askClaudeVision(hist, media, text, profileName);
+      text = "[📷 photo]" + (text ? " " + text : "");
+    } else {
+      if (audioId) {
+        // 🎤 Voice note → Gemini transcription → normal Claude flow
+        const vcL = await guard.rateLimit(cfg, `rl:wa:vc:${digits}`, 10, 86400);
+        if (!vcL.allowed) return respond("Ee roju voice limit ayipoindi 🙏 — text type chesi pampandi.\n· ఈరోజు వాయిస్ పరిమితి అయిపోయింది — టైప్ చేసి పంపండి.");
+        const media = await fetchMedia(audioId);
+        const heard = media && !media.tooBig ? await transcribeVoice(media.base64, media.mime) : null;
+        if (!heard) {
+          return respond("Voice note vinipinchaledu 🙏 — dayachesi text type chesi pampandi.\n· వాయిస్ నోట్ వినిపించలేదు — దయచేసి టైప్ చేసి పంపండి.");
+        }
+        text = String(heard).slice(0, 1000).trim();
+      }
+      out = await askClaude(hist, text, profileName);
+      if (audioId) text = "[🎤] " + text;
+    }
   } catch (e) {
-    console.error("wa: claude error", e && e.message);
+    console.error("wa: ai error", e && e.message);
     return respond(FALLBACK_REPLY);
   }
 

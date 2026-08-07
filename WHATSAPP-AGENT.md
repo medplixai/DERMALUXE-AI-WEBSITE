@@ -69,3 +69,9 @@ curl -s -X POST "https://www.dermaluxe.ai/api/whatsapp?token=<WA_WEBHOOK_TOKEN>"
   --data-urlencode "Body=hydrafacial gurinchi cheppandi"
 ```
 Returns TwiML `<Response><Message>…</Message></Response>`.
+
+## Media upgrades (2026-08-07)
+- **📸 Photo skin analysis**: patient sends a skin/hair photo → Claude vision replies with a compact pre-assessment (scores, findings, tip, treatment suggestions, booking CTA, disclaimer). Caption becomes the concern. Limits: 3 photos/day per phone (`rl:wa:img:`), shares the site's global AI cap (`rl:an:g:` 300/day). Oversized (>4.5MB) or failed downloads get polite bilingual fallbacks.
+- **🎤 Voice notes**: transcribed by Gemini (`GEMINI_API_KEY` env, model `STT_MODEL` default gemini-2.0-flash — free tier is plenty), then the normal Claude flow answers. Telugu/Tenglish/English all supported. 10 voice notes/day per phone (`rl:wa:vc:`). Without the key, voice gets a "please type" fallback — no crash.
+- History markers: photo turns are stored as `[📷 photo] <caption>`, voice as `[🎤] <transcript>`, so follow-up questions keep context.
+- vercel.json sets `maxDuration: 60` for api/whatsapp.js + api/analyze.js (media download + vision can exceed the 10s default).
