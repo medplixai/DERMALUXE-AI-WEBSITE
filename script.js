@@ -232,3 +232,22 @@
     });
   }
 })();
+
+/* FAB greeting bubble — appears once per visit, dismissible */
+(function () {
+  var hint = document.getElementById("fabHint");
+  if (!hint) return;
+  var KEY = "dl_fab_hint";
+  try { if (sessionStorage.getItem(KEY) === "1") return; } catch (e) {}
+  var hide = function (remember) {
+    hint.classList.remove("on");
+    setTimeout(function () { hint.hidden = true; }, 450);
+    if (remember) { try { sessionStorage.setItem(KEY, "1"); } catch (e) {} }
+  };
+  setTimeout(function () {
+    hint.hidden = false;
+    requestAnimationFrame(function () { hint.classList.add("on"); });
+  }, 3800);
+  setTimeout(function () { if (!hint.hidden) hide(false); }, 16000);
+  document.getElementById("fabHintX").addEventListener("click", function () { hide(true); });
+})();
