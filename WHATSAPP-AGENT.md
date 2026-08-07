@@ -75,3 +75,8 @@ Returns TwiML `<Response><Message>…</Message></Response>`.
 - **🎤 Voice notes**: transcribed by Gemini (`GEMINI_API_KEY` env, model `STT_MODEL` default gemini-2.0-flash — free tier is plenty), then the normal Claude flow answers. Telugu/Tenglish/English all supported. 10 voice notes/day per phone (`rl:wa:vc:`). Without the key, voice gets a "please type" fallback — no crash.
 - History markers: photo turns are stored as `[📷 photo] <caption>`, voice as `[🎤] <transcript>`, so follow-up questions keep context.
 - vercel.json sets `maxDuration: 60` for api/whatsapp.js + api/analyze.js (media download + vision can exceed the 10s default).
+
+## Engagement upgrades (2026-08-07 night)
+- **Quick-menu buttons**: the first reply of every conversation ships as an interactive message with 📅 Book Now / 💆 Services / 📸 Skin Check reply buttons (falls back to plain text if rejected). Taps arrive as text and the system prompt maps them to flows.
+- **Location pin**: when the patient asks address/directions (Claude sets `send_location`, plus a Telugu/English keyword fallback), a live map pin (16.7107, 81.0952) is sent after the text reply.
+- **Returning-patient memory**: lead capture also writes `wa:p:<phone>` = {name, concern} with a 180-day TTL; when a conversation starts fresh (24h history expired) the profile is injected as context so the agent greets by name and continues from the last concern.

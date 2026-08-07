@@ -39,11 +39,15 @@ RULES
 - When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). Otherwise "lead" must be null.
 - If the patient asks for a human / to talk to staff, tell them our team will call back shortly and set lead with concern "Call back request".
 - Patients can send a skin/hair PHOTO here for a quick AI pre-assessment, and VOICE NOTES are understood. If the history shows a photo was analysed earlier, reference those findings naturally when suggesting treatments or booking — don't repeat the whole report.
+- If the context marks a RETURNING PATIENT (name/last concern given), greet them warmly by name and continue naturally from their last concern — never ask their name again.
+- Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here.
+- When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
 
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your whatsapp reply>","lead":null}
 or when booking info is ready:
-{"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>"}}`;
+{"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>"}}
+Optionally add "send_location":true when the patient asks for the address/directions.`;
 
 const PHOTO_RULES = `THE PATIENT JUST SENT A PHOTO on WhatsApp. Give a brief cosmetic skin/hair wellness pre-assessment from it (NOT a medical diagnosis).
 Format for WhatsApp, in the patient's language style (from caption/history; default Tenglish), max ~10 short lines:
@@ -105,13 +109,13 @@ async function saveHistory(cfg, key, hist) {
   } catch (e) {}
 }
 
-async function askClaude(hist, userMsg, profileName) {
+async function askClaude(hist, userMsg, profileName, extraCtx) {
   const messages = [];
   hist.forEach((t) => {
     messages.push({ role: "user", content: t.u });
     messages.push({ role: "assistant", content: t.a });
   });
-  messages.push({ role: "user", content: (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + userMsg });
+  messages.push({ role: "user", content: (extraCtx || "") + (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + userMsg });
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -136,6 +140,86 @@ async function askClaude(hist, userMsg, profileName) {
     if (parsed && typeof parsed.reply === "string") return parsed;
   } catch (e) {}
   return { reply: text || FALLBACK_REPLY, lead: null };
+}
+
+// Quick-menu buttons shown on the first reply of a conversation.
+// Falls back to a plain text send if the interactive message is rejected.
+async function sendCloudButtons(phoneNumberId, to, bodyText) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to) return false;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: String(bodyText).slice(0, 1024) },
+          action: { buttons: [
+            { type: "reply", reply: { id: "book", title: "📅 Book Now" } },
+            { type: "reply", reply: { id: "services", title: "💆 Services" } },
+            { type: "reply", reply: { id: "skincheck", title: "📸 Skin Check" } },
+          ] },
+        },
+      }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+      console.error("wa: buttons send failed, falling back to text", r.status, d);
+      return sendCloud(phoneNumberId, to, bodyText);
+    }
+    return true;
+  } catch (e) {
+    console.error("wa: buttons send error", e && e.message);
+    return sendCloud(phoneNumberId, to, bodyText);
+  }
+}
+
+// Live map pin of the clinic (sent alongside the text when patients ask where we are).
+async function sendCloudLocation(phoneNumberId, to) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to) return false;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "location",
+        location: {
+          latitude: 16.7107, longitude: 81.0952,
+          name: "DermaLuxe by Medicare Skin And Hair Clinic",
+          address: "Rama Mahal, R.R. Peta, Kasturi Vari Street, Opp. Happy Mobiles, Eluru 534002",
+        },
+      }),
+    });
+    if (!r.ok) console.error("wa: location send failed", r.status);
+    return r.ok;
+  } catch (e) {
+    console.error("wa: location send error", e && e.message);
+    return false;
+  }
+}
+
+const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
+
+// Long-term patient memory (180 days): name + last concern, so returning
+// patients are greeted personally even after the 24h chat history expires.
+const PROFILE_TTL = 15552000;
+async function getProfile(cfg, digits) {
+  if (!cfg || !digits) return null;
+  try {
+    const r = await guard.kvCommand(cfg, ["GET", `wa:p:${digits}`]);
+    return r.result ? JSON.parse(r.result) : null;
+  } catch (e) { return null; }
+}
+async function saveProfile(cfg, digits, name, concern) {
+  if (!cfg || !digits || !name) return;
+  try {
+    await guard.kvCommand(cfg, ["SET", `wa:p:${digits}`,
+      JSON.stringify({ name, concern: String(concern || "").slice(0, 120), ts: Date.now() }),
+      "EX", String(PROFILE_TTL)]);
+  } catch (e) {}
 }
 
 // Download WhatsApp media (photo/voice) bytes via the Graph API.
@@ -197,7 +281,7 @@ async function transcribeVoice(base64, mime) {
 }
 
 // Claude vision — quick skin/hair pre-assessment of a WhatsApp photo.
-async function askClaudeVision(hist, media, caption, profileName) {
+async function askClaudeVision(hist, media, caption, profileName, extraCtx) {
   const mime = ["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(media.mime) !== -1 ? media.mime : "image/jpeg";
   const messages = [];
   hist.forEach((t) => {
@@ -208,7 +292,7 @@ async function askClaudeVision(hist, media, caption, profileName) {
     role: "user",
     content: [
       { type: "image", source: { type: "base64", media_type: mime, data: media.base64 } },
-      { type: "text", text: (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + (caption || "Photo pampanu — analysis cheyandi.") },
+      { type: "text", text: (extraCtx || "") + (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + (caption || "Photo pampanu — analysis cheyandi.") },
     ],
   });
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -254,6 +338,7 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
     page: "whatsapp-agent",
   };
   if (!lead.name) return;
+  await saveProfile(cfg, phone, lead.name, lead.concern); // long-term greeting memory
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
   if (cfg) {
@@ -398,6 +483,12 @@ module.exports = async (req, res) => {
 
   const histKey = `wa:h:${digits}`;
   const hist = cfg ? await getHistory(cfg, histKey) : [];
+  const firstTurn = hist.length === 0;
+  // Returning patient? (24h chat history gone, but the 180-day profile remains)
+  const profile = firstTurn ? await getProfile(cfg, digits) : null;
+  const extraCtx = profile && profile.name
+    ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
+    : "";
 
   let out;
   try {
@@ -411,7 +502,7 @@ module.exports = async (req, res) => {
       const media = await fetchMedia(imageId);
       if (media && media.tooBig) return respond("Photo chala pedda undi 🙏 — normal quality photo malli pampandi.\n· ఫోటో చాలా పెద్దగా ఉంది — మామూలు క్వాలిటీలో పంపండి.");
       if (!media) return respond("Photo download avvaledu 🙏 — konchem sepu agi malli pampandi, leda text type cheyandi.\n· ఫోటో డౌన్‌లోడ్ కాలేదు — మళ్ళీ ప్రయత్నించండి.");
-      out = await askClaudeVision(hist, media, text, profileName);
+      out = await askClaudeVision(hist, media, text, profileName, extraCtx);
       text = "[📷 photo]" + (text ? " " + text : "");
     } else {
       if (audioId) {
@@ -425,7 +516,7 @@ module.exports = async (req, res) => {
         }
         text = String(heard).slice(0, 1000).trim();
       }
-      out = await askClaude(hist, text, profileName);
+      out = await askClaude(hist, text, profileName, extraCtx);
       if (audioId) text = "[🎤] " + text;
     }
   } catch (e) {
@@ -440,5 +531,16 @@ module.exports = async (req, res) => {
     hist.push({ u: text, a: out.reply });
     await saveHistory(cfg, histKey, hist);
   }
-  return respond(out.reply);
+
+  if (isMeta) {
+    // First reply of a conversation carries the quick-menu buttons.
+    if (firstTurn && !imageId) await sendCloudButtons(cloud.phoneNumberId, cloud.to, out.reply);
+    else await sendCloud(cloud.phoneNumberId, cloud.to, out.reply);
+    // Map pin when the patient asked where we are (Claude flag or keyword).
+    if (out.send_location === true || LOCATION_ASK.test(text)) {
+      await sendCloudLocation(cloud.phoneNumberId, cloud.to);
+    }
+    return res.status(200).json({ ok: true });
+  }
+  return twiml(res, out.reply);
 };
