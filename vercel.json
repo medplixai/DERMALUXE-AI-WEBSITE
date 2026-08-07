@@ -2,6 +2,7 @@
   "functions": {
     "api/whatsapp.js": { "maxDuration": 60 },
     "api/instagram.js": { "maxDuration": 60 },
+    "api/messenger.js": { "maxDuration": 60 },
     "api/analyze.js": { "maxDuration": 60 }
   },
   "headers": [

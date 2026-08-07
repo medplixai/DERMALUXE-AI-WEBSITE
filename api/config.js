@@ -25,5 +25,9 @@ module.exports = async (req, res) => {
       enabled: process.env.IG_AGENT_ENABLED === "1",
       pageTokenSet: !!(process.env.IG_PAGE_TOKEN || (process.env.IG_SYSTEM_TOKEN && process.env.IG_PAGE_ID)),
     },
+    fbAgent: {
+      enabled: process.env.FB_AGENT_ENABLED !== "0" &&
+        !!(process.env.IG_PAGE_TOKEN || (process.env.IG_SYSTEM_TOKEN && process.env.IG_PAGE_ID)),
+    },
   });
 };
