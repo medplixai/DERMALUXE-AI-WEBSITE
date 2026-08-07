@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
     },
     igAgent: {
       enabled: process.env.IG_AGENT_ENABLED === "1",
-      pageTokenSet: !!process.env.IG_PAGE_TOKEN,
+      pageTokenSet: !!(process.env.IG_PAGE_TOKEN || (process.env.IG_SYSTEM_TOKEN && process.env.IG_PAGE_ID)),
     },
   });
 };

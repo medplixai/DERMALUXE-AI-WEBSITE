@@ -6,7 +6,9 @@
 //
 // Env vars:
 //   IG_AGENT_ENABLED   – "1" to enable Claude replies
-//   IG_PAGE_TOKEN      – Page/system-user token with instagram_manage_messages
+//   IG_SYSTEM_TOKEN    – permanent system-user token (page token auto-derived)
+//   IG_PAGE_ID         – Facebook Page id linked to @dermaluxe.ai
+//   IG_PAGE_TOKEN      – (alternative) a direct Page token; overrides the above
 //   WA_WEBHOOK_TOKEN   – shared webhook secret (?token= and Meta Verify token)
 //   ANTHROPIC_API_KEY, AI_MODEL, GEMINI_API_KEY – same as the WhatsApp agent
 const guard = require("./_guard.js");
@@ -36,9 +38,39 @@ const CLINIC_FACTS = facts.clinicFacts("Instagram", IG_RULES);
 const PHOTO_RULES = facts.photoRules("Instagram");
 const FALLBACK_REPLY = facts.FALLBACK_REPLY;
 
+// ── Page token resolution ────────────────────────────────────────────────────
+// Preferred setup: IG_SYSTEM_TOKEN (permanent system-user token) + IG_PAGE_ID —
+// the page access token is derived and cached in KV for 6h. A direct
+// IG_PAGE_TOKEN env still wins when set.
+let memTok = null, memTokAt = 0;
+async function pageToken(cfg) {
+  if (process.env.IG_PAGE_TOKEN) return process.env.IG_PAGE_TOKEN;
+  const sys = process.env.IG_SYSTEM_TOKEN, pageId = process.env.IG_PAGE_ID;
+  if (!sys || !pageId) return null;
+  if (memTok && Date.now() - memTokAt < 3600000) return memTok;
+  try {
+    if (cfg) {
+      const c = await guard.kvCommand(cfg, ["GET", "ig:ptok"]);
+      if (c && c.result) { memTok = c.result; memTokAt = Date.now(); return memTok; }
+    }
+  } catch (e) {}
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${pageId}?fields=access_token&access_token=${encodeURIComponent(sys)}`);
+    if (!r.ok) { console.error("ig: page token derive failed", r.status, (await r.text()).slice(0, 200)); return null; }
+    const d = await r.json();
+    if (!d.access_token) return null;
+    memTok = d.access_token; memTokAt = Date.now();
+    try { if (cfg) await guard.kvCommand(cfg, ["SET", "ig:ptok", memTok, "EX", "21600"]); } catch (e) {}
+    return memTok;
+  } catch (e) {
+    console.error("ig: page token error", e && e.message);
+    return null;
+  }
+}
+
 // ── Graph send helpers ───────────────────────────────────────────────────────
-async function sendDM(igsid, text, withMenu) {
-  const token = process.env.IG_PAGE_TOKEN;
+async function sendDM(igsid, text, withMenu, tok) {
+  const token = tok;
   if (!token || !igsid || !text) return false;
   const message = { text: String(text).slice(0, 1000) };
   if (withMenu) {
@@ -57,7 +89,7 @@ async function sendDM(igsid, text, withMenu) {
     if (!r.ok) {
       let d = ""; try { d = (await r.text()).slice(0, 300); } catch (e) {}
       console.error("ig: send failed", r.status, d);
-      if (withMenu) return sendDM(igsid, text, false); // retry without quick replies
+      if (withMenu) return sendDM(igsid, text, false, token); // retry without quick replies
       return false;
     }
     return true;
@@ -68,8 +100,7 @@ async function sendDM(igsid, text, withMenu) {
 }
 
 // Best-effort IG username (webhooks don't include it).
-async function fetchIgName(igsid) {
-  const token = process.env.IG_PAGE_TOKEN;
+async function fetchIgName(igsid, token) {
   if (!token) return "";
   try {
     const r = await fetch(`https://graph.facebook.com/v21.0/${igsid}?fields=name,username&access_token=${encodeURIComponent(token)}`);
@@ -208,6 +239,30 @@ module.exports = async (req, res) => {
     if (q["hub.mode"] === "subscribe" && tok && guard.safeEqual(q["hub.verify_token"], tok)) {
       return res.status(200).send(String(q["hub.challenge"] || ""));
     }
+    // One-time setup helper: subscribes the Facebook Page to this app so IG
+    // messaging webhooks flow (the WhatsApp subscribed_apps lesson).
+    // GET /api/instagram?setup=1&key=<ADMIN_KEY>
+    if (q.setup === "1") {
+      if (!process.env.ADMIN_KEY || !guard.safeEqual(q.key, process.env.ADMIN_KEY)) {
+        return res.status(401).json({ error: "Invalid key" });
+      }
+      const pageId = process.env.IG_PAGE_ID;
+      const pt = await pageToken(guard.kvConfig());
+      if (!pageId || !pt) return res.status(501).json({ error: "IG_PAGE_ID / token not configured", pageId: !!pageId, token: !!pt });
+      try {
+        const sub = await fetch(`https://graph.facebook.com/v21.0/${pageId}/subscribed_apps`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${pt}` },
+          body: JSON.stringify({ subscribed_fields: ["messages"] }),
+        });
+        const subBody = await sub.json().catch(() => ({}));
+        const check = await fetch(`https://graph.facebook.com/v21.0/${pageId}/subscribed_apps?access_token=${encodeURIComponent(pt)}`);
+        const checkBody = await check.json().catch(() => ({}));
+        return res.status(200).json({ ok: sub.ok, subscribe: subBody, current: checkBody });
+      } catch (e) {
+        return res.status(500).json({ error: "setup failed", detail: String(e && e.message) });
+      }
+    }
     return res.status(403).send("Forbidden");
   }
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
@@ -228,6 +283,7 @@ module.exports = async (req, res) => {
   if (!igsid) return res.status(200).json({ ok: true });
 
   const cfg = guard.kvConfig();
+  const ptok = await pageToken(cfg);
 
   // De-dup Meta redeliveries by message id
   if (cfg && msg.mid) {
@@ -251,17 +307,18 @@ module.exports = async (req, res) => {
   // Rate limits: per sender + global daily
   const perUser = await guard.rateLimit(cfg, `rl:ig:h:${igsid}`, 15, 3600);
   if (!perUser.allowed) {
-    await sendDM(igsid, "Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.");
+    await sendDM(igsid, "Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.", false, ptok);
     return res.status(200).json({ ok: true });
   }
   const globalCap = await guard.rateLimit(cfg, `rl:ig:g:${guard.today()}`, 400, 90000);
   if (!globalCap.allowed) {
-    await sendDM(igsid, FALLBACK_REPLY);
+    await sendDM(igsid, FALLBACK_REPLY, false, ptok);
     return res.status(200).json({ ok: true });
   }
 
-  if (process.env.IG_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY || !process.env.IG_PAGE_TOKEN) {
-    await sendDM(igsid, FALLBACK_REPLY);
+  if (process.env.IG_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY || !ptok) {
+    if (ptok) await sendDM(igsid, FALLBACK_REPLY, false, ptok);
+    else console.error("ig: no page token available (set IG_SYSTEM_TOKEN + IG_PAGE_ID, or IG_PAGE_TOKEN)");
     return res.status(200).json({ ok: true });
   }
 
@@ -280,7 +337,7 @@ module.exports = async (req, res) => {
       const p = cfg ? await guard.kvCommand(cfg, ["GET", `ig:p:${igsid}`]) : null;
       profile = p && p.result ? JSON.parse(p.result) : null;
     } catch (e) {}
-    igName = await fetchIgName(igsid);
+    igName = await fetchIgName(igsid, ptok);
   }
   const extraCtx = profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
@@ -292,12 +349,12 @@ module.exports = async (req, res) => {
       const imgL = await guard.rateLimit(cfg, `rl:ig:img:${igsid}`, 3, 86400);
       const gCap = await guard.rateLimit(cfg, `rl:an:g:${guard.today()}`, 300, 90000);
       if (!imgL.allowed || !gCap.allowed) {
-        await sendDM(igsid, "Photo analysis limit ayipoindi 🙏 — www.dermaluxe.ai lo FREE full AI analysis try cheyandi, leda mee concern text cheyandi.");
+        await sendDM(igsid, "Photo analysis limit ayipoindi 🙏 — www.dermaluxe.ai lo FREE full AI analysis try cheyandi, leda mee concern text cheyandi.", false, ptok);
         return res.status(200).json({ ok: true });
       }
       const media = await fetchUrlMedia(imageUrl);
       if (!media || media.tooBig) {
-        await sendDM(igsid, "Photo download avvaledu 🙏 — malli pampandi, leda text type cheyandi.");
+        await sendDM(igsid, "Photo download avvaledu 🙏 — malli pampandi, leda text type cheyandi.", false, ptok);
         return res.status(200).json({ ok: true });
       }
       const mime = ["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(media.mime) !== -1 ? media.mime : "image/jpeg";
@@ -308,13 +365,13 @@ module.exports = async (req, res) => {
       if (audioUrl) {
         const vcL = await guard.rateLimit(cfg, `rl:ig:vc:${igsid}`, 10, 86400);
         if (!vcL.allowed) {
-          await sendDM(igsid, "Ee roju voice limit ayipoindi 🙏 — text type chesi pampandi.");
+          await sendDM(igsid, "Ee roju voice limit ayipoindi 🙏 — text type chesi pampandi.", false, ptok);
           return res.status(200).json({ ok: true });
         }
         const media = await fetchUrlMedia(audioUrl);
         const heard = media && !media.tooBig ? await transcribeVoice(media.base64, media.mime) : null;
         if (!heard) {
-          await sendDM(igsid, "Voice note vinipinchaledu 🙏 — dayachesi type chesi pampandi.");
+          await sendDM(igsid, "Voice note vinipinchaledu 🙏 — dayachesi type chesi pampandi.", false, ptok);
           return res.status(200).json({ ok: true });
         }
         text = String(heard).slice(0, 1000).trim();
@@ -324,7 +381,7 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error("ig: ai error", e && e.message);
-    await sendDM(igsid, FALLBACK_REPLY);
+    await sendDM(igsid, FALLBACK_REPLY, false, ptok);
     return res.status(200).json({ ok: true });
   }
 
@@ -338,9 +395,9 @@ module.exports = async (req, res) => {
     } catch (e) {}
   }
 
-  await sendDM(igsid, out.reply, firstTurn && !imageUrl);
+  await sendDM(igsid, out.reply, firstTurn && !imageUrl, ptok);
   if (out.send_location === true || LOCATION_ASK.test(text)) {
-    await sendDM(igsid, "📍 DermaLuxe by Medicare, Eluru — Google Maps: " + MAPS_LINK);
+    await sendDM(igsid, "📍 DermaLuxe by Medicare, Eluru — Google Maps: " + MAPS_LINK, false, ptok);
   }
   return res.status(200).json({ ok: true });
 };
