@@ -38,6 +38,13 @@ const CLINIC_FACTS = facts.clinicFacts("Instagram", IG_RULES);
 const PHOTO_RULES = facts.photoRules("Instagram");
 const FALLBACK_REPLY = facts.FALLBACK_REPLY;
 
+// Comment → private-DM behaviour (comments webhook field).
+const COMMENT_RULES = `AN INSTAGRAM USER COMMENTED on one of our posts (you are replying as DermaLuxe).
+Decide and answer with ONLY minified JSON: {"dm": <string or null>, "public_reply": <string or null>}
+- Comment asks about treatments/booking/prices/location or shows real interest → "dm": a short warm private message in the commenter's language style (Tenglish default): thank them, answer briefly (NEVER prices), invite them to book or ask right here in the DM. 3-4 sentences max, 1 emoji. "public_reply": one tiny acknowledgement like "Details DM chesam 💬".
+- Only praise/emojis/greetings → "dm": null, "public_reply": one short thank-you line (max 1 emoji).
+- Spam, abuse, self-promo, or irrelevant → both null.`;
+
 // ── Page token resolution ────────────────────────────────────────────────────
 // Preferred setup: IG_SYSTEM_TOKEN (permanent system-user token) + IG_PAGE_ID —
 // the page access token is derived and cached in KV for 6h. A direct
@@ -286,6 +293,99 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
 
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
 
+// ── Comment → private DM + public acknowledgement ──────────────────────────
+async function sendPrivateReply(commentId, text, tok) {
+  if (!tok || !commentId || !text) return false;
+  try {
+    const r = await fetch("https://graph.instagram.com/v21.0/me/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ recipient: { comment_id: commentId }, message: { text: String(text).slice(0, 1000) } }),
+    });
+    if (!r.ok) console.error("ig: private reply failed", r.status, (await r.text().catch(() => "")).slice(0, 200));
+    return r.ok;
+  } catch (e) { console.error("ig: private reply error", e && e.message); return false; }
+}
+
+async function sendCommentReply(commentId, text, tok) {
+  if (!tok || !commentId || !text) return false;
+  try {
+    const r = await fetch(`https://graph.instagram.com/v21.0/${commentId}/replies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ message: String(text).slice(0, 300) }),
+    });
+    if (!r.ok) console.error("ig: comment reply failed", r.status, (await r.text().catch(() => "")).slice(0, 200));
+    return r.ok;
+  } catch (e) { console.error("ig: comment reply error", e && e.message); return false; }
+}
+
+async function askClaudeComment(username, commentText) {
+  const resp = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": process.env.ANTHROPIC_API_KEY,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model: process.env.AI_MODEL || "claude-sonnet-5",
+      max_tokens: 400,
+      system: CLINIC_FACTS + "\n\n" + COMMENT_RULES,
+      messages: [{ role: "user", content: `[Instagram comment by @${username} on our post] ${commentText}` }],
+    }),
+  });
+  if (!resp.ok) throw new Error(`claude HTTP ${resp.status}`);
+  const data = await resp.json();
+  const text = ((data.content || []).find((x) => x.type === "text") || {}).text || "";
+  try {
+    const m = text.match(/\{[\s\S]*\}/);
+    const p = JSON.parse(m ? m[0] : text);
+    return {
+      dm: typeof p.dm === "string" && p.dm.trim() ? p.dm : null,
+      public_reply: typeof p.public_reply === "string" && p.public_reply.trim() ? p.public_reply : null,
+    };
+  } catch (e) { return { dm: null, public_reply: null }; }
+}
+
+async function handleComment(entry, v) {
+  const commentId = String(v.id || "");
+  const fromId = String((v.from && v.from.id) || "");
+  const username = String((v.from && v.from.username) || "");
+  const text = String(v.text || "").slice(0, 500).trim();
+  const ourId = String(entry.id || "");
+  if (!commentId || !text || !fromId || fromId === ourId) return; // empty or our own comment/reply
+  if (process.env.IG_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) return;
+
+  const cfg = guard.kvConfig();
+  // one shot per comment, ever (covers webhook redeliveries too)
+  if (cfg) {
+    try {
+      const first = await guard.kvCommand(cfg, ["SET", `ig:c:${commentId}`, "1", "NX", "EX", "604800"]);
+      if (!first.result) return;
+    } catch (e) {}
+  }
+  // limits: 3 comment-DMs per commenter/day, 100 globally/day
+  const perU = await guard.rateLimit(cfg, `rl:ig:cdm:${fromId}`, 3, 86400);
+  if (!perU.allowed) return;
+  const g = await guard.rateLimit(cfg, `rl:ig:cg:${guard.today()}`, 100, 90000);
+  if (!g.allowed) return;
+
+  const tok = await resolveSend(cfg);
+  if (!tok) { console.error("ig: comment handler has no send token"); return; }
+
+  let out;
+  try { out = await askClaudeComment(username, text); }
+  catch (e) { console.error("ig: comment ai error", e && e.message); return; }
+
+  if (out.dm) {
+    const ok = await sendPrivateReply(commentId, out.dm, tok);
+    if (ok && out.public_reply) await sendCommentReply(commentId, out.public_reply, tok);
+  } else if (out.public_reply) {
+    await sendCommentReply(commentId, out.public_reply, tok);
+  }
+}
+
 // ── Handler ─────────────────────────────────────────────────────────────────
 module.exports = async (req, res) => {
   const tok = process.env.WA_WEBHOOK_TOKEN;
@@ -330,6 +430,14 @@ module.exports = async (req, res) => {
   if (b.object !== "instagram") return res.status(200).json({ ok: true });
 
   const entry = (b.entry && b.entry[0]) || {};
+
+  // Comment webhooks arrive via entry.changes (field "comments"), not messaging.
+  const change = (entry.changes && entry.changes[0]) || null;
+  if (change && change.field === "comments") {
+    await handleComment(entry, change.value || {});
+    return res.status(200).json({ ok: true });
+  }
+
   const m = ((entry.messaging && entry.messaging[0]) || {});
   const msg = m.message || null;
   // ignore reads/deliveries/reactions/postbacks-without-message and our own echoes
