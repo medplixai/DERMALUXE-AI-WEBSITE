@@ -310,7 +310,23 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
     page: "whatsapp-agent",
   };
   if (!lead.name) return;
+  lead.src_id = phone;
   await saveProfile(cfg, phone, lead.name, lead.concern); // long-term greeting memory
+  // One lead per patient per 6h conversation window — as the chat progresses,
+  // replace the earlier row with this enriched one instead of stacking dupes.
+  if (cfg) {
+    try {
+      const recent = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "49"]);
+      for (const s of (recent.result || [])) {
+        try {
+          const l = JSON.parse(s);
+          if ((l.src_id || l.phone) === phone && l.type === lead.type && lead.ts - l.ts < 21600000) {
+            await guard.kvCommand(cfg, ["LREM", LIST_KEY, "1", s]);
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
   if (cfg) {

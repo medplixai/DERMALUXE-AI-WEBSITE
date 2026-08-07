@@ -255,10 +255,25 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
     page: "instagram-agent",
   };
   if (!lead.name) return;
+  lead.src_id = igsid;
   try {
     if (cfg) await guard.kvCommand(cfg, ["SET", `ig:p:${igsid}`,
       JSON.stringify({ name: lead.name, concern: lead.concern, ts: Date.now() }), "EX", String(PROFILE_TTL)]);
   } catch (e) {}
+  // One lead per patient per 6h conversation window (replace, don't stack).
+  if (cfg) {
+    try {
+      const recent = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "49"]);
+      for (const s of (recent.result || [])) {
+        try {
+          const l = JSON.parse(s);
+          if (l.src_id === igsid && l.type === "instagram" && lead.ts - l.ts < 21600000) {
+            await guard.kvCommand(cfg, ["LREM", LIST_KEY, "1", s]);
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+  }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
   if (cfg) {

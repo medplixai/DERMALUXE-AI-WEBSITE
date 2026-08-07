@@ -12,7 +12,7 @@ module.exports = async (req, res) => {
 
   const cfg = guard.kvConfig();
   const ip = guard.getIp(req);
-  const rl = await guard.rateLimit(cfg, `rl:ls:h:${ip}`, 30, 3600);
+  const rl = await guard.rateLimit(cfg, `rl:ls:h:${ip}`, 120, 3600);
   if (!rl.allowed) return res.status(429).json({ error: "Too many attempts — try later" });
 
   // Prefer the x-admin-key header (keeps the key out of URL/access logs);
