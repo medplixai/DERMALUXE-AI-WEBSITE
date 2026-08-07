@@ -930,9 +930,8 @@ h3 { font-size: 1.4rem; }
 @media (max-width: 860px) {
   .mbar { display: grid; }
   body { padding-bottom: 52px; }
-  .fab { display: none; }
   .cookie-bar { bottom: 64px; }
-  .totop { bottom: 70px; right: 14px; }
+  .totop { bottom: 136px; right: 16px; } /* stacked above the floating WhatsApp button */
 }
 
 /* ---------- Floating WhatsApp ---------- */
@@ -974,10 +973,17 @@ h3 { font-size: 1.4rem; }
   border: 1px solid var(--line-soft); background: #241d12; color: var(--muted);
   font-size: 13px; line-height: 1; cursor: pointer; }
 .fab-hint__x:hover { color: var(--text); border-color: var(--gold-3); }
-/* Mobile uses the bottom quick-action bar instead — this must come AFTER the
-   .fab base rules or its display:grid overrides the earlier media-query hide
-   (the old gold circle was peeking out from behind the bar on phones). */
-@media (max-width: 860px) { .fab, .fab-hint { display: none; } }
+/* Mobile: float ABOVE the bottom action bar (declared after the .fab base
+   rules so these positions win — the old rules left it peeking from behind
+   the bar). Compact greeting bubble too. */
+@media (max-width: 860px) {
+  .fab { width: 56px; height: 56px; right: 14px; bottom: 68px; }
+  .fab svg { width: 27px; height: 27px; }
+  .fab__dot { top: -6px; right: -6px; min-width: 21px; height: 21px; font-size: 9px; line-height: 21px; }
+  .fab-hint { right: 82px; bottom: 76px; max-width: 200px; padding: .62rem .8rem .62rem .75rem; }
+  .fab-hint b { font-size: .78rem; }
+  .fab-hint .te { font-size: .69rem; }
+}
 
 /* ---------- Scroll reveal ---------- */
 .reveal { opacity: 0; transform: translateY(26px); transition: opacity .8s var(--ease), transform .8s var(--ease); }
