@@ -116,12 +116,37 @@ async function publishPending(cfg, digits) {
     console.error("adm: container failed", c.status, JSON.stringify(cd).slice(0, 200));
     return "Post container fail ayindi 🙏 — konchem sepu agi malli 'ok' try cheyandi.";
   }
-  const p = await fetch(`${IG_GRAPH}/me/media_publish`, {
+  // IG processes the image asynchronously — publishing straight away throws
+  // "Media ID is not available" (code 9007). Poll until FINISHED (max ~40s).
+  let ready = false;
+  for (let i = 0; i < 13; i++) {
+    await new Promise((r) => setTimeout(r, 3000));
+    try {
+      const st = await igGet(`/${cd.id}?fields=status_code`, tok);
+      if (st.status_code === "FINISHED") { ready = true; break; }
+      if (st.status_code === "ERROR") {
+        console.error("adm: container status ERROR", JSON.stringify(st).slice(0, 200));
+        return "Image processing fail ayindi 🙏 — vere photo tho try cheyandi (JPEG best, 8MB lopu).";
+      }
+    } catch (e) {}
+  }
+  if (!ready) return "Image inka processing lo undi 🙏 — 30 seconds agi malli 'ok' pampandi.";
+  let p = await fetch(`${IG_GRAPH}/me/media_publish`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
     body: JSON.stringify({ creation_id: cd.id }),
   });
-  const pd = await p.json().catch(() => ({}));
+  let pd = await p.json().catch(() => ({}));
+  if (!p.ok && pd && pd.error && pd.error.code === 9007) {
+    // one retry after a longer breather
+    await new Promise((r) => setTimeout(r, 8000));
+    p = await fetch(`${IG_GRAPH}/me/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({ creation_id: cd.id }),
+    });
+    pd = await p.json().catch(() => ({}));
+  }
   if (!p.ok || !pd.id) {
     console.error("adm: publish failed", p.status, JSON.stringify(pd).slice(0, 200));
     return "Publish fail ayindi 🙏 — malli try cheyandi (image processing lo undochu, 30s agandi).";
