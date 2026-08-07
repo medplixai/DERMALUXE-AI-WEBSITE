@@ -21,25 +21,11 @@ const LIST_KEY = "dl_leads";
 const HIST_TTL = 86400; // 24h conversation memory
 const MAX_TURNS = 8;
 
-const CLINIC_FACTS = `You are "DermaLuxe Assistant", the WhatsApp receptionist of DermaLuxe by Medicare — Premium Skin, Hair & Aesthetics Clinic, Eluru (part of Medicare Skin & Hair Clinics family, 3 lakh+ happy clients, 10 branches in Andhra Pradesh).
+const facts = require("./_facts.js");
 
-CLINIC FACTS
-- Address: Rama Mahal, Door No. 3-12, Ground Floor, Ramachandra Rao Peta, Kasturi Vari Street, Opposite Happy Mobiles, Near Lakshmi Ganapathi Temple, Eluru – 534002
-- Hours: Monday–Saturday 9:00 AM – 9:00 PM. Sunday closed.
-- Phones: +91 99491 34666, +91 99591 34666 · Email: support@dermaluxe.ai
-- Website: www.dermaluxe.ai (free AI Skin & Hair Analysis available on the site)
-- Doctors: MD dermatologists. Founders: Dr. Meghana Valleti (MD DVL, Medical Director), Nagaraju Bandaru (CEO).
-- Technology: USFDA-approved — PICO laser, CO2 laser, Diode laser hair removal, Hydrafacial, MNRF, HIFU.
-- Services: laser hair removal, PICO pigmentation & tattoo removal, chemical peels, Hydrafacial, MNRF, HIFU skin tightening, acne & scar care, anti-aging, dermal fillers, mesotherapy, PRP & GFC hair therapy, hair transplantation, hair fall treatment, nail treatments, medical weight loss, bridal packages.
-
-RULES
-- Reply in the SAME language style the patient uses (Telugu script, Tenglish, or English). Keep it warm, short (2–5 sentences), WhatsApp-style, max 1–2 emojis.
-- NEVER quote prices or discounts. For pricing say a consultation/visit is needed. Never diagnose; for medical questions suggest a doctor consultation politely.
-- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
+// WhatsApp-specific behaviour on top of the shared clinic brain.
+const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
 - When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). Otherwise "lead" must be null.
-- If the patient asks for a human / to talk to staff, tell them our team will call back shortly and set lead with concern "Call back request".
-- Patients can send a skin/hair PHOTO here for a quick AI pre-assessment, and VOICE NOTES are understood. If the history shows a photo was analysed earlier, reference those findings naturally when suggesting treatments or booking — don't repeat the whole report.
-- If the context marks a RETURNING PATIENT (name/last concern given), greet them warmly by name and continue naturally from their last concern — never ask their name again.
 - Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
 
@@ -49,17 +35,8 @@ or when booking info is ready:
 {"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>"}}
 Optionally add "send_location":true when the patient asks for the address/directions.`;
 
-const PHOTO_RULES = `THE PATIENT JUST SENT A PHOTO on WhatsApp. Give a brief cosmetic skin/hair wellness pre-assessment from it (NOT a medical diagnosis).
-Format for WhatsApp, in the patient's language style (from caption/history; default Tenglish), max ~10 short lines:
-1. One warm opening line.
-2. 📊 Approximate scores out of 100 — skin overall; hair only if scalp/hair is clearly visible.
-3. Top 2-3 visible findings with severity (mild/moderate/significant) in simple words.
-4. 💡 One practical care tip.
-5. Suggest 1-2 relevant DermaLuxe treatments (NEVER prices).
-6. Invite them to book a consultation (ask their name if unknown) and mention the free full AI analysis at www.dermaluxe.ai.
-7. End with: "Note: idi medical diagnosis kadu — doctor consultation best. 🙏"
-If the photo is NOT a skin/hair/face/scalp photo (documents, screenshots, objects), politely say you can only assess skin & hair photos — do not invent an assessment.
-Use the SAME JSON output format: {"reply":"...","lead":null} (fill lead only per the booking rules).`;
+const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
+const PHOTO_RULES = facts.photoRules("WhatsApp");
 
 function xmlEscape(s) {
   return String(s == null ? "" : s).replace(/[<>&'"]/g, (c) => ({ "<": "&lt;", ">": "&gt;", "&": "&amp;", "'": "&apos;", '"': "&quot;" }[c]));
@@ -70,12 +47,7 @@ function twiml(res, text) {
   return res.status(200).send('<?xml version="1.0" encoding="UTF-8"?><Response><Message>' + xmlEscape(text) + "</Message></Response>");
 }
 
-const FALLBACK_REPLY =
-  "Namaste! 🙏 DermaLuxe by Medicare, Eluru — Premium Skin, Hair & Aesthetics.\n" +
-  "🕘 Mon–Sat 9 AM–9 PM · 📞 99491 34666\n" +
-  "📍 Rama Mahal, R.R. Peta, Kasturi Vari Street, Opp. Happy Mobiles, Eluru\n" +
-  "🌐 www.dermaluxe.ai (free AI skin analysis)\n" +
-  "మా team త్వరలో మీకు reply చేస్తుంది. Thank you!";
+const FALLBACK_REPLY = facts.FALLBACK_REPLY;
 
 // Twilio signature: base64(HMAC-SHA1(url + sorted(key+value...), authToken))
 function twilioSignatureValid(req, authToken) {

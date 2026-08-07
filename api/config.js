@@ -21,5 +21,9 @@ module.exports = async (req, res) => {
       cloudTokenSet: !!process.env.WA_CLOUD_TOKEN,
       voiceEnabled: !!process.env.GEMINI_API_KEY,
     },
+    igAgent: {
+      enabled: process.env.IG_AGENT_ENABLED === "1",
+      pageTokenSet: !!process.env.IG_PAGE_TOKEN,
+    },
   });
 };
