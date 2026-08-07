@@ -294,12 +294,12 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
 
 // ── Comment → private DM + public acknowledgement ──────────────────────────
-async function sendPrivateReply(commentId, text, tok) {
-  if (!tok || !commentId || !text) return false;
+async function sendPrivateReply(commentId, text, cred) {
+  if (!cred || !cred.tok || !commentId || !text) return false;
   try {
-    const r = await fetch("https://graph.instagram.com/v21.0/me/messages", {
+    const r = await fetch(`https://${cred.host}/v21.0/me/messages`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cred.tok}` },
       body: JSON.stringify({ recipient: { comment_id: commentId }, message: { text: String(text).slice(0, 1000) } }),
     });
     if (!r.ok) console.error("ig: private reply failed", r.status, (await r.text().catch(() => "")).slice(0, 200));
@@ -307,12 +307,12 @@ async function sendPrivateReply(commentId, text, tok) {
   } catch (e) { console.error("ig: private reply error", e && e.message); return false; }
 }
 
-async function sendCommentReply(commentId, text, tok) {
-  if (!tok || !commentId || !text) return false;
+async function sendCommentReply(commentId, text, cred) {
+  if (!cred || !cred.tok || !commentId || !text) return false;
   try {
-    const r = await fetch(`https://graph.instagram.com/v21.0/${commentId}/replies`, {
+    const r = await fetch(`https://${cred.host}/v21.0/${commentId}/replies`, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${cred.tok}` },
       body: JSON.stringify({ message: String(text).slice(0, 300) }),
     });
     if (!r.ok) console.error("ig: comment reply failed", r.status, (await r.text().catch(() => "")).slice(0, 200));
@@ -371,18 +371,18 @@ async function handleComment(entry, v) {
   const g = await guard.rateLimit(cfg, `rl:ig:cg:${guard.today()}`, 100, 90000);
   if (!g.allowed) return;
 
-  const tok = await resolveSend(cfg);
-  if (!tok) { console.error("ig: comment handler has no send token"); return; }
+  const cred = await resolveSend(cfg);
+  if (!cred || !cred.tok) { console.error("ig: comment handler has no send token"); return; }
 
   let out;
   try { out = await askClaudeComment(username, text); }
   catch (e) { console.error("ig: comment ai error", e && e.message); return; }
 
   if (out.dm) {
-    const ok = await sendPrivateReply(commentId, out.dm, tok);
-    if (ok && out.public_reply) await sendCommentReply(commentId, out.public_reply, tok);
+    const ok = await sendPrivateReply(commentId, out.dm, cred);
+    if (ok && out.public_reply) await sendCommentReply(commentId, out.public_reply, cred);
   } else if (out.public_reply) {
-    await sendCommentReply(commentId, out.public_reply, tok);
+    await sendCommentReply(commentId, out.public_reply, cred);
   }
 }
 
