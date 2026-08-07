@@ -68,9 +68,50 @@ async function pageToken(cfg) {
   }
 }
 
+// Instagram-login flavor: a long-lived IG user token (60 days). We self-refresh
+// weekly via KV so it never expires in practice; the refreshed token is kept in
+// KV and preferred over the (stale) env value.
+async function loginToken(cfg) {
+  let tok = process.env.IG_LOGIN_TOKEN;
+  if (!tok) return null;
+  try {
+    const r = cfg ? await guard.kvCommand(cfg, ["GET", "ig:ltok"]) : null;
+    if (r && r.result) tok = r.result;
+  } catch (e) {}
+  try {
+    const ts = cfg ? await guard.kvCommand(cfg, ["GET", "ig:ltok:ts"]) : null;
+    const last = ts && ts.result ? Number(ts.result) : 0;
+    if (Date.now() - last > 7 * 86400000) {
+      const rr = await fetch(`https://graph.instagram.com/refresh_access_token?grant_type=ig_refresh_token&access_token=${encodeURIComponent(tok)}`);
+      if (rr.ok) {
+        const d = await rr.json();
+        if (d.access_token) {
+          tok = d.access_token;
+          try { if (cfg) await guard.kvCommand(cfg, ["SET", "ig:ltok", tok]); } catch (e) {}
+        }
+      } else {
+        console.error("ig: login token refresh failed", rr.status); // tokens <24h old can't refresh yet — fine
+      }
+      try { if (cfg) await guard.kvCommand(cfg, ["SET", "ig:ltok:ts", String(Date.now())]); } catch (e) {}
+    }
+  } catch (e) {}
+  return tok;
+}
+
+// Pick the send credential: IG-login token (graph.instagram.com) wins,
+// otherwise the FB-login page token (graph.facebook.com).
+async function resolveSend(cfg) {
+  const lt = await loginToken(cfg);
+  if (lt) return { tok: lt, host: "graph.instagram.com" };
+  const pt = await pageToken(cfg);
+  if (pt) return { tok: pt, host: "graph.facebook.com" };
+  return null;
+}
+
 // ── Graph send helpers ───────────────────────────────────────────────────────
-async function sendDM(igsid, text, withMenu, tok) {
-  const token = tok;
+async function sendDM(igsid, text, withMenu, cred) {
+  const token = cred && cred.tok;
+  const host = (cred && cred.host) || "graph.facebook.com";
   if (!token || !igsid || !text) return false;
   const message = { text: String(text).slice(0, 1000) };
   if (withMenu) {
@@ -81,7 +122,7 @@ async function sendDM(igsid, text, withMenu, tok) {
     ];
   }
   try {
-    const r = await fetch("https://graph.facebook.com/v21.0/me/messages", {
+    const r = await fetch(`https://${host}/v21.0/me/messages`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
       body: JSON.stringify({ recipient: { id: igsid }, messaging_type: "RESPONSE", message }),
@@ -89,7 +130,7 @@ async function sendDM(igsid, text, withMenu, tok) {
     if (!r.ok) {
       let d = ""; try { d = (await r.text()).slice(0, 300); } catch (e) {}
       console.error("ig: send failed", r.status, d);
-      if (withMenu) return sendDM(igsid, text, false, token); // retry without quick replies
+      if (withMenu) return sendDM(igsid, text, false, cred); // retry without quick replies
       return false;
     }
     return true;
@@ -100,10 +141,10 @@ async function sendDM(igsid, text, withMenu, tok) {
 }
 
 // Best-effort IG username (webhooks don't include it).
-async function fetchIgName(igsid, token) {
-  if (!token) return "";
+async function fetchIgName(igsid, cred) {
+  if (!cred || !cred.tok) return "";
   try {
-    const r = await fetch(`https://graph.facebook.com/v21.0/${igsid}?fields=name,username&access_token=${encodeURIComponent(token)}`);
+    const r = await fetch(`https://${cred.host}/v21.0/${igsid}?fields=name,username&access_token=${encodeURIComponent(cred.tok)}`);
     if (!r.ok) return "";
     const d = await r.json();
     return String(d.name || d.username || "").slice(0, 60);
@@ -283,7 +324,7 @@ module.exports = async (req, res) => {
   if (!igsid) return res.status(200).json({ ok: true });
 
   const cfg = guard.kvConfig();
-  const ptok = await pageToken(cfg);
+  const ptok = await resolveSend(cfg);
 
   // De-dup Meta redeliveries by message id
   if (cfg && msg.mid) {
@@ -318,7 +359,7 @@ module.exports = async (req, res) => {
 
   if (process.env.IG_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY || !ptok) {
     if (ptok) await sendDM(igsid, FALLBACK_REPLY, false, ptok);
-    else console.error("ig: no page token available (set IG_SYSTEM_TOKEN + IG_PAGE_ID, or IG_PAGE_TOKEN)");
+    else console.error("ig: no send token (set IG_LOGIN_TOKEN, or IG_SYSTEM_TOKEN + IG_PAGE_ID)");
     return res.status(200).json({ ok: true });
   }
 
