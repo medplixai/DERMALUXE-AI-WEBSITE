@@ -26,7 +26,8 @@ const facts = require("./_facts.js");
 const notify = require("./_notify.js");
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
-const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
+const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. Clinic visit or video consultation both possible.
+- TIME SLOTS (tappable): whenever you ask for the appointment time, ALSO output "slots": 6-9 realistic options inside clinic hours (Mon–Sat 9 AM – 9 PM; use the current IST time given in context — today's remaining windows first, then tomorrow; never Sunday). Each ≤22 characters in the patient's language, e.g. "Ivala 6:30 PM", "Repu 11:00 AM", "Repu 4:00 PM". They appear as a tap-to-select list; the tapped slot comes back as plain text — treat it as their chosen time.
 - When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). Otherwise "lead" must be null.
 - Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
@@ -37,7 +38,7 @@ OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your whatsapp reply>","lead":null}
 or when booking info is ready:
 {"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>"}}
-Optionally add "send_location":true when the patient asks for the address/directions, and "buttons":["option1","option2"] when offering choices.`;
+Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, and "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
 const PHOTO_RULES = facts.photoRules("WhatsApp");
@@ -275,6 +276,60 @@ async function sendCloudLocation(phoneNumberId, to) {
 }
 
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
+
+// Current IST moment for the model — needed to offer sensible today/tomorrow
+// appointment slots (the API has no idea what time it is otherwise).
+function nowIstCtx() {
+  const d = new Date(Date.now() + 330 * 60000);
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  let h = d.getUTCHours();
+  const min = String(d.getUTCMinutes()).padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `[Now: ${days[d.getUTCDay()]} ${d.getUTCDate()} ${mo[d.getUTCMonth()]}, ${h}:${min} ${ap} IST] `;
+}
+
+// Tap-to-select appointment slots (interactive list, up to 10 rows).
+// Falls back to a plain text send if the list message is rejected.
+async function sendCloudSlotList(phoneNumberId, to, bodyText, slots) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const rows = Array.from(new Set((slots || []).map((s) => String(s || "").trim().slice(0, 24)).filter(Boolean))).slice(0, 10);
+  if (!token || !phoneNumberId || !to || !rows.length) return sendCloud(phoneNumberId, to, bodyText);
+  try {
+    let body = String(bodyText);
+    let sentTextFirst = false;
+    if (body.length > 1000) {
+      await sendCloud(phoneNumberId, to, body);
+      body = "🗓 Time select cheyandi:";
+      sentTextFirst = true;
+    }
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "interactive",
+        interactive: {
+          type: "list",
+          body: { text: body.slice(0, 1024) },
+          action: {
+            button: "🗓 Slot select",
+            sections: [{ title: "Available times", rows: rows.map((t, i) => ({ id: `slot_${i}`, title: t })) }],
+          },
+        },
+      }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+      console.error("wa: slot list failed, falling back to text", r.status, d);
+      return sentTextFirst ? true : sendCloud(phoneNumberId, to, bodyText);
+    }
+    return true;
+  } catch (e) {
+    console.error("wa: slot list error", e && e.message);
+    return sendCloud(phoneNumberId, to, bodyText);
+  }
+}
 
 // Long-term patient memory (180 days): name + last concern, so returning
 // patients are greeted personally even after the 24h chat history expires.
@@ -758,9 +813,9 @@ module.exports = async (req, res) => {
   }
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;
-  const extraCtx = profile && profile.name
+  const extraCtx = nowIstCtx() + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
-    : "";
+    : "");
 
   let out;
   let voiceScript = "";
@@ -822,8 +877,9 @@ module.exports = async (req, res) => {
       } catch (e) { console.error("wa: voice reply error", e && e.message); }
     }
     // First reply of a conversation carries the quick-menu buttons; after that
-    // the AI's own suggested choices ride along as tappable buttons.
+    // the AI's tappable slot list / choice buttons ride along with the reply.
     if (firstTurn && !imageId) await sendCloudButtons(cloud.phoneNumberId, cloud.to, out.reply);
+    else if (Array.isArray(out.slots) && out.slots.length) await sendCloudSlotList(cloud.phoneNumberId, cloud.to, out.reply, out.slots);
     else if (Array.isArray(out.buttons) && out.buttons.length) await sendCloudDynButtons(cloud.phoneNumberId, cloud.to, out.reply, out.buttons);
     else await sendCloud(cloud.phoneNumberId, cloud.to, out.reply);
     // Map pin when the patient asked where we are (Claude flag or keyword).
