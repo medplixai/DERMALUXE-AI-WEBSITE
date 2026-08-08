@@ -86,17 +86,16 @@ async function leadsReport(cfg, text) {
 }
 
 // Caption writer (uses the photo for context when available).
-async function writeCaption(idea, imageB64, mime) {
-  const content = [];
-  if (imageB64) content.push({ type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: imageB64 } });
-  content.push({ type: "text", text: `Post idea from the clinic owner: ${idea || "(none — describe the photo)"}` });
+const CAPTION_SYSTEM = `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic, Eluru (MD dermatologists, USFDA tech). Style: premium yet warm; 3-6 short lines; English with a Telugu line; NEVER prices; end with CTA "📲 Book: 99591 34666 (WhatsApp) · www.dermaluxe.ai" then 6-9 hashtags mixing #DermaLuxe #DermaLuxeEluru #EluruSkinClinic #skincare + topic tags. Output ONLY JSON: {"caption":"..."}`;
+
+async function captionCall(content) {
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-sonnet-5",
       max_tokens: 600,
-      system: `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic, Eluru (MD dermatologists, USFDA tech). Style: premium yet warm; 3-6 short lines; English with a Telugu line; NEVER prices; end with CTA "📲 Book: 99591 34666 (WhatsApp) · www.dermaluxe.ai" then 6-9 hashtags mixing #DermaLuxe #DermaLuxeEluru #EluruSkinClinic #skincare + topic tags. Output ONLY JSON: {"caption":"..."}`,
+      system: CAPTION_SYSTEM,
       messages: [{ role: "user", content }],
     }),
   });
@@ -106,6 +105,22 @@ async function writeCaption(idea, imageB64, mime) {
   try { const m = t.match(/\{[\s\S]*\}/); const p = JSON.parse(m ? m[0] : t); if (p && p.caption) return String(p.caption).slice(0, 2000); } catch (e) {}
   return t.slice(0, 2000);
 }
+
+async function writeCaption(idea, imageB64, mime) {
+  const content = [];
+  if (imageB64) content.push({ type: "image", source: { type: "base64", media_type: mime || "image/jpeg", data: imageB64 } });
+  content.push({ type: "text", text: `Post idea from the clinic owner: ${idea || "(none — describe the photo)"}` });
+  return captionCall(content);
+}
+
+// Applies a marketing-team correction ("change: telugu line ekkuva pettu",
+// "add: 20% off this week") to the pending caption.
+async function reviseCaption(current, instruction) {
+  return captionCall([{ type: "text",
+    text: `Current Instagram caption:\n${current}\n\nTeam's correction/addition request (may be Tenglish): ${instruction}\n\nRewrite the caption applying this request. Keep every style rule.` }]);
+}
+
+const PREVIEW_OPTIONS = "✅ Post cheyala? — *ok*\n✏️ Emaina marchala / add cheyala? — *change: <cheppandi>*\n❌ Vaddu — *cancel*";
 
 // IST helpers for the scheduler.
 const IST_MS = 330 * 60000;
@@ -270,8 +285,9 @@ async function handle(cfg, digits, text, photo, video) {
     if (owner) lines.push("• marketing report — leads+IG+links+AI plan");
     lines.push(
       "• ideas — 3 AI post ideas (season-aware)",
-      "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → ok/cancel (video = Reel)",
+      "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → ok/change:/cancel (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
+      "• change: <correction> — preview caption marchadaniki",
       "• queue — scheduled list · unschedule <n> — remove",
       "(migatha messages normal agent laga panichestai)");
     return lines.join("\n");
@@ -413,7 +429,7 @@ async function handle(cfg, digits, text, photo, video) {
       catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
     }
     await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pendingObj), "EX", "3600"]);
-    return `⏰ *${video ? "Reel schedule" : "Schedule"} preview* — ${fmtIst(due)} IST\n\n${pendingObj.caption}\n\n✅ Confirm: *ok* · ❌ *cancel*`;
+    return `⏰ *${video ? "Reel schedule" : "Schedule"} preview* — ${fmtIst(due)} IST\n\n${pendingObj.caption}\n\n${PREVIEW_OPTIONS}`;
   }
   if (/^(insta|ig)\s*report$/i.test(t)) {
     try { return await instaReport(cfg, owner); } catch (e) { console.error("adm: insta report", e.message); return "Report fail: " + e.message.slice(0, 120); }
@@ -441,7 +457,25 @@ async function handle(cfg, digits, text, photo, video) {
       catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
     }
     await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pendingObj), "EX", "3600"]);
-    return `${video ? "🎬 *Reel caption preview:*" : "📸 *Caption preview:*"}\n\n${pendingObj.caption}\n\n✅ Post cheyala? Reply: *ok*\n❌ Vaddu ante: *cancel*`;
+    return `${video ? "🎬 *Reel caption preview:*" : "📸 *Caption preview:*"}\n\n${pendingObj.caption}\n\n${PREVIEW_OPTIONS}`;
+  }
+
+  // change:/add: — revise the pending caption with AI (marketing correction loop)
+  let cm;
+  if ((cm = t.match(/^(change|edit|add|marchu|marchandi)\s*[:\-]\s*([\s\S]+)$/i))) {
+    if (!cfg) return null;
+    const pRaw = await guard.kvCommand(cfg, ["GET", `adm:post:${digits}`]);
+    if (!pRaw.result) return null; // no pending post → normal agent handles it
+    const pending = JSON.parse(pRaw.result);
+    try {
+      pending.caption = await reviseCaption(pending.caption, t);
+      delete pending.creationId; // caption changed → any half-built IG container is stale
+      await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pending), "EX", "3600"]);
+      return `✏️ *Kotha caption:*\n\n${pending.caption}\n\n${PREVIEW_OPTIONS}`;
+    } catch (e) {
+      console.error("adm: revise", e.message);
+      return "Caption marchadam fail ayindi 🙏 — malli 'change: <...>' pampandi.";
+    }
   }
 
   // ok / cancel — only meaningful when a post is pending
