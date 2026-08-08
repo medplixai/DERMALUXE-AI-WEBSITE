@@ -9,9 +9,17 @@ const guard = require("./_guard.js");
 
 const IG_GRAPH = "https://graph.instagram.com/v21.0";
 
+// Two tiers: ADMIN_PHONES = owner (everything), MARKETING_PHONES = staff —
+// can post/schedule and see stats, but never boost/budget talk ("entha money
+// pettam" is owner-only by request).
+function adminRole(digits) {
+  const norm = (v) => String(v || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter(Boolean);
+  if (norm(process.env.ADMIN_PHONES).indexOf(String(digits)) !== -1) return "owner";
+  if (norm(process.env.MARKETING_PHONES).indexOf(String(digits)) !== -1) return "marketing";
+  return null;
+}
 function isAdmin(digits) {
-  const list = String(process.env.ADMIN_PHONES || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter(Boolean);
-  return list.indexOf(String(digits)) !== -1;
+  return adminRole(digits) !== null;
 }
 
 // IG-login token: KV-refreshed copy wins, env fallback (mirror of instagram.js).
@@ -33,7 +41,7 @@ async function igGet(path, tok) {
   return d;
 }
 
-async function instaReport(cfg) {
+async function instaReport(cfg, showBoost) {
   const tok = await igToken(cfg);
   if (!tok) return "IG token ledu — Instagram agent setup check cheyandi.";
   const me = await igGet("/me?fields=username,followers_count,media_count", tok);
@@ -49,7 +57,7 @@ async function instaReport(cfg) {
     const cap = String(p.caption || "(no caption)").replace(/\n/g, " ").slice(0, 40);
     lines.push(`${i + 1}. ${when} · ❤️ ${p.like_count || 0} · 💬 ${p.comments_count || 0}\n   ${cap}…`);
   });
-  if (best) {
+  if (best && showBoost) {
     lines.push("", `🚀 *Boost suggestion*: post #${posts.indexOf(best) + 1} (best engagement).`,
       `IG app lo aa post → Boost — 2 taps!`);
   }
@@ -213,19 +221,23 @@ async function publishPending(cfg, digits) {
 
 // Main entry — returns reply text, or null when the message is not an admin command.
 async function handle(cfg, digits, text, photo) {
-  if (!isAdmin(digits)) return null;
+  const who = adminRole(digits);
+  if (!who) return null;
+  const owner = who === "owner";
   const t = String(text || "").trim();
 
   if (/^(help|commands)$/i.test(t)) {
-    return ["🛠 *Admin commands*",
-      "• insta report — IG stats + boost tip",
-      "• leads report [week] — lead summary",
-      "• marketing report — leads+IG+links+AI plan",
+    const lines = ["🛠 *Admin commands*",
+      owner ? "• insta report — IG stats + boost tip" : "• insta report — IG stats",
+      "• leads report [week] — lead summary"];
+    if (owner) lines.push("• marketing report — leads+IG+links+AI plan");
+    lines.push(
       "• ideas — 3 AI post ideas (season-aware)",
       "• 📷 photo + 'post: <idea>' — AI caption → ok/cancel",
       "• 📷 photo + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• queue — scheduled list · unschedule <n> — remove",
-      "(migatha messages normal agent laga panichestai)"].join("\n");
+      "(migatha messages normal agent laga panichestai)");
+    return lines.join("\n");
   }
 
   if (/^ideas?$/i.test(t)) {
@@ -249,6 +261,7 @@ async function handle(cfg, digits, text, photo) {
   }
 
   if (/^marketing(\s*report)?$/i.test(t)) {
+    if (!owner) return "🔒 Ee report owner ki matrame. Meeku: insta report · leads report · ideas 👍";
     try {
       const lines = ["📈 *Marketing Report — 7 days*", ""];
       // Leads by channel
@@ -358,7 +371,7 @@ async function handle(cfg, digits, text, photo) {
     return `⏰ *Schedule preview* — ${fmtIst(due)} IST\n\n${caption}\n\n✅ Confirm: *ok* · ❌ *cancel*`;
   }
   if (/^(insta|ig)\s*report$/i.test(t)) {
-    try { return await instaReport(cfg); } catch (e) { console.error("adm: insta report", e.message); return "Report fail: " + e.message.slice(0, 120); }
+    try { return await instaReport(cfg, owner); } catch (e) { console.error("adm: insta report", e.message); return "Report fail: " + e.message.slice(0, 120); }
   }
   if (/^leads?(\s*report)?(\s*(today|week))?$/i.test(t) && /lead/i.test(t)) {
     try { return await leadsReport(cfg, t); } catch (e) { console.error("adm: leads report", e.message); return "Leads report fail ayindi."; }
