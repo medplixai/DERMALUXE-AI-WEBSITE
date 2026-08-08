@@ -17,6 +17,7 @@ function adminRole(digits) {
   const norm = (v) => String(v || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter(Boolean);
   if (norm(process.env.ADMIN_PHONES).indexOf(String(digits)) !== -1) return "owner";
   if (norm(process.env.MARKETING_PHONES).indexOf(String(digits)) !== -1) return "marketing";
+  if (norm(process.env.HR_PHONES).indexOf(String(digits)) !== -1) return "hr";
   return null;
 }
 function isAdmin(digits) {
@@ -364,6 +365,31 @@ async function handle(cfg, digits, text, photo, video) {
   if (!who) return null;
   const owner = who === "owner";
   const t = String(text || "").trim();
+
+  // HR tier sees only the hiring side; anything else falls to the normal agent.
+  if (who === "hr" && !/^(help|commands|jobs)/i.test(t)) return null;
+  if (who === "hr" && /^(help|commands)$/i.test(t)) {
+    return { text: "🛠 *HR commands*\n• jobs report — last 7 days applications\n• jobs report month — last 30 days\n\nCandidates apply link: dermaluxe.ai/r/jobs", menuRows: ["jobs report", "jobs report month"] };
+  }
+
+  // jobs report [month] — applications summary for owner/marketing/HR
+  if (/^jobs(\s*report)?(\s*(week|month))?$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const days = /month/i.test(t) ? 30 : 7;
+    const since = Date.now() - days * 86400000;
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
+    const apps = (r.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } })
+      .filter((l) => l && l.type === "job" && l.ts >= since);
+    const lines = [`💼 *Job Applications — last ${days} days*: ${apps.length}`];
+    const byRole = {};
+    apps.forEach((a) => { const role = String(a.concern || "").split("·")[0].trim() || "?"; byRole[role] = (byRole[role] || 0) + 1; });
+    Object.keys(byRole).forEach((k) => lines.push(`• ${k}: ${byRole[k]}`));
+    if (apps.length) lines.push("");
+    apps.slice(0, 10).forEach((a) => lines.push(`— ${a.name} · ${String(a.concern || "").slice(0, 40)} · 📱 ${a.phone}${a.cv_media_id ? " · 📄CV" : ""}`));
+    if (!apps.length) lines.push("(applications em ravaledu)", "", "Promote link: dermaluxe.ai/r/jobs");
+    else lines.push("", "Dashboard: dermaluxe.ai/leads.html");
+    return lines.join("\n");
+  }
 
   if (/^(help|commands)$/i.test(t)) {
     const lines = ["🛠 *Admin commands*",

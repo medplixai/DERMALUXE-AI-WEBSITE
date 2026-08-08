@@ -24,6 +24,7 @@ const MAX_TURNS = 8;
 
 const facts = require("./_facts.js");
 const notify = require("./_notify.js");
+const hr = require("./_hr.js");
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
 const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. Clinic visit or video consultation both possible.
@@ -149,6 +150,39 @@ async function sendCloudButtons(phoneNumberId, to, bodyText) {
     return true;
   } catch (e) {
     console.error("wa: buttons send error", e && e.message);
+    return sendCloud(phoneNumberId, to, bodyText);
+  }
+}
+
+// Generic tap-to-select list message (careers roles etc.).
+async function sendCloudList(phoneNumberId, to, bodyText, buttonLabel, sectionTitle, rows) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const items = (rows || []).map((r) => String(r || "").trim().slice(0, 24)).filter(Boolean).slice(0, 10);
+  if (!token || !phoneNumberId || !to || !items.length) return sendCloud(phoneNumberId, to, bodyText);
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "interactive",
+        interactive: {
+          type: "list",
+          body: { text: String(bodyText).slice(0, 1024) },
+          action: {
+            button: String(buttonLabel || "Select").slice(0, 20),
+            sections: [{ title: String(sectionTitle || "Options").slice(0, 24), rows: items.map((t, i) => ({ id: `opt_${i}`, title: t })) }],
+          },
+        },
+      }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+      console.error("wa: list send failed, falling back to text", r.status, d);
+      return sendCloud(phoneNumberId, to, bodyText + "\n\n" + items.map((t) => "• " + t).join("\n"));
+    }
+    return true;
+  } catch (e) {
+    console.error("wa: list send error", e && e.message);
     return sendCloud(phoneNumberId, to, bodyText);
   }
 }
@@ -662,7 +696,7 @@ module.exports = async (req, res) => {
   const isMeta = b && b.object === "whatsapp_business_account";
   const cfg = guard.kvConfig();
 
-  let digits = "", text = "", profileName = "", cloud = null, imageId = "", audioId = "", videoId = "", videoMime = "";
+  let digits = "", text = "", profileName = "", cloud = null, imageId = "", audioId = "", videoId = "", videoMime = "", docId = "", docName = "";
   if (isMeta) {
     const entry = (b.entry && b.entry[0]) || {};
     const value = ((entry.changes && entry.changes[0]) || {}).value || {};
@@ -719,7 +753,14 @@ module.exports = async (req, res) => {
       videoMime = String((msg.video && msg.video.mime_type) || "video/mp4").split(";")[0];
       text = String((msg.video && msg.video.caption) || "").slice(0, 500).trim();
       if (!videoId) return res.status(200).json({ ok: true });
-    } else if (["document", "location", "contacts"].indexOf(msg.type) !== -1) {
+    } else if (msg.type === "document") {
+      // Documents are CVs for the careers flow — captured here, steered later
+      // if no hiring session is active.
+      docId = String((msg.document && msg.document.id) || "");
+      docName = String((msg.document && msg.document.filename) || "").slice(0, 120);
+      text = String((msg.document && msg.document.caption) || "").slice(0, 500).trim();
+      if (!docId) return res.status(200).json({ ok: true });
+    } else if (["location", "contacts"].indexOf(msg.type) !== -1) {
       // Steer to what the agent CAN handle: text, voice notes, skin/hair photos.
       await sendCloud(cloud.phoneNumberId, cloud.to,
         "Namaste! 🙏 Text, voice note leda skin/hair photo pampandi — photo ki instant AI pre-assessment istanu. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే AI విశ్లేషణ ఇస్తాను.");
@@ -749,7 +790,7 @@ module.exports = async (req, res) => {
     return twiml(res, replyText);
   };
 
-  if (!digits || (!text && !imageId && !audioId && !videoId)) return respond(FALLBACK_REPLY);
+  if (!digits || (!text && !imageId && !audioId && !videoId && !docId)) return respond(FALLBACK_REPLY);
 
   // Owner/admin commands (ADMIN_PHONES allowlist; explicit commands only —
   // anything else from the admin falls through to the normal agent).
@@ -766,6 +807,28 @@ module.exports = async (req, res) => {
         return res.status(200).json({ ok: true });
       }
     } catch (e) { console.error("wa: admin error", e && e.message); }
+  }
+
+  // Careers flow: JOBS trigger / active application session (handles CV docs).
+  if (isMeta) {
+    try {
+      const hrReply = await hr.handle(cfg, digits, text, docId ? { id: docId, name: docName } : null);
+      if (hrReply) {
+        if (hrReply.list) {
+          await sendCloudList(cloud.phoneNumberId, cloud.to, hrReply.text, hrReply.list.button, hrReply.list.title, hrReply.list.rows);
+        } else if (hrReply.buttons) {
+          await sendCloudDynButtons(cloud.phoneNumberId, cloud.to, hrReply.text, hrReply.buttons);
+        } else {
+          await sendCloud(cloud.phoneNumberId, cloud.to, hrReply.text);
+        }
+        return res.status(200).json({ ok: true });
+      }
+    } catch (e) { console.error("wa: hr error", e && e.message); }
+  }
+
+  // Documents outside the careers flow — steer to what the agent handles.
+  if (docId) {
+    return respond("Namaste! 🙏 Document analysis cheyalenu — text, voice note leda skin/hair photo pampandi. 📸\nJob application ki aithe *JOBS* ani pampandi. 💼");
   }
 
   // Videos are only for the admin Reel pipeline — the patient agent can't

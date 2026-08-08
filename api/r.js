@@ -16,6 +16,11 @@ module.exports = async (req, res) => {
   }
   res.setHeader("Cache-Control", "no-store");
   res.statusCode = 302;
-  res.setHeader("Location", `https://www.dermaluxe.ai/?utm_source=${tag}&utm_medium=smartlink&utm_campaign=${tag}`);
+  // Careers links land straight in the WhatsApp hiring flow (prefilled JOBS).
+  if (tag === "jobs" || tag === "hiring" || tag === "careers") {
+    res.setHeader("Location", "https://wa.me/919959134666?text=JOBS");
+  } else {
+    res.setHeader("Location", `https://www.dermaluxe.ai/?utm_source=${tag}&utm_medium=smartlink&utm_campaign=${tag}`);
+  }
   return res.end();
 };
