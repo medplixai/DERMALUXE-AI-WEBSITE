@@ -23,6 +23,7 @@ const HIST_TTL = 86400; // 24h conversation memory
 const MAX_TURNS = 8;
 
 const facts = require("./_facts.js");
+const notify = require("./_notify.js");
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
 const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
@@ -460,6 +461,7 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
       await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
     } catch (e) {}
   }
+  await notify.leadAlert(cfg, lead);
 }
 
 // Meta Cloud API: send a text reply via the Graph API.

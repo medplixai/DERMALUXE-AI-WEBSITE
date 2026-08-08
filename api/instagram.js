@@ -14,6 +14,7 @@
 const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
 const facts = require("./_facts.js");
+const notify = require("./_notify.js");
 
 const LIST_KEY = "dl_leads";
 const HIST_TTL = 86400;   // 24h conversation memory
@@ -289,6 +290,7 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
       await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
     } catch (e) {}
   }
+  await notify.leadAlert(cfg, lead);
 }
 
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
