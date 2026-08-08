@@ -179,26 +179,52 @@ async function fbPageToken(cfg) {
 // Cross-post the just-published IG content to the Facebook Page feed too.
 // Best-effort: any failure only logs (the IG post already succeeded).
 // Opt-out with FB_CROSSPOST=0.
+async function fbPageTokenFresh(cfg) {
+  // bypass the 6h ig:ptok cache — used after the system token gets new scopes
+  const sys = process.env.IG_SYSTEM_TOKEN, pid = process.env.IG_PAGE_ID;
+  if (!sys || !pid) return null;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${pid}?fields=access_token&access_token=${encodeURIComponent(sys)}`);
+    const d = await r.json().catch(() => ({}));
+    if (d && d.access_token) {
+      if (cfg) await guard.kvCommand(cfg, ["SET", "ig:ptok", d.access_token, "EX", "21600"]).catch(() => {});
+      return d.access_token;
+    }
+  } catch (e) {}
+  return null;
+}
+
 async function fbCrossPost(cfg, item) {
   if (process.env.FB_CROSSPOST === "0") return false;
   const pid = process.env.IG_PAGE_ID;
-  const ptok = await fbPageToken(cfg);
+  let ptok = await fbPageToken(cfg);
   if (!pid || !ptok) return false;
-  try {
+  const attempt = async (tok) => {
     const url = item.vidId
       ? `https://graph.facebook.com/v21.0/${pid}/videos`
       : `https://graph.facebook.com/v21.0/${pid}/photos`;
     const body = item.vidId
-      ? { file_url: signedWaUrl(item.vidId), description: item.caption, access_token: ptok }
-      : { url: `https://www.dermaluxe.ai/api/media?id=${item.imgId}`, caption: item.caption, access_token: ptok };
+      ? { file_url: signedWaUrl(item.vidId), description: item.caption, access_token: tok }
+      : { url: `https://www.dermaluxe.ai/api/media?id=${item.imgId}`, caption: item.caption, access_token: tok };
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(body),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok || d.error) {
-      console.error("adm: fb crosspost failed", r.status, JSON.stringify(d).slice(0, 250));
+    return { ok: r.ok && !d.error, status: r.status, d };
+  };
+  try {
+    let out = await attempt(ptok);
+    const code = out.d && out.d.error && out.d.error.code;
+    if (!out.ok && (code === 200 || code === 283 || code === 190)) {
+      // permission/expiry on the cached page token — re-derive fresh and retry
+      // once (covers the cache still holding a pre-upgrade token)
+      const fresh = await fbPageTokenFresh(cfg);
+      if (fresh && fresh !== ptok) out = await attempt(fresh);
+    }
+    if (!out.ok) {
+      console.error("adm: fb crosspost failed", out.status, JSON.stringify(out.d).slice(0, 250));
       return false;
     }
     return true;
