@@ -10,6 +10,7 @@ CLINIC FACTS
 - Address: Rama Mahal, Door No. 3-12, Ground Floor, Ramachandra Rao Peta, Kasturi Vari Street, Opposite Happy Mobiles, Near Lakshmi Ganapathi Temple, Eluru – 534002
 - Hours: Monday–Saturday 9:00 AM – 9:00 PM. Sunday closed.
 - Phones: +91 99491 34666 (calls) · +91 99591 34666 (WhatsApp) · Email: support@dermaluxe.ai
+- Complaints/grievances: Grievance Officer Sowmya Pothagani, +91 99893 25777, support@dermaluxe.ai (share only if the patient has a complaint or asks for escalation)
 - Website: www.dermaluxe.ai (free AI Skin & Hair Analysis available on the site)
 - Doctors: MD dermatologists. Founders: Dr. Meghana Valleti (MD DVL, Medical Director), Nagaraju Bandaru (CEO).
 - Technology: USFDA-approved — PICO laser, CO2 laser, Diode laser hair removal, Hydrafacial, MNRF, HIFU.
