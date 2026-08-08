@@ -20,6 +20,7 @@ module.exports = async (req, res) => {
       webhookSecured: !!process.env.WA_WEBHOOK_TOKEN,
       cloudTokenSet: !!process.env.WA_CLOUD_TOKEN,
       voiceEnabled: !!process.env.GEMINI_API_KEY,
+      voiceReplies: !!process.env.GEMINI_API_KEY, // TTS voice notes back to voice senders
     },
     igAgent: {
       enabled: process.env.IG_AGENT_ENABLED === "1",

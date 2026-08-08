@@ -253,6 +253,111 @@ async function transcribeVoice(base64, mime) {
   }
 }
 
+// ---- Voice replies (voice note in → voice note out) ---------------------
+// Gemini TTS returns raw PCM (16-bit mono, usually 24kHz); WhatsApp only takes
+// aac/mp3/amr/ogg-opus and serverless has no ffmpeg, so we encode MP3 with the
+// pure-JS lamejs port. Any failure falls back to the normal text-only reply.
+
+async function pcmToMp3(pcm, rate) {
+  const lame = await import("@breezystack/lamejs"); // ESM-only package
+  const Mp3Encoder = lame.Mp3Encoder || (lame.default && lame.default.Mp3Encoder);
+  const byteLen = pcm.length - (pcm.length % 2);
+  const ab = new ArrayBuffer(byteLen); // copy → guaranteed 2-byte alignment
+  new Uint8Array(ab).set(pcm.subarray(0, byteLen));
+  const samples = new Int16Array(ab);
+  const enc = new Mp3Encoder(1, rate || 24000, 48);
+  const out = [];
+  for (let i = 0; i < samples.length; i += 1152) {
+    const buf = enc.encodeBuffer(samples.subarray(i, i + 1152));
+    if (buf.length) out.push(Buffer.from(buf));
+  }
+  const end = enc.flush();
+  if (end.length) out.push(Buffer.from(end));
+  return Buffer.concat(out);
+}
+
+async function synthesizeVoice(script) {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key || !script) return null;
+  const models = [process.env.TTS_MODEL || "gemini-2.5-flash-preview-tts", "gemini-2.5-flash-tts"];
+  for (const model of models) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: script }] }],
+          generationConfig: {
+            responseModalities: ["AUDIO"],
+            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: process.env.TTS_VOICE || "Aoede" } } },
+          },
+        }),
+      });
+      if (r.status === 404) continue; // model renamed — try the next name
+      if (!r.ok) {
+        let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+        console.error("wa: tts failed", model, r.status, d); // 429 = free-tier quota
+        return null;
+      }
+      const d = await r.json();
+      const part = ((((d.candidates || [])[0] || {}).content || {}).parts || [])
+        .find((p) => (p.inlineData || p.inline_data || {}).data);
+      const inline = part && (part.inlineData || part.inline_data);
+      if (!inline) return null;
+      const m = String(inline.mimeType || inline.mime_type || "").match(/rate=(\d+)/);
+      return await pcmToMp3(Buffer.from(inline.data, "base64"), m ? Number(m[1]) : 24000);
+    } catch (e) {
+      console.error("wa: tts error", e && e.message);
+      return null;
+    }
+  }
+  return null;
+}
+
+// Upload the MP3 to WhatsApp media, then send it as an audio message.
+async function sendCloudVoice(phoneNumberId, to, mp3) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to || !mp3 || !mp3.length) return false;
+  try {
+    const form = new FormData();
+    form.append("messaging_product", "whatsapp");
+    form.append("type", "audio/mpeg");
+    form.append("file", new Blob([mp3], { type: "audio/mpeg" }), "reply.mp3");
+    const up = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/media`, {
+      method: "POST", headers: { Authorization: `Bearer ${token}` }, body: form,
+    });
+    if (!up.ok) {
+      let d = ""; try { d = (await up.text()).slice(0, 200); } catch (e) {}
+      console.error("wa: voice upload failed", up.status, d);
+      return false;
+    }
+    const meta = await up.json();
+    if (!meta.id) return false;
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "audio", audio: { id: meta.id } }),
+    });
+    if (!r.ok) console.error("wa: voice send failed", r.status);
+    return r.ok;
+  } catch (e) {
+    console.error("wa: voice send error", e && e.message);
+    return false;
+  }
+}
+
+// TTS fallback text: drop URLs/emojis/markdown so the fallback script is speakable.
+function stripForTts(s) {
+  return String(s || "")
+    .replace(/https?:\/\/\S+|www\.\S+/gi, "")
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, "")
+    .replace(/[*_`#>·]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+const VOICE_CTX = "[The patient sent this as a VOICE note. After your normal reply, append ONE extra final line formatted exactly as VOICE_SCRIPT: <script> — a natural spoken version of your reply for text-to-speech: the same language the patient spoke (if they spoke Telugu, write the script in Telugu script), warm receptionist tone, digits and times spoken naturally, no emojis, no URLs, no lists, under 55 words.] ";
+
 // Claude vision — quick skin/hair pre-assessment of a WhatsApp photo.
 async function askClaudeVision(hist, media, caption, profileName, extraCtx) {
   const mime = ["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(media.mime) !== -1 ? media.mime : "image/jpeg";
@@ -493,6 +598,7 @@ module.exports = async (req, res) => {
     : "";
 
   let out;
+  let voiceScript = "";
   try {
     if (imageId) {
       // 📸 Photo → Claude vision pre-assessment (shares the site's global AI cap)
@@ -518,8 +624,16 @@ module.exports = async (req, res) => {
         }
         text = String(heard).slice(0, 1000).trim();
       }
-      out = await askClaude(hist, text, profileName, extraCtx);
-      if (audioId) text = "[🎤] " + text;
+      out = await askClaude(hist, text, profileName, audioId ? extraCtx + VOICE_CTX : extraCtx);
+      if (audioId) {
+        // Pull the TTS script line out of the visible reply.
+        const vm = String(out.reply || "").match(/\n?\s*VOICE_SCRIPT\s*:\s*([\s\S]+?)\s*$/);
+        if (vm) {
+          voiceScript = vm[1].trim().slice(0, 450);
+          out.reply = String(out.reply).slice(0, vm.index).trim() || FALLBACK_REPLY;
+        }
+        text = "[🎤] " + text;
+      }
     }
   } catch (e) {
     console.error("wa: ai error", e && e.message);
@@ -535,6 +649,13 @@ module.exports = async (req, res) => {
   }
 
   if (isMeta) {
+    // Voice note in → voice note out (text still follows as the readable copy).
+    if (audioId) {
+      try {
+        const mp3 = await synthesizeVoice(voiceScript || stripForTts(out.reply).slice(0, 350));
+        if (mp3) await sendCloudVoice(cloud.phoneNumberId, cloud.to, mp3);
+      } catch (e) { console.error("wa: voice reply error", e && e.message); }
+    }
     // First reply of a conversation carries the quick-menu buttons.
     if (firstTurn && !imageId) await sendCloudButtons(cloud.phoneNumberId, cloud.to, out.reply);
     else await sendCloud(cloud.phoneNumberId, cloud.to, out.reply);

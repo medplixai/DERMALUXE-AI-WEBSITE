@@ -1,0 +1,8 @@
+{
+  "name": "dermaluxe-ai-website",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "@breezystack/lamejs": "^1.2.7"
+  }
+}
