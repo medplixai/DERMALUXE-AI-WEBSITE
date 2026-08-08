@@ -16,9 +16,15 @@ module.exports = async (req, res) => {
   }
   res.setHeader("Cache-Control", "no-store");
   res.statusCode = 302;
-  // Careers links land straight in the WhatsApp hiring flow (prefilled JOBS).
-  if (tag === "jobs" || tag === "hiring" || tag === "careers") {
-    res.setHeader("Location", "https://wa.me/919959134666?text=JOBS");
+  // Some tags land straight in the WhatsApp agent chat (prefilled first message)
+  // instead of the website — used for IG captions, the clinic QR standee and
+  // the website QR. Each still gets its own click count above.
+  const WA_TAGS = {
+    jobs: "JOBS", hiring: "JOBS", careers: "JOBS",
+    book: "Book Appointment", clinic: "Book Appointment", qr: "Hi",
+  };
+  if (WA_TAGS[tag]) {
+    res.setHeader("Location", "https://wa.me/919959134666?text=" + encodeURIComponent(WA_TAGS[tag]));
   } else {
     res.setHeader("Location", `https://www.dermaluxe.ai/?utm_source=${tag}&utm_medium=smartlink&utm_campaign=${tag}`);
   }
