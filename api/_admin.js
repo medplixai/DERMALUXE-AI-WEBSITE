@@ -6,6 +6,7 @@
 // Not a command → returns null and the normal patient flow continues.
 const crypto = require("crypto");
 const guard = require("./_guard.js");
+const notify = require("./_notify.js");
 
 const IG_GRAPH = "https://graph.instagram.com/v21.0";
 
@@ -289,6 +290,8 @@ async function handle(cfg, digits, text, photo, video) {
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• change: <correction> — preview caption marchadaniki",
       "• queue — scheduled list · unschedule <n> — remove",
+      "• campaign: GLOW | <offer reply> — keyword campaign · campaigns — list",
+      "• review <phone> — patient ki Google review ask",
       "(migatha messages normal agent laga panichestai)");
     return lines.join("\n");
   }
@@ -359,6 +362,20 @@ async function handle(cfg, digits, text, photo, video) {
         lines.push(`🔗 Smart links: ${linkStats}`);
         lines.push("   (bio lo vadandi: dermaluxe.ai/r/insta · /r/wa · /r/fb · /r/gbp · /r/story)");
       }
+      // Keyword-campaign hits (7d)
+      try {
+        const cs = await guard.kvCommand(cfg, ["SMEMBERS", "camp:_set"]);
+        const cparts = [];
+        for (const w of (cs.result || [])) {
+          let hits = 0;
+          for (let d = 0; d < 7; d++) {
+            const key = `camphit:${w}:${new Date(Date.now() - d * 86400000).toISOString().slice(0, 10)}`;
+            try { const v = await guard.kvCommand(cfg, ["GET", key]); hits += Number(v.result || 0); } catch (e) {}
+          }
+          if (hits > 0) cparts.push(`${w}:${hits}`);
+        }
+        if (cparts.length) lines.push(`🎯 Campaign hits: ${cparts.join(", ")}`);
+      } catch (e) {}
       // AI plan
       try {
         const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -458,6 +475,50 @@ async function handle(cfg, digits, text, photo, video) {
     }
     await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pendingObj), "EX", "3600"]);
     return `${video ? "🎬 *Reel caption preview:*" : "📸 *Caption preview:*"}\n\n${pendingObj.caption}\n\n${PREVIEW_OPTIONS}`;
+  }
+
+  // Keyword campaigns: posts say "Reply GLOW" → the agent answers with the
+  // campaign offer and counts the hit. Both tiers can manage campaigns.
+  let km;
+  if ((km = t.match(/^campaign\s*[:\-]\s*([a-z0-9]{2,16})\s*\|\s*([\s\S]{3,600})$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const word = km[1].toLowerCase();
+    await guard.kvCommand(cfg, ["SET", `camp:${word}`, JSON.stringify({ reply: km[2].trim().slice(0, 600), by: digits, ts: Date.now() }), "EX", "7776000"]);
+    await guard.kvCommand(cfg, ["SADD", "camp:_set", word]).catch(() => {});
+    return `🎯 Campaign *${word.toUpperCase()}* ready!\nPosts/stories lo rayandi: "Reply *${word.toUpperCase()}* on WhatsApp 99591 34666"\nEvaraina aa word pampite offer reply veltundi + count avtundi.\n'campaigns' — list · 'campaign remove ${word}' — stop.`;
+  }
+  if (/^campaigns$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const s = await guard.kvCommand(cfg, ["SMEMBERS", "camp:_set"]).catch(() => ({}));
+    const words = (s.result || []);
+    if (!words.length) return "Campaigns em levu — 'campaign: GLOW | <offer reply>' tho create cheyandi.";
+    const lines = ["🎯 *Active campaigns:*"];
+    for (const w of words) {
+      let hits = 0;
+      for (let d = 0; d < 7; d++) {
+        const key = `camphit:${w}:${new Date(Date.now() - d * 86400000).toISOString().slice(0, 10)}`;
+        try { const v = await guard.kvCommand(cfg, ["GET", key]); hits += Number(v.result || 0); } catch (e) {}
+      }
+      lines.push(`• ${w.toUpperCase()} — 7d hits: ${hits}`);
+    }
+    lines.push("", "Remove: campaign remove <word>");
+    return lines.join("\n");
+  }
+  if ((km = t.match(/^campaign\s+(?:remove|stop|delete)\s+([a-z0-9]{2,16})$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const word = km[1].toLowerCase();
+    await guard.kvCommand(cfg, ["DEL", `camp:${word}`]).catch(() => {});
+    await guard.kvCommand(cfg, ["SREM", "camp:_set", word]).catch(() => {});
+    return `🗑 Campaign ${word.toUpperCase()} removed.`;
+  }
+
+  // review <10-digit> — sends the Google-review ask to a patient (post-visit).
+  if ((km = t.match(/^review\s+(\d{10})$/i))) {
+    if (!process.env.REVIEW_LINK) return "REVIEW_LINK inka set avvaledu — Google Business Profile verify ayyaka ee feature on chestam.";
+    const ok = await notify.sendWa(km[1],
+      `Thank you for visiting DermaLuxe! 💖 Mee experience baga unte oka Google review ivvagalara? 🙏\n⭐ ${process.env.REVIEW_LINK}\nMee feedback tho memu inka improve avutam!`);
+    return ok ? `✅ Review request ${km[1]} ki vellindi.`
+      : `❌ Deliver avvaledu — aa patient 24h lo agent tho chat cheyakapothe message veladu. Vallu manaki last message pampi 24h dati unte, valle mundu em aina pampaka malli try cheyandi.`;
   }
 
   // change:/add: — revise the pending caption with AI (marketing correction loop)

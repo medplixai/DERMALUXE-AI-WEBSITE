@@ -12,6 +12,30 @@ const guard = require("./_guard.js");
 
 const DEFAULT_TO = "9989325777,9949134666";
 
+// Bare Cloud-API text send to a local 10-digit number. Returns true on 2xx.
+async function sendWa(digits, text) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
+  const to = String(digits || "").replace(/\D/g, "").slice(-10);
+  if (!token || !phoneId || to.length !== 10) return false;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: `91${to}`, text: { body: String(text).slice(0, 3500) } }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+      console.error("notify: send failed", to, r.status, d); // 131047 = 24h window closed
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("notify: send error", to, e && e.message);
+    return false;
+  }
+}
+
 async function leadAlert(cfg, lead) {
   const token = process.env.WA_CLOUD_TOKEN;
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
@@ -40,21 +64,7 @@ async function leadAlert(cfg, lead) {
     "_(Reply *ok* — next alerts kuda ravadaniki)_",
   ].filter((s) => s !== "").join("\n").slice(0, 900);
 
-  for (const to of targets) {
-    try {
-      const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ messaging_product: "whatsapp", to: `91${to}`, text: { body } }),
-      });
-      if (!r.ok) {
-        let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
-        console.error("notify: lead alert failed", to, r.status, d);
-      }
-    } catch (e) {
-      console.error("notify: lead alert error", to, e && e.message);
-    }
-  }
+  for (const to of targets) await sendWa(to, body);
 }
 
-module.exports = { leadAlert };
+module.exports = { leadAlert, sendWa };

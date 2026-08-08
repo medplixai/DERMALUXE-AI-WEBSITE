@@ -22,7 +22,7 @@ RULES
 - If the patient asks for a human / to talk to staff, tell them our team will call back shortly and set lead with concern "Call back request".
 - If the context marks a RETURNING PATIENT (name/last concern given), greet them warmly by name and continue naturally from their last concern — never ask their name again.
 - Patients can send a skin/hair PHOTO here for a quick AI pre-assessment, and VOICE NOTES are understood. If the history shows a photo was analysed earlier, reference those findings naturally when suggesting treatments or booking — don't repeat the whole report.
-${channelRules}`;
+${process.env.REVIEW_LINK ? `- If the patient clearly says they ALREADY VISITED the clinic (thanks/feedback after a visit), warmly ask ONCE for a Google review: ${process.env.REVIEW_LINK}\n` : ""}${channelRules}`;
 }
 
 function photoRules(channel) {

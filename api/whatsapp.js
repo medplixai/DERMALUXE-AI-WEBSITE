@@ -627,6 +627,28 @@ module.exports = async (req, res) => {
   const histKey = `wa:h:${digits}`;
   const hist = cfg ? await getHistory(cfg, histKey) : [];
   const firstTurn = hist.length === 0;
+
+  // Keyword campaigns ("Reply GLOW" CTAs on posts): single-word matches get the
+  // campaign offer directly and count the hit; Claude sees it in history after.
+  if (cfg && !imageId && !audioId) {
+    const kw = text.trim().toLowerCase();
+    if (/^[a-z0-9]{2,16}$/.test(kw)) {
+      try {
+        const c = await guard.kvCommand(cfg, ["GET", `camp:${kw}`]);
+        if (c && c.result) {
+          const camp = JSON.parse(c.result);
+          const hitKey = `camphit:${kw}:${guard.today()}`;
+          try {
+            const n = await guard.kvCommand(cfg, ["INCR", hitKey]);
+            if (Number(n.result) === 1) await guard.kvCommand(cfg, ["EXPIRE", hitKey, "7776000"]);
+          } catch (e) {}
+          hist.push({ u: `[campaign ${kw}] ` + text, a: camp.reply });
+          await saveHistory(cfg, histKey, hist);
+          return respond(camp.reply);
+        }
+      } catch (e) {}
+    }
+  }
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;
   const extraCtx = profile && profile.name
