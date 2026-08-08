@@ -263,13 +263,17 @@ async function publishNow(cfg, item, legacyCaption) {
   if (!cid) {
     let body;
     if (isVideo) {
-      body = { media_type: "REELS", video_url: signedWaUrl(item.vidId), caption: item.caption, share_to_feed: true };
+      body = item.story
+        ? { media_type: "STORIES", video_url: signedWaUrl(item.vidId) }
+        : { media_type: "REELS", video_url: signedWaUrl(item.vidId), caption: item.caption, share_to_feed: true };
     } else {
       try {
         const img = await guard.kvCommand(cfg, ["GET", `adm:img:${item.imgId}`]);
         if (!img || !img.result) return { ok: false, transient: false, msg: "image expired" };
       } catch (e) {}
-      body = { image_url: `https://www.dermaluxe.ai/api/media?id=${item.imgId}`, caption: item.caption };
+      body = item.story
+        ? { media_type: "STORIES", image_url: `https://www.dermaluxe.ai/api/media?id=${item.imgId}` }
+        : { image_url: `https://www.dermaluxe.ai/api/media?id=${item.imgId}`, caption: item.caption };
     }
     const c = await fetch(`${IG_GRAPH}/me/media`, {
       method: "POST",
@@ -322,7 +326,7 @@ async function publishNow(cfg, item, legacyCaption) {
   let link = "";
   try { const perm = await igGet(`/${pd.id}?fields=permalink`, tok); link = perm.permalink || ""; } catch (e) {}
   let fb = false;
-  try { fb = await fbCrossPost(cfg, item); } catch (e) {}
+  if (!item.story) { try { fb = await fbCrossPost(cfg, item); } catch (e) {} }
   return { ok: true, link, fb };
 }
 
@@ -357,7 +361,7 @@ async function publishPending(cfg, digits) {
       : `Publish kudaraledu: ${out.msg} 🙏`;
   }
   await guard.kvCommand(cfg, ["DEL", `adm:post:${digits}`]).catch(() => {});
-  return `✅ *${pending.vidId ? "Reel" : "Post"} live!* @dermaluxe.ai${out.fb ? " + 📘 FB page" : ""}${out.link ? "\n" + out.link : ""}`;
+  return `✅ *${pending.story ? "Story" : pending.vidId ? "Reel" : "Post"} live!* @dermaluxe.ai${out.fb ? " + 📘 FB page" : ""}${out.link ? "\n" + out.link : ""}`;
 }
 
 // Main entry — returns reply text, or null when the message is not an admin command.
@@ -433,6 +437,7 @@ async function handle(cfg, digits, text, photo, video) {
     const lines = ["🛠 *Admin commands*",
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
+      "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
       "• campaign: GLOW | <offer reply> — keyword campaign",
       "• review <phone> — patient ki Google review ask",
       "• unschedule <n> — scheduled post remove",
@@ -567,6 +572,31 @@ async function handle(cfg, digits, text, photo, video) {
     if (idx < 0 || idx >= items.length) return `Queue lo #${um[1]} ledu — 'queue' tho list chudandi.`;
     await guard.kvCommand(cfg, ["LREM", "adm:queue", "1", items[idx].raw]);
     return `🗑 Removed: ${fmtIst(items[idx].it.due)} post.`;
+  }
+
+  // Photo/video with "story:" → publish straight to Instagram Story (24h, no caption)
+  if ((photo || video) && /^story\s*[:\-]?/i.test(t)) {
+    if (!cfg) return "Storage lekapothe posting kudaradu.";
+    const item = { story: true, caption: "" };
+    if (video) {
+      item.vidId = video.id;
+    } else {
+      const media = await photo.fetch();
+      if (!media || media.tooBig) return "Photo download avvaledu / chala pedda undi 🙏 — malli pampandi.";
+      const imgId = crypto.randomBytes(16).toString("hex");
+      await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, media.base64, "EX", "3600"]);
+      item.imgId = imgId;
+    }
+    const out = await publishNow(cfg, item);
+    if (out.ok) return "✅ *Story live!* @dermaluxe.ai 📱 (24 gantalu kanipistundi)";
+    if (out.transient && out.creationId) {
+      item.creationId = out.creationId;
+      await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(item), "EX", "3600"]);
+      return "🎬 Story processing lo undi — 1 nimisham agi *ok* pampandi.";
+    }
+    return out.transient
+      ? "Story publish fail ayindi 🙏 — 30 seconds agi malli try cheyandi."
+      : `Story publish kudaraledu: ${out.msg} 🙏`;
   }
 
   // Photo/video with "schedule: <when> | <idea>" → preview, then "ok" queues it

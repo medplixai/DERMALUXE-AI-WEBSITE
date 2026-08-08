@@ -38,7 +38,8 @@ const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) p
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your whatsapp reply>","lead":null}
 or when booking info is ready:
-{"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>"}}
+{"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","call_prep":"<2 short Tenglish lines for our team follow-up call: what the patient wants + one talking tip>"}}
+heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
 Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, and "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
@@ -622,6 +623,8 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
     skin_score: null, hair_score: null, skin_age: null, skin_type: "",
     treatments: [],
     page: "whatsapp-agent",
+    heat: ["hot", "warm", "cold"].indexOf(String(leadInfo.heat || "").toLowerCase()) !== -1 ? String(leadInfo.heat).toLowerCase() : "",
+    call_prep: String(leadInfo.call_prep || "").slice(0, 220),
   };
   if (!lead.name) return;
   lead.src_id = phone;

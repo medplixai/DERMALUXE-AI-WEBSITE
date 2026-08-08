@@ -103,12 +103,14 @@ async function leadAlert(cfg, lead) {
   }
 
   const when = [lead.date, lead.slot, lead.mode].filter(Boolean).join(" · ");
+  const heatTag = lead.heat === "hot" ? " 🔥 HOT" : lead.heat === "warm" ? " 🌤 Warm" : "";
   const body = [
-    `🚨 *New Lead!* (${lead.type || "website"})`,
+    `🚨 *New Lead!*${heatTag} (${lead.type || "website"})`,
     `👤 ${lead.name}`,
     lead.phone ? `📱 ${lead.phone}` : "",
     lead.concern ? `💬 ${lead.concern}` : "",
     when ? `📅 ${when}` : "",
+    lead.call_prep ? `📋 ${lead.call_prep}` : "",
     "",
     "Anni leads: dermaluxe.ai/leads.html",
     "_(Reply *ok* — next alerts kuda ravadaniki)_",

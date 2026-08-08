@@ -218,7 +218,7 @@
       var list = visible();
       list.forEach(function (l, i) {
         rows += '<tr data-i="' + LEADS.indexOf(l) + '"><td>' + fmt(l.ts) + "</td>" +
-          '<td><span class="ltag ltag--' + esc(l.type) + '">' + esc(l.type).replace("_", " ") + "</span>" +
+          '<td><span class="ltag ltag--' + esc(l.type) + '">' + (l.heat === "hot" ? "🔥 " : "") + esc(l.type).replace("_", " ") + "</span>" +
           (l.synced === true ? ' <span title="Synced to clinic system (Medicare Connector)" style="color:#8fd6a0;font-size:.85em">⇅</span>'
             : l.synced === false ? ' <span title="Clinic sync pending — use Retry Sync" style="color:#d9a441;font-size:.85em">⏳</span>' : "") + "</td>" +
           "<td><b>" + esc(l.name) + "</b></td>" +
@@ -399,7 +399,7 @@
     function openModal(l) {
       if (!l) return;
       var html = "<h3>" + esc(l.name || "Lead") + "</h3>" +
-        '<p class="lmodal__meta">' + fmt(l.ts) + ' · <span class="ltag ltag--' + esc(l.type) + '">' + esc(l.type).replace("_", " ") + "</span></p>" +
+        '<p class="lmodal__meta">' + fmt(l.ts) + ' · <span class="ltag ltag--' + esc(l.type) + '">' + esc(l.type).replace("_", " ") + "</span>" + (l.heat === "hot" ? " · 🔥 HOT" : l.heat === "warm" ? " · 🌤 Warm" : "") + "</p>" + (l.call_prep ? '<p class="lmodal__meta">📋 ' + esc(l.call_prep) + "</p>" : "") +
         '<dl class="lmodal__grid">' +
         row("Phone", l.phone) +
         row("Age / Gender", [l.age, l.gender].filter(Boolean).join(" / ")) +
