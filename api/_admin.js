@@ -137,43 +137,71 @@ function fmtIst(ms) {
   return `${mo} ${d.getUTCDate()}, ${h}:${String(min).padStart(2, "0")} ${ap}`;
 }
 
+// Signed, expiring proxy URL so IG can fetch a WhatsApp-hosted video via
+// /api/media?wa= (videos don't fit in KV; they stream from WhatsApp's CDN).
+function signedWaUrl(waId) {
+  const exp = Date.now() + 7200000;
+  const sig = crypto.createHmac("sha256", String(process.env.WA_WEBHOOK_TOKEN || ""))
+    .update(`${waId}.${exp}`).digest("hex");
+  return `https://www.dermaluxe.ai/api/media?wa=${waId}&exp=${exp}&sig=${sig}`;
+}
+
 // Core publisher — used by the immediate "ok" flow and the schedule cron.
-// Returns {ok:true, link} | {ok:false, transient, msg}.
-async function publishNow(cfg, imgId, caption) {
+// `item` is {imgId, caption} (feed photo) or {vidId, caption} (Reel), plus an
+// optional creationId to resume polling a container created on an earlier try
+// (videos often outlive one 60s invocation). Legacy publishNow(cfg, imgId,
+// caption) string form still works.
+// Returns {ok:true, link} | {ok:false, transient, msg, creationId?}.
+async function publishNow(cfg, item, legacyCaption) {
+  if (typeof item === "string") item = { imgId: item, caption: legacyCaption };
   const tok = await igToken(cfg);
   if (!tok) return { ok: false, transient: false, msg: "IG token ledu" };
-  try {
-    const img = await guard.kvCommand(cfg, ["GET", `adm:img:${imgId}`]);
-    if (!img || !img.result) return { ok: false, transient: false, msg: "image expired" };
-  } catch (e) {}
-  const imageUrl = `https://www.dermaluxe.ai/api/media?id=${imgId}`;
-  const c = await fetch(`${IG_GRAPH}/me/media`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
-    body: JSON.stringify({ image_url: imageUrl, caption }),
-  });
-  const cd = await c.json().catch(() => ({}));
-  if (!c.ok || !cd.id) {
-    console.error("adm: container failed", c.status, JSON.stringify(cd).slice(0, 200));
-    return { ok: false, transient: true, msg: "container fail" };
+  const isVideo = !!item.vidId;
+  let cid = item.creationId || null;
+  if (!cid) {
+    let body;
+    if (isVideo) {
+      body = { media_type: "REELS", video_url: signedWaUrl(item.vidId), caption: item.caption, share_to_feed: true };
+    } else {
+      try {
+        const img = await guard.kvCommand(cfg, ["GET", `adm:img:${item.imgId}`]);
+        if (!img || !img.result) return { ok: false, transient: false, msg: "image expired" };
+      } catch (e) {}
+      body = { image_url: `https://www.dermaluxe.ai/api/media?id=${item.imgId}`, caption: item.caption };
+    }
+    const c = await fetch(`${IG_GRAPH}/me/media`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+      body: JSON.stringify(body),
+    });
+    const cd = await c.json().catch(() => ({}));
+    if (!c.ok || !cd.id) {
+      console.error("adm: container failed", c.status, JSON.stringify(cd).slice(0, 250));
+      return { ok: false, transient: true, msg: "container fail" };
+    }
+    cid = cd.id;
   }
   let ready = false;
-  for (let i = 0; i < 13; i++) {
-    await new Promise((r) => setTimeout(r, 3000));
+  for (let i = 0; i < 12; i++) {
+    await new Promise((r) => setTimeout(r, 3500));
     try {
-      const st = await igGet(`/${cd.id}?fields=status_code`, tok);
+      const st = await igGet(`/${cid}?fields=status_code`, tok);
       if (st.status_code === "FINISHED") { ready = true; break; }
       if (st.status_code === "ERROR") {
         console.error("adm: container status ERROR");
-        return { ok: false, transient: false, msg: "image processing error (photo IG ki nachaledu — JPEG best)" };
+        return { ok: false, transient: false,
+          msg: isVideo ? "video processing error (normal WhatsApp MP4 video best)" : "image processing error (photo IG ki nachaledu — JPEG best)" };
       }
     } catch (e) {}
   }
-  if (!ready) return { ok: false, transient: true, msg: "image inka processing lo undi" };
+  if (!ready) {
+    return { ok: false, transient: true, creationId: cid,
+      msg: isVideo ? "video inka processing lo undi" : "image inka processing lo undi" };
+  }
   let p = await fetch(`${IG_GRAPH}/me/media_publish`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
-    body: JSON.stringify({ creation_id: cd.id }),
+    body: JSON.stringify({ creation_id: cid }),
   });
   let pd = await p.json().catch(() => ({}));
   if (!p.ok && pd && pd.error && pd.error.code === 9007) {
@@ -181,13 +209,13 @@ async function publishNow(cfg, imgId, caption) {
     p = await fetch(`${IG_GRAPH}/me/media_publish`, {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
-      body: JSON.stringify({ creation_id: cd.id }),
+      body: JSON.stringify({ creation_id: cid }),
     });
     pd = await p.json().catch(() => ({}));
   }
   if (!p.ok || !pd.id) {
     console.error("adm: publish failed", p.status, JSON.stringify(pd).slice(0, 200));
-    return { ok: false, transient: true, msg: "publish fail" };
+    return { ok: false, transient: true, creationId: cid, msg: "publish fail" };
   }
   let link = "";
   try { const perm = await igGet(`/${pd.id}?fields=permalink`, tok); link = perm.permalink || ""; } catch (e) {}
@@ -202,25 +230,34 @@ async function publishPending(cfg, digits) {
   // Scheduled preview → queue it for the cron instead of publishing now.
   if (pending.due) {
     await guard.kvCommand(cfg, ["LPUSH", "adm:queue",
-      JSON.stringify({ imgId: pending.imgId, caption: pending.caption, due: pending.due, by: digits, tries: 0 })]);
-    const secs = Math.max(3600, Math.ceil((pending.due - Date.now()) / 1000) + 7200);
-    await guard.kvCommand(cfg, ["EXPIRE", `adm:img:${pending.imgId}`, String(secs)]).catch(() => {});
+      JSON.stringify({ imgId: pending.imgId, vidId: pending.vidId, caption: pending.caption, due: pending.due, by: digits, tries: 0 })]);
+    if (pending.imgId) {
+      const secs = Math.max(3600, Math.ceil((pending.due - Date.now()) / 1000) + 7200);
+      await guard.kvCommand(cfg, ["EXPIRE", `adm:img:${pending.imgId}`, String(secs)]).catch(() => {});
+    }
     await guard.kvCommand(cfg, ["DEL", `adm:post:${digits}`]).catch(() => {});
-    return `⏰ *Scheduled!* ${fmtIst(pending.due)} IST ki @dermaluxe.ai lo post avtundi.\n'queue' tho list chudochu · 'unschedule <number>' tho remove.`;
+    return `⏰ *Scheduled!* ${fmtIst(pending.due)} IST ki @dermaluxe.ai lo ${pending.vidId ? "reel" : "post"} avtundi.\n'queue' tho list chudochu · 'unschedule <number>' tho remove.`;
   }
 
-  const out = await publishNow(cfg, pending.imgId, pending.caption);
+  const out = await publishNow(cfg, pending);
   if (!out.ok) {
+    if (out.transient && out.creationId) {
+      // container is created and still cooking (videos take a while) —
+      // remember it so the next "ok" resumes instead of re-uploading
+      pending.creationId = out.creationId;
+      await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pending), "EX", "3600"]).catch(() => {});
+      return "🎬 Instagram inka process chestundi (video ki konchem time padutundi) — 1 nimisham agi malli *ok* pampandi.";
+    }
     return out.transient
       ? "Publish fail ayindi 🙏 — 30 seconds agi malli 'ok' pampandi."
       : `Publish kudaraledu: ${out.msg} 🙏`;
   }
   await guard.kvCommand(cfg, ["DEL", `adm:post:${digits}`]).catch(() => {});
-  return `✅ *Post live!* @dermaluxe.ai${out.link ? "\n" + out.link : ""}`;
+  return `✅ *${pending.vidId ? "Reel" : "Post"} live!* @dermaluxe.ai${out.link ? "\n" + out.link : ""}`;
 }
 
 // Main entry — returns reply text, or null when the message is not an admin command.
-async function handle(cfg, digits, text, photo) {
+async function handle(cfg, digits, text, photo, video) {
   const who = adminRole(digits);
   if (!who) return null;
   const owner = who === "owner";
@@ -233,8 +270,8 @@ async function handle(cfg, digits, text, photo) {
     if (owner) lines.push("• marketing report — leads+IG+links+AI plan");
     lines.push(
       "• ideas — 3 AI post ideas (season-aware)",
-      "• 📷 photo + 'post: <idea>' — AI caption → ok/cancel",
-      "• 📷 photo + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
+      "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → ok/cancel (video = Reel)",
+      "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• queue — scheduled list · unschedule <n> — remove",
       "(migatha messages normal agent laga panichestai)");
     return lines.join("\n");
@@ -335,7 +372,7 @@ async function handle(cfg, digits, text, photo) {
       .filter(Boolean).sort((a, b) => a.it.due - b.it.due);
     if (!items.length) return "⏰ Queue khali — photo + 'schedule: tomorrow 6pm | <idea>' tho add cheyandi.";
     const lines = ["⏰ *Scheduled posts:*"];
-    items.forEach((x, i) => lines.push(`${i + 1}. ${fmtIst(x.it.due)} — ${String(x.it.caption || "").replace(/\n/g, " ").slice(0, 45)}…`));
+    items.forEach((x, i) => lines.push(`${i + 1}. ${fmtIst(x.it.due)} — ${x.it.vidId ? "🎬 " : ""}${String(x.it.caption || "").replace(/\n/g, " ").slice(0, 45)}…`));
     lines.push("", "Remove: unschedule <number>");
     return lines.join("\n");
   }
@@ -352,23 +389,31 @@ async function handle(cfg, digits, text, photo) {
     return `🗑 Removed: ${fmtIst(items[idx].it.due)} post.`;
   }
 
-  // Photo with "schedule: <when> | <idea>" → preview, then "ok" queues it
-  if (photo && /^schedule\s*[:\-]?/i.test(t)) {
+  // Photo/video with "schedule: <when> | <idea>" → preview, then "ok" queues it
+  if ((photo || video) && /^schedule\s*[:\-]?/i.test(t)) {
     if (!cfg) return "Storage lekapothe scheduling kudaradu.";
     const body = t.replace(/^schedule\s*[:\-]?\s*/i, "");
     const parts = body.split("|");
     const due = parseWhen(parts[0]);
     if (!due) return "Time ardham kaledu 🙏 — ila pampandi:\nschedule: tomorrow 6pm | hydrafacial offer\n(today 7:30pm, 15-08 11am kuda ok)";
+    if (video && due > Date.now() + 25 * 86400000) return "Video schedule 25 rojula lopu matrame kudurutundi 🙏 — closer date pettandi.";
     const idea = parts.slice(1).join("|").trim();
-    const media = await photo.fetch();
-    if (!media || media.tooBig) return "Photo download avvaledu / chala pedda undi 🙏 — malli pampandi.";
-    const imgId = crypto.randomBytes(16).toString("hex");
-    await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, media.base64, "EX", "3600"]);
-    let caption;
-    try { caption = await writeCaption(idea, media.base64, media.mime); }
-    catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
-    await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify({ imgId, caption, due, ts: Date.now() }), "EX", "3600"]);
-    return `⏰ *Schedule preview* — ${fmtIst(due)} IST\n\n${caption}\n\n✅ Confirm: *ok* · ❌ *cancel*`;
+    const pendingObj = { caption: "", due, ts: Date.now() };
+    if (video) {
+      pendingObj.vidId = video.id;
+      try { pendingObj.caption = await writeCaption(idea, null, null); }
+      catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
+    } else {
+      const media = await photo.fetch();
+      if (!media || media.tooBig) return "Photo download avvaledu / chala pedda undi 🙏 — malli pampandi.";
+      const imgId = crypto.randomBytes(16).toString("hex");
+      await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, media.base64, "EX", "3600"]);
+      pendingObj.imgId = imgId;
+      try { pendingObj.caption = await writeCaption(idea, media.base64, media.mime); }
+      catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
+    }
+    await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pendingObj), "EX", "3600"]);
+    return `⏰ *${video ? "Reel schedule" : "Schedule"} preview* — ${fmtIst(due)} IST\n\n${pendingObj.caption}\n\n✅ Confirm: *ok* · ❌ *cancel*`;
   }
   if (/^(insta|ig)\s*report$/i.test(t)) {
     try { return await instaReport(cfg, owner); } catch (e) { console.error("adm: insta report", e.message); return "Report fail: " + e.message.slice(0, 120); }
@@ -377,19 +422,26 @@ async function handle(cfg, digits, text, photo) {
     try { return await leadsReport(cfg, t); } catch (e) { console.error("adm: leads report", e.message); return "Leads report fail ayindi."; }
   }
 
-  // Photo with "post: idea" caption → build preview
-  if (photo && /^post\s*[:\-]?/i.test(t)) {
+  // Photo/video with "post: idea" caption → build preview (video = Reel)
+  if ((photo || video) && /^post\s*[:\-]?/i.test(t)) {
     if (!cfg) return "Storage lekapothe posting kudaradu.";
     const idea = t.replace(/^post\s*[:\-]?\s*/i, "");
-    const media = await photo.fetch();
-    if (!media || media.tooBig) return "Photo download avvaledu / chala pedda undi 🙏 — malli pampandi.";
-    const imgId = crypto.randomBytes(16).toString("hex");
-    await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, media.base64, "EX", "3600"]);
-    let caption;
-    try { caption = await writeCaption(idea, media.base64, media.mime); }
-    catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
-    await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify({ imgId, caption, ts: Date.now() }), "EX", "3600"]);
-    return `📸 *Caption preview:*\n\n${caption}\n\n✅ Post cheyala? Reply: *ok*\n❌ Vaddu ante: *cancel*`;
+    const pendingObj = { caption: "", ts: Date.now() };
+    if (video) {
+      pendingObj.vidId = video.id;
+      try { pendingObj.caption = await writeCaption(idea, null, null); }
+      catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
+    } else {
+      const media = await photo.fetch();
+      if (!media || media.tooBig) return "Photo download avvaledu / chala pedda undi 🙏 — malli pampandi.";
+      const imgId = crypto.randomBytes(16).toString("hex");
+      await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, media.base64, "EX", "3600"]);
+      pendingObj.imgId = imgId;
+      try { pendingObj.caption = await writeCaption(idea, media.base64, media.mime); }
+      catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
+    }
+    await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pendingObj), "EX", "3600"]);
+    return `${video ? "🎬 *Reel caption preview:*" : "📸 *Caption preview:*"}\n\n${pendingObj.caption}\n\n✅ Post cheyala? Reply: *ok*\n❌ Vaddu ante: *cancel*`;
   }
 
   // ok / cancel — only meaningful when a post is pending

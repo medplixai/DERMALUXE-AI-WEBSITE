@@ -41,23 +41,25 @@ module.exports = async (req, res) => {
     if (!it.due || it.due > now) { kept++; continue; }
     if (published >= 2) { kept++; continue; }
 
-    const lock = await guard.kvCommand(cfg, ["SET", `adm:lock:${it.imgId}`, "1", "NX", "EX", "540"]).catch(() => ({}));
+    const mediaKey = it.imgId || it.vidId;
+    const lock = await guard.kvCommand(cfg, ["SET", `adm:lock:${mediaKey}`, "1", "NX", "EX", "540"]).catch(() => ({}));
     if (!lock || !lock.result) { kept++; continue; }
 
-    const out = await admin.publishNow(cfg, it.imgId, it.caption);
+    const out = await admin.publishNow(cfg, it);
     await guard.kvCommand(cfg, ["LREM", "adm:queue", "1", raw]).catch(() => {});
 
     if (out.ok) {
       published++;
-      await notifyAdmin(it.by, `✅ *Scheduled post live!* (${admin.fmtIst(it.due)})${out.link ? "\n" + out.link : ""}`);
+      await notifyAdmin(it.by, `✅ *Scheduled ${it.vidId ? "reel" : "post"} live!* (${admin.fmtIst(it.due)})${out.link ? "\n" + out.link : ""}`);
     } else if (out.transient && (it.tries || 0) < 3) {
       it.tries = (it.tries || 0) + 1;
+      if (out.creationId) it.creationId = out.creationId; // resume the same IG container next run
       await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify(it)]).catch(() => {});
-      await guard.kvCommand(cfg, ["DEL", `adm:lock:${it.imgId}`]).catch(() => {});
+      await guard.kvCommand(cfg, ["DEL", `adm:lock:${mediaKey}`]).catch(() => {});
       kept++;
     } else {
       dropped++;
-      await notifyAdmin(it.by, `❌ Scheduled post fail ayindi (${admin.fmtIst(it.due)}): ${out.msg || "unknown"}. Photo + 'post:' tho malli try cheyandi.`);
+      await notifyAdmin(it.by, `❌ Scheduled ${it.vidId ? "reel" : "post"} fail ayindi (${admin.fmtIst(it.due)}): ${out.msg || "unknown"}. ${it.vidId ? "Video" : "Photo"} + 'post:' tho malli try cheyandi.`);
     }
   }
   return res.status(200).json({ ok: true, published, kept, dropped });

@@ -4,7 +4,8 @@
     "api/instagram.js": { "maxDuration": 60 },
     "api/messenger.js": { "maxDuration": 60 },
     "api/analyze.js": { "maxDuration": 60 },
-    "api/cron-post.js": { "maxDuration": 60 }
+    "api/cron-post.js": { "maxDuration": 60 },
+    "api/media.js": { "maxDuration": 60 }
   },
   "crons": [
     { "path": "/api/cron-post", "schedule": "*/10 * * * *" }

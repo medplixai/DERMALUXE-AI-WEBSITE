@@ -506,7 +506,7 @@ module.exports = async (req, res) => {
   const isMeta = b && b.object === "whatsapp_business_account";
   const cfg = guard.kvConfig();
 
-  let digits = "", text = "", profileName = "", cloud = null, imageId = "", audioId = "";
+  let digits = "", text = "", profileName = "", cloud = null, imageId = "", audioId = "", videoId = "", videoMime = "";
   if (isMeta) {
     const entry = (b.entry && b.entry[0]) || {};
     const value = ((entry.changes && entry.changes[0]) || {}).value || {};
@@ -552,7 +552,13 @@ module.exports = async (req, res) => {
     } else if (msg.type === "audio" || msg.type === "voice") {
       audioId = String(((msg.audio || msg.voice || {}).id) || "");
       if (!audioId) return res.status(200).json({ ok: true });
-    } else if (["video", "document", "location", "contacts"].indexOf(msg.type) !== -1) {
+    } else if (msg.type === "video") {
+      // Kept only for admin Reel posting — patients get the steering reply below.
+      videoId = String((msg.video && msg.video.id) || "");
+      videoMime = String((msg.video && msg.video.mime_type) || "video/mp4").split(";")[0];
+      text = String((msg.video && msg.video.caption) || "").slice(0, 500).trim();
+      if (!videoId) return res.status(200).json({ ok: true });
+    } else if (["document", "location", "contacts"].indexOf(msg.type) !== -1) {
       // Steer to what the agent CAN handle: text, voice notes, skin/hair photos.
       await sendCloud(cloud.phoneNumberId, cloud.to,
         "Namaste! 🙏 Text, voice note leda skin/hair photo pampandi — photo ki instant AI pre-assessment istanu. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే AI విశ్లేషణ ఇస్తాను.");
@@ -582,19 +588,28 @@ module.exports = async (req, res) => {
     return twiml(res, replyText);
   };
 
-  if (!digits || (!text && !imageId && !audioId)) return respond(FALLBACK_REPLY);
+  if (!digits || (!text && !imageId && !audioId && !videoId)) return respond(FALLBACK_REPLY);
 
   // Owner/admin commands (ADMIN_PHONES allowlist; explicit commands only —
   // anything else from the admin falls through to the normal agent).
   if (isMeta && admin.isAdmin(digits)) {
     try {
       const adminReply = await admin.handle(cfg, digits, text,
-        imageId ? { fetch: () => fetchMedia(imageId) } : null);
+        imageId ? { fetch: () => fetchMedia(imageId) } : null,
+        videoId ? { id: videoId, mime: videoMime } : null);
       if (adminReply) {
         await sendCloud(cloud.phoneNumberId, cloud.to, adminReply);
         return res.status(200).json({ ok: true });
       }
     } catch (e) { console.error("wa: admin error", e && e.message); }
+  }
+
+  // Videos are only for the admin Reel pipeline — the patient agent can't
+  // analyse them, so steer everyone else (and command-less admin videos).
+  if (videoId) {
+    return respond(admin.isAdmin(digits)
+      ? "🎬 Reel post cheyali ante video tho paatu caption lo 'post: <idea>' ani pampandi (leda 'schedule: repu 6pm | <idea>')."
+      : "Namaste! 🙏 Video ki analysis cheyalenu — text, voice note leda skin/hair photo pampandi. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే AI విశ్లేషణ ఇస్తాను.");
   }
 
   // Layer 3: rate limits — per phone + global daily
