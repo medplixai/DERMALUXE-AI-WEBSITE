@@ -224,33 +224,46 @@ async function fetchMedia(mediaId) {
 async function transcribeVoice(base64, mime) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
-  try {
-    const model = process.env.STT_MODEL || "gemini-2.0-flash";
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "Transcribe this WhatsApp voice note exactly. It may be Telugu, Tenglish (Telugu in English letters), English, or mixed. If Telugu is spoken, transcribe in Telugu script. Output ONLY the transcription, nothing else." },
-            { inline_data: { mime_type: mime || "audio/ogg", data: base64 } },
-          ],
-        }],
-      }),
-    });
-    if (!r.ok) {
-      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
-      console.error("wa: stt failed", r.status, d);
+  // Each model has its own free-tier quota — on 429/404 fall through to the next.
+  const models = [];
+  if (process.env.STT_MODEL) models.push(process.env.STT_MODEL);
+  ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"].forEach((m) => {
+    if (models.indexOf(m) === -1) models.push(m);
+  });
+  for (const model of models) {
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: "Transcribe this WhatsApp voice note exactly. It may be Telugu, Tenglish (Telugu in English letters), English, or mixed. If Telugu is spoken, transcribe in Telugu script. Output ONLY the transcription, nothing else." },
+              { inline_data: { mime_type: mime || "audio/ogg", data: base64 } },
+            ],
+          }],
+        }),
+      });
+      if (r.status === 429 || r.status === 404) {
+        let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
+        console.error("wa: stt skipping model", model, r.status, d);
+        continue;
+      }
+      if (!r.ok) {
+        let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
+        console.error("wa: stt failed", model, r.status, d);
+        return null;
+      }
+      const d = await r.json();
+      const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
+      const text = parts.map((p) => p.text || "").join(" ").trim();
+      if (text) return text;
+    } catch (e) {
+      console.error("wa: stt error", model, e && e.message);
       return null;
     }
-    const d = await r.json();
-    const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
-    const text = parts.map((p) => p.text || "").join(" ").trim();
-    return text || null;
-  } catch (e) {
-    console.error("wa: stt error", e && e.message);
-    return null;
   }
+  return null;
 }
 
 // ---- Voice replies (voice note in → voice note out) ---------------------
@@ -279,7 +292,7 @@ async function pcmToMp3(pcm, rate) {
 async function synthesizeVoice(script) {
   const key = process.env.GEMINI_API_KEY;
   if (!key || !script) return null;
-  const models = [process.env.TTS_MODEL || "gemini-2.5-flash-preview-tts", "gemini-2.5-flash-tts"];
+  const models = [process.env.TTS_MODEL || "gemini-2.5-flash-preview-tts", "gemini-2.5-flash-tts", "gemini-2.5-pro-preview-tts"];
   for (const model of models) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
@@ -293,10 +306,14 @@ async function synthesizeVoice(script) {
           },
         }),
       });
-      if (r.status === 404) continue; // model renamed — try the next name
+      if (r.status === 404 || r.status === 429) { // renamed model / per-model quota — try the next
+        let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
+        console.error("wa: tts skipping model", model, r.status, d);
+        continue;
+      }
       if (!r.ok) {
-        let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
-        console.error("wa: tts failed", model, r.status, d); // 429 = free-tier quota
+        let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
+        console.error("wa: tts failed", model, r.status, d);
         return null;
       }
       const d = await r.json();
