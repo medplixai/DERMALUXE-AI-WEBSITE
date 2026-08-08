@@ -31,11 +31,13 @@ const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) p
 - Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
 
+- TAPPABLE BUTTONS: whenever your reply asks the patient to pick between clear options (clinic visit vs video, morning vs evening, day choices, yes/no, book now vs more info), ALSO output "buttons": up to 3 short options (each ≤20 characters, patient's language). Tapping one sends that text back to you. Prefer buttons over asking them to type — most replies that pose a choice should carry buttons.
+
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your whatsapp reply>","lead":null}
 or when booking info is ready:
 {"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>"}}
-Optionally add "send_location":true when the patient asks for the address/directions.`;
+Optionally add "send_location":true when the patient asks for the address/directions, and "buttons":["option1","option2"] when offering choices.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
 const PHOTO_RULES = facts.photoRules("WhatsApp");
@@ -147,6 +149,103 @@ async function sendCloudButtons(phoneNumberId, to, bodyText) {
   } catch (e) {
     console.error("wa: buttons send error", e && e.message);
     return sendCloud(phoneNumberId, to, bodyText);
+  }
+}
+
+// Tappable command list after admin "help" (row titles ARE the commands).
+async function sendAdminMenu(phoneNumberId, to, rows) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to || !rows || !rows.length) return false;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "interactive",
+        interactive: {
+          type: "list",
+          body: { text: "👇 Tap chesi run cheyandi:" },
+          action: {
+            button: "📋 Commands",
+            sections: [{
+              title: "DermaLuxe Admin",
+              rows: rows.slice(0, 10).map((cmd, i) => ({ id: `cmd_${i}`, title: String(cmd).slice(0, 24) })),
+            }],
+          },
+        },
+      }),
+    });
+    if (!r.ok) console.error("wa: admin menu failed", r.status);
+    return r.ok;
+  } catch (e) {
+    console.error("wa: admin menu error", e && e.message);
+    return false;
+  }
+}
+
+// Dynamic per-reply buttons chosen by the AI (booking choices, yes/no...).
+// Falls back to a plain text send if the interactive message is rejected.
+async function sendCloudDynButtons(phoneNumberId, to, bodyText, titles) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const btns = Array.from(new Set((titles || []).map((s) => String(s || "").trim().slice(0, 20)).filter(Boolean))).slice(0, 3);
+  if (!token || !phoneNumberId || !to || !btns.length) return sendCloud(phoneNumberId, to, bodyText);
+  try {
+    let body = String(bodyText);
+    if (body.length > 1000) {
+      // interactive bodies cap at 1024 — send the long text first, buttons after
+      await sendCloud(phoneNumberId, to, body);
+      body = "👇";
+    }
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: body.slice(0, 1024) },
+          action: { buttons: btns.map((t, i) => ({ type: "reply", reply: { id: `dyn_${i}`, title: t } })) },
+        },
+      }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+      console.error("wa: dyn buttons failed, falling back to text", r.status, d);
+      return body === "👇" ? true : sendCloud(phoneNumberId, to, bodyText);
+    }
+    return true;
+  } catch (e) {
+    console.error("wa: dyn buttons error", e && e.message);
+    return sendCloud(phoneNumberId, to, bodyText);
+  }
+}
+
+// Tappable confirm buttons after admin caption previews (ok/change/cancel).
+async function sendAdminConfirm(phoneNumberId, to) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to) return false;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "interactive",
+        interactive: {
+          type: "button",
+          body: { text: "👇 Decide cheyandi:" },
+          action: { buttons: [
+            { type: "reply", reply: { id: "adm_ok", title: "✅ Post cheyyi" } },
+            { type: "reply", reply: { id: "adm_change", title: "✏️ Marchali" } },
+            { type: "reply", reply: { id: "adm_cancel", title: "❌ Cancel" } },
+          ] },
+        },
+      }),
+    });
+    if (!r.ok) console.error("wa: admin confirm buttons failed", r.status);
+    return r.ok;
+  } catch (e) {
+    console.error("wa: admin confirm buttons error", e && e.message);
+    return false;
   }
 }
 
@@ -546,7 +645,12 @@ module.exports = async (req, res) => {
       text = String((msg.button && msg.button.text) || "").slice(0, 1000).trim();
     } else if (msg.type === "interactive") {
       const i = msg.interactive || {};
-      text = String((i.button_reply && i.button_reply.title) || (i.list_reply && i.list_reply.title) || "").slice(0, 1000).trim();
+      const bid = String((i.button_reply && i.button_reply.id) || "");
+      // Admin preview confirm buttons map straight to the typed commands.
+      if (bid === "adm_ok") text = "ok";
+      else if (bid === "adm_change") text = "change";
+      else if (bid === "adm_cancel") text = "cancel";
+      else text = String((i.button_reply && i.button_reply.title) || (i.list_reply && i.list_reply.title) || "").slice(0, 1000).trim();
     } else if (msg.type === "image") {
       imageId = String((msg.image && msg.image.id) || "");
       text = String((msg.image && msg.image.caption) || "").slice(0, 500).trim();
@@ -600,7 +704,10 @@ module.exports = async (req, res) => {
         imageId ? { fetch: () => fetchMedia(imageId) } : null,
         videoId ? { id: videoId, mime: videoMime } : null);
       if (adminReply) {
-        await sendCloud(cloud.phoneNumberId, cloud.to, adminReply);
+        const obj = typeof adminReply === "object" ? adminReply : { text: adminReply };
+        await sendCloud(cloud.phoneNumberId, cloud.to, obj.text);
+        if (obj.confirm) await sendAdminConfirm(cloud.phoneNumberId, cloud.to);
+        if (obj.menuRows) await sendAdminMenu(cloud.phoneNumberId, cloud.to, obj.menuRows);
         return res.status(200).json({ ok: true });
       }
     } catch (e) { console.error("wa: admin error", e && e.message); }
@@ -714,8 +821,10 @@ module.exports = async (req, res) => {
         if (mp3) await sendCloudVoice(cloud.phoneNumberId, cloud.to, mp3);
       } catch (e) { console.error("wa: voice reply error", e && e.message); }
     }
-    // First reply of a conversation carries the quick-menu buttons.
+    // First reply of a conversation carries the quick-menu buttons; after that
+    // the AI's own suggested choices ride along as tappable buttons.
     if (firstTurn && !imageId) await sendCloudButtons(cloud.phoneNumberId, cloud.to, out.reply);
+    else if (Array.isArray(out.buttons) && out.buttons.length) await sendCloudDynButtons(cloud.phoneNumberId, cloud.to, out.reply, out.buttons);
     else await sendCloud(cloud.phoneNumberId, cloud.to, out.reply);
     // Map pin when the patient asked where we are (Claude flag or keyword).
     if (out.send_location === true || LOCATION_ASK.test(text)) {

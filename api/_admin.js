@@ -121,7 +121,10 @@ async function reviseCaption(current, instruction) {
     text: `Current Instagram caption:\n${current}\n\nTeam's correction/addition request (may be Tenglish): ${instruction}\n\nRewrite the caption applying this request. Keep every style rule.` }]);
 }
 
-const PREVIEW_OPTIONS = "✅ Post cheyala? — *ok*\n✏️ Emaina marchala / add cheyala? — *change: <cheppandi>*\n❌ Vaddu — *cancel*";
+// Previews return {text, confirm:true} — the WhatsApp layer follows the text
+// with tappable ✅/✏️/❌ buttons (typed ok / change: / cancel still work).
+const PREVIEW_OPTIONS = "✅ *ok* · ✏️ *change: <correction>* · ❌ *cancel*";
+const confirmable = (text) => ({ text, confirm: true });
 
 // IST helpers for the scheduler.
 const IST_MS = 330 * 60000;
@@ -364,19 +367,16 @@ async function handle(cfg, digits, text, photo, video) {
 
   if (/^(help|commands)$/i.test(t)) {
     const lines = ["🛠 *Admin commands*",
-      owner ? "• insta report — IG stats + boost tip" : "• insta report — IG stats",
-      "• leads report [week] — lead summary"];
-    if (owner) lines.push("• marketing report — leads+IG+links+AI plan");
-    lines.push(
-      "• ideas — 3 AI post ideas (season-aware)",
-      "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → ok/change:/cancel (video = Reel)",
+      "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
-      "• change: <correction> — preview caption marchadaniki",
-      "• queue — scheduled list · unschedule <n> — remove",
-      "• campaign: GLOW | <offer reply> — keyword campaign · campaigns — list",
+      "• campaign: GLOW | <offer reply> — keyword campaign",
       "• review <phone> — patient ki Google review ask",
-      "(migatha messages normal agent laga panichestai)");
-    return lines.join("\n");
+      "• unschedule <n> — scheduled post remove",
+      "",
+      "Reports ki 👇 list nunchi tap cheyandi:"];
+    const menuRows = ["insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
+    if (owner) menuRows.splice(2, 0, "marketing report");
+    return { text: lines.join("\n"), menuRows };
   }
 
   if (/^ideas?$/i.test(t)) {
@@ -529,7 +529,7 @@ async function handle(cfg, digits, text, photo, video) {
       catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
     }
     await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pendingObj), "EX", "3600"]);
-    return `⏰ *${video ? "Reel schedule" : "Schedule"} preview* — ${fmtIst(due)} IST\n\n${pendingObj.caption}\n\n${PREVIEW_OPTIONS}`;
+    return confirmable(`⏰ *${video ? "Reel schedule" : "Schedule"} preview* — ${fmtIst(due)} IST\n\n${pendingObj.caption}\n\n${PREVIEW_OPTIONS}`);
   }
   if (/^(insta|ig)\s*report$/i.test(t)) {
     try { return await instaReport(cfg, owner); } catch (e) { console.error("adm: insta report", e.message); return "Report fail: " + e.message.slice(0, 120); }
@@ -557,7 +557,7 @@ async function handle(cfg, digits, text, photo, video) {
       catch (e) { console.error("adm: caption", e.message); return "Caption rayadam fail ayindi — malli try cheyandi."; }
     }
     await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pendingObj), "EX", "3600"]);
-    return `${video ? "🎬 *Reel caption preview:*" : "📸 *Caption preview:*"}\n\n${pendingObj.caption}\n\n${PREVIEW_OPTIONS}`;
+    return confirmable(`${video ? "🎬 *Reel caption preview:*" : "📸 *Caption preview:*"}\n\n${pendingObj.caption}\n\n${PREVIEW_OPTIONS}`);
   }
 
   // Keyword campaigns: posts say "Reply GLOW" → the agent answers with the
@@ -604,6 +604,14 @@ async function handle(cfg, digits, text, photo, video) {
       : `❌ Deliver avvaledu — aa patient 24h lo agent tho chat cheyakapothe message veladu. Vallu manaki last message pampi 24h dati unte, valle mundu em aina pampaka malli try cheyandi.`;
   }
 
+  // Bare "change" (the ✏️ button) → ask for the correction text
+  if (/^(change|edit|marchu)$/i.test(t)) {
+    if (!cfg) return null;
+    const pRaw0 = await guard.kvCommand(cfg, ["GET", `adm:post:${digits}`]).catch(() => ({}));
+    if (!pRaw0 || !pRaw0.result) return null;
+    return "✏️ Em marchalo type chesi pampandi:\nchange: <mee correction>\n\nE.g. change: telugu line ekkuva pettu, offer bold ga cheppu";
+  }
+
   // change:/add: — revise the pending caption with AI (marketing correction loop)
   let cm;
   if ((cm = t.match(/^(change|edit|add|marchu|marchandi)\s*[:\-]\s*([\s\S]+)$/i))) {
@@ -615,7 +623,7 @@ async function handle(cfg, digits, text, photo, video) {
       pending.caption = await reviseCaption(pending.caption, t);
       delete pending.creationId; // caption changed → any half-built IG container is stale
       await guard.kvCommand(cfg, ["SET", `adm:post:${digits}`, JSON.stringify(pending), "EX", "3600"]);
-      return `✏️ *Kotha caption:*\n\n${pending.caption}\n\n${PREVIEW_OPTIONS}`;
+      return confirmable(`✏️ *Kotha caption:*\n\n${pending.caption}\n\n${PREVIEW_OPTIONS}`);
     } catch (e) {
       console.error("adm: revise", e.message);
       return "Caption marchadam fail ayindi 🙏 — malli 'change: <...>' pampandi.";
@@ -623,11 +631,11 @@ async function handle(cfg, digits, text, photo, video) {
   }
 
   // ok / cancel — only meaningful when a post is pending
-  if (/^(ok|yes|post)$/i.test(t) || /^cancel$/i.test(t)) {
+  if (/^(ok|yes|post)$/i.test(t) || /^(cancel|no|vaddu)$/i.test(t)) {
     if (!cfg) return null;
     const pRaw = await guard.kvCommand(cfg, ["GET", `adm:post:${digits}`]);
     if (!pRaw.result) return null; // no pending → let the normal agent answer
-    if (/^cancel$/i.test(t)) {
+    if (/^(cancel|no|vaddu)$/i.test(t)) {
       await guard.kvCommand(cfg, ["DEL", `adm:post:${digits}`]).catch(() => {});
       return "❌ Post cancel chesanu.";
     }
