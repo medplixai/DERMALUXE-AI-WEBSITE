@@ -153,6 +153,61 @@ function fmtIst(ms) {
   return `${mo} ${d.getUTCDate()}, ${h}:${String(min).padStart(2, "0")} ${ap}`;
 }
 
+// FB Page token — same derivation + ig:ptok cache the Messenger/IG-fallback
+// path uses: IG_PAGE_TOKEN env wins, else IG_SYSTEM_TOKEN + IG_PAGE_ID.
+async function fbPageToken(cfg) {
+  if (process.env.IG_PAGE_TOKEN) return process.env.IG_PAGE_TOKEN;
+  try {
+    if (cfg) {
+      const r = await guard.kvCommand(cfg, ["GET", "ig:ptok"]);
+      if (r && r.result) return r.result;
+    }
+  } catch (e) {}
+  const sys = process.env.IG_SYSTEM_TOKEN, pid = process.env.IG_PAGE_ID;
+  if (!sys || !pid) return null;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${pid}?fields=access_token&access_token=${encodeURIComponent(sys)}`);
+    const d = await r.json().catch(() => ({}));
+    if (d && d.access_token) {
+      if (cfg) await guard.kvCommand(cfg, ["SET", "ig:ptok", d.access_token, "EX", "21600"]).catch(() => {});
+      return d.access_token;
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Cross-post the just-published IG content to the Facebook Page feed too.
+// Best-effort: any failure only logs (the IG post already succeeded).
+// Opt-out with FB_CROSSPOST=0.
+async function fbCrossPost(cfg, item) {
+  if (process.env.FB_CROSSPOST === "0") return false;
+  const pid = process.env.IG_PAGE_ID;
+  const ptok = await fbPageToken(cfg);
+  if (!pid || !ptok) return false;
+  try {
+    const url = item.vidId
+      ? `https://graph.facebook.com/v21.0/${pid}/videos`
+      : `https://graph.facebook.com/v21.0/${pid}/photos`;
+    const body = item.vidId
+      ? { file_url: signedWaUrl(item.vidId), description: item.caption, access_token: ptok }
+      : { url: `https://www.dermaluxe.ai/api/media?id=${item.imgId}`, caption: item.caption, access_token: ptok };
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) {
+      console.error("adm: fb crosspost failed", r.status, JSON.stringify(d).slice(0, 250));
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("adm: fb crosspost error", e && e.message);
+    return false;
+  }
+}
+
 // Signed, expiring proxy URL so IG can fetch a WhatsApp-hosted video via
 // /api/media?wa= (videos don't fit in KV; they stream from WhatsApp's CDN).
 function signedWaUrl(waId) {
@@ -235,7 +290,9 @@ async function publishNow(cfg, item, legacyCaption) {
   }
   let link = "";
   try { const perm = await igGet(`/${pd.id}?fields=permalink`, tok); link = perm.permalink || ""; } catch (e) {}
-  return { ok: true, link };
+  let fb = false;
+  try { fb = await fbCrossPost(cfg, item); } catch (e) {}
+  return { ok: true, link, fb };
 }
 
 async function publishPending(cfg, digits) {
@@ -269,7 +326,7 @@ async function publishPending(cfg, digits) {
       : `Publish kudaraledu: ${out.msg} 🙏`;
   }
   await guard.kvCommand(cfg, ["DEL", `adm:post:${digits}`]).catch(() => {});
-  return `✅ *${pending.vidId ? "Reel" : "Post"} live!* @dermaluxe.ai${out.link ? "\n" + out.link : ""}`;
+  return `✅ *${pending.vidId ? "Reel" : "Post"} live!* @dermaluxe.ai${out.fb ? " + 📘 FB page" : ""}${out.link ? "\n" + out.link : ""}`;
 }
 
 // Main entry — returns reply text, or null when the message is not an admin command.

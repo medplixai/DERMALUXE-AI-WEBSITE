@@ -50,7 +50,7 @@ module.exports = async (req, res) => {
 
     if (out.ok) {
       published++;
-      await notifyAdmin(it.by, `✅ *Scheduled ${it.vidId ? "reel" : "post"} live!* (${admin.fmtIst(it.due)})${out.link ? "\n" + out.link : ""}`);
+      await notifyAdmin(it.by, `✅ *Scheduled ${it.vidId ? "reel" : "post"} live!* (${admin.fmtIst(it.due)})${out.fb ? " + 📘 FB page" : ""}${out.link ? "\n" + out.link : ""}`);
     } else if (out.transient && (it.tries || 0) < 3) {
       it.tries = (it.tries || 0) + 1;
       if (out.creationId) it.creationId = out.creationId; // resume the same IG container next run

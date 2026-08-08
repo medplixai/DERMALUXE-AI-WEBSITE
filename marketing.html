@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="noindex, nofollow" />
+  <title>Marketing Dashboard · DermaLuxe</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: "Helvetica Neue", Arial, sans-serif; background: #faf4f7; color: #2b2330; padding: 18px 14px 60px; }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    h1 { font-size: 22px; color: #b1355f; margin-bottom: 2px; }
+    h1 small { color: #a4832b; font-size: 13px; font-weight: 700; }
+    .sub { color: #8b7580; font-size: 13px; margin-bottom: 16px; }
+    .auth { display: flex; gap: 8px; margin-bottom: 18px; flex-wrap: wrap; }
+    .auth input { flex: 1; min-width: 180px; padding: 10px 13px; border: 1.5px solid #e8cdd9; border-radius: 9px; font-size: 14px; }
+    .auth button { padding: 10px 20px; background: #b1355f; color: #fff; border: 0; border-radius: 9px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .msg { color: #8b7580; font-size: 14px; padding: 22px 0; text-align: center; }
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 16px; }
+    .card { background: #fff; border: 1px solid #f0dde6; border-radius: 12px; padding: 13px 15px; }
+    .card .n { font-size: 26px; font-weight: 800; color: #b1355f; }
+    .card .l { font-size: 11.5px; color: #8b7580; margin-top: 2px; }
+    .panel { background: #fff; border: 1px solid #f0dde6; border-radius: 12px; padding: 15px 17px; margin-bottom: 14px; }
+    .panel h2 { font-size: 14px; color: #4a2f3c; margin-bottom: 12px; }
+    .bars { display: flex; align-items: flex-end; gap: 4px; height: 120px; }
+    .bcol { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; min-width: 0; }
+    .bar { width: 100%; background: linear-gradient(180deg, #e082a8, #b1355f); border-radius: 4px 4px 0 0; min-height: 2px; }
+    .bv { font-size: 10px; color: #b1355f; font-weight: 700; }
+    .bd { font-size: 8.5px; color: #a08b96; white-space: nowrap; }
+    .hrow { margin: 7px 0; }
+    .hrow .hl { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 3px; }
+    .hrow .hl b { color: #4a2f3c; }
+    .htrack { background: #f6e8ee; border-radius: 6px; height: 12px; overflow: hidden; }
+    .hfill { height: 100%; background: linear-gradient(90deg, #b1355f, #e082a8); border-radius: 6px; }
+    .hfill.gold { background: linear-gradient(90deg, #a4832b, #d8b95c); }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th { text-align: left; color: #8b7580; font-size: 11px; text-transform: uppercase; letter-spacing: .4px; padding: 4px 6px; border-bottom: 1.5px solid #f0dde6; }
+    td { padding: 7px 6px; border-bottom: 1px solid #f7ecf1; }
+    .tag { display: inline-block; padding: 2px 9px; border-radius: 20px; font-size: 11px; font-weight: 700; background: #eee; }
+    .tag--whatsapp { background: #d9fdd3; color: #0e7a43; }
+    .tag--instagram { background: #fde3f0; color: #b1355f; }
+    .tag--messenger { background: #e3edfd; color: #2b5fb1; }
+    .foot { text-align: center; font-size: 12px; color: #a08b96; margin-top: 18px; }
+    .foot a { color: #b1355f; }
+    @media (max-width: 560px) { .bd { display: none; } .bcol:nth-child(odd) .bd { display: block; } }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>📈 Marketing Dashboard <small>DermaLuxe by Medicare</small></h1>
+    <div class="sub">Leads · smart links · campaigns — auto-refreshed on load</div>
+    <div class="auth">
+      <input id="key" type="password" placeholder="Admin key" />
+      <button id="load">Load</button>
+    </div>
+    <div id="content"><div class="msg">Enter your admin key and press <b>Load</b>.</div></div>
+    <div class="foot"><a href="leads.html">Leads dashboard →</a></div>
+  </div>
+
+  <script>
+    var $ = function (id) { return document.getElementById(id); };
+    try { $("key").value = localStorage.getItem("dl_admin_key") || ""; } catch (e) {}
+
+    function esc(s) { return String(s == null ? "" : s).replace(/[<>&"]/g, function (c) { return { "<": "&lt;", ">": "&gt;", "&": "&amp;", '"': "&quot;" }[c]; }); }
+
+    function hbar(label, value, max, gold) {
+      var pct = max > 0 ? Math.max(3, Math.round(value / max * 100)) : 0;
+      return '<div class="hrow"><div class="hl"><b>' + esc(label) + '</b><span>' + value + '</span></div>' +
+        '<div class="htrack"><div class="hfill' + (gold ? " gold" : "") + '" style="width:' + pct + '%"></div></div></div>';
+    }
+
+    function render(d) {
+      var h = "";
+      h += '<div class="cards">' +
+        '<div class="card"><div class="n">' + (d.leads.total7 || 0) + '</div><div class="l">Leads — 7 days</div></div>' +
+        '<div class="card"><div class="n">' + (d.leads.total30 || 0) + '</div><div class="l">Leads — 30 days</div></div>' +
+        '<div class="card"><div class="n">' + (d.linksTotal14 || 0) + '</div><div class="l">Link clicks — 14 days</div></div>' +
+        '<div class="card"><div class="n">' + (d.ig ? d.ig.followers : "–") + '</div><div class="l">IG followers' + (d.ig ? " (@" + esc(d.ig.username) + ")" : "") + '</div></div>' +
+        '</div>';
+
+      var days = d.leads.days || [];
+      var mx = 1; days.forEach(function (x) { if (x.count > mx) mx = x.count; });
+      h += '<div class="panel"><h2>Leads per day — last 14 days</h2><div class="bars">';
+      days.forEach(function (x) {
+        h += '<div class="bcol"><div class="bv">' + (x.count || "") + '</div>' +
+          '<div class="bar" style="height:' + Math.round(x.count / mx * 96) + 'px"></div>' +
+          '<div class="bd">' + esc(x.date) + '</div></div>';
+      });
+      h += '</div></div>';
+
+      var ch = d.leads.channels || {}; var chKeys = Object.keys(ch);
+      if (chKeys.length) {
+        var cmx = 1; chKeys.forEach(function (k) { if (ch[k] > cmx) cmx = ch[k]; });
+        h += '<div class="panel"><h2>Channels — 30 days</h2>';
+        chKeys.sort(function (a, b) { return ch[b] - ch[a]; }).forEach(function (k) { h += hbar(k, ch[k], cmx); });
+        h += '</div>';
+      }
+
+      var lk = d.links || {}; var lkKeys = Object.keys(lk);
+      if (lkKeys.length) {
+        var lmx = 1; lkKeys.forEach(function (k) { if (lk[k] > lmx) lmx = lk[k]; });
+        h += '<div class="panel"><h2>Smart-link clicks — 14 days (dermaluxe.ai/r/…)</h2>';
+        lkKeys.sort(function (a, b) { return lk[b] - lk[a]; }).forEach(function (k) { h += hbar("/r/" + k, lk[k], lmx, true); });
+        h += '</div>';
+      }
+
+      if ((d.campaigns || []).length) {
+        h += '<div class="panel"><h2>Keyword campaigns — 14 days</h2><table><tr><th>Keyword</th><th>Hits</th></tr>';
+        d.campaigns.forEach(function (c) { h += '<tr><td><b>' + esc(c.word.toUpperCase()) + '</b></td><td>' + c.hits14 + '</td></tr>'; });
+        h += '</table></div>';
+      }
+
+      if ((d.recent || []).length) {
+        h += '<div class="panel"><h2>Recent leads</h2><table><tr><th>Name</th><th>Channel</th><th>Concern</th></tr>';
+        d.recent.forEach(function (l) {
+          h += '<tr><td>' + esc(l.name) + '</td><td><span class="tag tag--' + esc(l.type) + '">' + esc(l.type) + '</span></td><td>' + esc(l.concern) + '</td></tr>';
+        });
+        h += '</table></div>';
+      }
+
+      $("content").innerHTML = h;
+    }
+
+    function load() {
+      var key = $("key").value.trim();
+      if (!key) { $("content").innerHTML = '<div class="msg">Please enter the admin key.</div>'; return; }
+      try { localStorage.setItem("dl_admin_key", key); } catch (e) {}
+      $("content").innerHTML = '<div class="msg">Loading…</div>';
+      fetch("/api/marketing-stats", { headers: { "x-admin-key": key } })
+        .then(function (r) { if (!r.ok) throw new Error(r.status === 403 ? "Invalid key" : "Try again"); return r.json(); })
+        .then(render)
+        .catch(function (e) { $("content").innerHTML = '<div class="msg">' + esc(e.message) + '</div>'; });
+    }
+    $("load").addEventListener("click", load);
+    $("key").addEventListener("keydown", function (e) { if (e.key === "Enter") load(); });
+    if ($("key").value) load();
+  </script>
+</body>
+</html>
