@@ -7,6 +7,7 @@
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 const notify = require("./_notify.js");
+const hrmod = require("./_hr.js");
 
 const IG_GRAPH = "https://graph.instagram.com/v21.0";
 
@@ -367,9 +368,41 @@ async function handle(cfg, digits, text, photo, video) {
   const t = String(text || "").trim();
 
   // HR tier sees only the hiring side; anything else falls to the normal agent.
-  if (who === "hr" && !/^(help|commands|jobs)/i.test(t)) return null;
+  if (who === "hr" && !/^(help|commands|jobs|shortlist|reject|select|interview)/i.test(t)) return null;
   if (who === "hr" && /^(help|commands)$/i.test(t)) {
-    return { text: "🛠 *HR commands*\n• jobs report — last 7 days applications\n• jobs report month — last 30 days\n\nCandidates apply link: dermaluxe.ai/r/jobs", menuRows: ["jobs report", "jobs report month"] };
+    return { text: "🛠 *HR commands*\n• jobs report [month] — applications + status\n• shortlist <phone> — ⭐ shortlist + candidate ki msg\n• interview <phone> repu 11am — 📅 fix + invite + map\n• select <phone> — ✅ selected msg\n• reject <phone> — ❌ polite regret msg\n\nApply link: dermaluxe.ai/r/jobs", menuRows: ["jobs report", "jobs report month"] };
+  }
+
+  // Candidate pipeline: shortlist/select/reject <phone> · interview <phone> <when>
+  let hm;
+  if ((hm = t.match(/^(shortlist|select|reject)\s+(\d{10})$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const action = hm[1].toLowerCase(), phone = hm[2];
+    const app = await hrmod.findApp(cfg, phone);
+    if (!app) return `📱 ${phone} tho application em ledu — 'jobs report' chudandi.`;
+    await hrmod.setStatus(cfg, phone, action === "shortlist" ? "shortlisted" : action === "select" ? "selected" : "rejected");
+    const first = String(app.name || "").split(" ")[0] || "";
+    let msg;
+    if (action === "shortlist") msg = `🎉 Good news ${first} garu! Mee *${app.role}* application SHORTLIST ayindi. Interview details tvaralo pampistam. — DermaLuxe HR`;
+    else if (action === "select") msg = `🎊 Congratulations ${first} garu! Meeru *${app.role}* position ki SELECT ayyaru! Joining details ki mana team meeku call chestundi. Welcome to DermaLuxe! 💖`;
+    else msg = `Thank you ${first} garu 🙏 Ee sari mee profile mundhuku vellaledhu — kani mee CV mana file lo undi, suitable opening vachinappudu contact chestam. All the best!`;
+    const sent = await notify.sendWa(phone, msg);
+    const label = action === "shortlist" ? "⭐ SHORTLISTED" : action === "select" ? "✅ SELECTED" : "❌ REJECTED";
+    return `${label} — ${app.name} (${phone})\nCandidate ki message ${sent ? "vellindi ✉️" : "vellaledhu (24h window close — nerugaa call cheyandi 📞)"}`;
+  }
+  if ((hm = t.match(/^interview\s+(\d{10})\s+(.+)$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const phone = hm[1];
+    const at = parseWhen(hm[2]);
+    if (!at) return "Time ardham kaledu 🙏 — ila pampandi:\ninterview " + phone + " repu 11am\n(today 5pm, 15-08 10:30am kuda ok)";
+    const app = await hrmod.findApp(cfg, phone);
+    if (!app) return `📱 ${phone} tho application em ledu — 'jobs report' chudandi.`;
+    await hrmod.setStatus(cfg, phone, "interview", at);
+    const first = String(app.name || "").split(" ")[0] || "";
+    const sent = await notify.sendWa(phone,
+      `📅 *Interview Fixed!*\n\nHi ${first} garu — mee *${app.role}* interview:\n🗓 *${fmtIst(at)}* IST\n📍 DermaLuxe by Medicare, Rama Mahal, Kasturi Vari Street, Opp. Happy Mobiles, Eluru\n\nCV & original certificates teeskuni randi. All the best! 🍀\n— DermaLuxe HR`);
+    if (sent) await notify.sendWaLocation(phone);
+    return `📅 Interview fixed — ${app.name} (${phone})\n🗓 ${fmtIst(at)} IST\nCandidate ki invite ${sent ? "+ map pin vellindi ✉️" : "vellaledhu (24h window close — nerugaa call cheyandi 📞)"}\n(Interview roju udayam digest lo reminder vastundi)`;
   }
 
   // jobs report [month] — applications summary for owner/marketing/HR
@@ -385,7 +418,12 @@ async function handle(cfg, digits, text, photo, video) {
     apps.forEach((a) => { const role = String(a.concern || "").split("·")[0].trim() || "?"; byRole[role] = (byRole[role] || 0) + 1; });
     Object.keys(byRole).forEach((k) => lines.push(`• ${k}: ${byRole[k]}`));
     if (apps.length) lines.push("");
-    apps.slice(0, 10).forEach((a) => lines.push(`— ${a.name} · ${String(a.concern || "").slice(0, 40)} · 📱 ${a.phone}${a.cv_media_id ? " · 📄CV" : ""}`));
+    for (const a of apps.slice(0, 10)) {
+      const st = await hrmod.getStatus(cfg, a.phone);
+      const stx = st && st.status === "interview" && st.at ? `📅 ${fmtIst(st.at)}` : hrmod.statusEmoji(st);
+      lines.push(`${stx} ${a.name} · ${String(a.concern || "").slice(0, 38)} · 📱 ${a.phone}${a.cv_media_id ? " · 📄" : ""}`);
+    }
+    if (apps.length) lines.push("", "🆕 new · ⭐ shortlist · 📅 interview · ✅ select · ❌ reject", "Actions: shortlist/interview/select/reject <phone>");
     if (!apps.length) lines.push("(applications em ravaledu)", "", "Promote link: dermaluxe.ai/r/jobs");
     else lines.push("", "Dashboard: dermaluxe.ai/leads.html");
     return lines.join("\n");

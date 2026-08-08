@@ -6,6 +6,7 @@
 const guard = require("./_guard.js");
 const notify = require("./_notify.js");
 const admin = require("./_admin.js");
+const hrmod = require("./_hr.js");
 
 module.exports = async (req, res) => {
   if (process.env.CRON_SECRET) {
@@ -46,6 +47,31 @@ module.exports = async (req, res) => {
     if (due.length) {
       lines.push("", "⏰ Ee roju posts:");
       due.forEach((it) => lines.push(`— ${admin.fmtIst(it.due)} ${it.vidId ? "🎬" : "📷"} ${String(it.caption || "").replace(/\n/g, " ").slice(0, 30)}…`));
+    }
+  } catch (e) {}
+
+  // Hiring: yesterday's applications + today's interviews (with reminders)
+  try {
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "299"]);
+    const apps = (r.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } })
+      .filter((l) => l && l.type === "job" && now - l.ts < 86400000);
+    if (apps.length) lines.push("", `💼 Ninna job applications: *${apps.length}* ('jobs report' tho chudandi)`);
+  } catch (e) {}
+  try {
+    const q = await guard.kvCommand(cfg, ["LRANGE", "hr:ivq", "0", "49"]);
+    const istDay = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
+    const today = istDay(now);
+    const seen = new Set();
+    for (const raw of (q.result || [])) {
+      let iv; try { iv = JSON.parse(raw); } catch (e) { continue; }
+      if (!iv || !iv.at) continue;
+      if (iv.at < now - 43200000) { await guard.kvCommand(cfg, ["LREM", "hr:ivq", "1", raw]).catch(() => {}); continue; }
+      if (istDay(iv.at) !== today || seen.has(iv.phone)) continue;
+      seen.add(iv.phone);
+      const app = await hrmod.findApp(cfg, iv.phone);
+      lines.push(`📅 Ivala interview: ${app ? app.name + " (" + app.role + ")" : iv.phone} — ${admin.fmtIst(iv.at)}`);
+      await notify.sendWa(iv.phone,
+        `⏰ Reminder: Ivala mee interview undi!\n🗓 *${admin.fmtIst(iv.at)}* IST\n📍 DermaLuxe, Rama Mahal, Kasturi Vari Street, Eluru\nAll the best! 🍀`).catch(() => {});
     }
   } catch (e) {}
 

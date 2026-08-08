@@ -53,6 +53,43 @@ function roleListReply(text) {
   };
 }
 
+// ---- Candidate status pipeline (ATS-lite) --------------------------------
+// hr:st:<phone> = {status, at?, ts} (90d). Statuses: applied → shortlisted →
+// interview → selected / rejected. hr:ivq list feeds interview-day reminders.
+async function getStatus(cfg, phone) {
+  try {
+    const r = await guard.kvCommand(cfg, ["GET", `hr:st:${phone}`]);
+    return r.result ? JSON.parse(r.result) : null;
+  } catch (e) { return null; }
+}
+async function setStatus(cfg, phone, status, at) {
+  const st = { status, ts: Date.now() };
+  if (at) st.at = at;
+  try { await guard.kvCommand(cfg, ["SET", `hr:st:${phone}`, JSON.stringify(st), "EX", "7776000"]); } catch (e) {}
+  if (status === "interview" && at) {
+    try { await guard.kvCommand(cfg, ["LPUSH", "hr:ivq", JSON.stringify({ phone, at })]); } catch (e) {}
+  }
+}
+function statusEmoji(st) {
+  if (!st) return "🆕";
+  return { shortlisted: "⭐", interview: "📅", selected: "✅", rejected: "❌" }[st.status] || "🆕";
+}
+// Latest job application for a phone (from the shared leads list).
+async function findApp(cfg, phone) {
+  try {
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
+    for (const raw of (r.result || [])) {
+      try {
+        const l = JSON.parse(raw);
+        if (l && l.type === "job" && String(l.phone) === String(phone)) {
+          return { name: l.name, role: String(l.concern || "").split("·")[0].trim(), cvId: l.cv_media_id || "" };
+        }
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return null;
+}
+
 async function alertTeam(cfg, app) {
   const normList = (v) => String(v || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
   let targets = normList(process.env.HR_PHONES);
@@ -63,6 +100,7 @@ async function alertTeam(cfg, app) {
     `👤 ${app.name}`,
     `📱 ${app.phone}`,
     `⏳ Experience: ${app.exp}`,
+    app.qual ? `🎓 ${app.qual}` : "",
     `📍 ${app.city}`,
     app.cvId ? "📄 CV attach chesi pampistunnam 👇" : "📄 CV ledu — direct ga matladandi",
     "",
@@ -80,7 +118,7 @@ async function storeApplication(cfg, app) {
     name: String(app.name).slice(0, 80), phone: app.phone,
     age: "", gender: "",
     concern: `${app.role} · ${app.exp}`.slice(0, 120),
-    message: `City: ${app.city}${app.cvId ? " · CV received" : " · No CV"}`.slice(0, 400),
+    message: `${app.qual ? "Qual: " + app.qual + " · " : ""}City: ${app.city}${app.cvId ? " · CV received" : " · No CV"}`.slice(0, 400),
     mode: "", date: "", slot: "",
     skin_score: null, hair_score: null, skin_age: null, skin_type: "",
     treatments: [], page: "whatsapp-careers", src_id: app.phone,
@@ -130,7 +168,23 @@ async function handle(cfg, digits, text, doc) {
 
   if (st.step === "exp") {
     if (!t) return { text: "Experience select cheyandi 👇", buttons: ["Fresher", "1-3 Years", "3+ Years"] };
-    st.exp = t.slice(0, 30); st.step = "city";
+    st.exp = t.slice(0, 30);
+    const medical = ["Dermatologist", "Plastic Surgeon", "Cosmetologist", "BDS/BHMS Doctor", "Hair Transplant Surgn", "Nursing Staff", "Therapist"];
+    if (medical.indexOf(st.role) !== -1) {
+      st.step = "qual"; await setState(cfg, digits, st);
+      return { text: "🎓 Mee *qualification* cheppandi (degree + registration unte adi kuda):\nE.g. MBBS MD DVL · BSc Nursing · D.Pharm" };
+    }
+    if (st.role === "Content Creator") {
+      st.step = "qual"; await setState(cfg, digits, st);
+      return { text: "🎨 Mee *portfolio / Instagram / YouTube link* pampandi (leda 'ledu' ani cheppandi):" };
+    }
+    st.step = "city"; await setState(cfg, digits, st);
+    return { text: "📍 Meeru e *city/uru* nunchi?" };
+  }
+
+  if (st.step === "qual") {
+    if (!t || doc) return { text: "Type chesi pampandi 🙏 (short ga saripotundi):" };
+    st.qual = t.slice(0, 120); st.step = "city";
     await setState(cfg, digits, st);
     return { text: "📍 Meeru e *city/uru* nunchi?" };
   }
@@ -143,7 +197,7 @@ async function handle(cfg, digits, text, doc) {
   }
 
   if (st.step === "cv") {
-    const app = { role: st.role, name: st.name, exp: st.exp, city: st.city, phone: digits };
+    const app = { role: st.role, name: st.name, exp: st.exp, city: st.city, qual: st.qual || "", phone: digits };
     if (doc && doc.id) {
       app.cvId = doc.id;
       app.cvName = doc.name || "";
@@ -152,6 +206,7 @@ async function handle(cfg, digits, text, doc) {
     }
     await clearState(cfg, digits);
     await storeApplication(cfg, app);
+    await setStatus(cfg, digits, "applied");
     try { await alertTeam(cfg, app); } catch (e) { console.error("hr: alert", e && e.message); }
     return { text: `🎉 *Application received, ${app.name.split(" ")[0]}!*\n\n• Role: *${app.role}*\n• Experience: ${app.exp}\n${app.cvId ? "• CV: received ✅" : "• CV: pending (interview appudu teeskuni randi)"}\n\nMana HR team review chesi *2-3 rojullo* meeku call chestundi. All the best! 🍀\n— Team DermaLuxe`. trim() };
   }
@@ -159,4 +214,4 @@ async function handle(cfg, digits, text, doc) {
   return null;
 }
 
-module.exports = { handle, isTrigger, ROLES };
+module.exports = { handle, isTrigger, ROLES, getStatus, setStatus, statusEmoji, findApp };

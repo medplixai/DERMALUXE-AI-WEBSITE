@@ -63,6 +63,29 @@ async function sendWaDocument(digits, mediaId, filename, caption) {
   }
 }
 
+// Clinic map pin (used in interview invites).
+async function sendWaLocation(digits) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
+  const to = String(digits || "").replace(/\D/g, "").slice(-10);
+  if (!token || !phoneId || to.length !== 10) return false;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to: `91${to}`, type: "location",
+        location: {
+          latitude: 16.7107, longitude: 81.0952,
+          name: "DermaLuxe by Medicare Skin And Hair Clinic",
+          address: "Rama Mahal, R.R. Peta, Kasturi Vari Street, Opp. Happy Mobiles, Eluru 534002",
+        },
+      }),
+    });
+    return r.ok;
+  } catch (e) { return false; }
+}
+
 async function leadAlert(cfg, lead) {
   const token = process.env.WA_CLOUD_TOKEN;
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
@@ -94,4 +117,4 @@ async function leadAlert(cfg, lead) {
   for (const to of targets) await sendWa(to, body);
 }
 
-module.exports = { leadAlert, sendWa, sendWaDocument };
+module.exports = { leadAlert, sendWa, sendWaDocument, sendWaLocation };
