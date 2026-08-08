@@ -225,9 +225,11 @@ async function transcribeVoice(base64, mime) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   // Each model has its own free-tier quota — on 429/404 fall through to the next.
+  // '-latest' aliases track the current generation, so this list won't go stale
+  // (2.5-era names are listed by the API but 404 for keys created after mid-2026).
   const models = [];
   if (process.env.STT_MODEL) models.push(process.env.STT_MODEL);
-  ["gemini-2.5-flash", "gemini-2.5-flash-lite", "gemini-2.0-flash"].forEach((m) => {
+  ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.5-flash"].forEach((m) => {
     if (models.indexOf(m) === -1) models.push(m);
   });
   for (const model of models) {
@@ -292,7 +294,7 @@ async function pcmToMp3(pcm, rate) {
 async function synthesizeVoice(script) {
   const key = process.env.GEMINI_API_KEY;
   if (!key || !script) return null;
-  const models = [process.env.TTS_MODEL || "gemini-2.5-flash-preview-tts", "gemini-2.5-flash-tts", "gemini-2.5-pro-preview-tts"];
+  const models = [process.env.TTS_MODEL || "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"];
   for (const model of models) {
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
