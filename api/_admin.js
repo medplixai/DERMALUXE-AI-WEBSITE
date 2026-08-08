@@ -248,6 +248,20 @@ function signedWaUrl(waId) {
   return `https://www.dermaluxe.ai/api/media?wa=${waId}&exp=${exp}&sig=${sig}`;
 }
 
+// Evening slots for the week-plan batch: tomorrow onwards, 6:30 PM IST daily,
+// Sundays skipped (clinic closed).
+function nextDailySlots(count) {
+  const out = [];
+  const d = new Date(Date.now() + IST_MS);
+  d.setUTCDate(d.getUTCDate() + 1);
+  d.setUTCHours(18, 30, 0, 0);
+  while (out.length < count) {
+    if (d.getUTCDay() !== 0) out.push(d.getTime() - IST_MS);
+    d.setUTCDate(d.getUTCDate() + 1);
+  }
+  return out;
+}
+
 // Core publisher — used by the immediate "ok" flow and the schedule cron.
 // `item` is {imgId, caption} (feed photo) or {vidId, caption} (Reel), plus an
 // optional creationId to resume polling a container created on an earlier try
@@ -438,6 +452,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
+      "• weekplan — week antha posts okesari plan (photos → done)",
       "• campaign: GLOW | <offer reply> — keyword campaign",
       "• review <phone> — patient ki Google review ask",
       "• unschedule <n> — scheduled post remove",
@@ -572,6 +587,62 @@ async function handle(cfg, digits, text, photo, video) {
     if (idx < 0 || idx >= items.length) return `Queue lo #${um[1]} ledu — 'queue' tho list chudandi.`;
     await guard.kvCommand(cfg, ["LREM", "adm:queue", "1", items[idx].raw]);
     return `🗑 Removed: ${fmtIst(items[idx].it.due)} post.`;
+  }
+
+  // ---- Week plan: batch-collect posts, auto-schedule across the week -------
+  const wkKey = `adm:wk:${digits}`;
+  if (/^week\s*plan$/i.test(t) && !photo && !video) {
+    if (!cfg) return "Storage ledu.";
+    await guard.kvCommand(cfg, ["SET", wkKey, JSON.stringify({ items: [] }), "EX", "21600"]);
+    return "🗓 *Week Plan mode ON!*\n\nPhotos/videos okkokkati pampandi — prathi daani tho paatu caption lo idea rayandi (e.g. 'hydrafacial glow offer').\n\nAnni ayyaka *done* pampandi — nenu captions rasi, week antha auto-schedule chesta (roju 6:30 PM, Sunday skip) ✨\n\n*cancel* = mode close";
+  }
+  if (cfg) {
+    const wkRaw = await guard.kvCommand(cfg, ["GET", wkKey]).catch(() => ({}));
+    const wk = wkRaw && wkRaw.result ? JSON.parse(wkRaw.result) : null;
+    if (wk) {
+      if (/^cancel$/i.test(t) && !photo && !video) {
+        await guard.kvCommand(cfg, ["DEL", wkKey]).catch(() => {});
+        return "Week plan cancel chesanu 👍";
+      }
+      if (/^done$/i.test(t)) {
+        await guard.kvCommand(cfg, ["DEL", wkKey]).catch(() => {});
+        if (!wk.items.length) return "Photos em pampaledu 🙏 — malli *weekplan* tho start cheyandi.";
+        const dues = nextDailySlots(wk.items.length);
+        const lines = [`🗓 *Week Plan scheduled — ${wk.items.length} posts!*`, ""];
+        for (let i = 0; i < wk.items.length; i++) {
+          const it = wk.items[i];
+          await guard.kvCommand(cfg, ["LPUSH", "adm:queue",
+            JSON.stringify({ imgId: it.imgId, vidId: it.vidId, caption: it.caption, due: dues[i], by: digits, tries: 0 })]);
+          if (it.imgId) {
+            const secs = Math.max(3600, Math.ceil((dues[i] - Date.now()) / 1000) + 7200);
+            await guard.kvCommand(cfg, ["EXPIRE", `adm:img:${it.imgId}`, String(secs)]).catch(() => {});
+          }
+          lines.push(`${i + 1}. ${fmtIst(dues[i])} ${it.vidId ? "🎬" : "📷"} ${String(it.caption).replace(/\n/g, " ").slice(0, 38)}…`);
+        }
+        lines.push("", "Auto-post avutayi ✅ · *queue* tho chudochu · *unschedule <n>* remove");
+        return lines.join("\n");
+      }
+      if ((photo || video) && !/^(post|schedule|story)\s*[:\-]/i.test(t)) {
+        if (wk.items.length >= 10) return "10 posts limit 🙏 — *done* pampandi.";
+        const item = { caption: "" };
+        if (video) {
+          item.vidId = video.id;
+          try { item.caption = await writeCaption(t, null, null); }
+          catch (e) { return "Caption rayadam fail 🙏 — aa photo/video malli pampandi."; }
+        } else {
+          const media = await photo.fetch();
+          if (!media || media.tooBig) return "Photo download avvaledu / pedda undi 🙏 — malli pampandi.";
+          const imgId = crypto.randomBytes(16).toString("hex");
+          await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, media.base64, "EX", "21600"]);
+          item.imgId = imgId;
+          try { item.caption = await writeCaption(t, media.base64, media.mime); }
+          catch (e) { return "Caption rayadam fail 🙏 — aa photo malli pampandi."; }
+        }
+        wk.items.push(item);
+        await guard.kvCommand(cfg, ["SET", wkKey, JSON.stringify(wk), "EX", "21600"]);
+        return `✅ *Post #${wk.items.length} ready!*\n"${String(item.caption).replace(/\n/g, " ").slice(0, 90)}…"\n\nInka pampandi — anni ayyaka *done* 🗓`;
+      }
+    }
   }
 
   // Photo/video with "story:" → publish straight to Instagram Story (24h, no caption)
