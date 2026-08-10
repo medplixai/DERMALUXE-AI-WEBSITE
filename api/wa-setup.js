@@ -88,13 +88,24 @@ module.exports = async (req, res) => {
 
   try {
     const r = await fetch(
-      `https://graph.facebook.com/v21.0/${WABA}/message_templates?fields=name,status,category,quality_score&limit=50`,
+      `https://graph.facebook.com/v21.0/${WABA}/message_templates?fields=name,status,category,quality_score,rejected_reason&limit=50`,
       { headers: { Authorization: `Bearer ${token}` } }
     );
     const d = await r.json().catch(() => ({}));
+    // WABA-level health too — a post-billing account review holds template
+    // approvals, so surface it alongside the per-template status.
+    let account = null;
+    try {
+      const w = await fetch(
+        `https://graph.facebook.com/v21.0/${WABA}?fields=name,account_review_status,business_verification_status`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      account = await w.json().catch(() => null);
+    } catch (e) {}
     return res.status(200).json({
       waba: WABA,
-      templates: (d.data || []).map((t) => ({ name: t.name, status: t.status, category: t.category })),
+      account,
+      templates: (d.data || []).map((t) => ({ name: t.name, status: t.status, category: t.category, rejected_reason: t.rejected_reason })),
       error: d.error && d.error.message,
     });
   } catch (e) {
