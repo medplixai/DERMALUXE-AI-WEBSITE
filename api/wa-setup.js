@@ -33,6 +33,18 @@ const TEMPLATES = [
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
     ],
   },
+  {
+    name: "visit_followup",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🙏 Ninna mee DermaLuxe visit ela anipinchindi?\n\nTreatment/skin care lo emaina doubts unte ee message ki reply cheyandi — free ga answer chestam 💖\n\n— DermaLuxe by Medicare, Eluru",
+        example: { body_text: [["Priya"]] },
+      },
+    ],
+  },
 ];
 
 module.exports = async (req, res) => {

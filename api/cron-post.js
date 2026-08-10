@@ -73,7 +73,22 @@ module.exports = async (req, res) => {
       let a;
       try { a = JSON.parse(raw); } catch (e) { a = null; }
       if (!a || !a.at || !a.ph) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; }
-      if (a.at < now - 10800000) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; } // 3h past → done
+      if (a.at < now - 10800000) {
+        // Visit window over → move to appt:done (next-morning follow-up reads
+        // it) + one team check-in so no-shows get a rebook nudge.
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        a.doneAt = now;
+        await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
+        await guard.kvCommand(cfg, ["LTRIM", "appt:done", "0", "499"]).catch(() => {});
+        if (a.at > now - 14400000) { // just crossed the 3h line → ping once
+          const team = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
+            .split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
+          for (const to of team) {
+            await notify.sendWa(to, `🩺 ${a.name || "?"} (${a.ph}) — ${admin.fmtIst(a.at)} appointment time daatindi.\nVachhara? Raakapothe *noshow ${a.ph}* ani pampandi — rebook nudge veltundi.`).catch(() => {});
+          }
+        }
+        continue;
+      }
       const mins = (a.at - now) / 60000;
       if (a.r2 || mins > 130 || mins < 15) continue; // <15 min = they just booked it, no point
       const out = await notify.sendWaTemplate(a.ph, "appointment_reminder", [a.name || "friend", admin.fmtIst(a.at)]);

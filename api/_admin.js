@@ -453,14 +453,16 @@ async function handle(cfg, digits, text, photo, video) {
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
       "• weekplan — week antha posts okesari plan (photos → done)",
+      "• appointments — booking book · noshow <phone> = rebook nudge",
       "• campaign: GLOW | <offer reply> — keyword campaign",
       "• review <phone> — patient ki Google review ask",
-      "• unschedule <n> — scheduled post remove",
-      "",
-      "Reports ki 👇 list nunchi tap cheyandi:"];
-    if (owner) lines.splice(8, 0, "• broadcast: <offer> — patients andariki template msg (paid)");
-    const menuRows = ["insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
-    if (owner) menuRows.splice(2, 0, "marketing report");
+      "• unschedule <n> — scheduled post remove"];
+    if (owner) lines.push(
+      "• broadcast: <offer> — patients andariki template msg (paid)",
+      "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
+    lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
+    const menuRows = ["appointments", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
+    if (owner) menuRows.splice(3, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
   }
 
@@ -588,6 +590,40 @@ async function handle(cfg, digits, text, photo, video) {
     if (idx < 0 || idx >= items.length) return `Queue lo #${um[1]} ledu — 'queue' tho list chudandi.`;
     await guard.kvCommand(cfg, ["LREM", "adm:queue", "1", items[idx].raw]);
     return `🗑 Removed: ${fmtIst(items[idx].it.due)} post.`;
+  }
+
+  // Live booking book — upcoming patient appointments with reminder status
+  if (/^(appointments?|bookings?)$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+    const items = (aq.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } })
+      .filter((a) => a && a.at && a.at > Date.now() - 10800000).sort((x, y) => x.at - y.at);
+    if (!items.length) return "📅 Upcoming appointments em levu.\n(Patient agent lo slot confirm avvagane ikkada vastayi + auto reminders veltayi)";
+    const lines = [`📅 *Appointments (${items.length}):*`];
+    items.slice(0, 15).forEach((a) => lines.push(
+      `— ${fmtIst(a.at)} · ${a.name || "?"} 📱 ${a.ph}${a.concern ? " · " + String(a.concern).slice(0, 24) : ""}${a.r9 || a.r2 ? " ✅reminded" : ""}`));
+    lines.push("", "Miss ayithe: *noshow <phone>* — rebook nudge veltundi");
+    return lines.join("\n");
+  }
+
+  // noshow <10-digit> — warm rebook nudge to a patient who missed the visit
+  if ((um = t.match(/^no\s*show\s+(\d{10})$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const ph = um[1];
+    let name = "";
+    for (const key of ["appt:done", "appt:q"]) {
+      const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
+      for (const s of (q.result || [])) { try { const a = JSON.parse(s); if (a.ph === ph && a.name) name = a.name; } catch (e) {} }
+      if (name) break;
+    }
+    const first = String(name).split(" ")[0];
+    const ok = await notify.sendWa(ph,
+      `Hi ${first || "andi"}! 🙏 Ivala mee DermaLuxe appointment miss ayinattu undi — parledu!\n\nMalli convenient time book chesukovalante ee message ki reply cheyandi 😊 Ee week slots available unnayi.`);
+    if (ok) return `✅ Rebook nudge ${ph} ki vellindi.`;
+    const out = await notify.sendWaTemplate(ph, "clinic_update",
+      [first || "friend", "Ivala mee appointment miss ayinattu undi — malli book cheyala? Mee convenient time reply cheyandi, slot fix chestam 😊"]);
+    return out.ok ? `✅ Rebook nudge ${ph} ki vellindi (template).`
+      : `❌ Deliver avvaledu: ${out.msg || "window closed + template fail"}`;
   }
 
   // ---- Week plan: batch-collect posts, auto-schedule across the week -------
@@ -790,6 +826,35 @@ async function handle(cfg, digits, text, photo, video) {
     return confirmable(`📣 *Broadcast preview* — *${targets.length}* patients ki veltundi:\n\n"Hi <name>! ✨ DermaLuxe by Medicare, Eluru nunchi update:\n\n${msg}\n\n📲 Appointment ki ee message ki reply cheyandi..."\n\n💰 Approx ₹${Math.ceil(targets.length * 0.8)} charge · STOP patients auto-skip\n\n✅ *ok* — pampu · ❌ *cancel*`);
   }
 
+  // ---- Reactivate: one paid follow-up to 3-10 day old silent leads --------
+  if (/^reactivate$/i.test(t)) {
+    if (!owner) return "🔒 Reactivate owner ki matrame.";
+    if (!cfg) return "Storage ledu.";
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
+    const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
+    const optSet = new Set(opt.result || []);
+    // anyone with a booking on file is not "cold"
+    const booked = new Set();
+    for (const key of ["appt:q", "appt:done"]) {
+      const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
+      for (const s of (q.result || [])) { try { booked.add(JSON.parse(s).ph); } catch (e) {} }
+    }
+    const now2 = Date.now(); const seen = new Set(); const targets = [];
+    for (const s of (r.result || [])) {
+      let l; try { l = JSON.parse(s); } catch (e) { continue; }
+      if (!l || l.type === "job" || (l.slot && l.date)) continue;
+      const age = now2 - (l.ts || 0);
+      if (age < 3 * 86400000 || age > 10 * 86400000) continue;
+      const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+      if (ph.length !== 10 || seen.has(ph) || optSet.has(ph) || booked.has(ph)) continue;
+      seen.add(ph);
+      targets.push({ ph, name: String(l.name || "").trim().split(" ")[0] || "friend", concern: String(l.concern || "").slice(0, 50) });
+    }
+    if (!targets.length) return "🧊 Cold leads (3-10 rojulu, book cheyani) evaru leru — good sign! 👍";
+    await guard.kvCommand(cfg, ["SET", `adm:rc:${digits}`, JSON.stringify({ targets }), "EX", "900"]);
+    return confirmable(`🧊 *Reactivation preview* — *${targets.length}* cold leads (3-10 rojula nunchi silent):\n\n${targets.slice(0, 5).map((x) => `— ${x.name} (${x.concern || "general"})`).join("\n")}${targets.length > 5 ? `\n… +${targets.length - 5} more` : ""}\n\nOkkokkariki valla concern tho personalized follow-up veltundi.\n💰 Approx ₹${Math.ceil(targets.length * 0.8)} · STOP patients auto-skip\n\n✅ *ok* — pampu · ❌ *cancel*`);
+  }
+
   // review <10-digit> — sends the Google-review ask to a patient (post-visit).
   if ((km = t.match(/^review\s+(\d{10})$/i))) {
     if (!process.env.REVIEW_LINK) return "REVIEW_LINK inka set avvaledu — Google Business Profile verify ayyaka ee feature on chestam.";
@@ -858,6 +923,21 @@ async function handle(cfg, digits, text, photo, video) {
         await guard.kvCommand(cfg, ["SET", "bc:done", "0", "EX", "86400"]).catch(() => {});
       }
       return `📣 *Broadcast:* ${sent} patients ki vellindi ✅${fail ? `\n⚠️ ${fail} fail (template approve avvakapothe anni fail avtayi — konchem agi malli try cheyandi)` : ""}${rest.length ? `\n⏳ ${rest.length} queue lo — 10-15 min lo veltayi, ayyaka cheptha` : ""}`;
+    }
+    const rcRaw = await guard.kvCommand(cfg, ["GET", `adm:rc:${digits}`]).catch(() => ({}));
+    if (rcRaw && rcRaw.result) {
+      await guard.kvCommand(cfg, ["DEL", `adm:rc:${digits}`]).catch(() => {});
+      if (/^(cancel|no|vaddu)$/i.test(t)) return "❌ Reactivation cancel chesanu.";
+      const rc = JSON.parse(rcRaw.result);
+      let sent = 0, fail = 0;
+      for (const tg of rc.targets.slice(0, 80)) {
+        const line = tg.concern
+          ? `Meeru '${tg.concern}' gurinchi adigaru kada — inka interest unte ee week doctor slots available unnayi. Book cheyalante mee convenient time reply cheyandi 😊`
+          : `Meeru mana treatments gurinchi adigaru kada — ee week doctor slots available unnayi. Book cheyalante mee convenient time reply cheyandi 😊`;
+        const out = await notify.sendWaTemplate(tg.ph, "clinic_update", [tg.name, line]);
+        if (out.ok) sent++; else fail++;
+      }
+      return `🧊 *Reactivation:* ${sent} leads ki vellindi ✅${fail ? ` · ${fail} fail` : ""}\nEvaraina reply istey ventane lead alert vastundi 🔥`;
     }
     return null; // nothing pending → normal agent
   }

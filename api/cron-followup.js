@@ -38,5 +38,32 @@ module.exports = async (req, res) => {
       `Hi ${l.name} garu! 👋 Meeru DermaLuxe lo *${concern}* gurinchi adigaru kada — inka em doubts unna cheppandi 😊 Ee week slots kuda available unnayi. Book cheyalante mee convenient day & time cheppandi chalu!\n· మీకు అనుకూలమైన టైమ్ చెప్తే చాలు — బుక్ చేసేస్తాం 🙏`);
     if (ok) sent++;
   }
-  return res.status(200).json({ ok: true, checked, sent });
+
+  // ---- Post-visit follow-up: next morning (~10:45 IST), once per visit ----
+  // Free-form first (the reminder replies usually keep the window open);
+  // falls back to the visit_followup template so delivery never dies quietly.
+  let visited = 0;
+  try {
+    const istNow = new Date(now + 330 * 60000);
+    if (istNow.getUTCHours() === 10) {
+      const istDay = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
+      const yday = istDay(now - 86400000);
+      const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]);
+      for (const raw of (dq.result || [])) {
+        let a; try { a = JSON.parse(raw); } catch (e) { continue; }
+        if (!a || !a.ph || !a.at || a.fu) continue;
+        if (istDay(a.at) !== yday) continue;
+        const first = String(a.name || "").split(" ")[0] || "friend";
+        const ok = await notify.sendWa(a.ph,
+          `Hi ${first}! 🙏 Ninna mee DermaLuxe visit ela anipinchindi?\n\nTreatment/skin care lo emaina doubts unte ikkade adagandi — free ga reply chestam 💖`);
+        if (!ok) await notify.sendWaTemplate(a.ph, "visit_followup", [first]).catch(() => {});
+        a.fu = true;
+        await guard.kvCommand(cfg, ["LREM", "appt:done", "1", raw]).catch(() => {});
+        await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
+        visited++;
+      }
+    }
+  } catch (e) { console.error("cron: visit followup", e && e.message); }
+
+  return res.status(200).json({ ok: true, checked, sent, visited });
 };

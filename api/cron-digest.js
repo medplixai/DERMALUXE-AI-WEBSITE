@@ -86,7 +86,13 @@ module.exports = async (req, res) => {
     for (const raw of (aq.result || [])) {
       let a; try { a = JSON.parse(raw); } catch (e) { continue; }
       if (!a || !a.at || !a.ph) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; }
-      if (a.at < now - 10800000) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; }
+      if (a.at < now - 10800000) {
+        // Long past (overnight stragglers) → move to appt:done, no team ping
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        a.doneAt = now;
+        await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
+        continue;
+      }
       if (istDay(a.at) !== today) continue;
       todays.push(a);
       if (!a.r9 && a.at > now) {
@@ -113,6 +119,24 @@ module.exports = async (req, res) => {
       if (Number(v.result || 0) > 0) parts.push(`${tag}:${v.result}`);
     }
     if (parts.length) lines.push("", `🔗 Ninna link clicks: ${parts.join(", ")}`);
+  } catch (e) {}
+
+  // Cold leads nudge (Mon & Thu only, 3+ needed): owner fires 'reactivate'
+  try {
+    const istD = new Date(now + 330 * 60000).getUTCDay();
+    if (istD === 1 || istD === 4) {
+      const r2 = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
+      const uniq = new Set();
+      for (const s of (r2.result || [])) {
+        let l; try { l = JSON.parse(s); } catch (e) { continue; }
+        if (!l || l.type === "job" || (l.slot && l.date)) continue;
+        const age = now - (l.ts || 0);
+        if (age < 3 * 86400000 || age > 10 * 86400000) continue;
+        const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+        if (ph.length === 10) uniq.add(ph);
+      }
+      if (uniq.size >= 3) lines.push("", `🧊 Cold leads (3-10 rojulu, book avvaledu): *${uniq.size}* — owner *reactivate* ani pampite follow-up veltundi`);
+    }
   } catch (e) {}
 
   lines.push("", "Dashboard: dermaluxe.ai/leads.html");

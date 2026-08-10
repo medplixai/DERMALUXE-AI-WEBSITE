@@ -28,7 +28,7 @@ const hr = require("./_hr.js");
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
 const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. Clinic visit or video consultation both possible.
-- TIME SLOTS (tappable): whenever you ask for the appointment time, ALSO output "slots": 6-9 realistic options inside clinic hours (Mon–Sat 9 AM – 9 PM; use the current IST time given in context — today's remaining windows first, then tomorrow; never Sunday). Each ≤22 characters in the patient's language, e.g. "Ivala 6:30 PM", "Repu 11:00 AM", "Repu 4:00 PM". They appear as a tap-to-select list; the tapped slot comes back as plain text — treat it as their chosen time.
+- TIME SLOTS (tappable): whenever you ask for the appointment time, ALSO output "slots": 6-9 realistic options inside clinic hours (Mon–Sat 9 AM – 9 PM; use the current IST time given in context — today's remaining windows first, then tomorrow; never Sunday). Each ≤22 characters in the patient's language, e.g. "Ivala 6:30 PM", "Repu 11:00 AM", "Repu 4:00 PM". They appear as a tap-to-select list; the tapped slot comes back as plain text — treat it as their chosen time. If the context lists FULL slots, NEVER offer those exact times — suggest nearby free times instead (double-booking avvakudadu).
 - When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). Otherwise "lead" must be null.
 - Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
@@ -324,6 +324,33 @@ function nowIstCtx() {
   const ap = h >= 12 ? "PM" : "AM";
   h = h % 12 || 12;
   return `[Now: ${days[d.getUTCDay()]} ${d.getUTCDate()} ${mo[d.getUTCMonth()]}, ${h}:${min} ${ap} IST] `;
+}
+
+// Busy-slot context: times with APPT_PER_SLOT (default 2) confirmed bookings
+// are listed as FULL so the agent steers new patients to free times.
+async function bookedSlotsCtx(cfg) {
+  if (!cfg) return "";
+  try {
+    const r = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+    const per = Number(process.env.APPT_PER_SLOT || 2);
+    const now = Date.now(), IST = 330 * 60000, count = {};
+    for (const s of (r.result || [])) {
+      try {
+        const a = JSON.parse(s);
+        if (!a.at || a.at < now || a.at - now > 7 * 86400000) continue;
+        const d = new Date(a.at + IST);
+        const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()];
+        let h = d.getUTCHours();
+        const mi = String(d.getUTCMinutes()).padStart(2, "0");
+        const ap = h >= 12 ? "PM" : "AM";
+        h = h % 12 || 12;
+        const key = `${mo} ${d.getUTCDate()} ${h}:${mi} ${ap}`;
+        count[key] = (count[key] || 0) + 1;
+      } catch (e) {}
+    }
+    const full = Object.keys(count).filter((k) => count[k] >= per);
+    return full.length ? `[FULL slots — do not offer these times: ${full.join(", ")}] ` : "";
+  } catch (e) { return ""; }
 }
 
 // Tap-to-select appointment slots (interactive list, up to 10 rows).
@@ -911,7 +938,7 @@ module.exports = async (req, res) => {
   }
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;
-  const extraCtx = nowIstCtx() + (profile && profile.name
+  const extraCtx = nowIstCtx() + (await bookedSlotsCtx(cfg)) + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
     : "");
 
