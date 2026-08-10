@@ -458,6 +458,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• unschedule <n> — scheduled post remove",
       "",
       "Reports ki 👇 list nunchi tap cheyandi:"];
+    if (owner) lines.splice(8, 0, "• broadcast: <offer> — patients andariki template msg (paid)");
     const menuRows = ["insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(2, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
@@ -760,6 +761,35 @@ async function handle(cfg, digits, text, photo, video) {
     return `🗑 Campaign ${word.toUpperCase()} removed.`;
   }
 
+  // ---- Broadcast: owner sends a paid template message to past patients ----
+  // Uses the clinic_update MARKETING template (works outside the 24h window),
+  // skips STOP opt-outs, dedupes phones, excludes job applicants.
+  if (/^broadcast$/i.test(t)) {
+    if (!owner) return "🔒 Broadcast owner ki matrame.";
+    return "📣 *Broadcast — pata patients andariki offer pampadam*\n\nIla pampandi:\nbroadcast: Ee week Hydrafacial pai special offer! Slots limited 😍\n\n• Template message ga veltundi (24h window avasaram ledu)\n• STOP cheppina patients ki veladu\n• Approx ₹0.80 per message charge";
+  }
+  let bm;
+  if ((bm = t.match(/^broadcast\s*[:\-]\s*([\s\S]{10,550})$/i))) {
+    if (!owner) return "🔒 Broadcast owner ki matrame.";
+    if (!cfg) return "Storage ledu.";
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
+    const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
+    const optSet = new Set(opt.result || []);
+    const seen = new Set(); const targets = [];
+    for (const s of (r.result || [])) {
+      let l; try { l = JSON.parse(s); } catch (e) { continue; }
+      if (!l || l.type === "job") continue;
+      const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+      if (ph.length !== 10 || seen.has(ph) || optSet.has(ph)) continue;
+      seen.add(ph);
+      targets.push({ ph, name: String(l.name || "").trim().split(" ")[0] || "friend" });
+    }
+    if (!targets.length) return "Broadcast ki patients evaru leru inka — leads lo phone numbers unte veltundi.";
+    const msg = bm[1].trim();
+    await guard.kvCommand(cfg, ["SET", `adm:bc:${digits}`, JSON.stringify({ text: msg, targets }), "EX", "900"]);
+    return confirmable(`📣 *Broadcast preview* — *${targets.length}* patients ki veltundi:\n\n"Hi <name>! ✨ DermaLuxe by Medicare, Eluru nunchi update:\n\n${msg}\n\n📲 Appointment ki ee message ki reply cheyandi..."\n\n💰 Approx ₹${Math.ceil(targets.length * 0.8)} charge · STOP patients auto-skip\n\n✅ *ok* — pampu · ❌ *cancel*`);
+  }
+
   // review <10-digit> — sends the Google-review ask to a patient (post-visit).
   if ((km = t.match(/^review\s+(\d{10})$/i))) {
     if (!process.env.REVIEW_LINK) return "REVIEW_LINK inka set avvaledu — Google Business Profile verify ayyaka ee feature on chestam.";
@@ -795,17 +825,41 @@ async function handle(cfg, digits, text, photo, video) {
     }
   }
 
-  // ok / cancel — only meaningful when a post is pending
+  // ok / cancel — only meaningful when a post or a broadcast is pending
   if (/^(ok|yes|post)$/i.test(t) || /^(cancel|no|vaddu)$/i.test(t)) {
     if (!cfg) return null;
     const pRaw = await guard.kvCommand(cfg, ["GET", `adm:post:${digits}`]);
-    if (!pRaw.result) return null; // no pending → let the normal agent answer
-    if (/^(cancel|no|vaddu)$/i.test(t)) {
-      await guard.kvCommand(cfg, ["DEL", `adm:post:${digits}`]).catch(() => {});
-      return "❌ Post cancel chesanu.";
+    if (pRaw.result) {
+      if (/^(cancel|no|vaddu)$/i.test(t)) {
+        await guard.kvCommand(cfg, ["DEL", `adm:post:${digits}`]).catch(() => {});
+        return "❌ Post cancel chesanu.";
+      }
+      try { return await publishPending(cfg, digits); }
+      catch (e) { console.error("adm: publish", e.message); return "Publish error: " + e.message.slice(0, 120); }
     }
-    try { return await publishPending(cfg, digits); }
-    catch (e) { console.error("adm: publish", e.message); return "Publish error: " + e.message.slice(0, 120); }
+    const bRaw = await guard.kvCommand(cfg, ["GET", `adm:bc:${digits}`]).catch(() => ({}));
+    if (bRaw && bRaw.result) {
+      await guard.kvCommand(cfg, ["DEL", `adm:bc:${digits}`]).catch(() => {});
+      if (/^(cancel|no|vaddu)$/i.test(t)) return "❌ Broadcast cancel chesanu.";
+      const bc = JSON.parse(bRaw.result);
+      // First 80 go out right now (fits the 60s budget); the rest drain via
+      // cron-post at ~30 per 10-min run with a completion ping when done.
+      let sent = 0, fail = 0;
+      for (const tg of bc.targets.slice(0, 80)) {
+        const out = await notify.sendWaTemplate(tg.ph, "clinic_update", [tg.name, bc.text]);
+        if (out.ok) sent++; else fail++;
+      }
+      const rest = bc.targets.slice(80);
+      if (rest.length) {
+        for (const tg of rest) {
+          await guard.kvCommand(cfg, ["LPUSH", "bc:q", JSON.stringify({ ph: tg.ph, name: tg.name, text: bc.text })]).catch(() => {});
+        }
+        await guard.kvCommand(cfg, ["SET", "bc:meta", JSON.stringify({ total: rest.length, by: digits }), "EX", "86400"]).catch(() => {});
+        await guard.kvCommand(cfg, ["SET", "bc:done", "0", "EX", "86400"]).catch(() => {});
+      }
+      return `📣 *Broadcast:* ${sent} patients ki vellindi ✅${fail ? `\n⚠️ ${fail} fail (template approve avvakapothe anni fail avtayi — konchem agi malli try cheyandi)` : ""}${rest.length ? `\n⏳ ${rest.length} queue lo — 10-15 min lo veltayi, ayyaka cheptha` : ""}`;
+    }
+    return null; // nothing pending → normal agent
   }
 
   return null; // not an admin command → normal patient flow

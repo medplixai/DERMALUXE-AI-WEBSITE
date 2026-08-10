@@ -36,6 +36,42 @@ async function sendWa(digits, text) {
   }
 }
 
+// Template message send (works OUTSIDE the 24h window — reminders/broadcasts).
+// params = array of strings for {{1}}, {{2}}... in the template body.
+async function sendWaTemplate(digits, templateName, params, lang) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
+  const to = String(digits || "").replace(/\D/g, "").slice(-10);
+  if (!token || !phoneId || to.length !== 10 || !templateName) return { ok: false, msg: "bad args" };
+  try {
+    const payload = {
+      messaging_product: "whatsapp", to: `91${to}`, type: "template",
+      template: {
+        name: templateName,
+        language: { code: lang || "en" },
+        components: params && params.length ? [{
+          type: "body",
+          parameters: params.map((v) => ({ type: "text", text: String(v).slice(0, 500) })),
+        }] : [],
+      },
+    };
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(payload),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) {
+      console.error("notify: template send failed", to, r.status, JSON.stringify(d).slice(0, 250));
+      return { ok: false, msg: (d.error && d.error.message || "send fail").slice(0, 120) };
+    }
+    return { ok: true };
+  } catch (e) {
+    console.error("notify: template send error", to, e && e.message);
+    return { ok: false, msg: String(e && e.message).slice(0, 120) };
+  }
+}
+
 // Forward a received WhatsApp document (CV) to a team number by media id.
 async function sendWaDocument(digits, mediaId, filename, caption) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -119,4 +155,4 @@ async function leadAlert(cfg, lead) {
   for (const to of targets) await sendWa(to, body);
 }
 
-module.exports = { leadAlert, sendWa, sendWaDocument, sendWaLocation };
+module.exports = { leadAlert, sendWa, sendWaDocument, sendWaLocation, sendWaTemplate };

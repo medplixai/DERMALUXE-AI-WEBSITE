@@ -75,6 +75,35 @@ module.exports = async (req, res) => {
     }
   } catch (e) {}
 
+  // Today's appointments: 9AM same-day template reminder to each patient +
+  // the day's schedule in the team digest. Near ones (<3h) also get r2 marked
+  // so cron-post's 2h pass doesn't double-ping.
+  try {
+    const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+    const istDay = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
+    const today = istDay(now);
+    const todays = [];
+    for (const raw of (aq.result || [])) {
+      let a; try { a = JSON.parse(raw); } catch (e) { continue; }
+      if (!a || !a.at || !a.ph) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; }
+      if (a.at < now - 10800000) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; }
+      if (istDay(a.at) !== today) continue;
+      todays.push(a);
+      if (!a.r9 && a.at > now) {
+        await notify.sendWaTemplate(a.ph, "appointment_reminder", [a.name || "friend", admin.fmtIst(a.at)]).catch(() => {});
+        a.r9 = true;
+        if (a.at - now < 10800000) a.r2 = true;
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
+      }
+    }
+    if (todays.length) {
+      lines.push("", `🩺 Ivala appointments: *${todays.length}* (patients ki reminders vellayi)`);
+      todays.sort((x, y) => x.at - y.at).forEach((a) =>
+        lines.push(`— ${admin.fmtIst(a.at).split(", ")[1] || admin.fmtIst(a.at)} · ${a.name || "?"} 📱 ${a.ph}${a.concern ? " · " + a.concern : ""}`));
+    }
+  } catch (e) {}
+
   // Yesterday's smart-link clicks
   try {
     const y = new Date(now - 86400000).toISOString().slice(0, 10);

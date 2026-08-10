@@ -4,6 +4,7 @@
 // per run to stay inside the 60s budget.
 const guard = require("./_guard.js");
 const admin = require("./_admin.js");
+const notify = require("./_notify.js");
 
 async function notifyAdmin(digits, text) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -62,5 +63,53 @@ module.exports = async (req, res) => {
       await notifyAdmin(it.by, `❌ Scheduled ${it.vidId ? "reel" : "post"} fail ayindi (${admin.fmtIst(it.due)}): ${out.msg || "unknown"}. ${it.vidId ? "Video" : "Photo"} + 'post:' tho malli try cheyandi.`);
     }
   }
-  return res.status(200).json({ ok: true, published, kept, dropped });
+  // ---- Appointment reminders: ~2h-before nudge via template ---------------
+  // (Same-day 9AM reminder lives in cron-digest; if that one already covered
+  // a near appointment it sets r2 too, so patients never get double-pinged.)
+  let reminded = 0;
+  try {
+    const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+    for (const raw of (aq.result || [])) {
+      let a;
+      try { a = JSON.parse(raw); } catch (e) { a = null; }
+      if (!a || !a.at || !a.ph) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; }
+      if (a.at < now - 10800000) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; } // 3h past → done
+      const mins = (a.at - now) / 60000;
+      if (a.r2 || mins > 130 || mins < 15) continue; // <15 min = they just booked it, no point
+      const out = await notify.sendWaTemplate(a.ph, "appointment_reminder", [a.name || "friend", admin.fmtIst(a.at)]);
+      a.r2 = true; // one attempt only — never retry-spam a patient
+      await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+      await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
+      if (out.ok) reminded++;
+    }
+  } catch (e) { console.error("cron: appt reminders", e && e.message); }
+
+  // ---- Broadcast queue drain (owner 'broadcast:' overflow past 80) --------
+  let bsent = 0;
+  try {
+    let processed = 0;
+    for (let i = 0; i < 30; i++) {
+      const p = await guard.kvCommand(cfg, ["RPOP", "bc:q"]);
+      if (!p || !p.result) break;
+      let b;
+      try { b = JSON.parse(p.result); } catch (e) { continue; }
+      const out = await notify.sendWaTemplate(b.ph, "clinic_update", [b.name || "friend", b.text]);
+      if (out.ok) bsent++;
+      processed++;
+    }
+    if (processed) {
+      const done = await guard.kvCommand(cfg, ["INCRBY", "bc:done", String(processed)]).catch(() => ({}));
+      const m = await guard.kvCommand(cfg, ["GET", "bc:meta"]).catch(() => ({}));
+      if (m && m.result) {
+        const meta = JSON.parse(m.result);
+        if (Number(done.result || 0) >= meta.total) {
+          await notifyAdmin(meta.by, `📣 Broadcast complete — queue lo unna ${meta.total} kuda vellindi ✅`);
+          await guard.kvCommand(cfg, ["DEL", "bc:meta"]).catch(() => {});
+          await guard.kvCommand(cfg, ["DEL", "bc:done"]).catch(() => {});
+        }
+      }
+    }
+  } catch (e) { console.error("cron: broadcast drain", e && e.message); }
+
+  return res.status(200).json({ ok: true, published, kept, dropped, reminded, bsent });
 };

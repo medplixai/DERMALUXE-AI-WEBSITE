@@ -40,6 +40,7 @@ OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 or when booking info is ready:
 {"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","call_prep":"<2 short Tenglish lines for our team follow-up call: what the patient wants + one talking tip>"}}
 heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
+slot_ts: when the patient CONFIRMS a specific day + time, ALSO add "slot_ts":"YYYY-MM-DD HH:mm" (24-hour, IST) inside lead — compute the real calendar date from the current IST date/time given in context (e.g. if today is Sun Aug 10 2026 and they pick "Repu 6:30 PM" → "2026-08-11 18:30"). Omit until a specific time is fixed — our reminder system auto-messages the patient from this.
 Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, and "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
@@ -652,6 +653,24 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
       await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
     } catch (e) {}
   }
+  // Confirmed slot with a machine-readable time → appointment-reminder queue.
+  // cron-digest (9AM IST) sends the same-day template reminder, cron-post the
+  // ~2h-before nudge. Latest booking per patient wins (reschedules replace).
+  try {
+    const m = String(leadInfo.slot_ts || "").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
+    if (cfg && m) {
+      const at = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 330 * 60000; // IST wall time → epoch
+      if (at > Date.now() - 600000 && at - Date.now() < 60 * 86400000) {
+        const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+        for (const s of (q.result || [])) {
+          try { if (JSON.parse(s).ph === phone) await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]); } catch (e) {}
+        }
+        await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify({
+          ph: phone, name: lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 40),
+        })]);
+      }
+    }
+  } catch (e) {}
   await notify.leadAlert(cfg, lead);
 }
 
@@ -840,6 +859,19 @@ module.exports = async (req, res) => {
     return respond(admin.isAdmin(digits)
       ? "🎬 Reel post cheyali ante video tho paatu caption lo 'post: <idea>' ani pampandi (leda 'schedule: repu 6pm | <idea>')."
       : "Namaste! 🙏 Video ki analysis cheyalenu — text, voice note leda skin/hair photo pampandi. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే AI విశ్లేషణ ఇస్తాను.");
+  }
+
+  // Marketing opt-out/in: STOP blocks broadcast templates (the optout set);
+  // utility appointment reminders and normal chat keep working.
+  if (cfg && !imageId && !audioId) {
+    if (/^(stop|unsubscribe|opt\s*out)$/i.test(text.trim())) {
+      await guard.kvCommand(cfg, ["SADD", "optout", digits]).catch(() => {});
+      return respond("✅ Done — ika meeku offers/promotional messages pampamu. 🙏\nAppointments & skin/hair questions ki eppudaina message cheyochu!\n(Offers malli kavali ante *START* ani pampandi)");
+    }
+    if (/^(start|subscribe)$/i.test(text.trim())) {
+      await guard.kvCommand(cfg, ["SREM", "optout", digits]).catch(() => {});
+      return respond("💖 Welcome back! Offers & updates malli vastayi. 🙏");
+    }
   }
 
   // Layer 3: rate limits — per phone + global daily
