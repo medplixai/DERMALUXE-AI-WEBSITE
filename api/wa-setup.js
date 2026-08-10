@@ -5,6 +5,7 @@
 // Safe to re-run: Meta rejects duplicate names and we surface per-template
 // results instead of failing the whole call.
 const WABA = process.env.WA_WABA_ID || "872031789098601";
+const notify = require("./_notify.js");
 
 const TEMPLATES = [
   {
@@ -41,6 +42,19 @@ module.exports = async (req, res) => {
   }
   const token = process.env.WA_CLOUD_TOKEN;
   if (!token) return res.status(500).json({ error: "WA_CLOUD_TOKEN missing" });
+
+  // &action=test&to=<10 digits>[&name=..] — sample appointment_reminder send
+  // (verifies template approval + delivery end-to-end; team numbers only).
+  if (String((req.query && req.query.action) || "") === "test") {
+    const to = String((req.query && req.query.to) || "").replace(/\D/g, "").slice(-10);
+    if (to.length !== 10) return res.status(400).json({ error: "to=10 digits required" });
+    const name = String((req.query && req.query.name) || "Test").slice(0, 30);
+    const IST = 330 * 60000;
+    const d = new Date(Date.now() + 86400000 + IST); // sample slot: tomorrow ~11 AM
+    const mo = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
+    const out = await notify.sendWaTemplate(to, "appointment_reminder", [name, `${mo} ${d.getUTCDate()}, 11:00 AM`]);
+    return res.status(200).json({ to, sent: out.ok, msg: out.msg || "" });
+  }
 
   if (String((req.query && req.query.action) || "") === "create") {
     const out = [];
