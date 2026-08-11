@@ -41,6 +41,7 @@ or when booking info is ready:
 {"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","call_prep":"<2 short Tenglish lines for our team follow-up call: what the patient wants + one talking tip>"}}
 heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
 slot_ts: when the patient CONFIRMS a specific day + time, ALSO add "slot_ts":"YYYY-MM-DD HH:mm" (24-hour, IST) inside lead — compute the real calendar date from the current IST date/time given in context (e.g. if today is Sun Aug 10 2026 and they pick "Repu 6:30 PM" → "2026-08-11 18:30"). Omit until a specific time is fixed — our reminder system auto-messages the patient from this.
+cancel: if the patient wants to CANCEL their appointment (and is not picking a new time), add "cancel":true inside lead. For reschedule just output the new slot_ts — old booking auto-replace avutundi. The context shows this patient's upcoming appointment if any — confirm that time with them before cancelling, and be warm about rebooking later.
 Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, and "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
@@ -326,31 +327,62 @@ function nowIstCtx() {
   return `[Now: ${days[d.getUTCDay()]} ${d.getUTCDate()} ${mo[d.getUTCMonth()]}, ${h}:${min} ${ap} IST] `;
 }
 
-// Busy-slot context: times with APPT_PER_SLOT (default 2) confirmed bookings
-// are listed as FULL so the agent steers new patients to free times.
-async function bookedSlotsCtx(cfg) {
+function apptFmtIst(ms) {
+  const d = new Date(ms + 330 * 60000);
+  const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()];
+  let h = d.getUTCHours();
+  const mi = String(d.getUTCMinutes()).padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  h = h % 12 || 12;
+  return `${mo} ${d.getUTCDate()}, ${h}:${mi} ${ap}`;
+}
+
+// Appointment context (one KV read): the patient's own upcoming booking (so
+// the agent can answer/cancel/reschedule it) + times already at capacity
+// (APPT_PER_SLOT, default 2) listed as FULL so it never double-books.
+async function apptCtx(cfg, digits) {
   if (!cfg) return "";
   try {
     const r = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
     const per = Number(process.env.APPT_PER_SLOT || 2);
-    const now = Date.now(), IST = 330 * 60000, count = {};
+    const now = Date.now(), count = {};
+    let mine = 0;
     for (const s of (r.result || [])) {
       try {
         const a = JSON.parse(s);
-        if (!a.at || a.at < now || a.at - now > 7 * 86400000) continue;
-        const d = new Date(a.at + IST);
-        const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()];
-        let h = d.getUTCHours();
-        const mi = String(d.getUTCMinutes()).padStart(2, "0");
-        const ap = h >= 12 ? "PM" : "AM";
-        h = h % 12 || 12;
-        const key = `${mo} ${d.getUTCDate()} ${h}:${mi} ${ap}`;
+        if (!a.at) continue;
+        if (a.ph === digits && a.at > now - 3600000) mine = a.at;
+        if (a.at < now || a.at - now > 7 * 86400000) continue;
+        const key = apptFmtIst(a.at);
         count[key] = (count[key] || 0) + 1;
       } catch (e) {}
     }
     const full = Object.keys(count).filter((k) => count[k] >= per);
-    return full.length ? `[FULL slots — do not offer these times: ${full.join(", ")}] ` : "";
+    return (mine ? `[This patient's upcoming appointment: ${apptFmtIst(mine)}] ` : "")
+      + (full.length ? `[FULL slots — do not offer these times: ${full.join(", ")}] ` : "");
   } catch (e) { return ""; }
+}
+
+// Patient cancelled → drop queued reminders + tell the team so a human can
+// follow up (a win-back call beats a silent empty chair).
+async function cancelAppt(cfg, phone, name) {
+  if (!cfg) return;
+  let hadAt = 0;
+  try {
+    const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+    for (const s of (q.result || [])) {
+      try {
+        const a = JSON.parse(s);
+        if (a.ph === phone) { hadAt = a.at; await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]); }
+      } catch (e) {}
+    }
+  } catch (e) {}
+  if (!hadAt) return;
+  const team = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
+    .split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
+  for (const to of team) {
+    await notify.sendWa(to, `❌ *Appointment cancelled* — ${name || "patient"} (${phone})\nWas: ${apptFmtIst(hadAt)}\nCall chesi reason adigi, malli book cheyagalara 📞`).catch(() => {});
+  }
 }
 
 // Tap-to-select appointment slots (interactive list, up to 10 rows).
@@ -683,22 +715,36 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
   // Confirmed slot with a machine-readable time → appointment-reminder queue.
   // cron-digest (9AM IST) sends the same-day template reminder, cron-post the
   // ~2h-before nudge. Latest booking per patient wins (reschedules replace).
+  let bookedNow = 0;
   try {
     const m = String(leadInfo.slot_ts || "").match(/^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/);
     if (cfg && m) {
       const at = Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5]) - 330 * 60000; // IST wall time → epoch
       if (at > Date.now() - 600000 && at - Date.now() < 60 * 86400000) {
         const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+        let hadSame = false;
         for (const s of (q.result || [])) {
-          try { if (JSON.parse(s).ph === phone) await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]); } catch (e) {}
+          try {
+            const prev = JSON.parse(s);
+            if (prev.ph === phone) {
+              // Same slot re-confirmed mid-chat → keep the existing item so
+              // its r9/r2 reminder flags survive; changed slot → replace.
+              if (prev.at === at) { hadSame = true; continue; }
+              await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]);
+            }
+          } catch (e) {}
         }
-        await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify({
-          ph: phone, name: lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 40),
-        })]);
+        if (!hadSame) {
+          await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify({
+            ph: phone, name: lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 40),
+          })]);
+          bookedNow = at; // advance ask only on a NEW/changed slot
+        }
       }
     }
   } catch (e) {}
   await notify.leadAlert(cfg, lead);
+  return { bookedAt: bookedNow };
 }
 
 // Meta Cloud API: send a text reply via the Graph API.
@@ -938,7 +984,7 @@ module.exports = async (req, res) => {
   }
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;
-  const extraCtx = nowIstCtx() + (await bookedSlotsCtx(cfg)) + (profile && profile.name
+  const extraCtx = nowIstCtx() + (await apptCtx(cfg, digits)) + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
     : "");
 
@@ -985,8 +1031,16 @@ module.exports = async (req, res) => {
     return respond(FALLBACK_REPLY);
   }
 
+  let justBooked = 0;
   if (out.lead && out.lead.name) {
-    try { await storeLead(cfg, out.lead, digits, text); } catch (e) {}
+    try {
+      const st = await storeLead(cfg, out.lead, digits, text);
+      justBooked = (st && st.bookedAt) || 0;
+    } catch (e) {}
+  }
+  // Cancellation works even when the lead JSON came without a name.
+  if (out.lead && out.lead.cancel === true) {
+    try { await cancelAppt(cfg, digits, (out.lead && out.lead.name) || profileName || ""); } catch (e) {}
   }
   if (cfg) {
     hist.push({ u: text, a: out.reply });
@@ -1007,6 +1061,19 @@ module.exports = async (req, res) => {
     else if (Array.isArray(out.slots) && out.slots.length) await sendCloudSlotList(cloud.phoneNumberId, cloud.to, out.reply, out.slots);
     else if (Array.isArray(out.buttons) && out.buttons.length) await sendCloudDynButtons(cloud.phoneNumberId, cloud.to, out.reply, out.buttons);
     else await sendCloud(cloud.phoneNumberId, cloud.to, out.reply);
+    // Fresh booking + UPI configured → optional advance ask (cuts no-shows).
+    // Off until UPI_VPA env is set; amount via ADVANCE_AMOUNT (default 200).
+    if (justBooked && process.env.UPI_VPA && Number(process.env.ADVANCE_AMOUNT || 200) > 0) {
+      const amt = Number(process.env.ADVANCE_AMOUNT || 200);
+      const vpa = process.env.UPI_VPA.trim();
+      const payee = encodeURIComponent(process.env.UPI_PAYEE || "DermaLuxe by Medicare");
+      await sendCloud(cloud.phoneNumberId, cloud.to,
+        `💳 *Slot lock cheyalante (optional):*\n₹${amt} advance pay cheyochu — mee visit bill lo adjust avutundi 👍\n\n📲 UPI ID: *${vpa}*\n(GPay / PhonePe / Paytm)\nupi://pay?pa=${encodeURIComponent(vpa)}&pn=${payee}&am=${amt}&cu=INR&tn=DermaLuxe%20advance\n\nPay ayyaka *PAID* ani reply cheyandi ✅`);
+      if (cfg && hist.length) {
+        hist[hist.length - 1].a += "\n[Booking advance UPI request pampanu — patient PAID ante thank + team verify chestaru ani cheppu]";
+        await saveHistory(cfg, histKey, hist);
+      }
+    }
     // Map pin when the patient asked where we are (Claude flag or keyword).
     if (out.send_location === true || LOCATION_ASK.test(text)) {
       await sendCloudLocation(cloud.phoneNumberId, cloud.to);

@@ -458,7 +458,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• review <phone> — patient ki Google review ask",
       "• unschedule <n> — scheduled post remove"];
     if (owner) lines.push(
-      "• broadcast: <offer> — patients andariki template msg (paid)",
+      "• broadcast: <offer> — andariki · broadcast hair: — segment ki (paid)",
       "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
     lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
     const menuRows = ["appointments", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
@@ -802,12 +802,15 @@ async function handle(cfg, digits, text, photo, video) {
   // skips STOP opt-outs, dedupes phones, excludes job applicants.
   if (/^broadcast$/i.test(t)) {
     if (!owner) return "🔒 Broadcast owner ki matrame.";
-    return "📣 *Broadcast — pata patients andariki offer pampadam*\n\nIla pampandi:\nbroadcast: Ee week Hydrafacial pai special offer! Slots limited 😍\n\n• Template message ga veltundi (24h window avasaram ledu)\n• STOP cheppina patients ki veladu\n• Approx ₹0.80 per message charge";
+    return "📣 *Broadcast — pata patients ki offer pampadam*\n\nAndariki:\nbroadcast: Ee week Hydrafacial pai special offer! 😍\n\nOka segment ki matrame:\nbroadcast hair: Hair transplant free consultation ee week!\n(hair / skin / laser / acne / bridal — concern match ayina vallake)\n\n• Template message ga veltundi (24h window avasaram ledu)\n• STOP cheppina patients ki veladu\n• Approx ₹0.80 per message charge";
   }
+  // broadcast: <offer>  — everyone;  broadcast hair: <offer> — only leads
+  // whose concern/treatments mention that word (waste spend down, relevance up)
   let bm;
-  if ((bm = t.match(/^broadcast\s*[:\-]\s*([\s\S]{10,550})$/i))) {
+  if ((bm = t.match(/^broadcast(?:\s+([a-z]{3,20}))?\s*[:\-]\s*([\s\S]{10,550})$/i))) {
     if (!owner) return "🔒 Broadcast owner ki matrame.";
     if (!cfg) return "Storage ledu.";
+    const seg = (bm[1] || "").toLowerCase();
     const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
     const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
     const optSet = new Set(opt.result || []);
@@ -815,15 +818,23 @@ async function handle(cfg, digits, text, photo, video) {
     for (const s of (r.result || [])) {
       let l; try { l = JSON.parse(s); } catch (e) { continue; }
       if (!l || l.type === "job") continue;
+      if (seg) {
+        const hay = (String(l.concern || "") + " " + (Array.isArray(l.treatments) ? l.treatments.join(" ") : "")).toLowerCase();
+        if (hay.indexOf(seg) === -1) continue;
+      }
       const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
       if (ph.length !== 10 || seen.has(ph) || optSet.has(ph)) continue;
       seen.add(ph);
       targets.push({ ph, name: String(l.name || "").trim().split(" ")[0] || "friend" });
     }
-    if (!targets.length) return "Broadcast ki patients evaru leru inka — leads lo phone numbers unte veltundi.";
-    const msg = bm[1].trim();
-    await guard.kvCommand(cfg, ["SET", `adm:bc:${digits}`, JSON.stringify({ text: msg, targets }), "EX", "900"]);
-    return confirmable(`📣 *Broadcast preview* — *${targets.length}* patients ki veltundi:\n\n"Hi <name>! ✨ DermaLuxe by Medicare, Eluru nunchi update:\n\n${msg}\n\n📲 Appointment ki ee message ki reply cheyandi..."\n\n💰 Approx ₹${Math.ceil(targets.length * 0.8)} charge · STOP patients auto-skip\n\n✅ *ok* — pampu · ❌ *cancel*`);
+    if (!targets.length) {
+      return seg
+        ? `'${seg}' concern tho patients evaru dorakaledu.\nTry: broadcast hair: / broadcast skin: / broadcast laser: — leda andariki: broadcast: <offer>`
+        : "Broadcast ki patients evaru leru inka — leads lo phone numbers unte veltundi.";
+    }
+    const msg = bm[2].trim();
+    await guard.kvCommand(cfg, ["SET", `adm:bc:${digits}`, JSON.stringify({ text: msg, targets, seg }), "EX", "900"]);
+    return confirmable(`📣 *Broadcast preview* — *${targets.length}*${seg ? ` '${seg}'` : ""} patients ki veltundi:\n\n"Hi <name>! ✨ DermaLuxe by Medicare, Eluru nunchi update:\n\n${msg}\n\n📲 Appointment ki ee message ki reply cheyandi..."\n\n💰 Approx ₹${Math.ceil(targets.length * 0.8)} charge · STOP patients auto-skip\n\n✅ *ok* — pampu · ❌ *cancel*`);
   }
 
   // ---- Reactivate: one paid follow-up to 3-10 day old silent leads --------
