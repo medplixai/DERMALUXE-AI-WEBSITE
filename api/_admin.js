@@ -151,6 +151,46 @@ function parseWhen(s) {
   } else if (t.getTime() <= nowIst.getTime()) t.setUTCDate(t.getUTCDate() + 1);
   return t.getTime() - IST_MS;
 }
+// "7d" / "2w" / "1m" (rojulu/varalu/nelalu) → 10:00 AM IST that day; falls
+// back to parseWhen for exact "repu 11am" style inputs.
+function parseDue(s) {
+  const t = String(s || "").trim().toLowerCase();
+  let m, days = null;
+  if ((m = t.match(/^(\d{1,3})\s*(d|days?|rojulu)$/))) days = +m[1];
+  else if ((m = t.match(/^(\d{1,2})\s*(w|weeks?|varalu)$/))) days = +m[1] * 7;
+  else if ((m = t.match(/^(\d{1,2})\s*(m|months?|nelalu)$/))) days = +m[1] * 30;
+  if (days !== null) {
+    const d = new Date(Date.now() + IST_MS);
+    d.setUTCDate(d.getUTCDate() + days);
+    d.setUTCHours(10, 0, 0, 0);
+    return d.getTime() - IST_MS;
+  }
+  return parseWhen(s);
+}
+
+// Patient name lookup across the booking queues and the lead list.
+async function findPatientName(cfg, ph) {
+  if (!cfg) return "";
+  for (const key of ["appt:q", "appt:done"]) {
+    try {
+      const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]);
+      for (const s of (q.result || [])) {
+        try { const a = JSON.parse(s); if (a.ph === ph && a.name) return a.name; } catch (e) {}
+      }
+    } catch (e) {}
+  }
+  try {
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
+    for (const s of (r.result || [])) {
+      try {
+        const l = JSON.parse(s);
+        if (String(l.phone || "").replace(/\D/g, "").slice(-10) === ph && l.name) return l.name;
+      } catch (e) {}
+    }
+  } catch (e) {}
+  return "";
+}
+
 function fmtIst(ms) {
   const d = new Date(ms + IST_MS);
   const mo = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
@@ -454,6 +494,8 @@ async function handle(cfg, digits, text, photo, video) {
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
       "• weekplan — week antha posts okesari plan (photos → done)",
       "• appointments — booking book · noshow <phone> = rebook nudge",
+      "• followup <phone> Hydrafacial — results check msg",
+      "• checkup <phone> 7d — review reminder · session <phone> 30d | PRP",
       "• campaign: GLOW | <offer reply> — keyword campaign",
       "• review <phone> — patient ki Google review ask",
       "• unschedule <n> — scheduled post remove"];
@@ -461,8 +503,8 @@ async function handle(cfg, digits, text, photo, video) {
       "• broadcast: <offer> — andariki · broadcast hair: — segment ki (paid)",
       "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
     lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
-    const menuRows = ["appointments", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
-    if (owner) menuRows.splice(3, 0, "marketing report");
+    const menuRows = ["appointments", "checkups", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
+    if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
   }
 
@@ -624,6 +666,73 @@ async function handle(cfg, digits, text, photo, video) {
       [first || "friend", "Ivala mee appointment miss ayinattu undi — malli book cheyala? Mee convenient time reply cheyandi, slot fix chestam 😊"]);
     return out.ok ? `✅ Rebook nudge ${ph} ki vellindi (template).`
       : `❌ Deliver avvaledu: ${out.msg || "window closed + template fail"}`;
+  }
+
+  // followup <phone> [service] — "results ela unnayi?" check, sent right now
+  if ((um = t.match(/^follow\s*up\s+(\d{10})(?:\s+(.+))?$/i))) {
+    const ph = um[1];
+    const svc = (um[2] || "").trim().slice(0, 50) || "treatment";
+    const name = String(await findPatientName(cfg, ph)).split(" ")[0] || "friend";
+    const out = await notify.sendWaTemplate(ph, "service_followup", [name, svc]);
+    return out.ok ? `✅ Service follow-up ${ph} ki vellindi (${svc}).`
+      : `❌ Vellaledu: ${out.msg || "template inka approve avvakapovachu — konchem agi malli try cheyandi"}`;
+  }
+
+  // checkups — scheduled review/session reminders list
+  if (/^checkups$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const q = await guard.kvCommand(cfg, ["LRANGE", "chk:q", "0", "199"]);
+    const items = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } })
+      .filter(Boolean).sort((a, b) => a.due - b.due);
+    if (!items.length) return "🔁 Scheduled reminders em levu.\n\ncheckup <phone> 7d — review-visit reminder\nsession <phone> 30d | PRP — next-session reminder";
+    const lines = [`🔁 *Scheduled reminders (${items.length}):*`];
+    items.slice(0, 15).forEach((c) => lines.push(
+      `— ${fmtIst(c.due)} ${c.kind === "session" ? "💆" : "🩺"} ${c.name || "?"} 📱 ${c.ph}${c.note ? " · " + c.note : ""}`));
+    lines.push("", "Remove: checkup remove <phone>");
+    return lines.join("\n");
+  }
+  if ((um = t.match(/^check\s*up\s+(?:remove|cancel)\s+(\d{10})$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const q = await guard.kvCommand(cfg, ["LRANGE", "chk:q", "0", "199"]);
+    let n = 0;
+    for (const s of (q.result || [])) {
+      try { if (JSON.parse(s).ph === um[1]) { await guard.kvCommand(cfg, ["LREM", "chk:q", "1", s]); n++; } } catch (e) {}
+    }
+    return n ? `🗑 ${um[1]} ki scheduled reminders (${n}) remove chesanu.` : `${um[1]} ki scheduled reminders em levu.`;
+  }
+
+  // checkup <phone> <when> [| note] — review-visit reminder that morning
+  if ((um = t.match(/^check\s*up\s+(\d{10})\s+([^|]+?)(?:\s*\|\s*(.+))?$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const ph = um[1];
+    const due = parseDue(um[2]);
+    if (!due) return "Time ardham kaledu 🙏 — ila pampandi:\ncheckup " + ph + " 7d\n(2w, 1m, repu 11am, 15-08 10:30am kuda ok)";
+    const name = await findPatientName(cfg, ph);
+    const q = await guard.kvCommand(cfg, ["LRANGE", "chk:q", "0", "199"]);
+    for (const s of (q.result || [])) {
+      try { const c = JSON.parse(s); if (c.ph === ph && c.kind === "review") await guard.kvCommand(cfg, ["LREM", "chk:q", "1", s]); } catch (e) {}
+    }
+    await guard.kvCommand(cfg, ["LPUSH", "chk:q", JSON.stringify({ ph, name, due, kind: "review", note: (um[3] || "").trim().slice(0, 60) })]);
+    return `🩺 Review reminder fix ayindi — ${name || ph}\n📅 ${fmtIst(due)} (aa roju udayam patient ki auto message veltundi)\nList: *checkups*`;
+  }
+
+  // session <phone> <when> | <treatment> — next-session reminder that morning
+  if ((um = t.match(/^session\s+(\d{10})\s+([^|]+?)\s*\|\s*(.+)$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const ph = um[1];
+    const due = parseDue(um[2]);
+    if (!due) return "Time ardham kaledu 🙏 — ila pampandi:\nsession " + ph + " 30d | PRP";
+    const treat = um[3].trim().slice(0, 60);
+    const name = await findPatientName(cfg, ph);
+    const q = await guard.kvCommand(cfg, ["LRANGE", "chk:q", "0", "199"]);
+    for (const s of (q.result || [])) {
+      try { const c = JSON.parse(s); if (c.ph === ph && c.kind === "session") await guard.kvCommand(cfg, ["LREM", "chk:q", "1", s]); } catch (e) {}
+    }
+    await guard.kvCommand(cfg, ["LPUSH", "chk:q", JSON.stringify({ ph, name, due, kind: "session", note: treat })]);
+    return `💆 Session reminder fix ayindi — ${name || ph} (${treat})\n📅 ${fmtIst(due)} (aa roju udayam patient ki auto message veltundi)\nList: *checkups*`;
+  }
+  if (/^session\s+\d{10}\s*$/i.test(t)) {
+    return "Treatment kuda cheppandi 🙏:\nsession <phone> 30d | PRP\n(30d = 30 rojula tarvata reminder)";
   }
 
   // ---- Week plan: batch-collect posts, auto-schedule across the week -------
@@ -859,7 +968,7 @@ async function handle(cfg, digits, text, photo, video) {
       const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
       if (ph.length !== 10 || seen.has(ph) || optSet.has(ph) || booked.has(ph)) continue;
       seen.add(ph);
-      targets.push({ ph, name: String(l.name || "").trim().split(" ")[0] || "friend", concern: String(l.concern || "").slice(0, 50) });
+      targets.push({ ph, name: String(l.name || "").trim().split(" ")[0] || "friend", concern: String(l.concern || "").slice(0, 50), src: l.type || "" });
     }
     if (!targets.length) return "🧊 Cold leads (3-10 rojulu, book cheyani) evaru leru — good sign! 👍";
     await guard.kvCommand(cfg, ["SET", `adm:rc:${digits}`, JSON.stringify({ targets }), "EX", "900"]);
@@ -945,7 +1054,11 @@ async function handle(cfg, digits, text, photo, video) {
         const line = tg.concern
           ? `Meeru '${tg.concern}' gurinchi adigaru kada — inka interest unte ee week doctor slots available unnayi. Book cheyalante mee convenient time reply cheyandi 😊`
           : `Meeru mana treatments gurinchi adigaru kada — ee week doctor slots available unnayi. Book cheyalante mee convenient time reply cheyandi 😊`;
-        const out = await notify.sendWaTemplate(tg.ph, "clinic_update", [tg.name, line]);
+        // Instagram-origin leads get the insta-flavored template (falls back
+        // to the generic one if that template isn't approved yet).
+        const tpl = tg.src === "instagram" ? "insta_lead_followup" : "clinic_update";
+        let out = await notify.sendWaTemplate(tg.ph, tpl, [tg.name, line]);
+        if (!out.ok && tpl !== "clinic_update") out = await notify.sendWaTemplate(tg.ph, "clinic_update", [tg.name, line]);
         if (out.ok) sent++; else fail++;
       }
       return `🧊 *Reactivation:* ${sent} leads ki vellindi ✅${fail ? ` · ${fail} fail` : ""}\nEvaraina reply istey ventane lead alert vastundi 🔥`;

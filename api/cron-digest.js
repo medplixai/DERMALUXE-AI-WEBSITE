@@ -121,6 +121,28 @@ module.exports = async (req, res) => {
     if (parts.length) lines.push("", `🔗 Ninna link clicks: ${parts.join(", ")}`);
   } catch (e) {}
 
+  // Team-scheduled review/session reminders due today (checkup/session cmds)
+  try {
+    const cq = await guard.kvCommand(cfg, ["LRANGE", "chk:q", "0", "199"]);
+    const istDay = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
+    const today = istDay(now);
+    let rem = 0;
+    for (const raw of (cq.result || [])) {
+      let c; try { c = JSON.parse(raw); } catch (e) { c = null; }
+      if (!c || !c.ph || !c.due) { await guard.kvCommand(cfg, ["LREM", "chk:q", "1", raw]).catch(() => {}); continue; }
+      if (istDay(c.due) > today) continue; // future — leave queued
+      const first = String(c.name || "").split(" ")[0] || "friend";
+      if (c.kind === "session") {
+        await notify.sendWaTemplate(c.ph, "session_reminder", [first, String(c.note || "treatment").slice(0, 60)]).catch(() => {});
+      } else {
+        await notify.sendWaTemplate(c.ph, "review_reminder", [first, String(c.note || "Doctor suggest chesina review checkup").slice(0, 80)]).catch(() => {});
+      }
+      await guard.kvCommand(cfg, ["LREM", "chk:q", "1", raw]).catch(() => {});
+      rem++;
+    }
+    if (rem) lines.push("", `🔁 Review/session reminders vellayi: *${rem}*`);
+  } catch (e) {}
+
   // Cold leads nudge (Mon & Thu only, 3+ needed): owner fires 'reactivate'
   try {
     const istD = new Date(now + 330 * 60000).getUTCDay();

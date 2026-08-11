@@ -45,6 +45,55 @@ const TEMPLATES = [
       },
     ],
   },
+  {
+    name: "service_followup",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🙏 Mee {{2}} tarvata results ela unnayi?\n\nEmaina doubts leda skin/hair care questions unte ee message ki reply cheyandi — free ga guide chestam 💖\n\n— DermaLuxe by Medicare, Eluru",
+        example: { body_text: [["Priya", "Hydrafacial treatment"]] },
+      },
+    ],
+  },
+  {
+    name: "review_reminder",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🩺 {{2}} time vachindi.\n\nSlot book cheyalante ee message ki reply cheyandi — mee convenient time fix chestam 🙏\n\n— DermaLuxe by Medicare, Eluru",
+        example: { body_text: [["Priya", "Doctor suggest chesina review checkup"]] },
+      },
+    ],
+  },
+  {
+    name: "session_reminder",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! ✨ Mee {{2}} next session due date vachindi.\n\nBest results ki sessions time ki complete cheyadam chala important 🙏 Slot book cheyalante ee message ki reply cheyandi.\n\n— DermaLuxe by Medicare, Eluru",
+        example: { body_text: [["Priya", "PRP hair treatment"]] },
+      },
+    ],
+  },
+  {
+    name: "insta_lead_followup",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 📸 Instagram lo DermaLuxe ni contact chesaru kada — {{2}}\n\nIkkada WhatsApp lo direct ga adagochu — appointments, details, anni 😊\n\n— DermaLuxe by Medicare, Eluru",
+        example: { body_text: [["Priya", "Meeru 'laser hair removal' gurinchi adigaru — ee week doctor slots available unnayi!"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
 ];
 
 module.exports = async (req, res) => {
