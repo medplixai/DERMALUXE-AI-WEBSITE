@@ -419,6 +419,59 @@ async function publishPending(cfg, digits) {
 }
 
 // Main entry — returns reply text, or null when the message is not an admin command.
+// ---- Promo-broadcast toolkit ----------------------------------------------
+// Ready-made MARKETING templates the owner fires with one command; render()
+// mirrors each template body for the preview bubble, promoParams() builds the
+// {{n}} params for the actual send (shared with cron-post's bc:q drain).
+const PROMO_DEFS = {
+  festival_offer: {
+    usage: "festival: Diwali | Festival Glow Package — Hydrafacial pai 20% off!",
+    render: (text, p2) => `Hi <name>! 🪔 *${p2} Subhakankshalu* from DermaLuxe! ✨\n\n${text}\n\n📲 Book cheyalante ee message ki reply cheyandi, leda call: 099591 34666\n📍 Rama Mahal, Kasturi Vari Street, Eluru`,
+  },
+  flash_offer: {
+    usage: "flash: Laser package pai 25% off | Ee Sunday",
+    render: (text, p2) => `Hi <name>! ⚡ *DermaLuxe Flash Offer:*\n\n${text}\n\n⏰ ${p2} varaku matrame — slots limited!\n📲 Book cheyalante ee message ki reply cheyandi 🏃‍♀️`,
+  },
+  new_service: {
+    usage: "launch: HydraFacial Platinum | Launch offer: first 20 bookings ki 30% off!",
+    render: (text, p2) => `Hi <name>! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *${p2}*\n${text}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: 099591 34666`,
+  },
+  free_camp: {
+    usage: "camp: Ee Sunday udayam 10 – sayantram 5. Doctor consultation FREE!",
+    render: (text) => `Hi <name>! 🩺 *FREE Skin & Hair Check-up Camp* — DermaLuxe lo!\n\n${text}\n\n🎟 Slots limited — mee slot book cheyalante ee message ki reply cheyandi!\n📍 Rama Mahal, Kasturi Vari Street, Eluru`,
+  },
+};
+
+function promoParams(tpl, name, text, p2) {
+  if (tpl === "festival_offer") return [name, p2 || "Panduga", text];
+  if (tpl === "flash_offer") return [name, text, p2 || "ee week"];
+  if (tpl === "new_service") return [name, p2 || "Kotha service", text];
+  if (tpl === "free_camp") return [name, text];
+  return [name, text]; // clinic_update
+}
+
+// Distinct opted-in patient phones from the lead book (job applicants out,
+// optional concern/treatments segment filter).
+async function bcTargets(cfg, seg) {
+  const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
+  const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
+  const optSet = new Set(opt.result || []);
+  const seen = new Set(); const targets = [];
+  for (const s of (r.result || [])) {
+    let l; try { l = JSON.parse(s); } catch (e) { continue; }
+    if (!l || l.type === "job") continue;
+    if (seg) {
+      const hay = (String(l.concern || "") + " " + (Array.isArray(l.treatments) ? l.treatments.join(" ") : "")).toLowerCase();
+      if (hay.indexOf(seg) === -1) continue;
+    }
+    const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+    if (ph.length !== 10 || seen.has(ph) || optSet.has(ph)) continue;
+    seen.add(ph);
+    targets.push({ ph, name: String(l.name || "").trim().split(" ")[0] || "friend" });
+  }
+  return targets;
+}
+
 async function handle(cfg, digits, text, photo, video) {
   const who = adminRole(digits);
   if (!who) return null;
@@ -501,6 +554,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• unschedule <n> — scheduled post remove"];
     if (owner) lines.push(
       "• broadcast: <offer> — andariki · broadcast hair: — segment ki (paid)",
+      "• festival:/flash:/launch:/camp: — ready promo designs (paid)",
       "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
     lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
     const menuRows = ["appointments", "checkups", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
@@ -920,22 +974,7 @@ async function handle(cfg, digits, text, photo, video) {
     if (!owner) return "🔒 Broadcast owner ki matrame.";
     if (!cfg) return "Storage ledu.";
     const seg = (bm[1] || "").toLowerCase();
-    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
-    const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
-    const optSet = new Set(opt.result || []);
-    const seen = new Set(); const targets = [];
-    for (const s of (r.result || [])) {
-      let l; try { l = JSON.parse(s); } catch (e) { continue; }
-      if (!l || l.type === "job") continue;
-      if (seg) {
-        const hay = (String(l.concern || "") + " " + (Array.isArray(l.treatments) ? l.treatments.join(" ") : "")).toLowerCase();
-        if (hay.indexOf(seg) === -1) continue;
-      }
-      const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
-      if (ph.length !== 10 || seen.has(ph) || optSet.has(ph)) continue;
-      seen.add(ph);
-      targets.push({ ph, name: String(l.name || "").trim().split(" ")[0] || "friend" });
-    }
+    const targets = await bcTargets(cfg, seg);
     if (!targets.length) {
       return seg
         ? `'${seg}' concern tho patients evaru dorakaledu.\nTry: broadcast hair: / broadcast skin: / broadcast laser: — leda andariki: broadcast: <offer>`
@@ -944,6 +983,44 @@ async function handle(cfg, digits, text, photo, video) {
     const msg = bm[2].trim();
     await guard.kvCommand(cfg, ["SET", `adm:bc:${digits}`, JSON.stringify({ text: msg, targets, seg }), "EX", "900"]);
     return confirmable(`📣 *Broadcast preview* — *${targets.length}*${seg ? ` '${seg}'` : ""} patients ki veltundi:\n\n"Hi <name>! ✨ DermaLuxe by Medicare, Eluru nunchi update:\n\n${msg}\n\n📲 Appointment ki ee message ki reply cheyandi..."\n\n💰 Approx ₹${Math.ceil(targets.length * 0.8)} charge · STOP patients auto-skip\n\n✅ *ok* — pampu · ❌ *cancel*`);
+  }
+
+  // ---- Ready-made promo broadcasts (owner): festival/flash/launch/camp ----
+  // Same preview→ok flow as broadcast, but a dedicated MARKETING template
+  // carries the design — the owner only types the offer.
+  if (/^(festival|flash|launch|camp)$/i.test(t)) {
+    if (!owner) return "🔒 Promo broadcasts owner ki matrame.";
+    return "🎁 *Promo broadcasts — ready-made designs:*\n\n🪔 " + PROMO_DEFS.festival_offer.usage
+      + "\n\n⚡ " + PROMO_DEFS.flash_offer.usage
+      + "\n\n🎉 " + PROMO_DEFS.new_service.usage
+      + "\n\n🩺 " + PROMO_DEFS.free_camp.usage
+      + "\n\nPreview vachaka *ok* antene veltundi · STOP patients auto-skip";
+  }
+  const mkPromo = async (tpl, promoText, p2) => {
+    if (!owner) return "🔒 Promo broadcasts owner ki matrame.";
+    if (!cfg) return "Storage ledu.";
+    const targets = await bcTargets(cfg, "");
+    if (!targets.length) return "Patients evaru leru inka — leads lo phone numbers unte veltundi.";
+    await guard.kvCommand(cfg, ["SET", `adm:bc:${digits}`, JSON.stringify({ text: promoText, targets, tpl, p2 }), "EX", "900"]);
+    return confirmable(`📣 *Promo preview* — *${targets.length}* patients ki veltundi:\n\n"${PROMO_DEFS[tpl].render(promoText, p2)}"\n\n💰 Approx ₹${Math.ceil(targets.length * 0.8)} · STOP patients auto-skip\n\n✅ *ok* — pampu · ❌ *cancel*`);
+  };
+  let pm;
+  if ((pm = t.match(/^festival\s*[:\-]\s*([^|]{2,40})\|\s*([\s\S]{10,500})$/i))) {
+    return mkPromo("festival_offer", pm[2].trim(), pm[1].trim());
+  }
+  if ((pm = t.match(/^flash\s*[:\-]\s*([\s\S]{10,500}?)\|\s*([^|]{2,60})$/i))) {
+    return mkPromo("flash_offer", pm[1].trim(), pm[2].trim());
+  }
+  if ((pm = t.match(/^launch\s*[:\-]\s*([^|]{2,60})\|\s*([\s\S]{5,500})$/i))) {
+    return mkPromo("new_service", pm[2].trim(), pm[1].trim());
+  }
+  if ((pm = t.match(/^camp\s*[:\-]\s*([\s\S]{10,500})$/i))) {
+    return mkPromo("free_camp", pm[1].trim(), "");
+  }
+  if (/^(festival|flash|launch)\s*[:\-]/i.test(t)) {
+    const which = t.match(/^(festival|flash|launch)/i)[1].toLowerCase();
+    const key = which === "festival" ? "festival_offer" : which === "flash" ? "flash_offer" : "new_service";
+    return `Format konchem alaga undali 🙏 — '|' tho rendu parts:\n\n${PROMO_DEFS[key].usage}`;
   }
 
   // ---- Reactivate: one paid follow-up to 3-10 day old silent leads --------
@@ -1030,14 +1107,15 @@ async function handle(cfg, digits, text, photo, video) {
       // First 80 go out right now (fits the 60s budget); the rest drain via
       // cron-post at ~30 per 10-min run with a completion ping when done.
       let sent = 0, fail = 0;
+      const bcTpl = bc.tpl || "clinic_update";
       for (const tg of bc.targets.slice(0, 80)) {
-        const out = await notify.sendWaTemplate(tg.ph, "clinic_update", [tg.name, bc.text]);
+        const out = await notify.sendWaTemplate(tg.ph, bcTpl, promoParams(bcTpl, tg.name, bc.text, bc.p2));
         if (out.ok) sent++; else fail++;
       }
       const rest = bc.targets.slice(80);
       if (rest.length) {
         for (const tg of rest) {
-          await guard.kvCommand(cfg, ["LPUSH", "bc:q", JSON.stringify({ ph: tg.ph, name: tg.name, text: bc.text })]).catch(() => {});
+          await guard.kvCommand(cfg, ["LPUSH", "bc:q", JSON.stringify({ ph: tg.ph, name: tg.name, text: bc.text, tpl: bc.tpl, p2: bc.p2 })]).catch(() => {});
         }
         await guard.kvCommand(cfg, ["SET", "bc:meta", JSON.stringify({ total: rest.length, by: digits }), "EX", "86400"]).catch(() => {});
         await guard.kvCommand(cfg, ["SET", "bc:done", "0", "EX", "86400"]).catch(() => {});
@@ -1069,4 +1147,4 @@ async function handle(cfg, digits, text, photo, video) {
   return null; // not an admin command → normal patient flow
 }
 
-module.exports = { isAdmin, handle, publishNow, fmtIst };
+module.exports = { isAdmin, handle, publishNow, fmtIst, promoParams };

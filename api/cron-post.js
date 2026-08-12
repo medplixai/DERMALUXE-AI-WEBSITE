@@ -108,7 +108,8 @@ module.exports = async (req, res) => {
       if (!p || !p.result) break;
       let b;
       try { b = JSON.parse(p.result); } catch (e) { continue; }
-      const out = await notify.sendWaTemplate(b.ph, "clinic_update", [b.name || "friend", b.text]);
+      const btpl = b.tpl || "clinic_update";
+      const out = await notify.sendWaTemplate(b.ph, btpl, admin.promoParams(btpl, b.name || "friend", b.text, b.p2));
       if (out.ok) bsent++;
       processed++;
     }

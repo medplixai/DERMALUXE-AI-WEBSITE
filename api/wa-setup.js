@@ -94,6 +94,58 @@ const TEMPLATES = [
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
     ],
   },
+  {
+    name: "festival_offer",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🪔 *{{2}} Subhakankshalu* from DermaLuxe! ✨\n\n{{3}}\n\n📲 Book cheyalante ee message ki reply cheyandi, leda call: 099591 34666\n📍 Rama Mahal, Kasturi Vari Street, Eluru",
+        example: { body_text: [["Priya", "Diwali", "Festival Glow Package — Hydrafacial pai 20% off, ee week matrame!"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
+  {
+    name: "flash_offer",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! ⚡ *DermaLuxe Flash Offer:*\n\n{{2}}\n\n⏰ {{3}} varaku matrame — slots limited!\n📲 Book cheyalante ee message ki reply cheyandi 🏃‍♀️",
+        example: { body_text: [["Priya", "Laser hair removal package pai 25% off", "Ee Sunday (Aug 17)"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
+  {
+    name: "new_service",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *{{2}}*\n{{3}}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: 099591 34666",
+        example: { body_text: [["Priya", "HydraFacial Platinum", "Launch offer: first 20 bookings ki 30% off + free skin analysis!"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
+  {
+    name: "free_camp",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🩺 *FREE Skin & Hair Check-up Camp* — DermaLuxe lo!\n\n{{2}}\n\n🎟 Slots limited — mee slot book cheyalante ee message ki reply cheyandi!\n📍 Rama Mahal, Kasturi Vari Street, Eluru",
+        example: { body_text: [["Priya", "Ee Sunday (Aug 17) udayam 10 – sayantram 5. Doctor consultation kuda FREE!"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
 ];
 
 module.exports = async (req, res) => {
