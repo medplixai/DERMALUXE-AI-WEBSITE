@@ -134,6 +134,68 @@ const TEMPLATES = [
     ],
   },
   {
+    name: "preop_instructions",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🙏 Mee *{{2}}* ki prepare avvadaniki konni simple instructions:\n\n• Mundu roju baga nidra povadam chala important 😴\n• 24 gantalu munde alcohol & smoking avoid cheyandi\n• Procedure roju udayam light food teeskondi (doctor fasting cheppithe adhe follow avvandi)\n• Comfortable, front-open dress vesukoni randi\n• Mundu roju head/skin clean ga wash cheyandi\n• Doctor prescribe chesina medicines regular ga continue cheyandi\n\n⚠️ Doctor personal ga cheppina instructions ivi kanna final. Emaina doubts unte ee message ki reply cheyandi 💖",
+        example: { body_text: [["Priya", "FUE Hair Transplant (Aug 20, udayam 9 AM)"]] },
+      },
+    ],
+  },
+  {
+    name: "aftercare_instructions",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 💖 Mee *{{2}}* successful ga complete ayindi — congratulations!\n\nIppudu care ila teeskondi:\n• Treated area ni cheyyi tho touch/rub cheyakandi\n• Direct sunlight avoid cheyandi — bayataki velithe protection tho\n• Konni rojulu heavy exercise, swimming, steam avoid\n• Doctor iccina medicines/creams full course complete cheyandi\n• Baga nidra + neellu ekkuva tagadam results ki help avutundi 💧\n\n⚠️ Ekkuva pain, swelling leda emaina worry anipisthe ventane call cheyandi: 099591 34666\nDoubts unte ee message ki reply cheyandi 🙏",
+        example: { body_text: [["Priya", "Hydrafacial treatment"]] },
+      },
+    ],
+  },
+  {
+    name: "payment_confirmed",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! ✅ Mee *₹{{2}}* advance receive ayindi — thank you! 🙏\n\n📅 Mee appointment *{{3}}* ki CONFIRMED.\nEe amount mee final bill lo adjust chestam.\n\n📍 Rama Mahal, Kasturi Vari Street, Opp. Happy Mobiles, Eluru\nTime marchali ante ee message ki reply cheyandi. See you! ✨",
+        example: { body_text: [["Priya", "200", "Aug 20, 6:30 PM"]] },
+      },
+    ],
+  },
+  {
+    name: "birthday_wish",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🎂 *Happy Birthday* from the DermaLuxe family! 🎉\n\nEe special roju meeku andanga, healthy ga undali ani korukuntunnam ✨\n\n🎁 {{2}}\n\n📲 Book cheyalante ee message ki reply cheyandi. Have a wonderful day! 💖",
+        example: { body_text: [["Priya", "Birthday gift ga ee nela lo e treatment pai aina 20% off — mee kosam!"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
+  {
+    name: "seasonal_tips",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🌿 *DermaLuxe Care Tips:*\n\n{{2}}\n\nMee skin/hair gurinchi emaina doubts unte ee message ki reply cheyandi — free ga guide chestam 💖\n\n— DermaLuxe by Medicare, Eluru",
+        example: { body_text: [["Priya", "Varsha kalam lo fungal infections ekkuva — 1) Tadi battalu ventane marchandi 2) Roju rendu sarlu mild soap tho snanam 3) Chemmalu unna chotla powder vadandi"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
+  {
     name: "free_camp",
     category: "MARKETING",
     language: "en",

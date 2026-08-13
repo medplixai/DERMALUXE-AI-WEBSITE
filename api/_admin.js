@@ -436,6 +436,10 @@ const PROMO_DEFS = {
     usage: "launch: HydraFacial Platinum | Launch offer: first 20 bookings ki 30% off!",
     render: (text, p2) => `Hi <name>! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *${p2}*\n${text}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: 099591 34666`,
   },
+  seasonal_tips: {
+    usage: "tips: Varsha kalam lo fungal infections ekkuva — 1) Tadi battalu ventane marchandi 2) Roju rendu sarlu mild soap tho snanam",
+    render: (text) => `Hi <name>! 🌿 *DermaLuxe Care Tips:*\n\n${text}\n\nMee skin/hair gurinchi emaina doubts unte ee message ki reply cheyandi — free ga guide chestam 💖\n\n— DermaLuxe by Medicare, Eluru`,
+  },
   free_camp: {
     usage: "camp: Ee Sunday udayam 10 – sayantram 5. Doctor consultation FREE!",
     render: (text) => `Hi <name>! 🩺 *FREE Skin & Hair Check-up Camp* — DermaLuxe lo!\n\n${text}\n\n🎟 Slots limited — mee slot book cheyalante ee message ki reply cheyandi!\n📍 Rama Mahal, Kasturi Vari Street, Eluru`,
@@ -548,13 +552,15 @@ async function handle(cfg, digits, text, photo, video) {
       "• weekplan — week antha posts okesari plan (photos → done)",
       "• appointments — booking book · noshow <phone> = rebook nudge",
       "• followup <phone> Hydrafacial — results check msg",
+      "• preop <phone> <procedure> · aftercare <phone> <procedure>",
+      "• paid <phone> — advance confirm · birthday <phone> — wish",
       "• checkup <phone> 7d — review reminder · session <phone> 30d | PRP",
       "• campaign: GLOW | <offer reply> — keyword campaign",
       "• review <phone> — patient ki Google review ask",
       "• unschedule <n> — scheduled post remove"];
     if (owner) lines.push(
       "• broadcast: <offer> — andariki · broadcast hair: — segment ki (paid)",
-      "• festival:/flash:/launch:/camp: — ready promo designs (paid)",
+      "• festival:/flash:/launch:/camp:/tips: — ready designs (paid)",
       "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
     lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
     const menuRows = ["appointments", "checkups", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
@@ -730,6 +736,59 @@ async function handle(cfg, digits, text, photo, video) {
     const out = await notify.sendWaTemplate(ph, "service_followup", [name, svc]);
     return out.ok ? `✅ Service follow-up ${ph} ki vellindi (${svc}).`
       : `❌ Vellaledu: ${out.msg || "template inka approve avvakapovachu — konchem agi malli try cheyandi"}`;
+  }
+
+  // preop / aftercare <phone> <procedure> — surgical-journey instruction sends.
+  // The standard instruction list lives inside the approved template, so the
+  // team only types who + which procedure.
+  if ((um = t.match(/^pre\s*op\s+(\d{10})(?:\s+([\s\S]+))?$/i))) {
+    const ph = um[1];
+    const proc = (um[2] || "").trim().slice(0, 90);
+    if (!proc) return "Procedure & time kuda cheppandi 🙏:\npreop " + ph + " FUE Hair Transplant (Aug 20, udayam 9 AM)";
+    const name = String(await findPatientName(cfg, ph)).split(" ")[0] || "friend";
+    const out = await notify.sendWaTemplate(ph, "preop_instructions", [name, proc]);
+    return out.ok ? `✅ Pre-op instructions ${name} (${ph}) ki vellindi.\n📋 ${proc}`
+      : `❌ Vellaledu: ${out.msg || "template inka approve avvakapovachu"}`;
+  }
+  if ((um = t.match(/^after\s*care\s+(\d{10})(?:\s+([\s\S]+))?$/i))) {
+    const ph = um[1];
+    const proc = (um[2] || "").trim().slice(0, 90) || "treatment";
+    const name = String(await findPatientName(cfg, ph)).split(" ")[0] || "friend";
+    const out = await notify.sendWaTemplate(ph, "aftercare_instructions", [name, proc]);
+    return out.ok ? `✅ Aftercare instructions ${name} (${ph}) ki vellindi.\n💖 ${proc}`
+      : `❌ Vellaledu: ${out.msg || "template inka approve avvakapovachu"}`;
+  }
+
+  // paid <phone> [amount] — advance verified by the team → official confirmation
+  if ((um = t.match(/^paid\s+(\d{10})(?:\s+(\d{2,6}))?$/i))) {
+    const ph = um[1];
+    const amt = um[2] || String(process.env.ADVANCE_AMOUNT || 200);
+    const name = String(await findPatientName(cfg, ph)).split(" ")[0] || "friend";
+    let when = "mee booked slot";
+    if (cfg) {
+      try {
+        const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+        let best = 0;
+        for (const s of (q.result || [])) {
+          try { const a = JSON.parse(s); if (a.ph === ph && a.at > Date.now() - 3600000 && (!best || a.at < best)) best = a.at; } catch (e) {}
+        }
+        if (best) when = fmtIst(best);
+      } catch (e) {}
+    }
+    const out = await notify.sendWaTemplate(ph, "payment_confirmed", [name, amt, when]);
+    return out.ok ? `✅ Payment confirmation ${name} (${ph}) ki vellindi — ₹${amt} · ${when}`
+      : `❌ Vellaledu: ${out.msg || "template inka approve avvakapovachu"}`;
+  }
+
+  // birthday <phone> [offer] — wish + gift line
+  if ((um = t.match(/^birth\s*day\s+(\d{10})(?:\s+([\s\S]+))?$/i))) {
+    const ph = um[1];
+    const offer = (um[2] || "").trim().slice(0, 200)
+      || "Birthday gift ga ee nela lo e treatment pai aina special discount — mee kosam!";
+    const name = String(await findPatientName(cfg, ph)).split(" ")[0] || "friend";
+    const out = await notify.sendWaTemplate(ph, "birthday_wish", [name, offer]);
+    return out.ok ? `🎂 Birthday wish ${name} (${ph}) ki vellindi.`
+      : `❌ Vellaledu: ${out.msg || "template inka approve avvakapovachu"}`;
   }
 
   // checkups — scheduled review/session reminders list
@@ -988,12 +1047,13 @@ async function handle(cfg, digits, text, photo, video) {
   // ---- Ready-made promo broadcasts (owner): festival/flash/launch/camp ----
   // Same preview→ok flow as broadcast, but a dedicated MARKETING template
   // carries the design — the owner only types the offer.
-  if (/^(festival|flash|launch|camp)$/i.test(t)) {
+  if (/^(festival|flash|launch|camp|tips)$/i.test(t)) {
     if (!owner) return "🔒 Promo broadcasts owner ki matrame.";
     return "🎁 *Promo broadcasts — ready-made designs:*\n\n🪔 " + PROMO_DEFS.festival_offer.usage
       + "\n\n⚡ " + PROMO_DEFS.flash_offer.usage
       + "\n\n🎉 " + PROMO_DEFS.new_service.usage
       + "\n\n🩺 " + PROMO_DEFS.free_camp.usage
+      + "\n\n🌿 " + PROMO_DEFS.seasonal_tips.usage
       + "\n\nPreview vachaka *ok* antene veltundi · STOP patients auto-skip";
   }
   const mkPromo = async (tpl, promoText, p2) => {
@@ -1016,6 +1076,9 @@ async function handle(cfg, digits, text, photo, video) {
   }
   if ((pm = t.match(/^camp\s*[:\-]\s*([\s\S]{10,500})$/i))) {
     return mkPromo("free_camp", pm[1].trim(), "");
+  }
+  if ((pm = t.match(/^tips\s*[:\-]\s*([\s\S]{10,500})$/i))) {
+    return mkPromo("seasonal_tips", pm[1].trim(), "");
   }
   if (/^(festival|flash|launch)\s*[:\-]/i.test(t)) {
     const which = t.match(/^(festival|flash|launch)/i)[1].toLowerCase();
