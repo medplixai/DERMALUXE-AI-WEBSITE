@@ -550,6 +550,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
       "• weekplan — week antha posts okesari plan (photos → done)",
+      "• report — daily report ippude chudandi",
       "• appointments — booking book · noshow <phone> = rebook nudge",
       "• followup <phone> Hydrafacial — results check msg",
       "• preop <phone> <procedure> · aftercare <phone> <procedure>",
@@ -563,7 +564,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• festival:/flash:/launch:/camp:/tips: — ready designs (paid)",
       "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
     lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
-    const menuRows = ["appointments", "checkups", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
+    const menuRows = ["report", "appointments", "checkups", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
   }
@@ -692,6 +693,15 @@ async function handle(cfg, digits, text, photo, video) {
     if (idx < 0 || idx >= items.length) return `Queue lo #${um[1]} ledu — 'queue' tho list chudandi.`;
     await guard.kvCommand(cfg, ["LREM", "adm:queue", "1", items[idx].raw]);
     return `🗑 Removed: ${fmtIst(items[idx].it.due)} post.`;
+  }
+
+  // report / digest — on-demand daily report; also the reply target of the
+  // 9AM daily_digest_ping template when the free-form window was closed.
+  if (/^(report|digest)$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const dgmod = require("./_digest.js"); // lazy require — no load-order games
+    const out = await dgmod.buildDigest(cfg, false);
+    return out.body;
   }
 
   // Live booking book — upcoming patient appointments with reminder status

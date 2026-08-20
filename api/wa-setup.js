@@ -134,6 +134,18 @@ const TEMPLATES = [
     ],
   },
   {
+    name: "daily_digest_ping",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "📊 *DermaLuxe Daily Report* ready!\n\n{{1}}\n\nFull report chudalante *report* ani reply cheyandi 👍",
+        example: { body_text: [["Ninna 3 leads · ivala 2 appointments"]] },
+      },
+    ],
+  },
+  {
     name: "preop_instructions",
     category: "UTILITY",
     language: "en",
