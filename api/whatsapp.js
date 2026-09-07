@@ -31,6 +31,7 @@ const stripForTts = voice.stripForTts;
 const synthesizeVoice = voice.synthesize;
 const transcribeVoice = (b64, mime) => voice.transcribe(b64, mime, "WhatsApp");
 const hr = require("./_hr.js");
+const referral = require("./_referral.js");
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
 const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. Clinic visit or video consultation both possible.
@@ -887,6 +888,35 @@ module.exports = async (req, res) => {
     return respond(admin.isAdmin(digits)
       ? "🎬 Reel post cheyali ante video tho paatu caption lo 'post: <idea>' ani pampandi (leda 'schedule: repu 6pm | <idea>')."
       : "Namaste! 🙏 Video ki analysis cheyalenu — text, voice note leda skin/hair photo pampandi. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే AI విశ్లేషణ ఇస్తాను.");
+  }
+
+  // ---- Referral program: personal code out, friend's code in -------------
+  if (cfg && !imageId && !audioId) {
+    const raw = text.trim();
+    const offer = process.env.REFERRAL_OFFER || "special benefit";
+    if (/^(refer|referral|refer friend|my code|code|referral code)$/i.test(raw)) {
+      const code = await referral.myCode(cfg, digits);
+      const n = await referral.countFor(cfg, digits);
+      return respond(`🎁 *Mee referral code: ${code}*\n\n👨‍👩‍👧 Friends/family ki ee code share cheyandi\n💝 Vaallu first visit lo ee code cheppithe — *iddariki ${offer}*\n${n ? `🏆 Ippativaraku meeru pampinchina vaallu: *${n}*\n` : ""}\nShare cheyadaniki 👇 (copy chesi pampandi)\n\n_DermaLuxe by Medicare, Eluru — skin & hair treatments ki chala manchi clinic 😊 Naa referral code *${code}* cheppandi: wa.me/919959134666_`);
+    }
+    const cm = raw.match(/\b(DL\d{4})\b/i);
+    if (cm && raw.length <= 60) {
+      const out = await referral.redeem(cfg, cm[1], digits, profileName);
+      if (out.ok) {
+        const team = Array.from(new Set(
+          String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",")
+            .concat(String(process.env.ADMIN_PHONES || "").split(","))
+            .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
+        for (const to of team) {
+          await notify.sendWa(to, `🎁 *Referral!*\n\n👤 ${profileName || "Patient"} (${digits})\n🔗 Code *${out.code}* — referrer: ${out.owner}\n\nVisit lo iddariki ${offer} ivvandi 🙏`).catch(() => {});
+        }
+        await notify.sendWa(out.owner, `🎉 Super! Mee referral code tho *${profileName || "oka friend"}* DermaLuxe ki vachharu 💖\n\nMeeku ${offer} — next visit lo cheppandi. Thank you! 🙏`).catch(() => {});
+        return respond(`🎉 *Code accept ayindi!*\n\n✅ *${out.code}* — mee friend meeku recommend chesaru, thank you! 💖\n🎁 Visit lo ee code cheppandi — ${offer} vartistundi\n\nAppointment book cheyala? Mee concern cheppandi 😊`);
+      }
+      if (out.reason === "self") return respond("😄 Adi mee own code andi — friends ki share cheyandi!\n\nAppointment kavali ante cheppandi 🙏");
+      if (out.reason === "already") return respond(`Meeru already *${out.code}* code use chesaru 👍\n\nInkem kavali? Appointment book cheyala? 😊`);
+      // unknown code → fall through to the normal agent (might be a typo/other text)
+    }
   }
 
   // Marketing opt-out/in: STOP blocks broadcast templates (the optout set);

@@ -8,6 +8,7 @@ const crypto = require("crypto");
 const guard = require("./_guard.js");
 const notify = require("./_notify.js");
 const hrmod = require("./_hr.js");
+const referral = require("./_referral.js");
 
 const IG_GRAPH = "https://graph.instagram.com/v21.0";
 
@@ -575,6 +576,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• report — daily report ippude chudandi",
       "• appointments — bookings · arrived <phone> ✅ · noshow <phone> 🔁",
       "• 📷 photo + 'result: hair transplant' — before/after gallery",
+      "• referrals — evaru patients ni pampistunnaro",
       "• leave repu · block repu 2pm-5pm — agent aa time book cheyadu",
       "• followup <phone> Hydrafacial — results check msg",
       "• preop <phone> <procedure> · aftercare <phone> <procedure>",
@@ -588,7 +590,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• festival:/flash:/launch:/camp:/tips: — ready designs (paid)",
       "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
     lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
-    const menuRows = ["report", "funnel", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
+    const menuRows = ["report", "funnel", "referrals", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
   }
@@ -1018,6 +1020,20 @@ async function handle(cfg, digits, text, photo, video) {
     if (idx < 0 || idx >= items.length) return `Block #${lm[1]} ledu — *blocks* tho chudandi.`;
     await guard.kvCommand(cfg, ["LREM", "blk:q", "1", items[idx].raw]);
     return `✅ Block remove chesanu — ${fmtIst(items[idx].v.from)} ippudu open.`;
+  }
+
+  // ---- Referrals: who is bringing patients in ----------------------------
+  if (/^referrals?$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const rows = await referral.leaderboard(cfg, 10);
+    if (!rows.length) {
+      return "🎁 *Referrals*\n\nInka evaru referral tho raaledu.\n\nPatients ki cheppandi: agent ki *REFER* ani type chesthe valla personal code vastundi 👍\nOffer marchali ante REFERRAL_OFFER env set cheyandi.";
+    }
+    const total = rows.reduce((a, r2) => a + r2.n, 0);
+    const lines = [`🎁 *Referrals — total ${total} patients*`, ""];
+    rows.forEach((r2, i) => lines.push(`${i + 1}. 📱 ${r2.ph} (${r2.code}) — *${r2.n}* pampincharu · last: ${r2.last.name || r2.last.ph}`));
+    lines.push("", "Top referrers ki thank-you message pampandi 💖");
+    return lines.join("\n");
   }
 
   // ---- Conversion funnel: enquiry → booking → arrived ---------------------
