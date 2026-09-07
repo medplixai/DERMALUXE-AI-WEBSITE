@@ -924,8 +924,10 @@ async function handle(cfg, digits, text, photo, video) {
   // Twilio has no Indian numbers to sell, so until the clinic has a cloud
   // telephony line, staff forward a missed call here and the agent sends the
   // same rescue message the automated webhook would have sent.
-  if ((um = t.match(/^missed?\s*call?\s*(\d{10})$/i)) || (um = t.match(/^missed\s+(\d{10})$/i))) {
-    const ph = um[1];
+  // Staff paste straight from the call log, so accept +91 / 0 / spaces / dashes.
+  if ((um = t.match(/^miss(?:ed)?\s*(?:call)?\s*[:\-]?\s*((?:\+?91[\s-]*)?[\d][\d\s-]{8,15})$/i))) {
+    const ph = String(um[1]).replace(/\D/g, "").slice(-10);
+    if (ph.length !== 10) return "Number sarigga ledu 🙏 — ila pampandi: *missed 9876543210*";
     if (cfg) await guard.kvCommand(cfg, ["SET", `ntf:miss:${ph}`, "1", "EX", "21600"]).catch(() => {});
     const msg = "Namaste! 🙏 Meeru DermaLuxe ki call chesaru — miss ayindi, sorry!\n\nIkkade WhatsApp lo cheppandi — appointment book chestam leda mee doubts ki reply chestam 😊\n\n📍 Rama Mahal, Kasturi Vari Street, Eluru\n⏰ Mon-Sat, 9 AM - 9 PM";
     if (await notify.sendWa(ph, msg)) return `✅ Missed-call message ${ph} ki vellindi.\nVaallu reply istey agent ventane matladutundi 💬`;
