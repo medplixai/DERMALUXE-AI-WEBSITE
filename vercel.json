@@ -29,6 +29,9 @@
     },
     "api/voice-call.js": {
       "maxDuration": 30
+    },
+    "api/exotel.js": {
+      "maxDuration": 30
     }
   },
   "crons": [
