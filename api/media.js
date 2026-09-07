@@ -49,6 +49,26 @@ module.exports = async (req, res) => {
     }
   }
 
+  // ?aud=<32hex> — short-lived MP3 the voice agents parked in KV so Instagram,
+  // Messenger and the phone line can fetch it by URL (they can't take uploads).
+  if (q.aud) {
+    const aid = String(q.aud || "");
+    if (!/^[a-f0-9]{32}$/.test(aid)) return res.status(400).json({ error: "Bad id" });
+    const cfgA = guard.kvConfig();
+    if (!cfgA) return res.status(501).json({ error: "Storage not configured" });
+    try {
+      const r = await guard.kvCommand(cfgA, ["GET", `adm:aud:${aid}`]);
+      if (!r.result) return res.status(404).json({ error: "Not found or expired" });
+      const buf = Buffer.from(r.result, "base64");
+      res.setHeader("Content-Type", "audio/mpeg");
+      res.setHeader("Content-Length", String(buf.length));
+      res.setHeader("Cache-Control", "public, max-age=600");
+      return res.status(200).send(buf);
+    } catch (e) {
+      return res.status(500).json({ error: "Media fetch failed" });
+    }
+  }
+
   const id = String(q.id || "");
   if (!/^[a-f0-9]{32}$/.test(id)) return res.status(400).json({ error: "Bad id" });
   const cfg = guard.kvConfig();

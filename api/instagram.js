@@ -15,6 +15,35 @@ const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
 const facts = require("./_facts.js");
 const notify = require("./_notify.js");
+const voice = require("./_voice.js"); // shared STT/TTS stack
+
+const transcribeVoice = (b64, mime) => voice.transcribe(b64, mime, "Instagram");
+
+// Voice note out: IG can't take uploads, so park the MP3 and send it by URL.
+async function sendDmAudio(igsid, url, cred) {
+  const token = cred && cred.tok;
+  const host = (cred && cred.host) || "graph.facebook.com";
+  if (!token || !igsid || !url) return false;
+  try {
+    const r = await fetch(`https://${host}/v21.0/me/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        recipient: { id: igsid }, messaging_type: "RESPONSE",
+        message: { attachment: { type: "audio", payload: { url, is_reusable: false } } },
+      }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 300); } catch (e) {}
+      console.error("ig: audio send failed", r.status, d);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("ig: audio send error", e && e.message);
+    return false;
+  }
+}
 
 const LIST_KEY = "dl_leads";
 const HIST_TTL = 86400;   // 24h conversation memory
@@ -175,32 +204,7 @@ async function fetchUrlMedia(url) {
   }
 }
 
-async function transcribeVoice(base64, mime) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  try {
-    const model = process.env.STT_MODEL || "gemini-2.0-flash";
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "Transcribe this voice note exactly. It may be Telugu, Tenglish (Telugu in English letters), English, or mixed. If Telugu is spoken, transcribe in Telugu script. Output ONLY the transcription, nothing else." },
-            { inline_data: { mime_type: mime || "audio/mp4", data: base64 } },
-          ],
-        }],
-      }),
-    });
-    if (!r.ok) { console.error("ig: stt failed", r.status); return null; }
-    const d = await r.json();
-    const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
-    return parts.map((p) => p.text || "").join(" ").trim() || null;
-  } catch (e) {
-    console.error("ig: stt error", e && e.message);
-    return null;
-  }
-}
+
 
 // ── Claude ──────────────────────────────────────────────────────────────────
 function parseOut(text) {
@@ -379,6 +383,7 @@ async function handleComment(entry, v) {
   if (!cred || !cred.tok) { console.error("ig: comment handler has no send token"); return; }
 
   let out;
+  let voiceScript = "";
   try { out = await askClaudeComment(username, text); }
   catch (e) { console.error("ig: comment ai error", e && e.message); return; }
 
@@ -544,8 +549,13 @@ module.exports = async (req, res) => {
         }
         text = String(heard).slice(0, 1000).trim();
       }
-      out = await askClaude(hist, text, igName, extraCtx, null);
-      if (audioUrl) text = "[🎤] " + text;
+      out = await askClaude(hist, text, igName, extraCtx + (audioUrl ? voice.VOICE_CTX : ""), null);
+      if (audioUrl) {
+        const vs = voice.parseVoiceScript(out.reply);
+        out.reply = vs.reply || out.reply;
+        voiceScript = vs.script;
+        text = "[🎤] " + text;
+      }
     }
   } catch (e) {
     console.error("ig: ai error", e && e.message);
@@ -563,6 +573,14 @@ module.exports = async (req, res) => {
     } catch (e) {}
   }
 
+  // Voice note in → voice note out (text still follows as the readable copy).
+  if (audioUrl) {
+    try {
+      const mp3 = await voice.synthesize(voiceScript || voice.stripForTts(out.reply).slice(0, 350));
+      const aid = mp3 ? await voice.parkAudio(cfg, mp3) : "";
+      if (aid) await sendDmAudio(igsid, `${voice.publicBase(req)}/api/media?aud=${aid}`, ptok);
+    } catch (e) { console.error("ig: voice reply error", e && e.message); }
+  }
   await sendDM(igsid, out.reply, firstTurn && !imageUrl, ptok);
   if (out.send_location === true || LOCATION_ASK.test(text)) {
     await sendDM(igsid, "📍 DermaLuxe by Medicare, Eluru — Google Maps: " + MAPS_LINK, false, ptok);

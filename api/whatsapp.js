@@ -24,6 +24,12 @@ const MAX_TURNS = 8;
 
 const facts = require("./_facts.js");
 const notify = require("./_notify.js");
+const voice = require("./_voice.js"); // shared STT/TTS stack (all channels)
+
+const VOICE_CTX = voice.VOICE_CTX;
+const stripForTts = voice.stripForTts;
+const synthesizeVoice = voice.synthesize;
+const transcribeVoice = (b64, mime) => voice.transcribe(b64, mime, "WhatsApp");
 const hr = require("./_hr.js");
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
@@ -487,121 +493,8 @@ async function fetchMedia(mediaId) {
 }
 
 // Voice note → text via Gemini (free tier handles Telugu/Tenglish/English well).
-// Claude's API has no audio input, so this is the transcription leg only —
-// the reply brain stays Claude. Returns null when GEMINI_API_KEY is unset.
-async function transcribeVoice(base64, mime) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  // Each model has its own free-tier quota — on 429/404 fall through to the next.
-  // '-latest' aliases track the current generation, so this list won't go stale
-  // (2.5-era names are listed by the API but 404 for keys created after mid-2026).
-  const models = [];
-  if (process.env.STT_MODEL) models.push(process.env.STT_MODEL);
-  ["gemini-flash-latest", "gemini-flash-lite-latest", "gemini-3.5-flash"].forEach((m) => {
-    if (models.indexOf(m) === -1) models.push(m);
-  });
-  for (const model of models) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            parts: [
-              { text: "Transcribe this WhatsApp voice note exactly. It may be Telugu, Tenglish (Telugu in English letters), English, or mixed. If Telugu is spoken, transcribe in Telugu script. Output ONLY the transcription, nothing else." },
-              { inline_data: { mime_type: mime || "audio/ogg", data: base64 } },
-            ],
-          }],
-        }),
-      });
-      if (r.status === 429 || r.status === 404) {
-        let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
-        console.error("wa: stt skipping model", model, r.status, d);
-        continue;
-      }
-      if (!r.ok) {
-        let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
-        console.error("wa: stt failed", model, r.status, d);
-        return null;
-      }
-      const d = await r.json();
-      const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
-      const text = parts.map((p) => p.text || "").join(" ").trim();
-      if (text) return text;
-    } catch (e) {
-      console.error("wa: stt error", model, e && e.message);
-      return null;
-    }
-  }
-  return null;
-}
 
-// ---- Voice replies (voice note in → voice note out) ---------------------
-// Gemini TTS returns raw PCM (16-bit mono, usually 24kHz); WhatsApp only takes
-// aac/mp3/amr/ogg-opus and serverless has no ffmpeg, so we encode MP3 with the
-// pure-JS lamejs port. Any failure falls back to the normal text-only reply.
 
-async function pcmToMp3(pcm, rate) {
-  const lame = await import("@breezystack/lamejs"); // ESM-only package
-  const Mp3Encoder = lame.Mp3Encoder || (lame.default && lame.default.Mp3Encoder);
-  const byteLen = pcm.length - (pcm.length % 2);
-  const ab = new ArrayBuffer(byteLen); // copy → guaranteed 2-byte alignment
-  new Uint8Array(ab).set(pcm.subarray(0, byteLen));
-  const samples = new Int16Array(ab);
-  const enc = new Mp3Encoder(1, rate || 24000, 48);
-  const out = [];
-  for (let i = 0; i < samples.length; i += 1152) {
-    const buf = enc.encodeBuffer(samples.subarray(i, i + 1152));
-    if (buf.length) out.push(Buffer.from(buf));
-  }
-  const end = enc.flush();
-  if (end.length) out.push(Buffer.from(end));
-  return Buffer.concat(out);
-}
-
-async function synthesizeVoice(script) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key || !script) return null;
-  const models = [process.env.TTS_MODEL || "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"];
-  for (const model of models) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: script }] }],
-          generationConfig: {
-            responseModalities: ["AUDIO"],
-            speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: process.env.TTS_VOICE || "Aoede" } } },
-          },
-        }),
-      });
-      if (r.status === 404 || r.status === 429) { // renamed model / per-model quota — try the next
-        let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
-        console.error("wa: tts skipping model", model, r.status, d);
-        continue;
-      }
-      if (!r.ok) {
-        let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
-        console.error("wa: tts failed", model, r.status, d);
-        return null;
-      }
-      const d = await r.json();
-      const part = ((((d.candidates || [])[0] || {}).content || {}).parts || [])
-        .find((p) => (p.inlineData || p.inline_data || {}).data);
-      const inline = part && (part.inlineData || part.inline_data);
-      if (!inline) return null;
-      const m = String(inline.mimeType || inline.mime_type || "").match(/rate=(\d+)/);
-      return await pcmToMp3(Buffer.from(inline.data, "base64"), m ? Number(m[1]) : 24000);
-    } catch (e) {
-      console.error("wa: tts error", e && e.message);
-      return null;
-    }
-  }
-  return null;
-}
-
-// Upload the MP3 to WhatsApp media, then send it as an audio message.
 // Send a picture by public URL (gallery before/after shots live in KV and are
 // served by api/media.js). Failure is silent — the text reply already went.
 async function sendCloudImage(phoneNumberId, to, url, caption) {
@@ -654,6 +547,7 @@ async function galleryFor(cfg, want) {
   } catch (e) { return []; }
 }
 
+// Upload the MP3 to WhatsApp media, then send it as an audio message.
 async function sendCloudVoice(phoneNumberId, to, mp3) {
   const token = process.env.WA_CLOUD_TOKEN;
   if (!token || !phoneNumberId || !to || !mp3 || !mp3.length) return false;
@@ -686,16 +580,7 @@ async function sendCloudVoice(phoneNumberId, to, mp3) {
 }
 
 // TTS fallback text: drop URLs/emojis/markdown so the fallback script is speakable.
-function stripForTts(s) {
-  return String(s || "")
-    .replace(/https?:\/\/\S+|www\.\S+/gi, "")
-    .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{2B00}-\u{2BFF}\u{FE0F}\u{200D}]/gu, "")
-    .replace(/[*_`#>·]/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
-}
 
-const VOICE_CTX = "[The patient sent this as a VOICE note. After your normal reply, append ONE extra final line formatted exactly as VOICE_SCRIPT: <script> — a natural spoken version of your reply for text-to-speech: the same language the patient spoke (if they spoke Telugu, write the script in Telugu script), warm receptionist tone, digits and times spoken naturally, no emojis, no URLs, no lists, under 55 words.] ";
 
 // Claude vision — quick skin/hair pre-assessment of a WhatsApp photo.
 async function askClaudeVision(hist, media, caption, profileName, extraCtx) {

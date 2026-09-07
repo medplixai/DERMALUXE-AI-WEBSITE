@@ -11,6 +11,33 @@ const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
 const facts = require("./_facts.js");
 const notify = require("./_notify.js");
+const voice = require("./_voice.js"); // shared STT/TTS stack
+
+const transcribeVoice = (b64, mime) => voice.transcribe(b64, mime, "Messenger");
+
+// Voice note out — Messenger takes an audio attachment by public URL.
+async function sendMsgAudio(psid, url, tok) {
+  if (!tok || !psid || !url) return false;
+  try {
+    const r = await fetch("https://graph.facebook.com/v21.0/me/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${tok}` },
+      body: JSON.stringify({
+        recipient: { id: psid }, messaging_type: "RESPONSE",
+        message: { attachment: { type: "audio", payload: { url, is_reusable: false } } },
+      }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 300); } catch (e) {}
+      console.error("fb: audio send failed", r.status, d);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("fb: audio send error", e && e.message);
+    return false;
+  }
+}
 
 const LIST_KEY = "dl_leads";
 const HIST_TTL = 86400;
@@ -115,32 +142,7 @@ async function fetchUrlMedia(url) {
   }
 }
 
-async function transcribeVoice(base64, mime) {
-  const key = process.env.GEMINI_API_KEY;
-  if (!key) return null;
-  try {
-    const model = process.env.STT_MODEL || "gemini-2.0-flash";
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            { text: "Transcribe this voice note exactly. It may be Telugu, Tenglish (Telugu in English letters), English, or mixed. If Telugu is spoken, transcribe in Telugu script. Output ONLY the transcription, nothing else." },
-            { inline_data: { mime_type: mime || "audio/mp4", data: base64 } },
-          ],
-        }],
-      }),
-    });
-    if (!r.ok) { console.error("fb: stt failed", r.status); return null; }
-    const d = await r.json();
-    const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
-    return parts.map((p) => p.text || "").join(" ").trim() || null;
-  } catch (e) {
-    console.error("fb: stt error", e && e.message);
-    return null;
-  }
-}
+
 
 // ── Claude ──────────────────────────────────────────────────────────────────
 function parseOut(text) {
@@ -330,6 +332,7 @@ module.exports = async (req, res) => {
     : "";
 
   let out;
+  let voiceScript = "";
   try {
     if (imageUrl) {
       const imgL = await guard.rateLimit(cfg, `rl:fb:img:${psid}`, 3, 86400);
@@ -362,8 +365,13 @@ module.exports = async (req, res) => {
         }
         text = String(heard).slice(0, 1000).trim();
       }
-      out = await askClaude(hist, text, fbName, extraCtx, null);
-      if (audioUrl) text = "[🎤] " + text;
+      out = await askClaude(hist, text, fbName, extraCtx + (audioUrl ? voice.VOICE_CTX : ""), null);
+      if (audioUrl) {
+        const vs = voice.parseVoiceScript(out.reply);
+        out.reply = vs.reply || out.reply;
+        voiceScript = vs.script;
+        text = "[🎤] " + text;
+      }
     }
   } catch (e) {
     console.error("fb: ai error", e && e.message);
@@ -381,6 +389,14 @@ module.exports = async (req, res) => {
     } catch (e) {}
   }
 
+  // Voice note in → voice note out (text still follows as the readable copy).
+  if (audioUrl) {
+    try {
+      const mp3 = await voice.synthesize(voiceScript || voice.stripForTts(out.reply).slice(0, 350));
+      const aid = mp3 ? await voice.parkAudio(cfg, mp3) : "";
+      if (aid) await sendMsgAudio(psid, `${voice.publicBase(req)}/api/media?aud=${aid}`, ptok);
+    } catch (e) { console.error("fb: voice reply error", e && e.message); }
+  }
   await sendMsg(psid, out.reply, firstTurn && !imageUrl, ptok);
   if (out.send_location === true || LOCATION_ASK.test(text)) {
     await sendMsg(psid, "📍 DermaLuxe by Medicare, Eluru — Google Maps: " + MAPS_LINK, false, ptok);
