@@ -504,7 +504,7 @@ h3 { font-size: 1.4rem; }
 .step p { font-size: .9rem; color: var(--muted); padding: 0 .5rem; }
 
 /* ---------- Doctors ---------- */
-.doctors__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.6rem; }
+.doctors__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.6rem; }
 .doc { text-align: center; background: linear-gradient(165deg, var(--panel), var(--ink-2)); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 2.4rem 1.8rem; transition: all .45s var(--ease); }
 .doc:hover { transform: translateY(-8px); border-color: var(--line); box-shadow: 0 30px 60px -28px rgba(0,0,0,.9); }
 .doc__photo {
@@ -545,8 +545,8 @@ h3 { font-size: 1.4rem; }
   content: attr(data-initial); font-family: var(--font-serif); font-size: 1.9rem; font-weight: 700; letter-spacing: 1px;
   background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
-.founder__photo.has-photo { background-size: cover; background-position: center top; background-repeat: no-repeat; }
-.founder__photo.has-photo::before { content: none; }
+.founder__photo.has-photo, .doc__photo.has-photo { background-size: cover; background-position: center top; background-repeat: no-repeat; }
+.founder__photo.has-photo::before, .doc__photo.has-photo::before { content: none; }
 .founder__photo::after { content: ""; position: absolute; inset: -5px; border-radius: 20px; border: 1px solid var(--line); }
 .founder__body h3 { font-size: 1.5rem; margin-bottom: .15rem; }
 .founder__cred { font-family: var(--font-sans); font-size: .68rem; letter-spacing: 1.5px; color: var(--gold-3); vertical-align: middle; border: 1px solid var(--line); border-radius: 100px; padding: .15rem .55rem; margin-left: .3rem; }
