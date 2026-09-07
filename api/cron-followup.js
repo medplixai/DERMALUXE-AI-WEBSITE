@@ -39,6 +39,45 @@ module.exports = async (req, res) => {
     if (ok) sent++;
   }
 
+  // ---- Day-3 booking push: enquired but never booked → ONE paid template
+  // follow-up (~11:45 IST run; window closed by now so free-form won't land).
+  // Guardrails: skip booked/opted-out/jobs, NX marker 30d, max 8 per day.
+  let day3 = 0;
+  try {
+    const istNow = new Date(now + 330 * 60000);
+    if (istNow.getUTCHours() === 11) {
+      const booked = new Set();
+      for (const key of ["appt:q", "appt:done"]) {
+        const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
+        for (const s of (q.result || [])) { try { booked.add(JSON.parse(s).ph); } catch (e) {} }
+      }
+      const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
+      const optSet = new Set(opt.result || []);
+      const r2 = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]);
+      for (const raw of (r2.result || [])) {
+        if (day3 >= 8) break;
+        let l; try { l = JSON.parse(raw); } catch (e) { continue; }
+        if (!l || l.type === "job" || (l.slot && l.date)) continue;
+        const age = now - (l.ts || 0);
+        if (age < 60 * 3600000 || age > 84 * 3600000) continue; // ~day 3
+        const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+        if (ph.length !== 10 || booked.has(ph) || optSet.has(ph)) continue;
+        try {
+          const nx = await guard.kvCommand(cfg, ["SET", `ntf:fu3:${ph}`, "1", "NX", "EX", "2592000"]);
+          if (!nx.result) continue; // already pushed this lead
+        } catch (e) { continue; }
+        const first = String(l.name || "").trim().split(" ")[0] || "friend";
+        const line = l.concern
+          ? `Meeru '${String(l.concern).slice(0, 40)}' gurinchi adigaru kada — doctor consultation tho correct plan vastundi. Ee week slots available, book cheyalante reply cheyandi 😊`
+          : `Meeru mana treatments gurinchi adigaru kada — doctor consultation tho correct plan vastundi. Ee week slots available, book cheyalante reply cheyandi 😊`;
+        const tpl = l.type === "instagram" ? "insta_lead_followup" : "clinic_update";
+        let out = await notify.sendWaTemplate(ph, tpl, [first, line]);
+        if (!out.ok && tpl !== "clinic_update") out = await notify.sendWaTemplate(ph, "clinic_update", [first, line]);
+        if (out.ok) day3++;
+      }
+    }
+  } catch (e) { console.error("cron: day3 followup", e && e.message); }
+
   // ---- Post-visit follow-up: next morning (~10:45 IST), once per visit ----
   // Free-form first (the reminder replies usually keep the window open);
   // falls back to the visit_followup template so delivery never dies quietly.
@@ -51,7 +90,7 @@ module.exports = async (req, res) => {
       const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]);
       for (const raw of (dq.result || [])) {
         let a; try { a = JSON.parse(raw); } catch (e) { continue; }
-        if (!a || !a.ph || !a.at || a.fu) continue;
+        if (!a || !a.ph || !a.at || a.fu || a.ns) continue; // ns = marked no-show (rebook nudge already sent)
         if (istDay(a.at) !== yday) continue;
         const first = String(a.name || "").split(" ")[0] || "friend";
         const ok = await notify.sendWa(a.ph,
@@ -65,5 +104,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: visit followup", e && e.message); }
 
-  return res.status(200).json({ ok: true, checked, sent, visited });
+  return res.status(200).json({ ok: true, checked, sent, day3, visited });
 };

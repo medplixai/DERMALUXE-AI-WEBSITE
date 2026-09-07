@@ -46,6 +46,7 @@ module.exports = async (req, res) => {
       cloudTokenSet: !!process.env.WA_CLOUD_TOKEN,
       voiceEnabled: !!process.env.GEMINI_API_KEY,
       voiceReplies: !!process.env.GEMINI_API_KEY, // TTS voice notes back to voice senders
+      model: process.env.AI_MODEL || "claude-opus-5",
       advanceReady: !!process.env.UPI_VPA, // UPI booking-advance ask on new bookings
     },
     igAgent: {

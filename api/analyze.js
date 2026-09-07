@@ -119,7 +119,7 @@ module.exports = async (req, res) => {
         "content-type": "application/json",
       },
       body: JSON.stringify({
-        model: process.env.AI_MODEL || "claude-sonnet-5",
+        model: process.env.AI_MODEL || "claude-opus-5",
         max_tokens: 1500,
         system:
           "You are the AI skin & hair pre-assessment assistant for DermaLuxe by Medicare, a premium medical aesthetic clinic in Eluru, India. " +

@@ -172,7 +172,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, imageBlock) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL || "claude-sonnet-5",
+      model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: imageBlock ? 800 : 500,
       system: imageBlock ? CLINIC_FACTS + "\n\n" + PHOTO_RULES : CLINIC_FACTS,
       messages,

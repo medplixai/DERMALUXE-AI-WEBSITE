@@ -7,7 +7,7 @@
 //
 // Env vars:
 //   ANTHROPIC_API_KEY  – already set (AI analysis)
-//   AI_MODEL           – optional, default claude-sonnet-5
+//   AI_MODEL           – optional, default claude-opus-5
 //   WA_AGENT_ENABLED   – "1" to enable Claude replies (else static fallback)
 //   WA_WEBHOOK_TOKEN   – shared secret: ?token=<value> on the webhook URL and
 //                        the Verify token for Meta webhook setup
@@ -106,7 +106,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL || "claude-sonnet-5",
+      model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 500,
       system: CLINIC_FACTS,
       messages,
@@ -650,7 +650,7 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL || "claude-sonnet-5",
+      model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 800,
       system: CLINIC_FACTS + "\n\n" + PHOTO_RULES,
       messages,

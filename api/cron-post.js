@@ -84,7 +84,7 @@ module.exports = async (req, res) => {
           const team = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
             .split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
           for (const to of team) {
-            await notify.sendWa(to, `🩺 ${a.name || "?"} (${a.ph}) — ${admin.fmtIst(a.at)} appointment time daatindi.\nVachhara? Raakapothe *noshow ${a.ph}* ani pampandi — rebook nudge veltundi.`).catch(() => {});
+            await notify.sendWa(to, `🩺 ${a.name || "?"} (${a.ph}) — ${admin.fmtIst(a.at)} appointment time daatindi.\nVachhara? — *arrived ${a.ph}* pampandi ✅\nRaakapothe — *noshow ${a.ph}* pampandi (rebook nudge veltundi)`).catch(() => {});
           }
         }
         continue;

@@ -96,7 +96,7 @@ async function captionCall(content) {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
-      model: process.env.AI_MODEL || "claude-sonnet-5",
+      model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 600,
       system: CAPTION_SYSTEM,
       messages: [{ role: "user", content }],
@@ -551,7 +551,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
       "• weekplan — week antha posts okesari plan (photos → done)",
       "• report — daily report ippude chudandi",
-      "• appointments — booking book · noshow <phone> = rebook nudge",
+      "• appointments — bookings · arrived <phone> ✅ · noshow <phone> 🔁",
       "• followup <phone> Hydrafacial — results check msg",
       "• preop <phone> <procedure> · aftercare <phone> <procedure>",
       "• paid <phone> — advance confirm · birthday <phone> — wish",
@@ -576,7 +576,7 @@ async function handle(cfg, digits, text, photo, video) {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
-          model: process.env.AI_MODEL || "claude-sonnet-5",
+          model: process.env.AI_MODEL || "claude-opus-5",
           max_tokens: 500,
           system: "You are the social media strategist for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (Telugu audience). Services: laser hair removal, PICO pigmentation, Hydrafacial, PRP/GFC, hair transplant, acne care, anti-aging, bridal packages, weight loss.",
           messages: [{ role: "user", content: `Today is ${today} (IST). Give exactly 3 Instagram post ideas for this week — consider the season, any nearby Indian/Telugu festivals, and wedding/exam seasons. For each: one bold hook line, then "📷" line saying what photo/video to shoot at the clinic, then "✍️" line with the caption angle. Tenglish-friendly, no prices. Max 12 short lines total, numbered 1-3.` }],
@@ -655,7 +655,7 @@ async function handle(cfg, digits, text, photo, video) {
           method: "POST",
           headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
           body: JSON.stringify({
-            model: process.env.AI_MODEL || "claude-sonnet-5",
+            model: process.env.AI_MODEL || "claude-opus-5",
             max_tokens: 300,
             system: "Marketing advisor for DermaLuxe skin/hair clinic, Eluru. Be concrete and brief.",
             messages: [{ role: "user", content: `This week's stats — Leads: ${leadStats || "n/a"}. Instagram: ${igStats || "n/a"}. Link clicks: ${linkStats || "n/a"}. Give exactly 3 short next-week marketing actions (one line each, Tenglish-friendly, no prices).` }],
@@ -718,6 +718,26 @@ async function handle(cfg, digits, text, photo, video) {
     return lines.join("\n");
   }
 
+  // arrived <10-digit> — team marks the visit happened (analytics + keeps
+  // tomorrow's care follow-up on; pairs with the +3h "vachhara?" team ping)
+  if ((um = t.match(/^arrived\s+(\d{10})$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const ph = um[1];
+    const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]).catch(() => ({}));
+    for (const s of (dq.result || [])) {
+      try {
+        const a = JSON.parse(s);
+        if (a.ph === ph && !a.v) {
+          a.v = 1;
+          await guard.kvCommand(cfg, ["LREM", "appt:done", "1", s]);
+          await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]);
+          return `✅ ${a.name || ph} — arrived ani mark chesanu. Repu udayam care follow-up auto veltundi 💖`;
+        }
+      } catch (e) {}
+    }
+    return `${ph} ki recent visit record ledu — appointment ayina patients matrame mark cheyagalam.`;
+  }
+
   // noshow <10-digit> — warm rebook nudge to a patient who missed the visit
   if ((um = t.match(/^no\s*show\s+(\d{10})$/i))) {
     if (!cfg) return "Storage ledu.";
@@ -729,6 +749,21 @@ async function handle(cfg, digits, text, photo, video) {
       if (name) break;
     }
     const first = String(name).split(" ")[0];
+    // mark ns on their latest appt:done row → morning care-check skips them
+    try {
+      const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]);
+      for (const s of (dq.result || [])) {
+        try {
+          const a = JSON.parse(s);
+          if (a.ph === ph && !a.ns) {
+            a.ns = 1;
+            await guard.kvCommand(cfg, ["LREM", "appt:done", "1", s]);
+            await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]);
+            break;
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
     const ok = await notify.sendWa(ph,
       `Hi ${first || "andi"}! 🙏 Ivala mee DermaLuxe appointment miss ayinattu undi — parledu!\n\nMalli convenient time book chesukovalante ee message ki reply cheyandi 😊 Ee week slots available unnayi.`);
     if (ok) return `✅ Rebook nudge ${ph} ki vellindi.`;
