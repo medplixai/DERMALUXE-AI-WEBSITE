@@ -42,7 +42,7 @@ or when booking info is ready:
 heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
 slot_ts: when the patient CONFIRMS a specific day + time, ALSO add "slot_ts":"YYYY-MM-DD HH:mm" (24-hour, IST) inside lead — compute the real calendar date from the current IST date/time given in context (e.g. if today is Sun Aug 10 2026 and they pick "Repu 6:30 PM" → "2026-08-11 18:30"). Omit until a specific time is fixed — our reminder system auto-messages the patient from this.
 cancel: if the patient wants to CANCEL their appointment (and is not picking a new time), add "cancel":true inside lead. For reschedule just output the new slot_ts — old booking auto-replace avutundi. The context shows this patient's upcoming appointment if any — confirm that time with them before cancelling, and be warm about rebooking later.
-Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, and "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time.`;
+Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, and "urgent":"<one line>" for medical emergencies.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
 const PHOTO_RULES = facts.photoRules("WhatsApp");
@@ -358,8 +358,26 @@ async function apptCtx(cfg, digits) {
       } catch (e) {}
     }
     const full = Object.keys(count).filter((k) => count[k] >= per);
+
+    // Doctor leave / blocked windows the team declared — never offer these.
+    let blocked = "";
+    try {
+      const b = await guard.kvCommand(cfg, ["LRANGE", "blk:q", "0", "49"]);
+      const win = [];
+      for (const s of (b.result || [])) {
+        try {
+          const x = JSON.parse(s);
+          if (!x.from || !x.to || x.to < now) continue;
+          if (x.from - now > 30 * 86400000) continue;
+          win.push(`${apptFmtIst(x.from)} - ${apptFmtIst(x.to)}${x.note ? " (" + x.note + ")" : ""}`);
+        } catch (e) {}
+      }
+      if (win.length) blocked = `[CLOSED / doctor leave — NEVER offer or accept these times, suggest the next free day instead: ${win.join(" · ")}] `;
+    } catch (e) {}
+
     return (mine ? `[This patient's upcoming appointment: ${apptFmtIst(mine)}] ` : "")
-      + (full.length ? `[FULL slots — do not offer these times: ${full.join(", ")}] ` : "");
+      + (full.length ? `[FULL slots — do not offer these times: ${full.join(", ")}] ` : "")
+      + blocked;
   } catch (e) { return ""; }
 }
 
@@ -584,6 +602,58 @@ async function synthesizeVoice(script) {
 }
 
 // Upload the MP3 to WhatsApp media, then send it as an audio message.
+// Send a picture by public URL (gallery before/after shots live in KV and are
+// served by api/media.js). Failure is silent — the text reply already went.
+async function sendCloudImage(phoneNumberId, to, url, caption) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to || !url) return false;
+  try {
+    const image = { link: url };
+    if (caption) image.caption = String(caption).slice(0, 900);
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "image", image }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+      console.error("wa: image send failed", r.status, d);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error("wa: image send error", e && e.message);
+    return false;
+  }
+}
+
+// Before/after gallery: admins file shots under a tag ("hair transplant",
+// "pigmentation"); a patient asking for proof gets the closest-matching set.
+async function galleryFor(cfg, want) {
+  if (!cfg || !want) return [];
+  const norm = (v) => String(v || "").toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+  const asked = norm(want);
+  if (!asked) return [];
+  const askWords = asked.split(" ").filter((w) => w.length > 2);
+  try {
+    const tagsR = await guard.kvCommand(cfg, ["SMEMBERS", "gal:_tags"]);
+    const tags = tagsR.result || [];
+    if (!tags.length) return [];
+    let best = "";
+    for (const t of tags) {
+      const nt = norm(t);
+      if (nt === asked) { best = t; break; }
+      const hit = nt.indexOf(asked) !== -1 || asked.indexOf(nt) !== -1
+        || askWords.some((w) => nt.indexOf(w) !== -1);
+      if (hit && !best) best = t;
+    }
+    if (!best) return [];
+    const r = await guard.kvCommand(cfg, ["LRANGE", `gal:${best}`, "0", "1"]);
+    return (r.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } })
+      .filter((it) => it && it.imgId);
+  } catch (e) { return []; }
+}
+
 async function sendCloudVoice(phoneNumberId, to, mp3) {
   const token = process.env.WA_CLOUD_TOKEN;
   if (!token || !phoneNumberId || !to || !mp3 || !mp3.length) return false;
@@ -1042,6 +1112,27 @@ module.exports = async (req, res) => {
   if (out.lead && out.lead.cancel === true) {
     try { await cancelAppt(cfg, digits, (out.lead && out.lead.name) || profileName || ""); } catch (e) {}
   }
+
+  // 🚨 Medical urgency the model flagged → wake the care team immediately.
+  // One alert per patient per 2h so a long worried chat can't spam the team.
+  if (out.urgent) {
+    try {
+      let go = true;
+      if (cfg) {
+        const nx = await guard.kvCommand(cfg, ["SET", `ntf:urg:${digits}`, "1", "NX", "EX", "7200"]).catch(() => ({}));
+        go = !!(nx && nx.result);
+      }
+      if (go) {
+        const team = Array.from(new Set(
+          String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",")
+            .concat(String(process.env.ADMIN_PHONES || "").split(","))
+            .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
+        const who = (out.lead && out.lead.name) || profileName || "Patient";
+        const body = `🚨 *URGENT — patient ki ventane call cheyandi!*\n\n👤 ${who}\n📱 ${digits}\n⚠️ ${String(out.urgent).slice(0, 200)}\n\n💬 "${String(text).slice(0, 160)}"\n\nAgent vaalliki clinic number ichhindi — kaani mana nunchi call vellite better 🙏`;
+        for (const to of team) await notify.sendWa(to, body).catch(() => {});
+      }
+    } catch (e) { console.error("wa: urgent alert", e && e.message); }
+  }
   if (cfg) {
     hist.push({ u: text, a: out.reply });
     await saveHistory(cfg, histKey, hist);
@@ -1077,6 +1168,16 @@ module.exports = async (req, res) => {
     // Map pin when the patient asked where we are (Claude flag or keyword).
     if (out.send_location === true || LOCATION_ASK.test(text)) {
       await sendCloudLocation(cloud.phoneNumberId, cloud.to);
+    }
+    // Before/after proof: send the matching gallery shots (max 2) if we have any.
+    if (out.show_results) {
+      try {
+        const shots = await galleryFor(cfg, out.show_results);
+        const base = `https://${String(req.headers["x-forwarded-host"] || req.headers.host || "www.dermaluxe.ai")}`;
+        for (const it of shots) {
+          await sendCloudImage(cloud.phoneNumberId, cloud.to, `${base}/api/media?id=${it.imgId}`, it.caption);
+        }
+      } catch (e) { console.error("wa: gallery send", e && e.message); }
     }
     return res.status(200).json({ ok: true });
   }

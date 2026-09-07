@@ -191,6 +191,28 @@ async function findPatientName(cfg, ph) {
   return "";
 }
 
+// Day-only parser for leave/blocks: "" | today/ivala | repu | ellundi |
+// 15-09 | 3d → midnight IST of that day (epoch ms). parseWhen can't help
+// here because it insists on a clock time.
+function parseDay(s) {
+  const t = String(s || "").trim().toLowerCase();
+  const nowIst = new Date(Date.now() + IST_MS);
+  const mid = (dt) => Date.UTC(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate()) - IST_MS;
+  let m;
+  if (!t || /^(today|ivala|ee\s*roju)$/.test(t)) return mid(nowIst);
+  if (/^(tomorrow|repu|reppu)$/.test(t)) { nowIst.setUTCDate(nowIst.getUTCDate() + 1); return mid(nowIst); }
+  if (/^(ellundi|day\s*after\s*tomorrow)$/.test(t)) { nowIst.setUTCDate(nowIst.getUTCDate() + 2); return mid(nowIst); }
+  if ((m = t.match(/^(\d{1,3})\s*(d|days?|rojulu)$/))) { nowIst.setUTCDate(nowIst.getUTCDate() + +m[1]); return mid(nowIst); }
+  if ((m = t.match(/^(\d{1,2})\s*(w|weeks?|varalu)$/))) { nowIst.setUTCDate(nowIst.getUTCDate() + +m[1] * 7); return mid(nowIst); }
+  if ((m = t.match(/^(\d{1,2})[-\/](\d{1,2})(?:[-\/](\d{2,4}))?$/))) {
+    const d = new Date(nowIst);
+    d.setUTCMonth(+m[2] - 1, +m[1]);
+    if (m[3]) d.setUTCFullYear(+m[3] < 100 ? 2000 + +m[3] : +m[3]);
+    else if (mid(d) < mid(nowIst)) d.setUTCFullYear(d.getUTCFullYear() + 1);
+    return isNaN(d.getTime()) ? null : mid(d);
+  }
+  return null;
+}
 function fmtIst(ms) {
   const d = new Date(ms + IST_MS);
   const mo = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getUTCMonth()];
@@ -552,6 +574,8 @@ async function handle(cfg, digits, text, photo, video) {
       "• weekplan — week antha posts okesari plan (photos → done)",
       "• report — daily report ippude chudandi",
       "• appointments — bookings · arrived <phone> ✅ · noshow <phone> 🔁",
+      "• 📷 photo + 'result: hair transplant' — before/after gallery",
+      "• leave repu · block repu 2pm-5pm — agent aa time book cheyadu",
       "• followup <phone> Hydrafacial — results check msg",
       "• preop <phone> <procedure> · aftercare <phone> <procedure>",
       "• paid <phone> — advance confirm · birthday <phone> — wish",
@@ -564,7 +588,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• festival:/flash:/launch:/camp:/tips: — ready designs (paid)",
       "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
     lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
-    const menuRows = ["report", "appointments", "checkups", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
+    const menuRows = ["report", "funnel", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
   }
@@ -893,6 +917,162 @@ async function handle(cfg, digits, text, photo, video) {
     return "Treatment kuda cheppandi 🙏:\nsession <phone> 30d | PRP\n(30d = 30 rojula tarvata reminder)";
   }
 
+  // ---- Before/after gallery: photo + "result: <tag> | <caption>" ---------
+  // Stored WITHOUT a TTL (adm:img key space, so api/media.js serves it) and
+  // indexed by tag; the patient agent sends the matching set on request.
+  if (photo && /^result\s*[:\-]/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const rest = t.replace(/^result\s*[:\-]\s*/i, "");
+    const parts = rest.split("|");
+    const tag = String(parts[0] || "").trim().toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim().slice(0, 30);
+    if (!tag) return "Tag kuda cheppandi 🙏:\nresult: hair transplant | 6 nelala tarvata result";
+    const caption = String(parts.slice(1).join("|") || "").trim().slice(0, 200);
+    const media = await photo.fetch();
+    if (!media || media.tooBig) return "Photo download avvaledu / pedda undi 🙏 — malli pampandi.";
+    // Gallery rows live forever, so keep them comfortably inside the KV
+    // request limit (posting reuses the same key space with a TTL).
+    if (media.base64.length > 1400000) return "Photo konchem pedda undi 🙏 — normal quality lo (WhatsApp compress chesindi) malli pampandi.";
+    const imgId = crypto.randomBytes(16).toString("hex");
+    await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, media.base64]); // no TTL — gallery is permanent
+    await guard.kvCommand(cfg, ["LPUSH", `gal:${tag}`, JSON.stringify({ imgId, caption, ts: Date.now() })]);
+    await guard.kvCommand(cfg, ["LTRIM", `gal:${tag}`, "0", "5"]);
+    await guard.kvCommand(cfg, ["SADD", "gal:_tags", tag]).catch(() => {});
+    const n = await guard.kvCommand(cfg, ["LLEN", `gal:${tag}`]).catch(() => ({}));
+    return `🖼 *Gallery lo add ayindi!*\n\n🏷 Tag: *${tag}* (ippudu ${n.result || 1} photo)\n${caption ? "✍️ " + caption + "\n" : ""}\nPatient "results ela untayi" ani adigithe ee photo automatic ga veltundi ✨\n\n⚠️ Patient consent unna photos matrame pettandi 🙏\nList: *results*`;
+  }
+  if (/^results?$/i.test(t) && !photo) {
+    if (!cfg) return "Storage ledu.";
+    const tg = await guard.kvCommand(cfg, ["SMEMBERS", "gal:_tags"]).catch(() => ({}));
+    const tags = tg.result || [];
+    if (!tags.length) return "🖼 Gallery khali.\n\nBefore/after photo pampi caption lo ila rayandi:\n*result: hair transplant | 6 nelala tarvata*\n\nPatient results adigithe avi automatic ga veltayi ✨";
+    const lines = ["🖼 *Results gallery:*", ""];
+    for (const tag of tags) {
+      const n = await guard.kvCommand(cfg, ["LLEN", `gal:${tag}`]).catch(() => ({}));
+      lines.push(`• *${tag}* — ${n.result || 0} photo`);
+    }
+    lines.push("", "Add: photo + 'result: <tag> | <caption>'", "Remove: results remove <tag>");
+    return lines.join("\n");
+  }
+  let gm;
+  if ((gm = t.match(/^results?\s+(?:remove|delete)\s+(.+)$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const tag = gm[1].trim().toLowerCase().replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+    const items = await guard.kvCommand(cfg, ["LRANGE", `gal:${tag}`, "0", "9"]).catch(() => ({}));
+    for (const x of (items.result || [])) {
+      try { await guard.kvCommand(cfg, ["DEL", `adm:img:${JSON.parse(x).imgId}`]); } catch (e) {}
+    }
+    await guard.kvCommand(cfg, ["DEL", `gal:${tag}`]).catch(() => {});
+    await guard.kvCommand(cfg, ["SREM", "gal:_tags", tag]).catch(() => {});
+    return `🗑 Gallery nunchi *${tag}* remove chesanu.`;
+  }
+
+  // ---- Doctor leave / blocked windows: agent won't offer these times ------
+  let lm;
+  if ((lm = t.match(/^(leave|block)\s+(.+)$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const whole = lm[1].toLowerCase() === "leave";
+    let rest = lm[2].trim();
+    let note = "";
+    const np = rest.split("|");
+    if (np.length > 1) { rest = np[0].trim(); note = np.slice(1).join("|").trim().slice(0, 40); }
+    // optional trailing time range: "2pm-5pm", "10-1", "10:30am - 1pm"
+    let h1 = null, m1 = 0, h2 = null, m2 = 0;
+    const rm = rest.match(/(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*(?:-|to|nunchi)\s*(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\s*$/i);
+    if (rm && !whole) {
+      h1 = +rm[1]; m1 = +(rm[2] || 0); h2 = +rm[4]; m2 = +(rm[5] || 0);
+      const ap1 = (rm[3] || "").toLowerCase(), ap2 = (rm[6] || "").toLowerCase();
+      if (ap1 === "pm" && h1 < 12) h1 += 12; if (ap1 === "am" && h1 === 12) h1 = 0;
+      if (ap2 === "pm" && h2 < 12) h2 += 12; if (ap2 === "am" && h2 === 12) h2 = 0;
+      if (!ap1 && !ap2 && h1 < 9) h1 += 12;   // "2-5" in clinic hours means PM
+      if (!ap2 && h2 < h1) h2 += 12;
+      rest = rest.slice(0, rm.index).trim();
+    }
+    const dayStart = parseDay(rest);
+    if (dayStart === null) return `Roju ardham kaledu 🙏 — ila pampandi:\n*leave repu* (roju antha)\n*block repu 2pm-5pm*\n*leave 15-09 | Dr. Meghana leave*\n(today · repu · ellundi · 3d · 15-09 pani chestayi)`;
+    const from = h1 === null ? dayStart + 9 * 3600000 : dayStart + (h1 * 60 + m1) * 60000;
+    const to = h2 === null ? dayStart + 21 * 3600000 : dayStart + (h2 * 60 + m2) * 60000;
+    if (to <= from) return "Time range thappu undi 🙏 — e.g. *block repu 2pm-5pm*";
+    await guard.kvCommand(cfg, ["LPUSH", "blk:q", JSON.stringify({ from, to, note })]);
+    await guard.kvCommand(cfg, ["LTRIM", "blk:q", "0", "49"]);
+    return `🚫 *Block set ayindi*\n\n📅 ${fmtIst(from)} — ${fmtIst(to)}${note ? "\n📝 " + note : ""}\n\nAgent ee time lo appointments book cheyadu ✅\nList: *blocks* · Remove: *unblock <n>*`;
+  }
+  if (/^blocks?$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const b = await guard.kvCommand(cfg, ["LRANGE", "blk:q", "0", "49"]).catch(() => ({}));
+    const now3 = Date.now();
+    const items = (b.result || []).map((x) => { try { return { raw: x, v: JSON.parse(x) }; } catch (e) { return null; } })
+      .filter((x) => x && x.v.to > now3).sort((a, b2) => a.v.from - b2.v.from);
+    if (!items.length) return "🚫 Blocks em levu — clinic hours anni open.\n\nAdd: *leave repu* leda *block repu 2pm-5pm*";
+    const lines = ["🚫 *Blocked times:*", ""];
+    items.forEach((x, i) => lines.push(`${i + 1}. ${fmtIst(x.v.from)} — ${fmtIst(x.v.to)}${x.v.note ? " · " + x.v.note : ""}`));
+    lines.push("", "Remove: unblock <number>");
+    return lines.join("\n");
+  }
+  if ((lm = t.match(/^unblock\s+(\d{1,2})$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const b = await guard.kvCommand(cfg, ["LRANGE", "blk:q", "0", "49"]).catch(() => ({}));
+    const now3 = Date.now();
+    const items = (b.result || []).map((x) => { try { return { raw: x, v: JSON.parse(x) }; } catch (e) { return null; } })
+      .filter((x) => x && x.v.to > now3).sort((a, b2) => a.v.from - b2.v.from);
+    const idx = Number(lm[1]) - 1;
+    if (idx < 0 || idx >= items.length) return `Block #${lm[1]} ledu — *blocks* tho chudandi.`;
+    await guard.kvCommand(cfg, ["LREM", "blk:q", "1", items[idx].raw]);
+    return `✅ Block remove chesanu — ${fmtIst(items[idx].v.from)} ippudu open.`;
+  }
+
+  // ---- Conversion funnel: enquiry → booking → arrived ---------------------
+  if (/^funnel(\s*(week|month))?$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const days = /month/i.test(t) ? 30 : 7;
+    const since = Date.now() - days * 86400000;
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
+    const leads = (r.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } })
+      .filter((l) => l && l.type !== "job" && l.ts >= since);
+    const uniq = new Set(), booked = new Set(), byType = {};
+    leads.forEach((l) => {
+      const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+      if (ph.length === 10) uniq.add(ph);
+      byType[l.type] = (byType[l.type] || 0) + 1;
+      if (l.slot && l.date && ph.length === 10) booked.add(ph);
+    });
+    let arrived = 0, noshow = 0, pending = 0;
+    const seenAppt = new Set();
+    for (const key of ["appt:done", "appt:q"]) {
+      const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
+      for (const x of (q.result || [])) {
+        try {
+          const a = JSON.parse(x);
+          if (!a.at || a.at < since) continue;
+          const k = `${a.ph}:${a.at}`;
+          if (seenAppt.has(k)) continue;
+          seenAppt.add(k);
+          if (a.ph) booked.add(a.ph);
+          if (a.v) arrived++; else if (a.ns) noshow++; else if (key === "appt:q") pending++;
+        } catch (e) {}
+      }
+    }
+    const enq = uniq.size, bk = booked.size;
+    const pct = (a, b) => (b ? Math.round((a / b) * 100) : 0);
+    const bar = (n, total) => "▓".repeat(Math.max(1, Math.round((total ? n / total : 0) * 10))) ;
+    const lines = [
+      `📊 *Conversion Funnel — last ${days} days*`, "",
+      `💬 Enquiries: *${enq}* ${bar(enq, enq)}`,
+      `📅 Booked: *${bk}* (${pct(bk, enq)}%) ${bar(bk, enq)}`,
+      `✅ Vachharu: *${arrived}* (${pct(arrived, bk)}% of bookings) ${bar(arrived, enq)}`,
+    ];
+    if (noshow) lines.push(`❌ Raaledu: *${noshow}*`);
+    if (pending) lines.push(`⏳ Inka raavalsinavi: *${pending}*`);
+    lines.push("", `📈 Enquiry → chair: *${pct(arrived, enq)}%*`);
+    const chans = Object.keys(byType).map((k) => `${k}:${byType[k]}`).join(", ");
+    if (chans) lines.push(`📲 Channels: ${chans}`);
+    lines.push("");
+    if (enq && pct(bk, enq) < 40) lines.push("💡 Booking % thakkuva — *reactivate* tho cold leads ni push cheyandi.");
+    else if (bk && arrived && pct(arrived, bk) < 70) lines.push("💡 Book chesi raani vaallu ekkuva — visit roju call cheyandi, *noshow <phone>* mark cheyandi.");
+    else if (enq) lines.push("💡 Baaga velthundi! Leads penchadaniki IG posts + *broadcast:* try cheyandi.");
+    lines.push("Arrived mark: *arrived <phone>* · Full report: *report*");
+    return lines.join("\n");
+  }
+
   // ---- Week plan: batch-collect posts, auto-schedule across the week -------
   const wkKey = `adm:wk:${digits}`;
   if (/^week\s*plan$/i.test(t) && !photo && !video) {
@@ -926,7 +1106,7 @@ async function handle(cfg, digits, text, photo, video) {
         lines.push("", "Auto-post avutayi ✅ · *queue* tho chudochu · *unschedule <n>* remove");
         return lines.join("\n");
       }
-      if ((photo || video) && !/^(post|schedule|story)\s*[:\-]/i.test(t)) {
+      if ((photo || video) && !/^(post|schedule|story|result)\s*[:\-]/i.test(t)) {
         if (wk.items.length >= 10) return "10 posts limit 🙏 — *done* pampandi.";
         const item = { caption: "" };
         if (video) {
