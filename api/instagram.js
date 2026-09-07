@@ -209,7 +209,7 @@ function parseOut(text) {
     const parsed = JSON.parse(m ? m[0] : text);
     if (parsed && typeof parsed.reply === "string") return parsed;
   } catch (e) {}
-  return { reply: text || FALLBACK_REPLY, lead: null };
+  return { reply: facts.salvageReply(text) || FALLBACK_REPLY, lead: null };
 }
 
 async function askClaude(hist, userMsg, profileName, extraCtx, imageBlock) {
@@ -233,7 +233,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, imageBlock) {
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: imageBlock ? 800 : 500,
+      max_tokens: 1000,
       system: imageBlock ? CLINIC_FACTS + "\n\n" + PHOTO_RULES : CLINIC_FACTS,
       messages,
     }),
@@ -334,7 +334,7 @@ async function askClaudeComment(username, commentText) {
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 400,
+      max_tokens: 600,
       system: CLINIC_FACTS + "\n\n" + COMMENT_RULES,
       messages: [{ role: "user", content: `[Instagram comment by @${username} on our post] ${commentText}` }],
     }),

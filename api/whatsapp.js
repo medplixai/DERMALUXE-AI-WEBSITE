@@ -107,7 +107,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx) {
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 500,
+      max_tokens: 1000,
       system: CLINIC_FACTS,
       messages,
     }),
@@ -120,7 +120,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx) {
     const parsed = JSON.parse(m ? m[0] : text);
     if (parsed && typeof parsed.reply === "string") return parsed;
   } catch (e) {}
-  return { reply: text || FALLBACK_REPLY, lead: null };
+  return { reply: facts.salvageReply(text) || FALLBACK_REPLY, lead: null };
 }
 
 // Quick-menu buttons shown on the first reply of a conversation.
@@ -651,7 +651,7 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx) {
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 800,
+      max_tokens: 1000,
       system: CLINIC_FACTS + "\n\n" + PHOTO_RULES,
       messages,
     }),
@@ -664,7 +664,7 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx) {
     const parsed = JSON.parse(m ? m[0] : text);
     if (parsed && typeof parsed.reply === "string") return parsed;
   } catch (e) {}
-  return { reply: text || FALLBACK_REPLY, lead: null };
+  return { reply: facts.salvageReply(text) || FALLBACK_REPLY, lead: null };
 }
 
 async function storeLead(cfg, leadInfo, phone, lastMsg) {
