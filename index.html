@@ -1070,8 +1070,30 @@
     </a>
   </div>
 
+  <!-- AI chat widget (website) -->
+  <button type="button" class="dlchat-btn" id="dlChatBtn" aria-label="Chat with the DermaLuxe AI assistant">
+    <span class="dlchat-btn__badge" id="dlChatBadge">AI</span>
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3C6.9 3 3 6.6 3 11c0 2.2 1 4.2 2.7 5.6-.1 1-.5 2.3-1.4 3.4 1.6-.2 3.2-.9 4.4-1.8 1 .3 2.1.4 3.3.4 5.1 0 9-3.6 9-8s-3.9-8-9-8Zm-4 9a1.2 1.2 0 1 1 0-2.4A1.2 1.2 0 0 1 8 12Zm4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4Zm4 0a1.2 1.2 0 1 1 0-2.4 1.2 1.2 0 0 1 0 2.4Z"/></svg>
+  </button>
+  <section class="dlchat" id="dlChatPanel" hidden aria-label="DermaLuxe AI chat">
+    <header class="dlchat__head">
+      <span class="dlchat__dot"></span>
+      <div class="dlchat__title">DermaLuxe Assistant<span>AI · Online 24×7</span></div>
+      <button type="button" class="dlchat__x" id="dlChatClose" aria-label="Close chat">&times;</button>
+    </header>
+    <div class="dlchat__log" id="dlChatLog" role="log" aria-live="polite"></div>
+    <div class="dlchat__chips" id="dlChatChips"></div>
+    <form class="dlchat__form" id="dlChatForm">
+      <input type="text" id="dlChatInput" placeholder="Mee prashna type cheyandi…" autocomplete="off" maxlength="600" />
+      <button type="submit" id="dlChatSend" aria-label="Send">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M2 21 23 12 2 3v7l15 2-15 2v7Z"/></svg>
+      </button>
+    </form>
+  </section>
+
   <script src="script.js"></script>
   <script src="ai-analysis.js"></script>
   <script src="cookies.js"></script>
+  <script src="chat-widget.js"></script>
 </body>
 </html>

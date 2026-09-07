@@ -1,31 +1,77 @@
 {
   "functions": {
-    "api/whatsapp.js": { "maxDuration": 60 },
-    "api/instagram.js": { "maxDuration": 60 },
-    "api/messenger.js": { "maxDuration": 60 },
-    "api/analyze.js": { "maxDuration": 60 },
-    "api/cron-post.js": { "maxDuration": 60 },
-    "api/media.js": { "maxDuration": 60 },
-    "api/cron-followup.js": { "maxDuration": 60 },
-    "api/cron-digest.js": { "maxDuration": 60 }
+    "api/whatsapp.js": {
+      "maxDuration": 60
+    },
+    "api/instagram.js": {
+      "maxDuration": 60
+    },
+    "api/messenger.js": {
+      "maxDuration": 60
+    },
+    "api/analyze.js": {
+      "maxDuration": 60
+    },
+    "api/cron-post.js": {
+      "maxDuration": 60
+    },
+    "api/media.js": {
+      "maxDuration": 60
+    },
+    "api/cron-followup.js": {
+      "maxDuration": 60
+    },
+    "api/cron-digest.js": {
+      "maxDuration": 60
+    },
+    "api/chat.js": {
+      "maxDuration": 60
+    }
   },
   "crons": [
-    { "path": "/api/cron-post", "schedule": "*/10 * * * *" },
-    { "path": "/api/cron-followup", "schedule": "15 * * * *" },
-    { "path": "/api/cron-digest", "schedule": "30 3 * * *" }
+    {
+      "path": "/api/cron-post",
+      "schedule": "*/10 * * * *"
+    },
+    {
+      "path": "/api/cron-followup",
+      "schedule": "15 * * * *"
+    },
+    {
+      "path": "/api/cron-digest",
+      "schedule": "30 3 * * *"
+    }
   ],
   "rewrites": [
-    { "source": "/r/:tag", "destination": "/api/r?tag=:tag" }
+    {
+      "source": "/r/:tag",
+      "destination": "/api/r?tag=:tag"
+    }
   ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        { "key": "X-Content-Type-Options", "value": "nosniff" },
-        { "key": "X-Frame-Options", "value": "SAMEORIGIN" },
-        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
-        { "key": "Permissions-Policy", "value": "geolocation=(), microphone=(), camera=(self), payment=()" },
-        { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains" },
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "SAMEORIGIN"
+        },
+        {
+          "key": "Referrer-Policy",
+          "value": "strict-origin-when-cross-origin"
+        },
+        {
+          "key": "Permissions-Policy",
+          "value": "geolocation=(), microphone=(), camera=(self), payment=()"
+        },
+        {
+          "key": "Strict-Transport-Security",
+          "value": "max-age=63072000; includeSubDomains"
+        },
         {
           "key": "Content-Security-Policy",
           "value": "default-src 'self'; script-src 'self' 'unsafe-inline' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob: https://www.googletagmanager.com https://www.google-analytics.com; connect-src 'self' https://www.googletagmanager.com https://www.google-analytics.com https://*.google-analytics.com https://analytics.google.com https://*.analytics.google.com https://stats.g.doubleclick.net; frame-src https://www.google.com; frame-ancestors 'self'; base-uri 'self'; form-action 'self'; object-src 'none'"
@@ -35,21 +81,36 @@
     {
       "source": "/leads.html",
       "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
-        { "key": "Cache-Control", "value": "no-store" }
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
       ]
     },
     {
       "source": "/marketing.html",
       "headers": [
-        { "key": "X-Robots-Tag", "value": "noindex, nofollow" },
-        { "key": "Cache-Control", "value": "no-store" }
+        {
+          "key": "X-Robots-Tag",
+          "value": "noindex, nofollow"
+        },
+        {
+          "key": "Cache-Control",
+          "value": "no-store"
+        }
       ]
     },
     {
       "source": "/assets/(.*)",
       "headers": [
-        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=3600, stale-while-revalidate=86400"
+        }
       ]
     }
   ]
