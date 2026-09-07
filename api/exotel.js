@@ -3,7 +3,7 @@
 // sell, so the phone side runs on Exotel; this endpoint is what their call
 // flow calls into.
 //
-//   /api/exotel?token=<WA_WEBHOOK_TOKEN>&event=missed    ExoPhone "missed call"
+//   /api/exotel?token=<EXOTEL_TOKEN>&event=missed         ExoPhone "missed call"
 //                                                        webhook (Status=missed-call)
 //   /api/exotel?token=...&event=passthru                 Passthru applet — fires
 //                                                        after a Connect leg;
@@ -54,7 +54,8 @@ async function rescue(cfg, from, label, extra) {
 }
 
 module.exports = async (req, res) => {
-  const secret = process.env.WA_WEBHOOK_TOKEN || "";
+  // Its own secret, so the telephony vendor never holds the Meta webhook token.
+  const secret = process.env.EXOTEL_TOKEN || process.env.WA_WEBHOOK_TOKEN || "";
   const q = req.query || {};
   const b = req.body && typeof req.body === "object" ? req.body : {};
   const pick = (...keys) => {
