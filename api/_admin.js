@@ -577,6 +577,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• appointments — bookings · arrived <phone> ✅ · noshow <phone> 🔁",
       "• 📷 photo + 'result: hair transplant' — before/after gallery",
       "• referrals — evaru patients ni pampistunnaro",
+      "• missed <phone> — miss ayina call ki WhatsApp rescue",
       "• leave repu · block repu 2pm-5pm — agent aa time book cheyadu",
       "• followup <phone> Hydrafacial — results check msg",
       "• preop <phone> <procedure> · aftercare <phone> <procedure>",
@@ -917,6 +918,22 @@ async function handle(cfg, digits, text, photo, video) {
   }
   if (/^session\s+\d{10}\s*$/i.test(t)) {
     return "Treatment kuda cheppandi 🙏:\nsession <phone> 30d | PRP\n(30d = 30 rojula tarvata reminder)";
+  }
+
+  // ---- missed <phone> — manual missed-call rescue -------------------------
+  // Twilio has no Indian numbers to sell, so until the clinic has a cloud
+  // telephony line, staff forward a missed call here and the agent sends the
+  // same rescue message the automated webhook would have sent.
+  if ((um = t.match(/^missed?\s*call?\s*(\d{10})$/i)) || (um = t.match(/^missed\s+(\d{10})$/i))) {
+    const ph = um[1];
+    if (cfg) await guard.kvCommand(cfg, ["SET", `ntf:miss:${ph}`, "1", "EX", "21600"]).catch(() => {});
+    const msg = "Namaste! 🙏 Meeru DermaLuxe ki call chesaru — miss ayindi, sorry!\n\nIkkade WhatsApp lo cheppandi — appointment book chestam leda mee doubts ki reply chestam 😊\n\n📍 Rama Mahal, Kasturi Vari Street, Eluru\n⏰ Mon-Sat, 9 AM - 9 PM";
+    if (await notify.sendWa(ph, msg)) return `✅ Missed-call message ${ph} ki vellindi.\nVaallu reply istey agent ventane matladutundi 💬`;
+    const out = await notify.sendWaTemplate(ph, "clinic_update",
+      ["friend", "Meeru DermaLuxe ki call chesaru — miss ayindi, sorry! Appointment leda doubts unte ee message ki reply cheyandi 😊"]);
+    return out.ok
+      ? `✅ Missed-call message ${ph} ki vellindi (template).`
+      : `❌ Deliver avvaledu: ${out.msg || "try again"}`;
   }
 
   // ---- Before/after gallery: photo + "result: <tag> | <caption>" ---------
