@@ -274,6 +274,13 @@ const TEMPLATES = [
   },
 ];
 
+// Meta's generic "Invalid parameter" hides the useful part — surface it.
+function errText(d) {
+  const e = (d && d.error) || {};
+  const parts = [e.message, e.error_user_title, e.error_user_msg, e.error_data ? JSON.stringify(e.error_data) : ""].filter(Boolean);
+  return parts.length ? parts.join(" · ").slice(0, 400) : d;
+}
+
 module.exports = async (req, res) => {
   const key = String((req.query && req.query.key) || "");
   if (!process.env.ADMIN_KEY || key !== process.env.ADMIN_KEY) {
@@ -324,7 +331,7 @@ module.exports = async (req, res) => {
           body: JSON.stringify({ components: tpl.components }), // category can't change on edit
         });
         const d = await r.json().catch(() => ({}));
-        out.push({ name, id: row.id, was: row.status, ok: r.ok, resp: r.ok ? d : ((d.error && d.error.message) || d) });
+        out.push({ name, id: row.id, was: row.status, ok: r.ok, resp: r.ok ? d : errText(d) });
       } catch (e) {
         out.push({ name, ok: false, resp: String(e && e.message) });
       }
@@ -342,7 +349,7 @@ module.exports = async (req, res) => {
           body: JSON.stringify(tpl),
         });
         const d = await r.json().catch(() => ({}));
-        out.push({ name: tpl.name, ok: r.ok, resp: r.ok ? d : ((d.error && d.error.message) || d) });
+        out.push({ name: tpl.name, ok: r.ok, resp: r.ok ? d : errText(d) });
       } catch (e) {
         out.push({ name: tpl.name, ok: false, resp: String(e && e.message) });
       }
