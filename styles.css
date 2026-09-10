@@ -1020,10 +1020,17 @@ h3 { font-size: 1.4rem; }
   .ht__visual { max-width: 460px; margin: 0 auto 2rem; width: 100%; }
   .about__media { max-width: 420px; margin: 0 auto 2rem; width: 100%; }
   /* Narrow screens have no room beside the headline, so the doctor portrait
-     would sit behind the text. Fall back to the abstract hero image here —
-     the hero doctor tag still carries her photo and credentials. */
-  .hero__photo { background-image: url("assets/hero.jpg"); background-position: center right;
-    width: 100%; opacity: .22; -webkit-mask-image: none; mask-image: none; }
+     becomes a full-width band at the top of the hero and the copy stacks
+     below it, over the fade — her face is never covered by text. */
+  .hero { --hero-photo-h: min(56vh, 520px); min-height: 0; align-items: flex-start; padding-top: 0; }
+  .hero__photo {
+    inset: 0 0 auto 0; width: 100%; height: var(--hero-photo-h); opacity: 1;
+    background: url("assets/dr-nikhitha.jpg") center 12% / cover no-repeat;
+    -webkit-mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
+    mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
+  }
+  .hero__photo::after { background: linear-gradient(180deg, rgba(10,10,12,.28), transparent 30%, rgba(10,10,12,.55) 75%, #0a0a0c); }
+  .hero__inner { padding-top: calc(var(--hero-photo-h) - 4.5rem); }
   .doctors__grid, .results__grid { grid-template-columns: 1fr; max-width: 480px; margin-inline: auto; }
   .founders__grid { grid-template-columns: 1fr; max-width: 520px; }
   .process__line { grid-template-columns: repeat(2, 1fr); gap: 2.5rem 1.5rem; }
