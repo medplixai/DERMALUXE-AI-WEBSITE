@@ -6,6 +6,7 @@
 // Not a command → returns null and the normal patient flow continues.
 const crypto = require("crypto");
 const guard = require("./_guard.js");
+const weekly = require("./_weekly.js");
 const notify = require("./_notify.js");
 const hrmod = require("./_hr.js");
 const referral = require("./_referral.js");
@@ -589,9 +590,10 @@ async function handle(cfg, digits, text, photo, video) {
     if (owner) lines.push(
       "• broadcast: <offer> — andariki · broadcast hair: — segment ki (paid)",
       "• festival:/flash:/launch:/camp:/tips: — ready designs (paid)",
-      "• reactivate — 3-10 roju cold leads ki follow-up (paid)");
+      "• reactivate — 3-10 roju cold leads ki follow-up (paid)",
+      "• weekly — Monday marketing report · reviews — patient ratings");
     lines.push("", "Reports ki 👇 list nunchi tap cheyandi:");
-    const menuRows = ["report", "funnel", "referrals", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
+    const menuRows = ["report", "weekly", "funnel", "reviews", "referrals", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
   }
@@ -1052,6 +1054,32 @@ async function handle(cfg, digits, text, photo, video) {
     const lines = [`🎁 *Referrals — total ${total} patients*`, ""];
     rows.forEach((r2, i) => lines.push(`${i + 1}. 📱 ${r2.ph} (${r2.code}) — *${r2.n}* pampincharu · last: ${r2.last.name || r2.last.ph}`));
     lines.push("", "Top referrers ki thank-you message pampandi 💖");
+    return lines.join("\n");
+  }
+
+  // ---- Weekly marketing report (auto every Monday 9 AM; on demand here) ----
+  if (/^weekly(\s*report)?$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const rep = await weekly.buildWeekly(cfg);
+    return rep.body;
+  }
+
+  // ---- Patient ratings (visit_rating taps, day 2 after the visit) ---------
+  if (/^reviews?(\s*report)?$/i.test(t)) {
+    if (!cfg) return "Storage ledu.";
+    const r = await guard.kvCommand(cfg, ["LRANGE", "rv:log", "0", "199"]);
+    const rows = (r.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((x) => x && x.rating);
+    if (!rows.length) return "⭐ Inka ratings raledu — prathi visit tarvata 2nd day patients ki rating buttons automatic ga veltayi.";
+    const since = Date.now() - 30 * 86400000;
+    const recent = rows.filter((x) => x.ts >= since);
+    const base = recent.length ? recent : rows;
+    const avg = (base.reduce((s, x) => s + Number(x.rating), 0) / base.length).toFixed(1);
+    const dist = [5, 4, 3].map((n) => `${n}⭐ ${base.filter((x) => Number(x.rating) === n).length}`).join(" · ");
+    const lines = [`⭐ *Patient Ratings — last 30 days*`, "", `Responses: *${base.length}* · avg *${avg}*`, dist, "", "Recent:"];
+    rows.slice(0, 8).forEach((x) => lines.push(`${Number(x.rating) >= 4 ? "😊" : "⚠️"} ${x.rating}⭐ ${x.name || "?"} (${x.ph})${x.concern ? " · " + String(x.concern).slice(0, 24) : ""} · ${fmtIst(x.ts).split(",")[0]}`));
+    const low = base.filter((x) => Number(x.rating) <= 3).length;
+    lines.push("", low ? `⚠️ ${low} low rating(s) — owner/manager call chesi service recovery cheyandi 🙏` : "👏 Low ratings levu — great service!");
+    if (!process.env.REVIEW_LINK) lines.push("ℹ️ Google review link inka set avvaledu (GBP verify ayyaka REVIEW_LINK pettandi) — 4-5⭐ vaallaki automatic ga veltundi.");
     return lines.join("\n");
   }
 

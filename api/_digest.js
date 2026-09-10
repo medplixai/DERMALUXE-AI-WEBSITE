@@ -97,7 +97,7 @@ async function buildDigest(cfg, live) {
       }
       if (istDay(a.at) !== today) continue;
       todays.push(a);
-      if (live && !a.r9 && a.at > now) {
+      if (live && !a.r9 && !a.cf && a.at > now) { // confirmed patients skip the 9 AM ping (2h one still goes)
         await notify.sendWaTemplate(a.ph, "appointment_reminder", [a.name || "friend", fmtIst(a.at)]).catch(() => {});
         a.r9 = true;
         if (a.at - now < 10800000) a.r2 = true; // near → skip cron-post's 2h ping too
@@ -109,7 +109,9 @@ async function buildDigest(cfg, live) {
     if (todays.length) {
       lines.push("", `🩺 Ivala appointments: *${todays.length}*${live ? " (patients ki reminders vellayi)" : ""}`);
       todays.sort((x, y) => x.at - y.at).forEach((a) =>
-        lines.push(`— ${fmtIst(a.at).split(", ")[1] || fmtIst(a.at)} · ${a.name || "?"} 📱 ${a.ph}${a.concern ? " · " + a.concern : ""}`));
+        lines.push(`${a.cf ? "✅" : "—"} ${fmtIst(a.at).split(", ")[1] || fmtIst(a.at)} · ${a.name || "?"} 📱 ${a.ph}${a.concern ? " · " + a.concern : ""}`));
+      const unconfirmed = todays.filter((a) => !a.cf && a.at > now).length;
+      if (unconfirmed) lines.push(`⏳ Confirm avvanivi: *${unconfirmed}* — front office call chesi confirm cheyandi 📞`);
     }
   } catch (e) {}
 

@@ -65,6 +65,17 @@ async function sendWaTemplate(digits, templateName, params, lang) {
       console.error("notify: template send failed", to, r.status, JSON.stringify(d).slice(0, 250));
       return { ok: false, msg: (d.error && d.error.message || "send fail").slice(0, 120) };
     }
+    // Volume counters for the weekly report (tpl:sent:<day>[:<name>], 40d)
+    try {
+      const cfg = guard.kvConfig();
+      if (cfg) {
+        const day = guard.today();
+        for (const k of [`tpl:sent:${day}`, `tpl:sent:${day}:${templateName}`]) {
+          await guard.kvCommand(cfg, ["INCR", k]);
+          await guard.kvCommand(cfg, ["EXPIRE", k, "3456000"]);
+        }
+      }
+    } catch (e) {}
     return { ok: true };
   } catch (e) {
     console.error("notify: template send error", to, e && e.message);

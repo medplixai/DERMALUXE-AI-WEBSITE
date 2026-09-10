@@ -208,6 +208,32 @@ const TEMPLATES = [
     ],
   },
   {
+    name: "appointment_confirm",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🙏 Repu mee DermaLuxe appointment:\n\n📅 {{2}}\n📍 Rama Mahal, Kasturi Vari Street, Opp. Happy Mobiles, Eluru\n\nVastunnara? Okka tap tho confirm cheyandi 👇 Time maarchali ante Reschedule nokkandi.",
+        example: { body_text: [["Priya", "Sep 11, 6:30 PM"]] },
+      },
+      { type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: "✅ Vastanu" }, { type: "QUICK_REPLY", text: "🔁 Reschedule" }] },
+    ],
+  },
+  {
+    name: "visit_rating",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🙏 Mee recent DermaLuxe visit ({{2}}) ela anipinchindi?\n\nMee feedback tho manam inka better avutham — okka tap tho rating ivvandi 👇",
+        example: { body_text: [["Priya", "Hydrafacial"]] },
+      },
+      { type: "BUTTONS", buttons: [{ type: "QUICK_REPLY", text: "⭐ 5 Excellent" }, { type: "QUICK_REPLY", text: "👍 4 Good" }, { type: "QUICK_REPLY", text: "😐 3 or below" }] },
+    ],
+  },
+  {
     name: "lead_checkin",
     category: "MARKETING",
     language: "en",

@@ -5,6 +5,7 @@
 // One nudge per phone per week (NX marker); max 10 per run.
 const guard = require("./_guard.js");
 const notify = require("./_notify.js");
+const admin = require("./_admin.js");
 
 module.exports = async (req, res) => {
   if (process.env.CRON_SECRET) {
@@ -118,10 +119,30 @@ module.exports = async (req, res) => {
     if (h === 12) day21 = await leadTouch(492, 516, "we_miss_you", "ntf:fu21", 5184000, 6, concern);
   } catch (e) { console.error("cron: lead touches", e && e.message); }
 
+  // ---- Day-before confirmation (6:15 PM IST): appointment_confirm template
+  // with ✅ Vastanu / 🔁 Reschedule quick replies. One attempt per booking (c1).
+  let confirmAsked = 0;
+  try {
+    if (new Date(now + 330 * 60000).getUTCHours() === 18) {
+      const istDay = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
+      const tomorrow = istDay(now + 86400000);
+      const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+      for (const raw of (aq.result || [])) {
+        let a; try { a = JSON.parse(raw); } catch (e) { continue; }
+        if (!a || !a.ph || !a.at || a.c1 || a.cf || istDay(a.at) !== tomorrow) continue;
+        const out = await notify.sendWaTemplate(a.ph, "appointment_confirm", [String(a.name || "").split(" ")[0] || "friend", admin.fmtIst(a.at)]);
+        a.c1 = true;
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
+        if (out.ok) confirmAsked++;
+      }
+    }
+  } catch (e) { console.error("cron: day-before confirm", e && e.message); }
+
   // ---- Post-visit day 7 (results check) and day 30 (maintenance) ---------
   // Runs in the 10:45 IST block with the next-morning check; approved
   // templates service_followup / session_reminder carry the message.
-  let visit7 = 0, visit30 = 0;
+  let visit7 = 0, visit30 = 0, rated = 0;
   try {
     if (new Date(now + 330 * 60000).getUTCHours() === 10) {
       const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "299"]);
@@ -132,7 +153,15 @@ module.exports = async (req, res) => {
         const first = String(a.name || "").split(" ")[0] || "friend";
         const what = String(a.concern || "treatment").slice(0, 50);
         let changed = false;
-        if (!a.fu7 && days >= 6.5 && days < 7.5) {
+        if (!a.rv && days >= 1.5 && days < 2.5) {
+          // Day 2: rating buttons; rv:ask lets the webhook read the tap
+          const out = await notify.sendWaTemplate(a.ph, "visit_rating", [first, what]).catch(() => ({ ok: false }));
+          a.rv = true; changed = true;
+          if (out.ok) {
+            await guard.kvCommand(cfg, ["SET", `rv:ask:${a.ph}`, JSON.stringify({ name: first, concern: what, at: a.at }), "EX", "604800"]).catch(() => {});
+            rated++;
+          }
+        } else if (!a.fu7 && days >= 6.5 && days < 7.5) {
           await notify.sendWaTemplate(a.ph, "service_followup", [first, what]).catch(() => {});
           a.fu7 = true; changed = true; visit7++;
         } else if (!a.fu30 && days >= 29.5 && days < 30.5) {
@@ -173,5 +202,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: visit followup", e && e.message); }
 
-  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, visited, visit7, visit30 });
+  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30 });
 };

@@ -390,6 +390,56 @@ async function apptCtx(cfg, digits) {
 
 // Patient cancelled → drop queued reminders + tell the team so a human can
 // follow up (a win-back call beats a silent empty chair).
+// ✅ Vastanu tap (day-before appointment_confirm template) → flag the
+// upcoming appointment confirmed: digest shows ✅, 9 AM reminder is skipped.
+// askedOnly: plain "yes"/"confirm" only count when the confirm template went
+// out (c1) — a bare "yes" mid-chat must not be misread as a confirmation.
+async function confirmAppt(cfg, phone, askedOnly) {
+  try {
+    const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+    for (const s of (q.result || [])) {
+      let a; try { a = JSON.parse(s); } catch (e) { continue; }
+      if (!a || a.ph !== phone || !a.at || a.at < Date.now() - 3600000) continue;
+      if (askedOnly && !a.c1) continue;
+      if (!a.cf) {
+        a.cf = true;
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]).catch(() => {});
+        await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
+      }
+      return a;
+    }
+  } catch (e) {}
+  return null;
+}
+
+// Post-visit rating tap (visit_rating template, day 2). Stores it in rv:log,
+// thanks the patient, sends 4-5 stars to the Google review link when
+// REVIEW_LINK is set (referral nudge otherwise) and pages the team on <=3
+// for a same-day recovery call.
+async function recordRating(cfg, phone, rating, askRaw, profileName) {
+  let ask = {}; try { ask = JSON.parse(askRaw) || {}; } catch (e) {}
+  const name = String(ask.name || profileName || "").split(" ")[0];
+  await guard.kvCommand(cfg, ["DEL", `rv:ask:${phone}`]).catch(() => {});
+  await guard.kvCommand(cfg, ["LPUSH", "rv:log", JSON.stringify({ ph: phone, name, rating, concern: ask.concern || "", ts: Date.now() })]).catch(() => {});
+  await guard.kvCommand(cfg, ["LTRIM", "rv:log", "0", "499"]).catch(() => {});
+  if (rating >= 4) {
+    const link = process.env.REVIEW_LINK;
+    return `${rating === 5 ? "🌟" : "😊"} Thank you ${name}! Mee ${rating}⭐ maaku chala important 💖\n\n` +
+      (link
+        ? `Google lo oka chinna review raasthe inka chala mandiki help avutundi 🙏\n⭐ ${link}\n\n`
+        : `Friends/family ki DermaLuxe ni recommend cheyandi — *REFER* ani pampithe mee referral code vastundi 🎁\n\n`) +
+      "Inka emaina doubts unte ikkade adagandi 😊";
+  }
+  const team = Array.from(new Set(
+    String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",")
+      .concat(String(process.env.ADMIN_PHONES || "").split(","))
+      .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
+  for (const to of team) {
+    await notify.sendWa(to, `⚠️ *Low rating — ${rating}⭐*\n\n👤 ${name || "Patient"} (${phone})\n🩺 ${ask.concern || "-"}\n\nIvala call chesi issue teluskondi — service recovery 🙏`).catch(() => {});
+  }
+  return `Sorry ${name} 🙏 mee experience meeru expect chesinatlu lekapoyinanduku. Mee feedback maaku chala important.\n\nMana team ivala meeku call chesi matladutharu. Emi problem ayindo ikkada kuda cheppochu — ventane fix chestam 💛`;
+}
+
 async function cancelAppt(cfg, phone, name) {
   if (!cfg) return;
   let hadAt = 0;
@@ -919,6 +969,24 @@ module.exports = async (req, res) => {
     }
   }
 
+  // ---- Day-before confirm buttons + post-visit rating taps ---------------
+  if (cfg && !imageId && !audioId) {
+    const raw = text.trim();
+    const tapped = /^✅\s*vastanu$/i.test(raw);
+    if (tapped || /^(vastanu|vastaanu|confirm|confirmed|yes)$/i.test(raw)) {
+      const c = await confirmAppt(cfg, digits, !tapped);
+      if (c) return respond(`✅ *Confirmed!* Thank you ${c.name || ""} 🙏\n\n📅 ${admin.fmtIst(c.at)}\n📍 DermaLuxe by Medicare, Rama Mahal, Kasturi Vari Street, Opp. Happy Mobiles, Eluru\n\nSee you! Emaina doubts unte ikkade adagandi 😊`);
+    }
+    if (/^(🔁\s*)?reschedule$/i.test(raw)) {
+      text = "Naa appointment reschedule cheyali — next available slots chupinchu";
+    }
+    const rm = raw.match(/^[⭐👍😐]?\s*([1-5])(?:\s|$)/u);
+    if (rm) {
+      const pend = await guard.kvCommand(cfg, ["GET", `rv:ask:${digits}`]).catch(() => ({}));
+      if (pend && pend.result) return respond(await recordRating(cfg, digits, Number(rm[1]), pend.result, profileName));
+    }
+  }
+
   // Marketing opt-out/in: STOP blocks broadcast templates (the optout set);
   // utility appointment reminders and normal chat keep working.
   if (cfg && !imageId && !audioId) {
@@ -1098,3 +1166,5 @@ module.exports = async (req, res) => {
   }
   return twiml(res, out.reply);
 };
+module.exports.confirmAppt = confirmAppt;
+module.exports.recordRating = recordRating;

@@ -9,6 +9,7 @@
 const guard = require("./_guard.js");
 const notify = require("./_notify.js");
 const dg = require("./_digest.js");
+const wk = require("./_weekly.js");
 
 module.exports = async (req, res) => {
   if (process.env.CRON_SECRET) {
@@ -33,5 +34,16 @@ module.exports = async (req, res) => {
     const t = await notify.sendWaTemplate(to, "daily_digest_ping", [out.oneLine]);
     if (t.ok) pinged++;
   }
-  return res.status(200).json({ ok: true, targets: targets.length, sent, pinged });
+  // Monday: the weekly marketing report follows the daily one.
+  let weekly = 0;
+  try {
+    if (new Date(Date.now() + 330 * 60000).getUTCDay() === 1) {
+      const rep = await wk.buildWeekly(cfg);
+      for (const to of targets) {
+        if (await notify.sendWa(to, rep.body)) { weekly++; continue; }
+        await notify.sendWaTemplate(to, "daily_digest_ping", [rep.oneLine]).catch(() => {});
+      }
+    }
+  } catch (e) { console.error("cron-digest: weekly", e && e.message); }
+  return res.status(200).json({ ok: true, targets: targets.length, sent, pinged, weekly });
 };
