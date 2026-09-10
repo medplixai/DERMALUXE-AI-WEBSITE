@@ -269,7 +269,7 @@ h3 { font-size: 1.4rem; }
 }
 .hero__photo {
   position: absolute; inset: 0 0 0 auto; width: 52%; z-index: 0;
-  background: url("assets/dr-nikhitha.jpg") center top / cover no-repeat;
+  background: url("assets/dr-nikhitha.webp") center top / cover no-repeat;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 55%);
   mask-image: linear-gradient(90deg, transparent, #000 55%);
 }
@@ -310,7 +310,7 @@ h3 { font-size: 1.4rem; }
   aspect-ratio: 4/5; border-radius: var(--radius); border: 1px solid var(--line);
   background:
     linear-gradient(180deg, rgba(10,10,12,.05), rgba(10,10,12,.4)),
-    url("assets/about.jpg") center / cover no-repeat,
+    url("assets/about.webp") center / cover no-repeat,
     linear-gradient(160deg, #1c1b1f, #121115);
   position: relative; overflow: hidden;
 }
@@ -371,7 +371,7 @@ h3 { font-size: 1.4rem; }
   aspect-ratio: 4/5; border-radius: var(--radius); border: 1px solid var(--line); position: relative; overflow: hidden;
   background:
     linear-gradient(180deg, rgba(10,10,12,0), rgba(10,10,12,.25)),
-    url("assets/ht-before-after.jpg") center top / cover no-repeat,
+    url("assets/ht-before-after.webp") center top / cover no-repeat,
     linear-gradient(160deg, #1c1b1f, #121115);
 }
 .ht__visual-stat {
@@ -1026,7 +1026,7 @@ h3 { font-size: 1.4rem; }
   .hero { --hero-photo-h: min(56vh, 520px); min-height: 0; align-items: flex-start; padding-top: 0; }
   .hero__photo {
     inset: 0 0 auto 0; width: 100%; height: var(--hero-photo-h); opacity: 1;
-    background: url("assets/dr-nikhitha.jpg") center 12% / cover no-repeat;
+    background: url("assets/dr-nikhitha.webp") center 12% / cover no-repeat;
     -webkit-mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
   }
