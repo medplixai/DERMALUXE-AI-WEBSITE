@@ -972,8 +972,8 @@ module.exports = async (req, res) => {
   // ---- Day-before confirm buttons + post-visit rating taps ---------------
   if (cfg && !imageId && !audioId) {
     const raw = text.trim();
-    const tapped = /^✅\s*vastanu$/i.test(raw);
-    if (tapped || /^(vastanu|vastaanu|confirm|confirmed|yes)$/i.test(raw)) {
+    const tapped = /^(✅\s*)?vasta+nu$/i.test(raw); // button label (no emoji allowed by Meta) or typed
+    if (tapped || /^(confirm|confirmed|yes)$/i.test(raw)) {
       const c = await confirmAppt(cfg, digits, !tapped);
       if (c) return respond(`✅ *Confirmed!* Thank you ${c.name || ""} 🙏\n\n📅 ${admin.fmtIst(c.at)}\n📍 DermaLuxe by Medicare, Rama Mahal, Kasturi Vari Street, Opp. Happy Mobiles, Eluru\n\nSee you! Emaina doubts unte ikkade adagandi 😊`);
     }
