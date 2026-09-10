@@ -526,6 +526,7 @@ h3 { font-size: 1.4rem; }
 .doc h3 { font-size: 1.4rem; margin-bottom: .2rem; }
 .doc__photo[data-initial]::before { font-size: 2.2rem; letter-spacing: 1px; }
 .doc__role { display: block; font-size: .76rem; letter-spacing: 1.4px; text-transform: uppercase; color: var(--gold-3); margin-bottom: .9rem; }
+.doc__role--sub { margin-top: -.6rem; text-transform: none; letter-spacing: .3px; font-size: .8rem; color: var(--gold-2); }
 .doc p { font-size: .92rem; color: var(--muted); }
 .doctors__note {
   text-align: center; margin-top: 2.4rem; font-size: .95rem; letter-spacing: .5px; color: var(--gold-1);
