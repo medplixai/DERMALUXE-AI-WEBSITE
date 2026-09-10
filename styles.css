@@ -1155,3 +1155,28 @@ h3 { font-size: 1.4rem; }
   .hero__doc img { width: 44px; height: 44px; }
   .hero__doc-txt strong { font-size: .95rem; }
 }
+
+/* ---------- WhatsApp assistant ---------- */
+.assist { background: linear-gradient(180deg, var(--ink), var(--ink-2)); border-block: 1px solid var(--line-soft); }
+.assist__grid { display: grid; grid-template-columns: 1.05fr .95fr; gap: clamp(2.5rem, 5vw, 4.5rem); align-items: center; }
+.assist__cta { margin-top: 1.6rem; }
+.phone { max-width: 380px; margin: 0 auto; border-radius: 30px; padding: 14px; background: linear-gradient(160deg, #1a1a20, #0f0f12);
+  border: 1px solid var(--line); box-shadow: 0 40px 80px -30px rgba(0,0,0,.95), inset 0 0 0 1px rgba(255,255,255,.03); }
+.phone__head { display: flex; align-items: center; gap: .7rem; padding: .7rem .9rem; border-radius: 18px 18px 6px 6px; background: #0b3d2e; }
+.phone__avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: var(--gold-grad); color: #241a08; font-family: var(--font-serif); font-weight: 700; font-size: 1.2rem; flex: none; }
+.phone__head div b { display: block; color: #fff; font-size: .95rem; }
+.phone__head div span { display: block; color: #9fe3c0; font-size: .72rem; }
+.phone__chat { display: flex; flex-direction: column; gap: .55rem; padding: 1rem .8rem 1.1rem; background: #0e1a15 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='40' height='40'%3E%3Ccircle cx='20' cy='20' r='1' fill='%23ffffff' fill-opacity='.05'/%3E%3C/svg%3E"); border-radius: 6px 6px 18px 18px; }
+.bub { max-width: 86%; padding: .6rem .8rem; border-radius: 12px; font-size: .84rem; line-height: 1.5; color: #e8f1ec; }
+.bub b { color: #ffe9b8; font-weight: 600; }
+.bub--me { align-self: flex-end; background: #005c4b; border-bottom-right-radius: 3px; }
+.bub--bot { align-self: flex-start; background: #1f2c27; border-bottom-left-radius: 3px; }
+@media (max-width: 860px) {
+  .assist__grid { grid-template-columns: 1fr; }
+  .assist__demo { order: -1; }
+  .phone { max-width: 340px; }
+}
+/* chat widget → WhatsApp handoff */
+.dlchat__wa { display: block; text-align: center; padding: .55rem .8rem; font-size: .76rem; color: var(--gold-2); text-decoration: none;
+  border-top: 1px solid var(--line-soft); background: rgba(37,211,102,.06); letter-spacing: .2px; }
+.dlchat__wa:hover { background: rgba(37,211,102,.12); color: var(--gold-1); }

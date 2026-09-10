@@ -78,6 +78,74 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: day3 followup", e && e.message); }
 
+  // ---- Later lead touches: day 7 check-in (11:45 IST) and day 21 hello
+  // (12:45 IST). Same guards as day 3: unbooked, not opted out, one send per
+  // lead per marker window, small daily cap. Each is a paid template.
+  async function leadTouch(minH, maxH, tpl, marker, ttl, cap, line) {
+    let n = 0;
+    const booked = new Set();
+    for (const key of ["appt:q", "appt:done"]) {
+      const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
+      for (const s of (q.result || [])) { try { booked.add(JSON.parse(s).ph); } catch (e) {} }
+    }
+    const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
+    const optSet = new Set(opt.result || []);
+    const rows = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]);
+    for (const raw of (rows.result || [])) {
+      if (n >= cap) break;
+      let l; try { l = JSON.parse(raw); } catch (e) { continue; }
+      if (!l || l.type === "job" || (l.slot && l.date)) continue;
+      const age = now - (l.ts || 0);
+      if (age < minH * 3600000 || age > maxH * 3600000) continue;
+      const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+      if (ph.length !== 10 || booked.has(ph) || optSet.has(ph)) continue;
+      try {
+        const nx = await guard.kvCommand(cfg, ["SET", `${marker}:${ph}`, "1", "NX", "EX", String(ttl)]);
+        if (!nx.result) continue;
+      } catch (e) { continue; }
+      const first = String(l.name || "").trim().split(" ")[0] || "friend";
+      const out = await notify.sendWaTemplate(ph, tpl, [first, line(l)]);
+      if (out.ok) n++;
+    }
+    return n;
+  }
+  let day7 = 0, day21 = 0;
+  try {
+    const h = new Date(now + 330 * 60000).getUTCHours();
+    const concern = (l) => String(l.concern || "skin/hair treatment").slice(0, 40);
+    if (h === 11) day7 = await leadTouch(156, 180, "lead_checkin", "ntf:fu7", 2592000, 8, concern);
+    if (h === 12) day21 = await leadTouch(492, 516, "we_miss_you", "ntf:fu21", 5184000, 6, concern);
+  } catch (e) { console.error("cron: lead touches", e && e.message); }
+
+  // ---- Post-visit day 7 (results check) and day 30 (maintenance) ---------
+  // Runs in the 10:45 IST block with the next-morning check; approved
+  // templates service_followup / session_reminder carry the message.
+  let visit7 = 0, visit30 = 0;
+  try {
+    if (new Date(now + 330 * 60000).getUTCHours() === 10) {
+      const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "299"]);
+      for (const raw of (dq.result || [])) {
+        let a; try { a = JSON.parse(raw); } catch (e) { continue; }
+        if (!a || !a.ph || !a.at || a.ns) continue;
+        const days = (now - a.at) / 86400000;
+        const first = String(a.name || "").split(" ")[0] || "friend";
+        const what = String(a.concern || "treatment").slice(0, 50);
+        let changed = false;
+        if (!a.fu7 && days >= 6.5 && days < 7.5) {
+          await notify.sendWaTemplate(a.ph, "service_followup", [first, what]).catch(() => {});
+          a.fu7 = true; changed = true; visit7++;
+        } else if (!a.fu30 && days >= 29.5 && days < 30.5) {
+          await notify.sendWaTemplate(a.ph, "session_reminder", [first, what + " follow-up"]).catch(() => {});
+          a.fu30 = true; changed = true; visit30++;
+        }
+        if (changed) {
+          await guard.kvCommand(cfg, ["LREM", "appt:done", "1", raw]).catch(() => {});
+          await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
+        }
+      }
+    }
+  } catch (e) { console.error("cron: visit touches", e && e.message); }
+
   // ---- Post-visit follow-up: next morning (~10:45 IST), once per visit ----
   // Free-form first (the reminder replies usually keep the window open);
   // falls back to the visit_followup template so delivery never dies quietly.
@@ -104,5 +172,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: visit followup", e && e.message); }
 
-  return res.status(200).json({ ok: true, checked, sent, day3, visited });
+  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, visited, visit7, visit30 });
 };

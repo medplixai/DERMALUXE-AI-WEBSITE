@@ -208,6 +208,32 @@ const TEMPLATES = [
     ],
   },
   {
+    name: "lead_checkin",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 🙏 Konni rojula mundu meeru DermaLuxe lo *{{2}}* gurinchi adigaru — inka aa problem undha?\n\nFirst step chala simple: MD doctor consultation lo mee skin/hair chusi exact plan cheptaru. Ee week slots available unnayi — ee message ki reply cheyandi, mee convenient time fix chestam 😊\n\n— DermaLuxe by Medicare, Eluru",
+        example: { body_text: [["Priya", "hair fall"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
+  {
+    name: "we_miss_you",
+    category: "MARKETING",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "Hi {{1}}! 💖 DermaLuxe nunchi oka chinna hello!\n\nMeeru adigina *{{2}}* ki ippudu manchi time — mana Dr. Nikhitha Priyanka garu (MD DVL) tho consultation book cheskondi. Ee message ki reply cheyandi, slot fix chestam 😊\n\n📍 Rama Mahal, Kasturi Vari Street, Eluru · Mon-Sat 9 AM - 9 PM",
+        example: { body_text: [["Priya", "pigmentation"]] },
+      },
+      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
+    ],
+  },
+  {
     name: "free_camp",
     category: "MARKETING",
     language: "en",

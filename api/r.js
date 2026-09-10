@@ -22,6 +22,14 @@ module.exports = async (req, res) => {
   const WA_TAGS = {
     jobs: "JOBS", hiring: "JOBS", careers: "JOBS",
     book: "Book Appointment", clinic: "Book Appointment", qr: "Hi",
+    // site CTAs — same agent, counted per placement so the funnel report
+    // shows which button actually converts
+    topbar: "Hi DermaLuxe! I'd like to book a consultation.",
+    footer: "Hi DermaLuxe! I'd like to book a consultation.",
+    fab: "Hi DermaLuxe! I'd like to book a consultation.",
+    mbar: "Hi DermaLuxe! I'd like to book a consultation.",
+    assistant: "Hi DermaLuxe! Appointment book cheyali",
+    webchat: "Hi DermaLuxe! Website chat nunchi vastunna — appointment book cheyali",
   };
   if (WA_TAGS[tag]) {
     res.setHeader("Location", "https://wa.me/919959134666?text=" + encodeURIComponent(WA_TAGS[tag]));

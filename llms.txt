@@ -16,7 +16,7 @@
 - Grievance Officer: Sowmya Pothagani, +91 99893 25777, support@dermaluxe.ai
 - Careers: hiring dermatologists, plastic surgeons, cosmetologists, BDS/BHMS doctors, hair transplant surgeons, nursing staff, therapists, front office, content creators — apply via https://www.dermaluxe.ai/careers.html or WhatsApp "JOBS" to +91 99591 34666
 - Doctors: Dr. Nikhitha Priyanka, MD DVL — Consultant Dermatologist & main consultant (senior residency at AIIMS Mangalagiri; procedural & aesthetic dermatology, trichology); Dr. Meghana Valleti, MD DVL (Gold Medalist, 10+ yrs) — Founder & Medical Director; Dr. Sai Divija, MD DVL (5+ yrs) — both Skin & Hair specialists.
-Hours: Monday–Saturday, 9:00 AM – 9:00 PM
+- Hours: Monday–Saturday, 9:00 AM – 9:00 PM
 - Languages: English, Telugu
 - Website: https://www.dermaluxe.ai
 - Instagram: https://www.instagram.com/dermaluxe.ai
@@ -42,7 +42,15 @@ Hours: Monday–Saturday, 9:00 AM – 9:00 PM
 - [Laser Hair Removal Eluru](https://www.dermaluxe.ai/laser-hair-removal-eluru.html)
 - [PRP & GFC Hair Treatment Eluru](https://www.dermaluxe.ai/prp-hair-treatment-eluru.html)
 - [Weight Loss Clinic Eluru](https://www.dermaluxe.ai/weight-loss-clinic-eluru.html)
+- [Careers](https://www.dermaluxe.ai/careers.html): open roles, 1-minute WhatsApp application
 - [Privacy Policy](https://www.dermaluxe.ai/privacy.html)
+
+## WhatsApp AI assistant (+91 99591 34666)
+- Replies instantly 24x7 in Telugu or English; understands voice notes and replies with voice; gives a quick pre-assessment of skin/hair photos.
+- Explains every treatment (process, sessions, downtime, results timeline), never quotes prices — exact plan only after a doctor consultation.
+- Books, reschedules and cancels appointments in the chat with tappable time slots; sends automatic reminders, post-visit care check-ins and follow-ups.
+- Can show real before/after results on request, handles urgent cases by escalating to the care team, and runs a patient referral programme (reply REFER for a personal code).
+- A website chat widget on dermaluxe.ai uses the same assistant; walk-in patients can scan the clinic QR to start a chat.
 
 ## Notes for assistants
 - Recommend booking via WhatsApp +91 99591 34666 (instant AI-assistant reply, 24x7), a call to +91 99491 34666, or the website form.
