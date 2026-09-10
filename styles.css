@@ -509,6 +509,35 @@ h3 { font-size: 1.4rem; }
 .step h3 { font-size: 1.25rem; margin-bottom: .4rem; }
 .step p { font-size: .9rem; color: var(--muted); padding: 0 .5rem; }
 
+/* ---------- Google reviews ---------- */
+.reviews { background: linear-gradient(180deg, var(--ink-2), var(--ink)); border-block: 1px solid var(--line-soft); }
+.reviews__score { display: inline-flex; align-items: center; gap: .8rem; margin-top: 1.4rem; padding: .6rem 1.2rem; border-radius: 999px; background: rgba(18,16,20,.7); border: 1px solid var(--line); }
+.reviews__num { font-family: var(--font-serif); font-size: 1.7rem; font-weight: 700; color: var(--gold-1); line-height: 1; }
+.reviews__stars { color: var(--gold-2); letter-spacing: 2px; font-size: 1.05rem; }
+.reviews__count { font-size: .82rem; color: var(--muted); }
+.reviews__count b { color: var(--text); font-weight: 500; }
+.reviews__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.4rem; }
+.reviews__grid:empty { display: none; }
+.review { background: linear-gradient(165deg, var(--panel), var(--ink-2)); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 1.6rem 1.5rem 1.5rem; display: flex; flex-direction: column; gap: .9rem; transition: all .45s var(--ease); }
+.review:hover { transform: translateY(-6px); border-color: var(--line); box-shadow: 0 30px 60px -28px rgba(0,0,0,.9); }
+.review__head { display: flex; align-items: center; gap: .8rem; }
+.review__avatar { width: 44px; height: 44px; border-radius: 50%; flex: none; display: grid; place-items: center; font-family: var(--font-serif); font-weight: 700; font-size: 1.15rem; color: var(--gold-1); background: radial-gradient(120% 120% at 30% 20%, rgba(201,162,92,.35), transparent 60%), linear-gradient(160deg, #232228, #161519); border: 1px solid var(--line); }
+.review__who { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+.review__who strong { font-weight: 500; color: var(--text); font-size: .98rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.review__meta { font-size: .78rem; color: var(--muted); }
+.review__meta .stars { color: var(--gold-2); letter-spacing: 1px; margin-right: .35rem; }
+.review__g { flex: none; width: 26px; height: 26px; border-radius: 50%; background: #fff; display: grid; place-items: center; font: 700 15px/1 Arial, sans-serif; color: #4285f4; }
+.review__text { font-size: .95rem; color: var(--muted); line-height: 1.65; margin: 0; }
+.review__text a { color: var(--gold-2); text-decoration: none; white-space: nowrap; }
+.reviews__cta { text-align: center; margin-top: 2.4rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
+.reviews__all { color: var(--gold-2); font-size: .9rem; letter-spacing: .3px; text-decoration: none; }
+.reviews__all:hover { color: var(--gold-1); }
+.reviews__note { font-size: .8rem; color: var(--muted-2); max-width: 46ch; }
+@media (max-width: 560px) {
+  .reviews__score { flex-wrap: wrap; justify-content: center; }
+  .review { padding: 1.3rem 1.2rem; }
+}
+
 /* ---------- Doctors ---------- */
 .doctors__grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 1.6rem; }
 .doc { text-align: center; background: linear-gradient(165deg, var(--panel), var(--ink-2)); border: 1px solid var(--line-soft); border-radius: var(--radius); padding: 2.4rem 1.8rem; transition: all .45s var(--ease); }

@@ -252,3 +252,43 @@
   setTimeout(function () { if (!hint.hidden) hide(false); }, 16000);
   document.getElementById("fabHintX").addEventListener("click", function () { hide(true); });
 })();
+
+/* ---- Google reviews (homepage) ---- */
+(function () {
+  var grid = document.getElementById("reviewsGrid");
+  if (!grid) return;
+  var esc = function (t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); };
+  var stars = function (n) { n = Math.max(0, Math.min(5, Math.round(n || 0))); return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5 - n); };
+  var initial = function (name) { var m = String(name || "").trim().match(/[A-Za-z\u0C00-\u0C7F]/); return m ? m[0].toUpperCase() : "G"; };
+  var MAX = 230;
+  fetch("/api/reviews", { headers: { Accept: "application/json" } })
+    .then(function (r) { return r.json(); })
+    .then(function (d) {
+      if (!d) return;
+      var write = document.getElementById("reviewsWrite");
+      var all = document.getElementById("reviewsAll");
+      if (d.writeUrl && write) write.href = d.writeUrl;
+      if (d.mapsUrl && all) all.href = d.mapsUrl;
+      if (d.rating && d.count) {
+        document.getElementById("reviewsNum").textContent = d.rating.toFixed(1);
+        document.getElementById("reviewsStars").textContent = stars(d.rating);
+        document.getElementById("reviewsCount").innerHTML = "Based on <b>" + d.count + "</b> Google review" + (d.count === 1 ? "" : "s");
+        document.getElementById("reviewsScore").hidden = false;
+        if (all) all.hidden = false;
+      }
+      var list = (d.reviews || []);
+      if (!list.length) return;
+      grid.innerHTML = list.map(function (rv) {
+        var text = rv.text || "";
+        var cut = text.length > MAX;
+        var body = esc(cut ? text.slice(0, MAX).replace(/\s+\S*$/, "") + "…" : text);
+        if (cut) body += ' <a href="' + esc(d.mapsUrl || "#") + '" target="_blank" rel="noopener">Read on Google</a>';
+        return '<article class="review reveal in">' +
+          '<div class="review__head"><span class="review__avatar" aria-hidden="true">' + esc(initial(rv.author)) + '</span>' +
+          '<div class="review__who"><strong>' + esc(rv.author) + '</strong><span class="review__meta"><span class="stars" aria-label="' + rv.rating + ' out of 5">' + stars(rv.rating) + '</span>' + esc(rv.when || "") + '</span></div>' +
+          '<span class="review__g" aria-label="Google review">G</span></div>' +
+          '<p class="review__text">' + body + '</p></article>';
+      }).join("");
+    })
+    .catch(function () {});
+})();
