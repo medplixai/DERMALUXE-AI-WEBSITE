@@ -131,6 +131,12 @@ h3 { font-size: 1.4rem; }
 .btn--ghost { background: transparent; color: var(--text); border-color: var(--line); }
 .btn--ghost:hover { border-color: var(--gold-3); color: var(--gold-1); transform: translateY(-3px); }
 .btn--full { width: 100%; }
+/* WhatsApp CTA — brand-dark with the recognisable green glyph */
+.btn--wa { background: rgba(37, 211, 102, .1); color: var(--text); border-color: rgba(37, 211, 102, .45); }
+.btn--wa svg { width: 19px; height: 19px; fill: #25d366; flex: none; }
+.btn--wa:hover { background: rgba(37, 211, 102, .18); border-color: #25d366; transform: translateY(-3px); }
+.btn--wa .btn__stack { display: flex; flex-direction: column; gap: .1rem; line-height: 1.18; align-items: flex-start; }
+.btn--wa .te { text-transform: none; letter-spacing: .3px; font-size: .72rem; color: var(--gold-2); }
 
 /* ---------- Topbar ---------- */
 .topbar {
