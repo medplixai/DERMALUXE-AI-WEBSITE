@@ -106,6 +106,7 @@ module.exports = async (req, res) => {
       const first = String(l.name || "").trim().split(" ")[0] || "friend";
       const out = await notify.sendWaTemplate(ph, tpl, [first, line(l)]);
       if (out.ok) n++;
+      else await guard.kvCommand(cfg, ["DEL", `${marker}:${ph}`]).catch(() => {}); // template not approved yet → retry next day
     }
     return n;
   }
