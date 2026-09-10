@@ -243,6 +243,43 @@ module.exports = async (req, res) => {
     return res.status(200).json({ to, sent: out.ok, msg: out.msg || "" });
   }
 
+  // &action=edit&names=a,b,c — push corrected BODY text to templates that are
+  // already live at Meta. An edit sends the template back into review, so it
+  // is deliberately opt-in per name rather than a blanket re-submit.
+  if (String((req.query && req.query.action) || "") === "edit") {
+    const wanted = String((req.query && req.query.names) || "").split(",").map((x) => x.trim()).filter(Boolean);
+    if (!wanted.length) return res.status(400).json({ error: "names= required" });
+    let live = [];
+    try {
+      const r = await fetch(`https://graph.facebook.com/v21.0/${WABA}/message_templates?fields=name,id,status&limit=100`,
+        { headers: { Authorization: `Bearer ${token}` } });
+      const d = await r.json().catch(() => ({}));
+      live = d.data || [];
+      if (!r.ok) return res.status(200).json({ error: (d.error && d.error.message) || "list failed" });
+    } catch (e) {
+      return res.status(200).json({ error: String(e && e.message) });
+    }
+    const out = [];
+    for (const name of wanted) {
+      const tpl = TEMPLATES.find((t) => t.name === name);
+      const row = live.find((t) => t.name === name);
+      if (!tpl) { out.push({ name, ok: false, resp: "not in source" }); continue; }
+      if (!row) { out.push({ name, ok: false, resp: "not found at Meta" }); continue; }
+      try {
+        const r = await fetch(`https://graph.facebook.com/v21.0/${row.id}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+          body: JSON.stringify({ components: tpl.components }), // category can't change on edit
+        });
+        const d = await r.json().catch(() => ({}));
+        out.push({ name, id: row.id, was: row.status, ok: r.ok, resp: r.ok ? d : ((d.error && d.error.message) || d) });
+      } catch (e) {
+        out.push({ name, ok: false, resp: String(e && e.message) });
+      }
+    }
+    return res.status(200).json({ edited: out });
+  }
+
   if (String((req.query && req.query.action) || "") === "create") {
     const out = [];
     for (const tpl of TEMPLATES) {
