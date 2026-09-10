@@ -449,7 +449,7 @@ async function publishPending(cfg, digits) {
 const PROMO_DEFS = {
   festival_offer: {
     usage: "festival: Diwali | Festival Glow Package — Hydrafacial pai 20% off!",
-    render: (text, p2) => `Hi <name>! 🪔 *${p2} Subhakankshalu* from DermaLuxe! ✨\n\n${text}\n\n📲 Book cheyalante ee message ki reply cheyandi, leda call: 099591 34666\n📍 Rama Mahal, Kasturi Vari Street, Eluru`,
+    render: (text, p2) => `Hi <name>! 🪔 *${p2} Subhakankshalu* from DermaLuxe! ✨\n\n${text}\n\n📲 Book cheyalante ee message ki reply cheyandi, leda call: +91 99491 34666\n📍 Rama Mahal, Kasturi Vari Street, Eluru`,
   },
   flash_offer: {
     usage: "flash: Laser package pai 25% off | Ee Sunday",
@@ -457,7 +457,7 @@ const PROMO_DEFS = {
   },
   new_service: {
     usage: "launch: HydraFacial Platinum | Launch offer: first 20 bookings ki 30% off!",
-    render: (text, p2) => `Hi <name>! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *${p2}*\n${text}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: 099591 34666`,
+    render: (text, p2) => `Hi <name>! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *${p2}*\n${text}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: +91 99491 34666`,
   },
   seasonal_tips: {
     usage: "tips: Varsha kalam lo fungal infections ekkuva — 1) Tadi battalu ventane marchandi 2) Roju rendu sarlu mild soap tho snanam",

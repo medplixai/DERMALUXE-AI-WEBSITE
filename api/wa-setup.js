@@ -27,7 +27,7 @@ const TEMPLATES = [
     components: [
       {
         type: "BODY",
-        text: "Hi {{1}}! ✨ DermaLuxe by Medicare, Eluru nunchi update:\n\n{{2}}\n\n📲 Appointment ki ee message ki reply cheyandi, leda call: 099591 34666",
+        text: "Hi {{1}}! ✨ DermaLuxe by Medicare, Eluru nunchi update:\n\n{{2}}\n\n📲 Appointment ki ee message ki reply cheyandi, leda call: +91 99491 34666",
         example: { body_text: [["Priya", "Ee week Hydrafacial pai special offer — slots limited!"]] },
       },
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
@@ -101,7 +101,7 @@ const TEMPLATES = [
     components: [
       {
         type: "BODY",
-        text: "Hi {{1}}! 🪔 *{{2}} Subhakankshalu* from DermaLuxe! ✨\n\n{{3}}\n\n📲 Book cheyalante ee message ki reply cheyandi, leda call: 099591 34666\n📍 Rama Mahal, Kasturi Vari Street, Eluru",
+        text: "Hi {{1}}! 🪔 *{{2}} Subhakankshalu* from DermaLuxe! ✨\n\n{{3}}\n\n📲 Book cheyalante ee message ki reply cheyandi, leda call: +91 99491 34666\n📍 Rama Mahal, Kasturi Vari Street, Eluru",
         example: { body_text: [["Priya", "Diwali", "Festival Glow Package — Hydrafacial pai 20% off, ee week matrame!"]] },
       },
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
@@ -127,7 +127,7 @@ const TEMPLATES = [
     components: [
       {
         type: "BODY",
-        text: "Hi {{1}}! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *{{2}}*\n{{3}}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: 099591 34666",
+        text: "Hi {{1}}! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *{{2}}*\n{{3}}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: +91 99491 34666",
         example: { body_text: [["Priya", "HydraFacial Platinum", "Launch offer: first 20 bookings ki 30% off + free skin analysis!"]] },
       },
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
@@ -164,7 +164,7 @@ const TEMPLATES = [
     components: [
       {
         type: "BODY",
-        text: "Hi {{1}}! 💖 Mee *{{2}}* successful ga complete ayindi — congratulations!\n\nIppudu care ila teeskondi:\n• Treated area ni cheyyi tho touch/rub cheyakandi\n• Direct sunlight avoid cheyandi — bayataki velithe protection tho\n• Konni rojulu heavy exercise, swimming, steam avoid\n• Doctor iccina medicines/creams full course complete cheyandi\n• Baga nidra + neellu ekkuva tagadam results ki help avutundi 💧\n\n⚠️ Ekkuva pain, swelling leda emaina worry anipisthe ventane call cheyandi: 099591 34666\nDoubts unte ee message ki reply cheyandi 🙏",
+        text: "Hi {{1}}! 💖 Mee *{{2}}* successful ga complete ayindi — congratulations!\n\nIppudu care ila teeskondi:\n• Treated area ni cheyyi tho touch/rub cheyakandi\n• Direct sunlight avoid cheyandi — bayataki velithe protection tho\n• Konni rojulu heavy exercise, swimming, steam avoid\n• Doctor iccina medicines/creams full course complete cheyandi\n• Baga nidra + neellu ekkuva tagadam results ki help avutundi 💧\n\n⚠️ Ekkuva pain, swelling leda emaina worry anipisthe ventane call cheyandi: +91 99491 34666\nDoubts unte ee message ki reply cheyandi 🙏",
         example: { body_text: [["Priya", "Hydrafacial treatment"]] },
       },
     ],
