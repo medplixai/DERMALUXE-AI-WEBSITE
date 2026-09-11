@@ -71,15 +71,20 @@ module.exports = async (req, res) => {
   }
 
   const url = `${BASE}/api/media?id=${out.imgId}`;
-  let published = null;
+  let published = null, storyOut = null;
   if (now) {
     published = await admin.publishNow(cfg, { imgId: out.imgId, caption: out.caption, auto: true });
+    // same poster as an Instagram story (24h) — stories skip captions/FB
+    if (published && published.ok) storyOut = await admin.publishNow(cfg, { imgId: out.imgId, story: true, auto: true }).catch(() => null);
+  } else {
+    // queue the story 3 minutes after the feed post; cron-post handles story items
+    await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId: out.imgId, story: true, due: out.due + 180000, by: out.by, tries: 0, auto: true, quiet: true })]).catch(() => {});
   }
 
   const when = admin.fmtIst(out.due);
   const preview = now
-    ? (published && published.ok ? `✅ *Daily post live!* (${out.topic.h1})${published.fb ? " + 📘 FB" : ""}\n${published.link || ""}` : `❌ Publish fail: ${(published && published.msg) || "unknown"}`)
-    : `🗓 *Today's auto post — ${out.topic.h1}*\nSchedule: ${when} → Instagram + Facebook.\n\nSkip cheyyalante: *unschedule 1* · Topics change: *daily topics*`;
+    ? (published && published.ok ? `✅ *Daily post live!* (${out.topic.h1})${published.fb ? " + 📘 FB" : ""}${storyOut && storyOut.ok ? " + 📸 Story" : ""}\n${published.link || ""}` : `❌ Publish fail: ${(published && published.msg) || "unknown"}`)
+    : `🗓 *Today's auto post — ${out.topic.h1}*\nSchedule: ${when} → Instagram feed + story + Facebook.\n\nSkip cheyyalante: *unschedule 1* & *unschedule 2* · Topics: *daily topics*`;
   const caption = `${preview}\n\n${out.caption}`.slice(0, 900);
   for (const ph of out.notify) {
     const ok = await waImage(ph, url, caption);

@@ -54,7 +54,7 @@ module.exports = async (req, res) => {
       const liveMsg = it.auto
         ? `✅ *Today's auto post is live!* (${admin.fmtIst(it.due)})${out.fb ? " + 📘 Facebook" : ""}${out.link ? "\n" + out.link : ""}\n\nPatients WhatsApp lo vaste agent handle chestundi. Leads: dermaluxe.ai/leads.html`
         : `✅ *Scheduled ${it.vidId ? "reel" : "post"} live!* (${admin.fmtIst(it.due)})${out.fb ? " + 📘 FB page" : ""}${out.link ? "\n" + out.link : ""}`;
-      const targets = Array.isArray(it.notify) && it.notify.length ? it.notify : [it.by];
+      const targets = it.quiet ? [] : (Array.isArray(it.notify) && it.notify.length ? it.notify : [it.by]);
       for (const ph of Array.from(new Set(targets))) await notifyAdmin(ph, liveMsg);
     } else if (out.transient && (it.tries || 0) < 3) {
       it.tries = (it.tries || 0) + 1;
