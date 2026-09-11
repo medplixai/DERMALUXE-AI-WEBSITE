@@ -166,4 +166,27 @@ async function leadAlert(cfg, lead) {
   for (const to of targets) await sendWa(to, body);
 }
 
-module.exports = { leadAlert, sendWa, sendWaDocument, sendWaLocation, sendWaTemplate };
+
+// Instagram/Messenger → WhatsApp handoff: the moment a DM lead gives a valid
+// mobile number, open a WhatsApp thread with them via an approved template so
+// the WhatsApp agent (slots, reminders, follow-ups) takes over. Once per
+// number per 7 days. Template order: insta_lead_followup → clinic_update.
+async function waHandoff(cfg, lead, channel) {
+  const ph = String((lead && lead.phone) || "").replace(/\D/g, "").slice(-10);
+  if (ph.length !== 10) return { ok: false, msg: "no phone" };
+  if (cfg) {
+    try {
+      const nx = await guard.kvCommand(cfg, ["SET", `ntf:handoff:${ph}`, "1", "NX", "EX", "604800"]);
+      if (!nx || !nx.result) return { ok: false, msg: "already" };
+    } catch (e) {}
+  }
+  const first = String(lead.name || "").trim().split(" ")[0] || "friend";
+  const concern = String(lead.concern || "").trim().slice(0, 40);
+  const line = `Meeru ${channel} lo${concern ? " '" + concern + "' gurinchi" : ""} adigaru kada — ikkada WhatsApp lo mana team doctor slot confirm chestundi. Free AI skin & hair analysis kuda ikkade. Reply cheyandi 😊`;
+  let out = await sendWaTemplate(ph, "insta_lead_followup", [first, line]);
+  if (!out.ok) out = await sendWaTemplate(ph, "clinic_update", [first, line]);
+  if (!out.ok && cfg) await guard.kvCommand(cfg, ["DEL", `ntf:handoff:${ph}`]).catch(() => {});
+  return out;
+}
+
+module.exports = { leadAlert, sendWa, sendWaDocument, sendWaLocation, sendWaTemplate, waHandoff };

@@ -47,6 +47,7 @@ const MAPS_LINK = "https://maps.google.com/?q=16.7107,81.0952";
 
 const FB_RULES = `- Booking flow: collect (1) name, (2) 10-digit mobile number, (3) concern/treatment, (4) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
 - Messenger doesn't show us the patient's phone number — a booking is complete ONLY when you also have their 10-digit mobile number. Fill "lead" once you have name + phone + concern (keep collecting missing bits in the reply); otherwise "lead" must be null.
+- WHATSAPP FIRST: our bookings, doctor slots, reminders and free AI skin & hair analysis all run on WhatsApp. Whenever the patient shows interest (treatment, booking, price question, photo check), (a) ask for their 10-digit mobile number so "mana team WhatsApp lo slot confirm chestundi", and (b) also give the direct link: "WhatsApp: 99591 34666 → wa.me/919959134666". Once a number is captured they automatically get a WhatsApp message from us — tell them to reply there.
 - Quick-reply taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here in the chat.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a Google Maps link is sent automatically along with your reply).
 
@@ -233,6 +234,8 @@ async function storeLead(cfg, leadInfo, psid, fbName, lastMsg) {
     } catch (e) {}
   }
   await notify.leadAlert(cfg, lead);
+  // hand the patient to the WhatsApp agent (approved template, once per week)
+  try { await notify.waHandoff(cfg, lead, "Facebook"); } catch (e) { console.error("handoff", e && e.message); }
 }
 
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
