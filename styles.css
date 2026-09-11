@@ -1217,3 +1217,11 @@ h3 { font-size: 1.4rem; }
 .dlchat__wa { display: block; text-align: center; padding: .55rem .8rem; font-size: .76rem; color: var(--gold-2); text-decoration: none;
   border-top: 1px solid var(--line-soft); background: rgba(37,211,102,.06); letter-spacing: .2px; }
 .dlchat__wa:hover { background: rgba(37,211,102,.12); color: var(--gold-1); }
+
+/* ---------- Telugu-language pages ---------- */
+.lang-te, .lang-te p, .lang-te li, .lang-te summary, .lang-te .btn, .lang-te .lead, .lang-te .seo-strip { font-family: "Noto Sans Telugu", var(--font-sans); }
+.lang-te h1, .lang-te h2, .lang-te h3 { font-family: "Noto Serif Telugu", var(--font-serif); line-height: 1.25; letter-spacing: 0; }
+.lang-te h1 { font-size: clamp(2rem, 5.2vw, 3.4rem); }
+.lang-te h2 { font-size: clamp(1.4rem, 3vw, 2rem); }
+.lang-te .head-te { font-family: var(--font-sans); color: var(--muted); font-size: 1rem; letter-spacing: .3px; }
+.lang-te .eyebrow { letter-spacing: .08em; }
