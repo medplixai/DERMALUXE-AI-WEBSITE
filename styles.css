@@ -1225,3 +1225,30 @@ h3 { font-size: 1.4rem; }
 .lang-te h2 { font-size: clamp(1.4rem, 3vw, 2rem); }
 .lang-te .head-te { font-family: var(--font-sans); color: var(--muted); font-size: 1rem; letter-spacing: .3px; }
 .lang-te .eyebrow { letter-spacing: .08em; }
+
+/* ---- Blog ---- */
+.post-hero h1 { max-width: 24ch; }
+.post-meta { color: var(--muted-2); font-size: .88rem; letter-spacing: .02em; margin-top: .6rem; }
+.post-meta strong { color: var(--gold-2); font-weight: 500; }
+.post-body .lead { color: var(--text); font-size: 1.08rem; line-height: 1.8; margin-bottom: 1.6rem; }
+.post-body h3 { font-size: 1.15rem; margin: 1.6rem 0 .5rem; color: var(--gold-2); font-family: var(--font-sans); font-weight: 500; }
+.post-take { background: linear-gradient(165deg, var(--panel), var(--ink-2)); border: 1px solid var(--line); border-radius: 14px; padding: 1.3rem 1.5rem; margin: 0 0 1.6rem; }
+.post-take h2 { font-size: 1.2rem; margin: 0 0 .7rem; }
+.post-take ul { display: grid; gap: .55rem; padding-left: 1.2rem; }
+.post-take li { color: var(--text); font-size: .95rem; line-height: 1.6; list-style: disc; }
+.post-note { border-left: 3px solid var(--gold-2); padding: .6rem 1rem; background: rgba(233,207,143,.06); border-radius: 0 10px 10px 0; }
+.post-cta { border: 1px solid var(--line); border-radius: 16px; padding: 1.6rem 1.6rem 1.4rem; margin: 2.4rem 0 1rem; text-align: center; background: linear-gradient(165deg, var(--panel), var(--ink-2)); }
+.post-cta h2 { margin: 0 0 .6rem; font-size: 1.6rem; }
+.post-cta__links a { color: var(--gold-2); text-decoration: underline; text-underline-offset: 3px; }
+.post-cta .seo-cta { margin-top: 1rem; }
+.post-author { display: flex; gap: 1rem; align-items: center; margin: 2.2rem 0 1rem; padding: 1rem 1.2rem; border: 1px solid var(--line-soft); border-radius: 14px; }
+.post-author img { width: 72px; height: 72px; border-radius: 50%; object-fit: cover; object-position: top; border: 2px solid var(--gold-2); flex: 0 0 72px; }
+.post-author div { font-size: .92rem; line-height: 1.55; color: var(--text); }
+.post-author span { color: var(--muted-2); font-size: .84rem; }
+.post-disclaimer { font-size: .82rem; color: var(--muted-2); }
+.post-list { display: grid; gap: 1.2rem; margin: 1rem 0 2rem; }
+.post-card { border: 1px solid var(--line-soft); border-radius: 16px; padding: 1.4rem 1.6rem; background: linear-gradient(165deg, var(--panel), var(--ink-2)); }
+.post-card h2 { font-size: 1.45rem; margin: .3rem 0 .6rem; }
+.post-card h2 a { color: var(--text); }
+.post-card h2 a:hover { color: var(--gold-2); }
+.post-card__te { display: inline-block; margin-top: .2rem; color: var(--gold-2); font-family: "Noto Sans Telugu", var(--font-sans); font-size: .92rem; }
