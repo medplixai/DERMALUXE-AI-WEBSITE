@@ -25,6 +25,7 @@ module.exports = async (req, res) => {
     // (owner's call, 2026-09-11: "andaru WhatsApp agent ki connect avvali")
     insta: "Hi DermaLuxe! Instagram nunchi vastunna. Free AI skin & hair analysis kavali.",
     story: "Hi DermaLuxe! Instagram story nunchi vastunna. Free AI skin & hair analysis kavali.",
+    fb: "Hi DermaLuxe! Facebook nunchi vastunna. Free AI skin & hair analysis kavali.",
     book: "Book Appointment", clinic: "Book Appointment", qr: "Hi",
     // site CTAs — same agent, counted per placement so the funnel report
     // shows which button actually converts
