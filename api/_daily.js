@@ -99,7 +99,7 @@ async function pickTopic(cfg, forceKey) {
 
 // ---- 2. Caption (Claude) ---------------------------------------------------
 async function writeCaption(topic) {
-  const sys = `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly:\n"Free AI skin & hair analysis on WhatsApp — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY JSON: {"caption":"..."}`;
+  const sys = `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly these 3 lines:\n"📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY JSON: {"caption":"..."}`;
   const user = `Today's poster: headline "${topic.h1}" · Telugu line "${topic.te}" · sub-line "${topic.sub}". Website page: ${SITE}/${topic.page}. Write the caption.`;
   try {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -112,9 +112,13 @@ async function writeCaption(topic) {
     const t = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
     const m = t.match(/\{[\s\S]*\}/);
     const p = JSON.parse(m ? m[0] : t);
-    if (p && p.caption) return String(p.caption).slice(0, 2000);
+    if (p && p.caption) {
+      let c = String(p.caption).slice(0, 1900);
+      if (!/wa\.me\/919959134666/.test(c)) c += "\n\n📲 WhatsApp: 99591 34666 · wa.me/919959134666";
+      return c;
+    }
   } catch (e) { console.error("daily: caption", e && e.message); }
-  return `${topic.h1}\n${topic.te}\n\n${topic.sub}.\nEvery treatment at DermaLuxe is planned by MD dermatologists with USFDA-approved technology.\n\nFree AI skin & hair analysis on WhatsApp — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru\n\n#DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru #HairClinicEluru #SkinCare #AndhraPradesh`;
+  return `${topic.h1}\n${topic.te}\n\n${topic.sub}.\nEvery treatment at DermaLuxe is planned by MD dermatologists with USFDA-approved technology.\n\n📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru\n\n#DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru #HairClinicEluru #SkinCare #AndhraPradesh`;
 }
 
 // ---- 3. Background image (Gemini) ---------------------------------------
@@ -166,12 +170,12 @@ h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;
 .rule{width:110px;height:1px;background:linear-gradient(90deg,transparent,#e9cf8f,transparent)}
 .sub{font-size:26px;font-weight:300;color:#cfc9bd;line-height:1.5;max-width:820px}
 .foot{position:absolute;left:0;right:0;bottom:52px;text-align:center}
-.site{font-size:26px;letter-spacing:.2em;color:#e9cf8f;font-weight:500}
+.site{font-size:34px;letter-spacing:.12em;color:#e9cf8f;font-weight:500}
 .addr{font-size:19px;color:#a39e95;letter-spacing:.05em;margin-top:6px}
 </style></head><body><div class="shade"></div><div class="frame"></div>
 <img class="logo" src="data:image/png;base64,${logoB64()}" alt="">
 <div class="txt"><div class="eyebrow">Eluru · MD Dermatologists</div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="rule"></div><div class="sub">${esc(topic.sub)}</div></div>
-<div class="foot"><div class="site">DERMALUXE.AI</div><div class="addr">Opposite Happy Mobiles · R.R. Peta · Eluru · Free AI analysis on WhatsApp</div></div>
+<div class="foot"><div class="site">WhatsApp &nbsp;99591 34666</div><div class="addr">Free AI skin &amp; hair analysis · dermaluxe.ai · Opposite Happy Mobiles, R.R. Peta, Eluru</div></div>
 </body></html>`;
 }
 
