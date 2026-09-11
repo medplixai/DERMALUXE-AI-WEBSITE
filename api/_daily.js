@@ -177,12 +177,16 @@ h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;
 
 // ---- 5. Render (headless Chromium) ---------------------------------------
 async function renderPoster(html) {
-  const puppeteer = require("puppeteer-core");
+  // puppeteer-core 25 / @sparticuz/chromium 152 ship as ES modules — load
+  // them with import() so this CommonJS file works on Vercel's Node 24.
+  const pmod = await import("puppeteer-core");
+  const puppeteer = pmod.default || pmod;
   let launch;
   if (process.platform === "darwin" || process.env.LOCAL_CHROME) {
     launch = { executablePath: process.env.LOCAL_CHROME || "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: true, args: ["--no-sandbox"] };
   } else {
-    const chromium = require("@sparticuz/chromium");
+    const cmod = await import("@sparticuz/chromium");
+    const chromium = cmod.default || cmod;
     launch = { args: chromium.args, executablePath: await chromium.executablePath(), headless: true };
   }
   const browser = await puppeteer.launch(Object.assign({ defaultViewport: { width: 1080, height: 1350, deviceScaleFactor: 1 } }, launch));
