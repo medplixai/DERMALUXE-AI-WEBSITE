@@ -99,7 +99,7 @@ async function pickTopic(cfg, forceKey) {
 
 // ---- 2. Caption (Claude) ---------------------------------------------------
 async function writeCaption(topic) {
-  const sys = `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly these 3 lines:\n"📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY JSON: {"caption":"..."}`;
+  const sys = `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly these 3 lines:\n"📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY the caption text itself — no JSON, no quotes, no preamble.`;
   const user = `Today's poster: headline "${topic.h1}" · Telugu line "${topic.te}" · sub-line "${topic.sub}". Website page: ${SITE}/${topic.page}. Write the caption.`;
   try {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -109,11 +109,12 @@ async function writeCaption(topic) {
     });
     if (!resp.ok) throw new Error("claude HTTP " + resp.status);
     const data = await resp.json();
-    const t = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
-    const m = t.match(/\{[\s\S]*\}/);
-    const p = JSON.parse(m ? m[0] : t);
-    if (p && p.caption) {
-      let c = String(p.caption).slice(0, 1900);
+    let t = (((data.content || []).find((b) => b.type === "text") || {}).text || "").trim();
+    // tolerate a model that still wraps the caption in JSON
+    if (/^\s*\{/.test(t)) { try { const p = JSON.parse(t.match(/\{[\s\S]*\}/)[0]); if (p && p.caption) t = String(p.caption); } catch (e) { t = t.replace(/^[\s\S]*?"caption"\s*:\s*"/, "").replace(/"\s*\}\s*$/, "").replace(/\\n/g, "\n"); } }
+    t = t.replace(/^["'`]+|["'`]+$/g, "").trim();
+    if (t.length > 40) {
+      let c = t.slice(0, 1900);
       if (!/wa\.me\/919959134666/.test(c)) c += "\n\n📲 WhatsApp: 99591 34666 · wa.me/919959134666";
       return c;
     }
