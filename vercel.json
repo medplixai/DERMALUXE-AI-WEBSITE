@@ -34,8 +34,7 @@
       "maxDuration": 30
     },
     "api/cron-daily.js": {
-      "maxDuration": 300,
-      "memory": 2048
+      "maxDuration": 300
     }
   },
   "crons": [
