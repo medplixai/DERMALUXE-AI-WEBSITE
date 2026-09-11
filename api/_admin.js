@@ -570,6 +570,7 @@ async function handle(cfg, digits, text, photo, video) {
 
   if (/^(help|commands)$/i.test(t)) {
     const lines = ["🛠 *Admin commands*",
+      "• daily post now — AI poster ippude post · daily on/off · daily status · daily topics",
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
@@ -596,6 +597,36 @@ async function handle(cfg, digits, text, photo, video) {
     const menuRows = ["report", "weekly", "funnel", "reviews", "referrals", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
+  }
+
+  // ---- Daily auto-poster (cron-daily.js) --------------------------------
+  // daily post now [topic] · daily post [topic] (queue for 8:30 AM) · daily on/off · daily topics
+  let dm;
+  if ((dm = t.match(/^daily\s+(post(?:\s+now)?|on|off|topics|status)(?:\s+([a-z0-9-]+))?$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const sub = dm[1].toLowerCase().replace(/\s+/g, " "), key = (dm[2] || "").toLowerCase();
+    const daily = require("./_daily.js");
+    if (sub === "topics") {
+      return "🗂 *Daily topics* (daily post now <key>):\n" + daily.TOPICS.map((x) => `• ${x.key} — ${x.h1}`).join("\n");
+    }
+    if (sub === "on" || sub === "off") {
+      if (!owner) return "🔒 Owner matrame.";
+      await guard.kvCommand(cfg, ["SET", "dp:enabled", sub === "on" ? "1" : "0"]);
+      return sub === "on" ? "✅ Daily auto post ON — roju 7:00 AM ki poster ready, 8:30 AM ki Instagram + Facebook lo veltundi." : "⏸ Daily auto post OFF. Malli start: *daily on*";
+    }
+    if (sub === "status") {
+      const en = await guard.kvCommand(cfg, ["GET", "dp:enabled"]).catch(() => ({}));
+      const h = await guard.kvCommand(cfg, ["LRANGE", "dp:hist", "0", "6"]).catch(() => ({}));
+      return `Daily auto post: ${String(en.result || "1") === "0" ? "⏸ OFF" : "✅ ON"} (7:00 AM build → 8:30 AM publish)\nLast posts: ${(h.result || []).map((x) => String(x).replace("|", " @ ")).join(", ") || "—"}`;
+    }
+    if (key && !daily.TOPICS.find((x) => x.key === key)) return `Topic '${key}' ledu — *daily topics* chudandi.`;
+    const now = sub === "post now";
+    const u = new URL("https://www.dermaluxe.ai/api/cron-daily");
+    u.searchParams.set("force", "1"); if (now) u.searchParams.set("now", "1"); if (key) u.searchParams.set("topic", key); u.searchParams.set("by", digits);
+    const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 4000);
+    fetch(u.toString(), { headers: { Authorization: `Bearer ${process.env.CRON_SECRET || ""}`, "x-admin-key": process.env.ADMIN_KEY || "" }, signal: ctl.signal }).catch(() => {}).finally(() => clearTimeout(timer));
+    await new Promise((z) => setTimeout(z, 1500));
+    return now ? "🎨 Poster generate avutondi (AI image + design) — 1-2 nimishallo Instagram + Facebook lo post ayyi, mee ki link vastundi." : "🎨 Poster generate avutondi — 1-2 nimishallo preview vastundi, 8:30 AM ki post avutundi (unschedule 1 tho skip cheyyochhu).";
   }
 
   if (/^ideas?$/i.test(t)) {
