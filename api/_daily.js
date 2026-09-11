@@ -97,6 +97,100 @@ async function pickTopic(cfg, forceKey) {
   return pool[Math.floor(Math.random() * pool.length)];
 }
 
+// ---- 1b. Intelligent planner (Claude) --------------------------------------
+// Looks at the date/season/festivals, what patients asked about this month
+// (dl_leads concerns), and the last 20 posts, then picks a library topic AND
+// rewrites the headline / Telugu line / hook for today. Falls back to the
+// plain rotation on any failure so the daily post never stops.
+const SEASONS = [
+  [1, "Sankranti (mid-Jan), wedding season, cool dry weather → dry skin, dandruff, winter itch"],
+  [2, "wedding season, Valentine's week, Maha Shivaratri → bridal/groom glow, couple offers"],
+  [3, "Women's Day (Mar 8), Ugadi (Mar/Apr), exam season, heat starts → tan, sweat acne, stress hair fall"],
+  [4, "Ugadi/summer holidays, peak heat → tan, sunscreen, fungal, hair fall, kids skin"],
+  [5, "peak summer, wedding muhurtams → tan removal, laser hair removal, hydrafacial, sweat rashes"],
+  [6, "monsoon starts, school reopens → fungal/ringworm, frizz, dandruff, acne flare"],
+  [7, "monsoon, Sravana masam (festive Fridays) → fungal, hair fall, glow for pujas"],
+  [8, "Raksha Bandhan, Varalakshmi, Independence Day, Vinayaka Chavithi prep → festive glow, hair fall (monsoon peak)"],
+  [9, "Vinayaka Chavithi, end of monsoon, Bathukamma/Dasara prep → pigmentation, tan, pre-festival glow"],
+  [10, "Bathukamma, Dasara, Diwali prep, wedding season restarts → bridal packages, hydrafacial, laser hair removal"],
+  [11, "Diwali, Karthika masam, wedding peak → bridal/groom, anti-ageing, hair transplant planning"],
+  [12, "Christmas, New Year, wedding peak, winter → dry skin, lips, dandruff, glow for events"],
+];
+
+async function leadInsights(cfg) {
+  if (!cfg) return "";
+  try {
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "299"]);
+    const cutoff = Date.now() - 30 * 86400000;
+    const counts = {};
+    let n = 0;
+    for (const raw of (r.result || [])) {
+      let l; try { l = JSON.parse(raw); } catch (e) { continue; }
+      if (!l || (l.ts && l.ts < cutoff) || l.type === "job") continue;
+      n++;
+      const txt = [l.concern, l.message, (l.treatments || []).join(" ")].join(" ").toLowerCase();
+      for (const [k, re] of Object.entries({ acne: /acne|pimpl|motim/, hairfall: /hair ?fall|hair ?loss|juttu|bald/, pigmentation: /pigment|melasma|dark spot|machal|nallaga/, lhr: /laser hair|hair remov|unwanted hair/, hairtransplant: /transplant/, dandruff: /dandruff|chundru/, tan: /tan|glow|bright|fair/, wedding: /wedding|bridal|marriage|pelli/, fungal: /fungal|ringworm|tamara|itch/, antiageing: /wrinkle|aging|ageing|botox|filler|hifu/, kids: /baby|child|kid|pilla/, weight: /weight|fat|slim/ })) {
+        if (re.test(txt)) counts[k] = (counts[k] || 0) + 1;
+      }
+    }
+    const top = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 6).map(([k, v]) => `${k}:${v}`).join(", ");
+    return n ? `${n} leads in the last 30 days; top concerns → ${top || "n/a"}` : "";
+  } catch (e) { return ""; }
+}
+
+async function planTopic(cfg) {
+  const base = await pickTopic(cfg);
+  if (!process.env.ANTHROPIC_API_KEY || process.env.DAILY_PLANNER === "0") return base;
+  let recent = [];
+  try { const r = await guard.kvCommand(cfg, ["LRANGE", "dp:hist", "0", "19"]); recent = (r.result || []).map((x) => String(x).split("|")[0]); } catch (e) {}
+  const d = new Date(Date.now() + IST_MS);
+  const dow = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][d.getUTCDay()];
+  const month = d.getUTCMonth() + 1;
+  const season = (SEASONS.find((x) => x[0] === month) || [0, ""])[1];
+  const insights = await leadInsights(cfg);
+  const lib = TOPICS.filter((t) => recent.indexOf(t.key) === -1).map((t) => `${t.key} [${t.pillar}] — ${t.h1}`).join("\n");
+  const sys = `You are the content strategist for DermaLuxe by Medicare — premium skin, hair & aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA lasers, part of Medicare Skin & Hair, 10 branches). Goal of every post: make a local Telugu patient message the clinic on WhatsApp today. Rules: no prices, no "guaranteed"/"permanent cure", no before/after claims, medically accurate, warm not salesy. Output ONLY JSON.`;
+  const user = `Today: ${d.toISOString().slice(0, 10)} (${dow}, IST). Season/context for this month: ${season}.
+Patient demand signal: ${insights || "no lead data yet"}.
+Last 20 posts (do not repeat these keys): ${recent.join(", ") || "none"}.
+Weekday pillar hint: ${PILLAR_BY_DAY[d.getUTCDay()]} (edu=education, tx=treatment spotlight, myth=myth-buster, trust=doctors/tech, cta=free AI analysis/booking, season=seasonal, tips=daily tips).
+Available library topics:
+${lib}
+
+Pick the single best topic key for today (prefer what patients are asking about, the season, and the pillar hint) and write today's poster copy — fresh, specific, scroll-stopping, not generic:
+- h1: English headline, max 34 characters, no emoji, no exclamation
+- te: Telugu line (Telugu script, natural spoken Telugu, max 30 characters)
+- sub: one English support line, max 72 characters, 3-5 fragments separated by " · "
+- img: one-sentence photo brief for an AI image (South Indian subject if a person, tasteful, no text) that matches h1
+- why: 10-word reason
+JSON: {"key":"...","h1":"...","te":"...","sub":"...","img":"...","why":"..."}`;
+  try {
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
+      body: JSON.stringify({ model: process.env.DAILY_PLANNER_MODEL || process.env.AI_MODEL || "claude-sonnet-5", max_tokens: 600, system: sys, messages: [{ role: "user", content: user }] }),
+    });
+    if (!resp.ok) throw new Error("claude HTTP " + resp.status);
+    const data = await resp.json();
+    const t = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
+    const p = JSON.parse((t.match(/\{[\s\S]*\}/) || [t])[0]);
+    const lib2 = TOPICS.find((x) => x.key === String(p.key || "").toLowerCase());
+    if (!lib2) throw new Error("planner picked unknown key " + p.key);
+    const clean = (v, max) => String(v || "").replace(/\s+/g, " ").trim().slice(0, max);
+    const h1 = clean(p.h1, 34), te = clean(p.te, 32), sub = clean(p.sub, 80), img = clean(p.img, 300);
+    return Object.assign({}, lib2, {
+      h1: h1.length >= 8 ? h1 : lib2.h1,
+      te: /[ఀ-౿]/.test(te) ? te : lib2.te,
+      sub: sub.length >= 10 ? sub : lib2.sub,
+      img: img.length >= 20 ? img : lib2.img,
+      planned: true, why: clean(p.why, 120),
+    });
+  } catch (e) {
+    console.error("daily: planner fallback", e && e.message);
+    return base;
+  }
+}
+
 // ---- 2. Caption (Claude) ---------------------------------------------------
 async function writeCaption(topic) {
   const sys = `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly these 3 lines:\n"📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY the caption text itself — no JSON, no quotes, no preamble.`;
@@ -214,7 +308,7 @@ async function renderPoster(html) {
 // opts: {topic?: key, dueMs?: epoch ms (default today 8:30 IST), by?: digits}
 // Returns {imgId, caption, topic, due, queued}
 async function createDailyPost(cfg, opts = {}) {
-  const topic = await pickTopic(cfg, opts.topic);
+  const topic = opts.topic ? await pickTopic(cfg, opts.topic) : await planTopic(cfg);
   const [img, caption] = await Promise.all([genImage(topic), writeCaption(topic)]);
   const b64 = await renderPoster(posterHtml(topic, img));
   const imgId = crypto.randomBytes(16).toString("hex");
@@ -228,9 +322,11 @@ async function createDailyPost(cfg, opts = {}) {
       await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId, caption, due, by, tries: 0, auto: true, topic: topic.key, notify: notifyList })]);
     }
     await guard.kvCommand(cfg, ["LPUSH", "dp:hist", `${topic.key}|${todayIst()}`]);
+    // today's topic → api/r.js prefills the WhatsApp message for /r/insta & /r/story
+    await guard.kvCommand(cfg, ["SET", "dp:today", JSON.stringify({ key: topic.key, h1: topic.h1, te: topic.te, page: topic.page, at: Date.now() }), "EX", "172800"]).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", "dp:hist", "0", "59"]);
   }
   return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
 }
 
-module.exports = { TOPICS, createDailyPost, pickTopic, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
+module.exports = { TOPICS, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };

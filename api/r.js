@@ -37,7 +37,17 @@ module.exports = async (req, res) => {
     webchat: "Hi DermaLuxe! Website chat nunchi vastunna — appointment book cheyali",
   };
   if (WA_TAGS[tag]) {
-    res.setHeader("Location", "https://wa.me/919959134666?text=" + encodeURIComponent(WA_TAGS[tag]));
+    let text = WA_TAGS[tag];
+    // Instagram bio/story link: mention today's auto-post topic so the agent
+    // knows what the patient saw (and marketing can attribute the lead).
+    if ((tag === "insta" || tag === "story") && cfg) {
+      try {
+        const t = await guard.kvCommand(cfg, ["GET", "dp:today"]);
+        const today = t && t.result ? JSON.parse(t.result) : null;
+        if (today && today.h1) text = `Hi DermaLuxe! Instagram lo "${today.h1}" post chusanu. Free AI skin & hair analysis kavali.`;
+      } catch (e) {}
+    }
+    res.setHeader("Location", "https://wa.me/919959134666?text=" + encodeURIComponent(text));
   } else {
     res.setHeader("Location", `https://www.dermaluxe.ai/?utm_source=${tag}&utm_medium=smartlink&utm_campaign=${tag}`);
   }
