@@ -160,22 +160,27 @@ function posterHtml(topic, img) {
 <style>
 html,body{margin:0;width:1080px;height:1350px;overflow:hidden}
 body{background:#0b0b0e ${bg};color:#ece9e3;font-family:Jost,sans-serif;position:relative}
-.shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,14,.55) 0%,rgba(11,11,14,0) 22%,rgba(11,11,14,0) 45%,rgba(11,11,14,.82) 68%,#0b0b0e 100%)}
+.shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,14,.55) 0%,rgba(11,11,14,0) 22%,rgba(11,11,14,0) 42%,rgba(11,11,14,.85) 64%,#0b0b0e 100%)}
 .frame{position:absolute;inset:34px;border:1px solid rgba(233,207,143,.45)}
 .logo{position:absolute;top:70px;left:0;right:0;margin:auto;width:300px;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
-.txt{position:absolute;left:90px;right:90px;bottom:160px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px}
+.city{position:absolute;top:212px;left:0;right:0;text-align:center;font-family:"Noto Sans Telugu",sans-serif;font-size:30px;color:#e9cf8f;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.8)}
+.txt{position:absolute;left:90px;right:90px;bottom:212px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px}
 .eyebrow{font-size:21px;letter-spacing:.32em;text-transform:uppercase;color:#e9cf8f;font-weight:500}
 h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;line-height:1.06;margin:0;color:#f6f1e6;text-wrap:balance;text-shadow:0 2px 18px rgba(0,0,0,.7)}
 .te{font-family:"Noto Sans Telugu",sans-serif;font-size:42px;line-height:1.5;color:#e9cf8f;text-shadow:0 2px 14px rgba(0,0,0,.8)}
 .rule{width:110px;height:1px;background:linear-gradient(90deg,transparent,#e9cf8f,transparent)}
 .sub{font-size:26px;font-weight:300;color:#cfc9bd;line-height:1.5;max-width:820px}
-.foot{position:absolute;left:0;right:0;bottom:52px;text-align:center}
-.site{font-size:34px;letter-spacing:.12em;color:#e9cf8f;font-weight:500}
-.addr{font-size:19px;color:#a39e95;letter-spacing:.05em;margin-top:6px}
+.foot{position:absolute;left:0;right:0;bottom:44px;text-align:center}
+.site{font-size:34px;letter-spacing:.12em;color:#e9cf8f;font-weight:500;display:flex;align-items:center;justify-content:center;gap:12px}
+.wa{width:34px;height:34px}
+.name{font-size:24px;color:#f6f1e6;letter-spacing:.04em;margin-top:8px;font-weight:400}
+.namete{font-family:"Noto Sans Telugu",sans-serif;font-size:19px;color:#cfc9bd;margin-top:2px}
+.addr{font-size:17px;color:#a39e95;letter-spacing:.04em;margin-top:6px}
 </style></head><body><div class="shade"></div><div class="frame"></div>
 <img class="logo" src="data:image/png;base64,${logoB64()}" alt="">
+<div class="city">ఏలూరు</div>
 <div class="txt"><div class="eyebrow">Eluru · MD Dermatologists</div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="rule"></div><div class="sub">${esc(topic.sub)}</div></div>
-<div class="foot"><div class="site">WhatsApp &nbsp;99591 34666</div><div class="addr">Free AI skin &amp; hair analysis · dermaluxe.ai · Opposite Happy Mobiles, R.R. Peta, Eluru</div></div>
+<div class="foot"><div class="site"><svg class="wa" viewBox="0 0 448 512" aria-hidden="true"><path fill="#e9cf8f" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>WhatsApp &nbsp;99591 34666</div><div class="name">DermaLuxe by Medicare Skin And Hair Clinics</div><div class="namete">డెర్మాలక్స్ బై మెడికేర్ స్కిన్ అండ్ హెయిర్ క్లినిక్స్</div><div class="addr">Free AI skin &amp; hair analysis · dermaluxe.ai · Opposite Happy Mobiles, R.R. Peta, Eluru</div></div>
 </body></html>`;
 }
 
