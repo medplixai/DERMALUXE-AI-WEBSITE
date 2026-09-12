@@ -571,6 +571,7 @@ async function handle(cfg, digits, text, photo, video) {
   if (/^(help|commands)$/i.test(t)) {
     const lines = ["🛠 *Admin commands*",
       "• daily post now — AI poster ippude post · daily on/off · daily status · daily topics",
+      "• academy status · academy booked <n> — training seats target (10)",
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
@@ -597,6 +598,27 @@ async function handle(cfg, digits, text, photo, video) {
     const menuRows = ["report", "weekly", "funnel", "reviews", "referrals", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
+  }
+
+  // ---- Academy seat target ------------------------------------------------
+  // academy status · academy booked <n> (owner) — seats-left count is injected into the agent prompt.
+  let am;
+  if ((am = t.match(/^academy(?:\s+(status|booked|seats))?(?:\s+(\d{1,2}))?$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const sub = (am[1] || "status").toLowerCase(), n = am[2];
+    if ((sub === "booked" || sub === "seats") && n !== undefined) {
+      if (!owner) return "🔒 Owner matrame.";
+      await guard.kvCommand(cfg, ["SET", "acad:booked", String(Math.max(0, Math.min(10, Number(n))))]);
+    }
+    const b = await guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({}));
+    const booked = Number(b.result || 0), left = Math.max(0, 10 - booked);
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]).catch(() => ({}));
+    const leads = (r.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((l) => l && /^academy/i.test(String(l.concern || "")));
+    const paid = leads.filter((l) => /paid/i.test(String(l.concern || ""))).length;
+    const lines = [`🎓 *Academy — Batch 1 (20 Oct 2026)*`, `Seats booked: *${booked}/10* · left: *${left}* · offer till 30 Sep`, `Enquiries: ${leads.length} · paid screenshots: ${paid}`];
+    leads.slice(0, 8).forEach((l) => lines.push(`• ${l.name || "?"} — ${String(l.concern || "").replace(/^Academy\s*/i, "")} (${l.phone || l.src_id || ""})`));
+    lines.push("", "Update: *academy booked 3* (owner) · Enquiries WhatsApp lo 'ACADEMY' tho vastayi.");
+    return lines.join("\n");
   }
 
   // ---- Daily auto-poster (cron-daily.js) --------------------------------

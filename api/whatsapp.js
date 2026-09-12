@@ -570,6 +570,17 @@ async function sendCloudDocument(phoneNumberId, to, url, filename, caption) {
     return true;
   } catch (e) { console.error("wa: document send error", e && e.message); return false; }
 }
+// Academy conversation → live seat status for the sales playbook (owner sets via "academy booked N").
+async function academyCtx(cfg, hist, text) {
+  try {
+    const inConvo = ACADEMY_ASK.test(String(text || "")) || (hist || []).slice(-4).some((t) => ACADEMY_ASK.test(String(t.u || "")) || /academy/i.test(String(t.a || "")));
+    if (!inConvo || !cfg) return "";
+    const b = await guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({}));
+    const booked = Math.max(0, Math.min(10, Number(b.result || 0))), left = 10 - booked;
+    const days = Math.max(0, Math.ceil((Date.UTC(2026, 8, 30, 18, 30) - Date.now()) / 86400000));
+    return `[ACADEMY SEATS STATUS: booked ${booked}/10, seats left ${left}; launch offer ends 30 Sep 2026 (${days} days left); batch starts 20 Oct 2026] `;
+  } catch (e) { return ""; }
+}
 // Academy enquiry → send the course catalog PDF once per number per 30 days.
 async function maybeSendCatalog(cfg, cloud, out, text) {
   const wants = out.send_catalog === true || ACADEMY_ASK.test(String(text || "")) || /^academy/i.test(String((out.lead && out.lead.concern) || ""));
@@ -1075,7 +1086,7 @@ module.exports = async (req, res) => {
   }
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;
-  const extraCtx = nowIstCtx() + (await apptCtx(cfg, digits)) + (profile && profile.name
+  const extraCtx = nowIstCtx() + (await apptCtx(cfg, digits)) + (await academyCtx(cfg, hist, text)) + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
     : "");
 
