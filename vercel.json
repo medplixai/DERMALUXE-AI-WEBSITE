@@ -35,6 +35,15 @@
     },
     "api/cron-daily.js": {
       "maxDuration": 300
+    },
+    "api/academy.js": {
+      "maxDuration": 300
+    },
+    "api/cron-academy.js": {
+      "maxDuration": 300
+    },
+    "api/doc.js": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -53,6 +62,10 @@
     {
       "path": "/api/cron-daily",
       "schedule": "30 1 * * *"
+    },
+    {
+      "path": "/api/cron-academy",
+      "schedule": "0 2 * * *"
     }
   ],
   "rewrites": [

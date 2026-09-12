@@ -110,6 +110,42 @@ async function sendWaDocument(digits, mediaId, filename, caption) {
   }
 }
 
+// Send a document by public link (PDF from our own site / api/doc.js).
+async function sendWaDocLink(digits, url, filename, caption) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
+  const to = String(digits || "").replace(/\D/g, "").slice(-10);
+  if (!token || !phoneId || to.length !== 10 || !url) return false;
+  try {
+    const document = { link: url };
+    if (filename) document.filename = String(filename).slice(0, 120);
+    if (caption) document.caption = String(caption).slice(0, 900);
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: `91${to}`, type: "document", document }),
+    });
+    if (!r.ok) { let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {} console.error("notify: doclink failed", to, r.status, d); return false; }
+    return true;
+  } catch (e) { console.error("notify: doclink error", to, e && e.message); return false; }
+}
+// Send an image by public link.
+async function sendWaImageLink(digits, url, caption) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
+  const to = String(digits || "").replace(/\D/g, "").slice(-10);
+  if (!token || !phoneId || to.length !== 10 || !url) return false;
+  try {
+    const image = { link: url };
+    if (caption) image.caption = String(caption).slice(0, 900);
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: `91${to}`, type: "image", image }),
+    });
+    return r.ok;
+  } catch (e) { return false; }
+}
+
 // Clinic map pin (used in interview invites).
 async function sendWaLocation(digits) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -189,4 +225,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, sendWa, sendWaDocument, sendWaLocation, sendWaTemplate, waHandoff };
+module.exports = { leadAlert, sendWa, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, waHandoff };

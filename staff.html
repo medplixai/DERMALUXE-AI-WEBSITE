@@ -148,6 +148,7 @@
         <button class="tab on" data-t="leads">Leads<i id="nLeads">0</i></button>
         <button class="tab" data-t="appts">Appointments<i id="nAppts">0</i></button>
         <button class="tab" data-t="academy">Academy<i id="nAcad">0</i></button>
+        <button class="tab" data-t="students">Students<i id="nStud">0</i></button>
         <button class="tab" data-t="today">Today's post</button>
         <button class="tab" data-t="reviews">Reviews</button>
         <button class="tab hide" data-t="team" id="teamTab">Team</button>
@@ -171,6 +172,20 @@
           <p>Launch offer: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Reserve ₹9,999. Agent WhatsApp lo "ACADEMY" tho enquiries collect chestundi, catalog PDF automatic ga pampistundi.</p>
         </div>
         <div class="list" id="acadList"></div>
+      </section>
+      <section id="t-students" class="hide">
+        <div class="box"><h2>Add student <span class="te" style="font-size:.9rem;color:var(--g3)">· స్టూడెంట్ add</span></h2>
+          <p>Advance ₹9,999 vachaka ikkada add cheyandi — onboarding form link + receipt WhatsApp lo veltayi.</p>
+          <div class="noteform" style="margin-top:10px;flex-wrap:wrap">
+            <input id="stName" placeholder="Full name" style="min-width:150px" />
+            <input id="stPhone" placeholder="10-digit mobile" inputmode="numeric" maxlength="10" style="max-width:150px" />
+            <select id="stCourse" style="background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:8px 12px"><option value="skin">Skin ₹49,999</option><option value="hair">Hair ₹49,999</option><option value="both">Skin+Hair ₹99,999</option></select>
+            <select id="stDur" style="background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:8px 12px"><option>1 month</option><option>2 months</option></select>
+            <input id="stPaid" placeholder="Advance paid" inputmode="numeric" value="9999" style="max-width:120px" />
+            <button class="btn btn--gold btn--sm" id="stAdd">Add &amp; send form</button>
+          </div>
+          <div class="err" id="stErr"></div></div>
+        <div class="list" id="studList"></div>
       </section>
       <section id="t-today" class="hide" id="todayBox"></section>
       <section id="t-reviews" class="hide"><div class="list" id="revList"></div></section>
@@ -332,7 +347,8 @@
     $("tabs").addEventListener("click", function (e) {
       var b = e.target.closest(".tab"); if (!b) return;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === b); });
-      ["leads", "appts", "academy", "today", "reviews", "team"].forEach(function (t) { $("t-" + t).classList.toggle("hide", t !== b.dataset.t); });
+      ["leads", "appts", "academy", "students", "today", "reviews", "team"].forEach(function (t) { $("t-" + t).classList.toggle("hide", t !== b.dataset.t); });
+      if (b.dataset.t === "students") loadStudents();
     });
     ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
     document.addEventListener("change", function (e) {
@@ -351,6 +367,53 @@
       var el = e.target.closest("[data-act]"); if (!el || el.tagName === "SELECT" || el.tagName === "FORM") return;
       if (el.dataset.act === "delete") { if (!confirm("Delete this lead?")) return; api("delete", { key: el.dataset.key }).then(function () { state.data.leads = state.data.leads.filter(function (x) { return x.key !== el.dataset.key; }); state.data.academy.leads = state.data.academy.leads.filter(function (x) { return x.key !== el.dataset.key; }); render(); toast("Deleted"); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "team-remove") { if (!confirm("Remove access for " + el.dataset.phone + "?")) return; api("team-remove", { phone: el.dataset.phone }).then(function (j) { state.data.team = j.team; renderTeam(); toast("Removed"); }).catch(function (x) { toast(x.message); }); }
+    });
+    function sapi(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch("/api/academy?a=" + a, opt).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+    }
+    var students = [];
+    function loadStudents() { sapi("list").then(function (j) { students = j.students || []; renderStudents(); }).catch(function (e) { toast(e.message); }); }
+    function money(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
+    function renderStudents() {
+      $("nStud").textContent = students.length;
+      $("studList").innerHTML = students.length ? students.map(function (s) {
+        var bal = Math.max(0, (s.fee || 0) - (s.paid || 0)), cn = { skin: "Skin Care", hair: "Hair Care", both: "Skin + Hair" }[s.course] || s.course;
+        var notes = (s.notes || []).slice(0, 2).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
+        return '<article class="lead ' + (bal > 0 ? "warm" : "") + '">' +
+          '<div class="row"><div><h3>' + esc(s.name) + ' <span class="meta">· ' + esc(s.id) + '</span></h3>' +
+          '<div class="meta">' + esc(cn) + ' · ' + esc(s.duration || "") + ' · ' + esc(s.phone) + (s.onboarded ? " · form ✓" : " · form pending") + '</div></div>' +
+          '<div><span class="badge ' + (s.status === "completed" ? "warm" : bal > 0 ? "hot" : "") + '">' + esc(s.status || "enrolled") + '</span></div></div>' +
+          '<div class="concern">Fee ' + money(s.fee) + ' · Paid <b style="color:var(--ok)">' + money(s.paid) + '</b> · Balance <b style="color:' + (bal ? "var(--hot)" : "var(--ok)") + '">' + money(bal) + '</b>' + (s.certNo ? ' · Cert ' + esc(s.certNo) : "") + '</div>' +
+          '<div class="acts">' +
+          '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(s.phone) + '">💬 WhatsApp</a>' +
+          '<button class="btn btn--sm" data-sact="link" data-id="' + esc(s.id) + '">🔗 Form link</button>' +
+          '<button class="btn btn--sm" data-sact="pay" data-id="' + esc(s.id) + '">💰 Record payment</button>' +
+          '<button class="btn btn--sm" data-sact="send" data-id="' + esc(s.id) + '">📄 Resend docs</button>' +
+          (state.data.me.role === "owner" ? '<button class="btn btn--sm btn--gold" data-sact="certify" data-id="' + esc(s.id) + '">🎓 Certificate</button>' : "") +
+          '</div><div class="notes">' + notes + '<form class="noteform" data-sact="note" data-id="' + esc(s.id) + '"><input placeholder="Note…" maxlength="300" /><button class="btn btn--sm" type="submit">Add</button></form></div></article>';
+      }).join("") : '<div class="empty">No students yet. Advance pay chesina vaarini paina add cheyandi.</div>';
+    }
+    $("stAdd").onclick = function () {
+      $("stErr").textContent = "";
+      var body = { name: $("stName").value.trim(), phone: $("stPhone").value.replace(/\D/g, ""), course: $("stCourse").value, duration: $("stDur").value, paid: Number($("stPaid").value || 0) };
+      $("stAdd").disabled = true;
+      sapi("create", body).then(function (j) { students.unshift(j.student); renderStudents(); $("stName").value = ""; $("stPhone").value = ""; toast(j.student.id + " added — form link sent"); })
+        .catch(function (e) { $("stErr").textContent = e.message; }).finally(function () { $("stAdd").disabled = false; });
+    };
+    document.addEventListener("click", function (e) {
+      var el = e.target.closest("[data-sact]"); if (!el || el.tagName === "FORM") return;
+      var id = el.dataset.id, act = el.dataset.sact;
+      if (act === "link") return sapi("link", { id: id }).then(function (j) { navigator.clipboard && navigator.clipboard.writeText(j.url); prompt("Onboarding form link (copied):", j.url); }).catch(function (x) { toast(x.message); });
+      if (act === "pay") { var amt = prompt("Amount received (₹):", "40000"); if (!amt) return; var ref = prompt("UPI / reference (optional):", "") || ""; return sapi("pay", { id: id, amount: Number(amt), ref: ref }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Receipt sent"); }).catch(function (x) { toast(x.message); }); }
+      if (act === "send") { return sapi("send", { id: id, which: ["admission", "idcard"] }).then(function () { toast("Documents sent on WhatsApp"); }).catch(function (x) { toast(x.message); }); }
+      if (act === "certify") { var g = prompt("Grade (A/B/C):", "A"); if (!g) return; if (!confirm("Generate and send the certificate?")) return; return sapi("certify", { id: id, grade: g }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Certificate sent 🎓"); }).catch(function (x) { toast(x.message); }); }
+    });
+    document.addEventListener("submit", function (e) {
+      var f = e.target; if (f.dataset.sact !== "note") return; e.preventDefault();
+      var inp = f.querySelector("input"), t2 = inp.value.trim(); if (!t2) return;
+      sapi("note", { id: f.dataset.id, text: t2 }).then(function (j) { students = students.map(function (x) { return x.id === f.dataset.id ? Object.assign({}, x, { notes: j.notes }) : x; }); inp.value = ""; renderStudents(); toast("Note saved"); }).catch(function (x) { toast(x.message); });
     });
     $("seatMinus").onclick = function () { setSeats(state.data.academy.booked - 1); };
     $("seatPlus").onclick = function () { setSeats(state.data.academy.booked + 1); };

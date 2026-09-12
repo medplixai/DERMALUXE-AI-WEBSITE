@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>DermaLuxe Academy — Onboarding Form</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0d0d0f" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&family=Noto+Sans+Telugu:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root{--ink:#0d0d0f;--ink2:#121216;--panel:#16161b;--line:rgba(198,162,92,.2);--soft:rgba(255,255,255,.07);--g1:#f4e2b8;--g2:#e9cf8f;--g3:#c6a25c;--text:#ece9e3;--muted:#a39e95;--muted2:#7c776e;--ok:#5fd39b;--bad:#ff6b6b}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:Jost,system-ui,sans-serif;background:var(--ink);color:var(--text);font-weight:300;line-height:1.55;min-height:100vh;padding-bottom:40px}
+    .te{font-family:"Noto Sans Telugu",sans-serif;color:var(--g2)}
+    .wrap{width:min(720px,100%);margin:0 auto;padding:0 16px}
+    header{text-align:center;padding:26px 16px 18px;background:radial-gradient(60% 60% at 50% -10%,rgba(201,162,92,.14),transparent 65%)}
+    header img{height:62px;margin:0 auto 10px;display:block}
+    header .eyebrow{font-size:.7rem;letter-spacing:3px;text-transform:uppercase;color:var(--g3)}
+    header h1{font-family:"Cormorant Garamond",serif;font-size:2rem;line-height:1.1;margin-top:6px}
+    .sum{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:14px 16px;margin:14px 0 18px;display:grid;gap:6px}
+    .sum b{color:var(--g1);font-weight:500}
+    .sum .row{display:flex;justify-content:space-between;gap:10px;font-size:.92rem;color:var(--muted)}
+    form{display:grid;gap:14px}
+    fieldset{border:1px solid var(--line);border-radius:16px;padding:14px 16px 16px;background:var(--panel)}
+    legend{font-size:.72rem;letter-spacing:2px;text-transform:uppercase;color:var(--g3);padding:0 8px}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .f{display:grid;gap:5px}
+    .f.full{grid-column:1/-1}
+    label{font-size:.76rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted2)}
+    label span{text-transform:none;letter-spacing:0;font-size:.8rem}
+    input,select,textarea{background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:1rem;color:var(--text);outline:none;width:100%;font-family:inherit;font-weight:300}
+    input:focus,select:focus,textarea:focus{border-color:var(--g3)}
+    textarea{min-height:70px;resize:vertical}
+    .chk{display:flex;align-items:flex-start;gap:10px;font-size:.92rem;color:var(--muted);margin:7px 0}
+    .chk input{width:18px;height:18px;accent-color:#c6a25c;flex:none;margin-top:2px}
+    .photo{display:flex;gap:14px;align-items:center}
+    .photo .prev{width:78px;height:96px;border-radius:10px;border:1px dashed var(--line);object-fit:cover;background:var(--ink2);display:grid;place-items:center;font-size:.68rem;color:var(--muted2);text-align:center}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);border-radius:100px;padding:14px 22px;cursor:pointer;background:transparent;font-weight:500;letter-spacing:.5px;font-size:1rem}
+    .btn--gold{background:linear-gradient(135deg,#f6e6bd,#e3c074 40%,#c79a4e 75%,#a87f3c);color:#2a1d07;border:0;width:100%}
+    .btn--sm{padding:9px 14px;font-size:.86rem}
+    .err{color:var(--bad);font-size:.9rem;min-height:1.2em}
+    .note{font-size:.82rem;color:var(--muted2)}
+    .done{text-align:center;padding:40px 20px}
+    .done h2{font-family:"Cormorant Garamond",serif;font-size:2rem;color:var(--g1)}
+    .done .tick{font-size:3rem}
+    .hide{display:none!important}
+    @media (max-width:560px){.grid{grid-template-columns:1fr}}
+  </style>
+</head>
+<body>
+  <header>
+    <img src="assets/logo.webp" alt="DermaLuxe by Medicare" />
+    <div class="eyebrow">DermaLuxe Academy · Eluru</div>
+    <h1>Student Onboarding Form</h1>
+    <p class="te" style="font-size:.95rem;margin-top:4px">స్టూడెంట్ ఆన్‌బోర్డింగ్ ఫారం — 2 నిమిషాలు</p>
+  </header>
+
+  <main class="wrap">
+    <div id="loading" class="note" style="text-align:center;padding:20px">Loading…</div>
+    <div id="bad" class="hide" style="text-align:center;padding:30px"><p class="err" id="badMsg"></p><p class="note">Link expire ayite mana team ki WhatsApp cheyandi: <a href="/r/academy" style="color:var(--g2)">99591 34666</a></p></div>
+
+    <div id="app" class="hide">
+      <div class="sum" id="sum"></div>
+      <form id="form">
+        <fieldset><legend>Personal · వ్యక్తిగత</legend>
+          <div class="grid">
+            <div class="f full"><label>Full name <span class="te">· పూర్తి పేరు</span></label><input name="name" required maxlength="80" /></div>
+            <div class="f"><label>Father's / Guardian's name <span class="te">· తండ్రి పేరు</span></label><input name="guardian" maxlength="80" /></div>
+            <div class="f"><label>Date of birth <span class="te">· పుట్టిన తేదీ</span></label><input name="dob" type="date" /></div>
+            <div class="f"><label>Gender <span class="te">· లింగం</span></label><select name="gender"><option value="">—</option><option>Female</option><option>Male</option><option>Other</option></select></div>
+            <div class="f"><label>Blood group</label><select name="blood"><option value="">—</option><option>A+</option><option>A-</option><option>B+</option><option>B-</option><option>O+</option><option>O-</option><option>AB+</option><option>AB-</option></select></div>
+            <div class="f"><label>Mobile (WhatsApp) <span class="te">· మొబైల్</span></label><input name="phone" inputmode="numeric" maxlength="10" required /></div>
+            <div class="f"><label>Emergency contact <span class="te">· ఎమర్జెన్సీ</span></label><input name="emergency" inputmode="numeric" maxlength="10" /></div>
+            <div class="f full"><label>Email</label><input name="email" type="email" maxlength="80" /></div>
+            <div class="f full"><label>Address <span class="te">· చిరునామా</span></label><textarea name="address" maxlength="220"></textarea></div>
+          </div>
+        </fieldset>
+
+        <fieldset><legend>Education &amp; experience · విద్య</legend>
+          <div class="grid">
+            <div class="f"><label>Highest qualification <span class="te">· విద్యార్హత</span></label><input name="qualification" maxlength="80" placeholder="B.Sc / Intermediate / Diploma…" /></div>
+            <div class="f"><label>Years of experience</label><input name="experience" maxlength="40" placeholder="Fresher / 2 years" /></div>
+            <div class="f full"><label>Current work / background <span class="te">· ప్రస్తుత పని</span></label><input name="background" maxlength="120" placeholder="Salon therapist / Nurse / Student…" /></div>
+            <div class="f full"><label>ID proof — Aadhaar last 4 digits or PAN <span class="te">· ఐడీ ప్రూఫ్</span></label><input name="idproof" maxlength="40" placeholder="XXXX XXXX 1234" /></div>
+            <div class="f full"><label>Course duration <span class="te">· వ్యవధి</span></label><select name="duration"><option>1 month</option><option>2 months</option></select></div>
+          </div>
+        </fieldset>
+
+        <fieldset><legend>Photo &amp; documents · ఫోటో &amp; డాక్యుమెంట్లు</legend>
+          <div class="photo">
+            <div class="prev" id="prev">Photo<br>ఫోటో</div>
+            <div><input type="file" id="photoFile" accept="image/*" style="display:none" />
+              <button type="button" class="btn btn--sm" id="photoBtn">📷 Upload passport photo</button>
+              <p class="note" style="margin-top:6px">ID card &amp; admission form meeda ee photo vastundi. Plain background lo, face clear ga.</p></div>
+          </div>
+          <p class="note" style="margin:12px 0 6px">Ee documents first day ki teesukuni randi — tick cheyandi:</p>
+          <label class="chk"><input type="checkbox" name="docPhoto" /> <span>2 passport photos ready <span class="te">· 2 పాస్‌పోర్ట్ ఫోటోలు</span></span></label>
+          <label class="chk"><input type="checkbox" name="docId" /> <span>Aadhaar / ID proof copy <span class="te">· ఆధార్ కాపీ</span></span></label>
+          <label class="chk"><input type="checkbox" name="docQual" /> <span>Qualification certificate copy <span class="te">· విద్యార్హత సర్టిఫికేట్</span></span></label>
+          <label class="chk"><input type="checkbox" name="docExp" /> <span>Experience certificate (if any) <span class="te">· అనుభవ సర్టిఫికేట్</span></span></label>
+        </fieldset>
+
+        <fieldset><legend>Declaration · అంగీకారం</legend>
+          <label class="chk"><input type="checkbox" id="agree" required /> <span>Attendance (90%), hygiene, safety, consent and client-confidentiality rules anni follow chestanu. Training MD dermatologist supervision lo jarugutundi; supervision lekunda e procedure cheyanu. Fees non-refundable; balance course starting roju pay chestanu. Certificate practical exam &amp; viva (70%) pass ayyaka matrame vastundi.<br><span class="te">నేను పైన ఉన్న నియమాలను చదివి అంగీకరిస్తున్నాను.</span></span></label>
+        </fieldset>
+
+        <div class="err" id="err"></div>
+        <button class="btn btn--gold" id="submitBtn" type="submit">Submit &amp; get my documents on WhatsApp</button>
+        <p class="note" style="text-align:center">Submit chesaka receipt, admission form &amp; ID card WhatsApp lo vastayi 📄</p>
+      </form>
+    </div>
+
+    <div id="done" class="hide done">
+      <div class="tick">🎓</div>
+      <h2>Welcome to DermaLuxe Academy!</h2>
+      <p class="te" style="margin-top:6px">మీ ఫారం సబ్మిట్ అయింది ✅</p>
+      <p style="color:var(--muted);margin-top:10px">Mee receipt, admission form &amp; student ID card WhatsApp lo pampam. Admission form print chesi, sign chesi first day teesukuni randi.</p>
+      <p style="margin-top:14px"><a class="btn" href="/r/academy">💬 WhatsApp lo maatladandi</a></p>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    var $ = function (s) { return document.querySelector(s); };
+    var t = new URLSearchParams(location.search).get("t") || "";
+    var photo = "";
+    function api(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: {} };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a, t: t }, body)); }
+      return fetch("/api/academy?a=" + a + (body ? "" : "&t=" + encodeURIComponent(t)), opt)
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+    }
+    function money(n) { return "₹" + Number(n || 0).toLocaleString("en-IN"); }
+    api("form").then(function (d) {
+      $("#loading").classList.add("hide");
+      if (d.done) { $("#app").classList.add("hide"); $("#done").classList.remove("hide"); return; }
+      $("#app").classList.remove("hide");
+      $("#sum").innerHTML =
+        '<div class="row"><span>Student ID</span><b>' + d.id + '</b></div>' +
+        '<div class="row"><span>Course</span><b>' + d.courseName + '</b></div>' +
+        '<div class="row"><span class="te">కోర్సు</span><span class="te">' + d.courseTe + '</span></div>' +
+        '<div class="row"><span>Batch ' + d.batch.no + ' starts</span><b>' + d.batch.start + '</b></div>' +
+        '<div class="row"><span>Fee</span><b>' + money(d.fee) + '</b></div>' +
+        '<div class="row"><span>Paid / Balance</span><b>' + money(d.paid) + ' / ' + money(Math.max(0, d.fee - d.paid)) + '</b></div>';
+      if (d.name) $("[name=name]").value = d.name;
+      if (d.phone) $("[name=phone]").value = d.phone;
+      if (d.duration) $("[name=duration]").value = d.duration;
+    }).catch(function (e) {
+      $("#loading").classList.add("hide"); $("#bad").classList.remove("hide"); $("#badMsg").textContent = e.message;
+    });
+    $("#photoBtn").onclick = function () { $("#photoFile").click(); };
+    $("#photoFile").onchange = function (e) {
+      var f = e.target.files[0]; if (!f) return;
+      var img = new Image(), rd = new FileReader();
+      rd.onload = function () { img.onload = function () {
+        var W = 420, H = Math.round(W * 1.28), c = document.createElement("canvas"); c.width = W; c.height = H;
+        var sc = Math.max(W / img.width, H / img.height), w = img.width * sc, h = img.height * sc;
+        c.getContext("2d").drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+        photo = c.toDataURL("image/jpeg", 0.82);
+        $("#prev").outerHTML = '<img class="prev" id="prev" src="' + photo + '" alt="">';
+      }; img.src = rd.result; };
+      rd.readAsDataURL(f);
+    };
+    $("#form").onsubmit = function (ev) {
+      ev.preventDefault(); $("#err").textContent = "";
+      var f = ev.target, body = {};
+      ["name","guardian","dob","gender","blood","phone","emergency","email","address","qualification","experience","background","idproof","duration"].forEach(function (k) { body[k] = (f[k] && f[k].value || "").trim(); });
+      ["docPhoto","docId","docQual","docExp"].forEach(function (k) { body[k] = !!(f[k] && f[k].checked); });
+      if (photo) body.photo = photo;
+      if (!/^[6-9]\d{9}$/.test(body.phone.replace(/\D/g, ""))) { $("#err").textContent = "Valid 10-digit mobile number ivvandi"; return; }
+      if (!$("#agree").checked) { $("#err").textContent = "Declaration accept cheyandi"; return; }
+      $("#submitBtn").disabled = true; $("#submitBtn").textContent = "Submitting…";
+      api("submit", body).then(function () { $("#app").classList.add("hide"); $("#done").classList.remove("hide"); window.scrollTo(0, 0); })
+        .catch(function (e) { $("#err").textContent = e.message; $("#submitBtn").disabled = false; $("#submitBtn").textContent = "Submit & get my documents on WhatsApp"; });
+    };
+  })();
+  </script>
+</body>
+</html>
