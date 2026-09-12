@@ -166,7 +166,7 @@
     .ac-modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.2rem; }
     .ac-module { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; transition: transform .4s var(--ease), border-color .4s; }
     .ac-module:hover { transform: translateY(-4px); border-color: rgba(201,162,92,.4); }
-    .ac-module img { width: 100%; height: auto; aspect-ratio: 4/3; object-fit: cover; }
+    .ac-module img { width: 100%; height: auto; aspect-ratio: 4/3; object-fit: cover; object-position: 50% 25%; }
     .ac-module__body { padding: 1.1rem 1.2rem 1.3rem; display: grid; gap: .45rem; }
     .ac-module__body h3 { font-size: 1.35rem; line-height: 1.15; }
     .ac-module__body .te { color: var(--gold-3); font-size: .85rem; }
@@ -209,7 +209,7 @@
     .ac-batch__table b { font-weight: 500; color: var(--text); }
     .ac-batch__table b.gold { color: var(--gold-1); font-weight: 600; }
     .ac-batch__card { border-radius: var(--radius); overflow: hidden; position: relative; min-height: 320px; border: 1px solid var(--line); }
-    .ac-batch__card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+    .ac-batch__card img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; }
     .ac-batch__card div { position: absolute; inset: auto 0 0; padding: 1.4rem; background: linear-gradient(0deg, rgba(10,10,12,.95), rgba(10,10,12,.6) 60%, transparent); }
     .ac-batch__card b { display: block; font-family: var(--font-serif); font-size: 1.7rem; font-weight: 600; color: var(--gold-1); line-height: 1.1; }
     .ac-batch__card p { color: var(--muted); font-size: .9rem; margin-top: .4rem; }
@@ -299,7 +299,7 @@
           </div>
         </div>
         <div class="ac-hero__art">
-          <img src="assets/academy/hero.webp" alt="Trainer demonstrating a diode laser to a small batch of trainees at DermaLuxe Academy, Eluru" width="1600" height="1100" fetchpriority="high" />
+          <img src="assets/academy/hero.webp" alt="Dr. Meghana Valeti with trainees and a diode laser machine at DermaLuxe Academy, Eluru" width="1600" height="900" fetchpriority="high" />
           <div class="ac-hero__badge"><i>🩺</i><div><b>MD Dermatologist-led</b><small>USFDA-approved machines · live clients</small></div></div>
         </div>
       </div>
@@ -399,7 +399,7 @@
         </div>
         <div class="ac-modules">
           <article class="ac-module">
-            <img src="assets/academy/laser-hair-removal.webp" alt="Trainee guided by trainer using a diode laser hair removal handpiece" loading="lazy" width="1200" height="900" />
+            <img src="assets/academy/dr-laser.webp" alt="Dr. Meghana Valeti guiding a trainee's hand on a diode laser hair removal handpiece" loading="lazy" width="1200" height="900" />
             <div class="ac-module__body"><small>Skin · Lasers</small><h3>Laser Hair Removal</h3><span class="te">లేజర్ హెయిర్ రిమూవల్</span><p>Diode laser settings for Indian skin, area-wise technique, cooling, safety and how to plan a 6–8 session course.</p></div>
           </article>
           <article class="ac-module">
@@ -411,7 +411,7 @@
             <div class="ac-module__body"><small>Skin · Acne</small><h3>Acne Treatments</h3><span class="te">యాక్నే ట్రీట్‌మెంట్స్</span><p>Active acne care, comedone extraction, acne-mark protocols and when to refer to the dermatologist.</p></div>
           </article>
           <article class="ac-module">
-            <img src="assets/academy/chemical-peel.webp" alt="Trainee applying a chemical peel with a brush on a client's cheek" loading="lazy" width="1200" height="900" />
+            <img src="assets/academy/dr-peel.webp" alt="Dr. Meghana Valeti demonstrating a chemical peel to a trainee" loading="lazy" width="1200" height="900" />
             <div class="ac-module__body"><small>Skin · Peels</small><h3>Chemical Peels</h3><span class="te">కెమికల్ పీల్స్</span><p>Choosing the right peel, layering, neutralising, frosting end-points and post-peel care.</p></div>
           </article>
           <article class="ac-module">
@@ -419,7 +419,7 @@
             <div class="ac-module__body"><small>Skin &amp; Hair · Analysis</small><h3>Skin &amp; Hair Analysis</h3><span class="te">స్కిన్ &amp; హెయిర్ అనాలిసిస్</span><p>AI skin analysis, dermoscopy, scalp mapping and how to explain findings to a client with confidence.</p></div>
           </article>
           <article class="ac-module">
-            <img src="assets/academy/prp-gfc.webp" alt="Syringe of platelet-rich plasma beside a centrifuge on a sterile clinic tray" loading="lazy" width="1200" height="900" />
+            <img src="assets/academy/dr-prp.webp" alt="Dr. Meghana Valeti explaining a PRP syringe to trainees beside a centrifuge" loading="lazy" width="1200" height="900" />
             <div class="ac-module__body"><small>Hair · Regrowth</small><h3>PRP &amp; GFC Therapy</h3><span class="te">PRP &amp; GFC హెయిర్ థెరపీ</span><p>Blood draw assist, centrifuge protocol, plasma &amp; growth-factor preparation, scalp technique and session planning.</p></div>
           </article>
           <article class="ac-module">
@@ -427,7 +427,7 @@
             <div class="ac-module__body"><small>Hair · Scalp</small><h3>Dandruff &amp; Hair Fall Treatments</h3><span class="te">చుండ్రు &amp; హెయిర్ ఫాల్ ట్రీట్‌మెంట్స్</span><p>Scalp treatments, hair-fall protocols for men &amp; women, mesotherapy assist and home-care counselling.</p></div>
           </article>
           <article class="ac-module">
-            <img src="assets/academy/certificate.webp" alt="Batch of DermaLuxe Academy graduates holding certificates in the clinic lobby" loading="lazy" width="1200" height="900" />
+            <img src="assets/academy/dr-batch.webp" alt="Dr. Meghana Valeti with a batch of DermaLuxe Academy trainees holding certificates" loading="lazy" width="1200" height="900" />
             <div class="ac-module__body"><small>Skin · Lasers</small><h3>Laser Treatments &amp; Certification</h3><span class="te">లేజర్ ట్రీట్‌మెంట్స్ &amp; సర్టిఫికేట్</span><p>Carbon laser facial, CO2 &amp; MNRF assist, laser safety — then a practical assessment and your DermaLuxe Academy certificate.</p></div>
           </article>
         </div>
@@ -518,7 +518,7 @@
             <div><span>Fees</span><b>Shared on WhatsApp — <a href="/r/academy" style="color:var(--gold-2)">ask now →</a></b></div>
           </div>
           <div class="ac-batch__card">
-            <img src="assets/academy/certificate.webp" alt="DermaLuxe Academy trainees with certificates" loading="lazy" />
+            <img src="assets/academy/dr-batch.webp" alt="Dr. Meghana Valeti with DermaLuxe Academy trainees holding certificates" loading="lazy" />
             <div><b>Only 10 seats. First come, first trained.</b><p>Seats are confirmed in the order of admission. Message us on WhatsApp to reserve yours before the batch fills.</p></div>
           </div>
         </div>
