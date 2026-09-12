@@ -186,6 +186,11 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, student: s });
   }
   if (a === "link") return json(res, 200, { ok: true, url: `${BASE}/academy-join.html?t=${linkToken(s.id)}` });
+  if (a === "material") {
+    const t = encodeURIComponent(linkToken(s.id));
+    const track = String(s.course) === "hair" ? "hair" : "skin";
+    return json(res, 200, { ok: true, book: `${BASE}/api/material?t=${t}&book=full`, day1: `${BASE}/api/material?t=${t}&track=${track}&day=1` });
+  }
   if (a === "note") {
     const t = String(b.text || "").trim().slice(0, 300);
     if (t) { s.notes = [{ ts: Date.now(), by: me.name, text: t }].concat(s.notes || []).slice(0, 30); await putSt(cfg, s); }

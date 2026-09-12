@@ -9,8 +9,13 @@ const docs = require("./_docs.js");
 const DAYS = require("./_academy_days.json");
 
 const BASE = "https://www.dermaluxe.ai";
-const MAT = (track, n) => `${BASE}/assets/academy/material/${track}-day-${String(n).padStart(2, "0")}.pdf`;
-const MANUAL = (track) => `${BASE}/assets/academy/material/${track}-trainer-manual.pdf`;
+const crypto = require("crypto");
+const secret = () => process.env.STAFF_SECRET || process.env.ADMIN_KEY || process.env.WA_WEBHOOK_TOKEN || "";
+const tokenFor = (id) => `${id}.${crypto.createHmac("sha256", secret()).update("acad:" + id).digest("hex").slice(0, 24)}`;
+// gated links — only a paid student / listed trainer can open these
+const MAT = (studentId, track, n) => `${BASE}/api/material?t=${encodeURIComponent(tokenFor(studentId))}&track=${track}&day=${n}`;
+const MANUAL = (phone, track) => `${BASE}/api/material?t=${encodeURIComponent(tokenFor("t" + phone))}&book=${track}`;
+const FULLBOOK = (phone) => `${BASE}/api/material?t=${encodeURIComponent(tokenFor("t" + phone))}&book=full`;
 const istNow = () => new Date(Date.now() + 19800000);
 const istDate = (d) => new Date(d.getTime()).toISOString().slice(0, 10);
 const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
@@ -64,9 +69,9 @@ module.exports = async (req, res) => {
       if (!nx || !nx.result) continue;
       if (dry) { out.trainer = "would send " + ph; continue; }
       await notify.sendWa(ph, `👩‍🏫 *DermaLuxe Academy — Trainer material*\n\nBatch ${docs.BATCH.no} starts *${docs.BATCH.start}*.\nMottham 30 rojula study material (Skin + Hair) ikkada pampistunnanu — okkasare download chesukondi 📚\n\nRoju students ki aa roju material automatic ga veltundi (Sunday holiday).`);
-      await notify.sendWaDocLink(ph, MANUAL("skin"), "DermaLuxe-Academy-Skin-30-Day-Trainer-Manual.pdf", "📘 Skin Care — 30-day trainer manual (all days)");
-      await notify.sendWaDocLink(ph, MANUAL("hair"), "DermaLuxe-Academy-Hair-30-Day-Trainer-Manual.pdf", "📗 Hair Care — 30-day trainer manual (all days)");
-      await notify.sendWaDocLink(ph, `${BASE}/assets/academy/material/full-30-day-study-material.pdf`, "DermaLuxe-Academy-30-Day-Study-Material-Skin-and-Hair.pdf", "📚 Skin + Hair — complete 60-day study material in one book");
+      await notify.sendWaDocLink(ph, MANUAL(ph, "skin"), "DermaLuxe-Academy-Skin-30-Day-Trainer-Manual.pdf", "📘 Skin Care — 30-day trainer manual (all days)");
+      await notify.sendWaDocLink(ph, MANUAL(ph, "hair"), "DermaLuxe-Academy-Hair-30-Day-Trainer-Manual.pdf", "📗 Hair Care — 30-day trainer manual (all days)");
+      await notify.sendWaDocLink(ph, FULLBOOK(ph), "DermaLuxe-Academy-30-Day-Study-Material-Skin-and-Hair.pdf", "📚 Skin + Hair — complete 60-day study material in one book");
       out.trainer = ph;
     }
   }
@@ -82,10 +87,10 @@ module.exports = async (req, res) => {
       if (dry) { out.sent.push({ id: s.id, day, tracks, dry: true }); continue; }
       const d0 = DAYS[tracks[0]][day - 1];
       const dayLine = `📅 *Day ${day} of 30* — ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "short" })}`;
-      await notify.sendWa(s.phone, `${dayLine}\n\n📚 *${d0.t}*\n${d0.te}\n\n🎯 ${d0.obj}\n🖐 ${d0.hands}\n\n💡 *Remember:* ${d0.keys.join(" · ")}\n\n✨ *Tip of the day:* ${d0.tip}\n\nEe roju material PDF ikkada 👇 Class ki mundu okasari chadavandi.`);
+      await notify.sendWa(s.phone, `${dayLine}\n\n📚 *${d0.t}*\n${d0.te}\n\n🎯 ${d0.obj}\n🖐 ${d0.hands}\n\n💡 *Remember:* ${d0.keys.join(" · ")}\n\n✨ *Tip of the day:* ${d0.tip}\n\nEe roju material PDF ikkada 👇 Class ki mundu okasari chadavandi.\n\n🔒 Ee link mee personal link — share cheyakandi.`);
       for (const t of tracks) {
         const dd = DAYS[t][day - 1];
-        await notify.sendWaDocLink(s.phone, MAT(t, day), `DermaLuxe-${t === "skin" ? "Skin" : "Hair"}-Day-${String(day).padStart(2, "0")}.pdf`,
+        await notify.sendWaDocLink(s.phone, MAT(s.id, t, day), `DermaLuxe-${t === "skin" ? "Skin" : "Hair"}-Day-${String(day).padStart(2, "0")}.pdf`,
           `📄 Day ${day} · ${t === "skin" ? "Skin Care" : "Hair Care"} — ${dd.t}`);
       }
       if (day === 1 && s.status !== "active") { s.status = "active"; await guard.kvCommand(cfg, ["SET", `acad:st:${s.id}`, JSON.stringify(s)]).catch(() => {}); }

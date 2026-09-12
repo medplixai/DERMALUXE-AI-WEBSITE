@@ -44,6 +44,10 @@
     },
     "api/doc.js": {
       "maxDuration": 60
+    },
+    "api/material.js": {
+      "maxDuration": 30,
+      "includeFiles": "assets/academy/material/**"
     }
   },
   "crons": [
@@ -138,6 +142,13 @@
           "value": "public, max-age=3600, stale-while-revalidate=86400"
         }
       ]
+    }
+  ],
+  "redirects": [
+    {
+      "source": "/assets/academy/material/:path*",
+      "destination": "/api/material",
+      "permanent": false
     }
   ]
 }

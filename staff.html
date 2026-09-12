@@ -391,6 +391,7 @@
           '<button class="btn btn--sm" data-sact="link" data-id="' + esc(s.id) + '">🔗 Form link</button>' +
           '<button class="btn btn--sm" data-sact="pay" data-id="' + esc(s.id) + '">💰 Record payment</button>' +
           '<button class="btn btn--sm" data-sact="send" data-id="' + esc(s.id) + '">📄 Resend docs</button>' +
+          '<button class="btn btn--sm" data-sact="material" data-id="' + esc(s.id) + '">📚 Material link</button>' +
           (state.data.me.role === "owner" ? '<button class="btn btn--sm btn--gold" data-sact="certify" data-id="' + esc(s.id) + '">🎓 Certificate</button>' : "") +
           '</div><div class="notes">' + notes + '<form class="noteform" data-sact="note" data-id="' + esc(s.id) + '"><input placeholder="Note…" maxlength="300" /><button class="btn btn--sm" type="submit">Add</button></form></div></article>';
       }).join("") : '<div class="empty">No students yet. Advance pay chesina vaarini paina add cheyandi.</div>';
@@ -407,6 +408,7 @@
       var id = el.dataset.id, act = el.dataset.sact;
       if (act === "link") return sapi("link", { id: id }).then(function (j) { navigator.clipboard && navigator.clipboard.writeText(j.url); prompt("Onboarding form link (copied):", j.url); }).catch(function (x) { toast(x.message); });
       if (act === "pay") { var amt = prompt("Amount received (₹):", "40000"); if (!amt) return; var ref = prompt("UPI / reference (optional):", "") || ""; return sapi("pay", { id: id, amount: Number(amt), ref: ref }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Receipt sent"); }).catch(function (x) { toast(x.message); }); }
+      if (act === "material") { return sapi("material", { id: id }).then(function (j) { navigator.clipboard && navigator.clipboard.writeText(j.book); prompt("Student material links (full book copied):\n\nDay 1: " + j.day1, j.book); }).catch(function (x) { toast(x.message); }); }
       if (act === "send") { return sapi("send", { id: id, which: ["admission", "idcard"] }).then(function () { toast("Documents sent on WhatsApp"); }).catch(function (x) { toast(x.message); }); }
       if (act === "certify") { var g = prompt("Grade (A/B/C):", "A"); if (!g) return; if (!confirm("Generate and send the certificate?")) return; return sapi("certify", { id: id, grade: g }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Certificate sent 🎓"); }).catch(function (x) { toast(x.message); }); }
     });
