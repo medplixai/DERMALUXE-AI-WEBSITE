@@ -46,7 +46,7 @@ module.exports = async (req, res) => {
   const day = q.day !== undefined ? Number(q.day) : trainingDay(today);
   const out = { today, day, sent: [], reminders: [], trainer: null, skipped: null };
 
-  if (!force) {
+  if (!force && !dry) {
     const mark = await guard.kvCommand(cfg, ["SET", `acad:cron:${today}`, "1", "NX", "EX", "90000"]).catch(() => ({}));
     if (!mark || !mark.result) return res.status(200).json({ ok: true, skipped: "already ran today" });
   }
@@ -65,9 +65,9 @@ module.exports = async (req, res) => {
   const trainers = phones(process.env.ACADEMY_TRAINER_PHONES || process.env.ADMIN_PHONES);
   if (daysUntil(docs.BATCH.startISO) <= 3 && trainers.length) {
     for (const ph of trainers) {
+      if (dry) { out.trainer = "would send " + ph; continue; }
       const nx = await guard.kvCommand(cfg, ["SET", `acad:manual:${ph}:${docs.BATCH.no}`, "1", "NX", "EX", "15552000"]).catch(() => ({}));
       if (!nx || !nx.result) continue;
-      if (dry) { out.trainer = "would send " + ph; continue; }
       await notify.sendWa(ph, `👩‍🏫 *DermaLuxe Academy — Trainer material*\n\nBatch ${docs.BATCH.no} starts *${docs.BATCH.start}*.\nMottham 30 rojula study material (Skin + Hair) ikkada pampistunnanu — okkasare download chesukondi 📚\n\nRoju students ki aa roju material automatic ga veltundi (Sunday holiday).`);
       await notify.sendWaDocLink(ph, MANUAL(ph, "skin"), "DermaLuxe-Academy-Skin-30-Day-Trainer-Manual.pdf", "📘 Skin Care — 30-day trainer manual (all days)");
       await notify.sendWaDocLink(ph, MANUAL(ph, "hair"), "DermaLuxe-Academy-Hair-30-Day-Trainer-Manual.pdf", "📗 Hair Care — 30-day trainer manual (all days)");
@@ -83,8 +83,8 @@ module.exports = async (req, res) => {
       const track = String(s.course) === "hair" ? "hair" : "skin";
       const tracks = String(s.course) === "both" ? ["skin", "hair"] : [track];
       const key = `acad:sent:${s.id}:${day}`;
-      if (!force) { const nx = await guard.kvCommand(cfg, ["SET", key, "1", "NX", "EX", "5184000"]).catch(() => ({})); if (!nx || !nx.result) continue; }
       if (dry) { out.sent.push({ id: s.id, day, tracks, dry: true }); continue; }
+      if (!force) { const nx = await guard.kvCommand(cfg, ["SET", key, "1", "NX", "EX", "5184000"]).catch(() => ({})); if (!nx || !nx.result) continue; }
       const d0 = DAYS[tracks[0]][day - 1];
       const dayLine = `📅 *Day ${day} of 30* — ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "short" })}`;
       await notify.sendWa(s.phone, `${dayLine}\n\n📚 *${d0.t}*\n${d0.te}\n\n🎯 ${d0.obj}\n🖐 ${d0.hands}\n\n💡 *Remember:* ${d0.keys.join(" · ")}\n\n✨ *Tip of the day:* ${d0.tip}\n\nEe roju material PDF ikkada 👇 Class ki mundu okasari chadavandi.\n\n🔒 Ee link mee personal link — share cheyakandi.`);
@@ -106,9 +106,9 @@ module.exports = async (req, res) => {
       const bal = Math.max(0, Number(s.fee || 0) - Number(s.paid || 0));
       if (bal <= 0) continue;
       const key = `acad:rem:${s.id}:${left}`;
+      if (dry) { out.reminders.push({ id: s.id, left, bal, dry: true }); continue; }
       const nx = await guard.kvCommand(cfg, ["SET", key, "1", "NX", "EX", "2592000"]).catch(() => ({}));
       if (!nx || !nx.result) continue;
-      if (dry) { out.reminders.push({ id: s.id, left, bal, dry: true }); continue; }
       const when = left === 0 ? "*ee roju* (course starting day)" : `*${left} roju${left > 1 ? "lu" : ""}* lo`;
       await notify.sendWa(s.phone, `💰 *Fee reminder — DermaLuxe Academy*\n\n${String(s.name || "").split(" ")[0]} garu, mee balance *₹${bal.toLocaleString("en-IN")}* ${when} pay cheyali.\n\n🆔 ${s.id} · ${docs.course(s).name}\n🗓 Batch ${docs.BATCH.no} — ${docs.BATCH.start}\n\nPayment details ki ikkade reply cheyandi, leda clinic lo direct ga pay cheyochu 😊`);
       out.reminders.push({ id: s.id, left, bal });

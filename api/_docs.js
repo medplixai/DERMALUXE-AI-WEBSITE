@@ -313,4 +313,33 @@ async function renderImage(html, w, h) {
   } finally { await b.close().catch(() => {}); }
 }
 
-module.exports = { BRAND, COURSES, BATCH, receiptHtml, admissionHtml, idCardHtml, certificateHtml, renderPdf, renderImage, inWords, money, dmy, course };
+// Render several documents in one browser session (much faster than one launch each).
+// jobs: [{ key, html, kind: "a4"|"a4l"|"card"|"jpg", w, h }] -> { key: base64 }
+async function renderBatch(jobs) {
+  const b = await browser();
+  const out = {};
+  try {
+    for (const j of jobs) {
+      const p = await b.newPage();
+      try {
+        if (j.kind === "jpg") await p.setViewport({ width: j.w, height: j.h, deviceScaleFactor: 2 });
+        await p.setContent(j.html, { waitUntil: "networkidle0", timeout: 30000 });
+        try { await p.evaluate(() => document.fonts.ready); } catch (e) {}
+        await new Promise((z) => setTimeout(z, 300));
+        if (j.kind === "jpg") {
+          const buf = await p.screenshot({ type: "jpeg", quality: 92, clip: { x: 0, y: 0, width: j.w, height: j.h } });
+          out[j.key] = Buffer.from(buf).toString("base64");
+        } else {
+          const opt = { printBackground: true, margin: { top: 0, right: 0, bottom: 0, left: 0 } };
+          if (j.kind === "card") Object.assign(opt, { width: "120mm", height: "98mm" });
+          else Object.assign(opt, { format: "A4", landscape: j.kind === "a4l" });
+          const buf = await p.pdf(opt);
+          out[j.key] = Buffer.from(buf).toString("base64");
+        }
+      } finally { await p.close().catch(() => {}); }
+    }
+  } finally { await b.close().catch(() => {}); }
+  return out;
+}
+
+module.exports = { BRAND, COURSES, BATCH, receiptHtml, admissionHtml, idCardHtml, certificateHtml, renderPdf, renderImage, renderBatch, inWords, money, dmy, course };

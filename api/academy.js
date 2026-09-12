@@ -41,18 +41,24 @@ async function saveDoc(cfg, b64, kind, name) {
 }
 // Build + store the documents a student needs. which: receipt|admission|idcard|certificate
 async function buildDocs(cfg, s, which, extra = {}) {
-  const out = {};
+  const jobs = [];
   if (which.includes("receipt")) {
     const p = extra.payment || { no: `DLA-R-${s.id}`, amount: s.paid || 9999, mode: s.payMode || "UPI", ref: s.payRef || "", label: extra.label || "Seat reservation advance", ts: s.paidOn || Date.now() };
-    out.receipt = await saveDoc(cfg, await docs.renderPdf(docs.receiptHtml(s, p), "a4"), "pdf", `DermaLuxe-Receipt-${s.id}.pdf`);
+    jobs.push({ key: "receipt", html: docs.receiptHtml(s, p), kind: "a4", name: `DermaLuxe-Receipt-${s.id}.pdf`, type: "pdf" });
   }
-  if (which.includes("admission")) out.admission = await saveDoc(cfg, await docs.renderPdf(docs.admissionHtml(s), "a4"), "pdf", `DermaLuxe-Admission-${s.id}.pdf`);
-  if (which.includes("idcard")) out.idcard = await saveDoc(cfg, await docs.renderImage(docs.idCardHtml(s), 454, 371), "jpg", `DermaLuxe-IDCard-${s.id}.jpg`);
-  if (which.includes("certificate")) out.certificate = await saveDoc(cfg, await docs.renderPdf(docs.certificateHtml(s), "a4l"), "pdf", `DermaLuxe-Certificate-${s.id}.pdf`);
+  if (which.includes("admission")) jobs.push({ key: "admission", html: docs.admissionHtml(s), kind: "a4", name: `DermaLuxe-Admission-${s.id}.pdf`, type: "pdf" });
+  if (which.includes("idcard")) jobs.push({ key: "idcard", html: docs.idCardHtml(s), kind: "jpg", w: 454, h: 371, name: `DermaLuxe-IDCard-${s.id}.jpg`, type: "jpg" });
+  if (which.includes("certificate")) jobs.push({ key: "certificate", html: docs.certificateHtml(s), kind: "a4l", name: `DermaLuxe-Certificate-${s.id}.pdf`, type: "pdf" });
+  if (!jobs.length) return {};
+  const rendered = await docs.renderBatch(jobs);      // one browser for all of them
+  const out = {};
+  for (const j of jobs) if (rendered[j.key]) out[j.key] = await saveDoc(cfg, rendered[j.key], j.type, j.name);
   s.files = Object.assign({}, s.files, out);
   await putSt(cfg, s);
   return out;
 }
+const adminPhones = () => String(process.env.ADMIN_PHONES || "").split(",").map(digits10).filter((x) => x.length === 10);
+function alertAdmins(text) { for (const ph of adminPhones()) notify.sendWa(ph, text).catch(() => {}); }
 
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -102,9 +108,11 @@ module.exports = async (req, res) => {
       if (built.admission) await notify.sendWaDocLink(s.phone, built.admission.url, built.admission.name, "📋 Admission form — print chesi sign chesi first day teesukuni randi.\nఅడ్మిషన్ ఫారం — ప్రింట్ చేసి సంతకం చేసి తీసుకురండి.");
       if (built.idcard) await notify.sendWaImageLink(s.phone, built.idcard.url, `🆔 Mee student ID card — ${s.id}. First day ki print chesi teesukuni randi.`);
       await notify.sendWa(s.phone, `📄 *First day ki teesukuni raavalsinavi:*\n• Signed admission form (print)\n• 2 passport photos\n• Aadhaar/ID proof copy\n• Qualification certificate copy\n• Balance fee ₹${bal.toLocaleString("en-IN")}\n\n📍 ${docs.BRAND.addr}\n🕘 Mon–Sat · Sunday holiday\n\nRoju training material & tips ikkade WhatsApp lo vastayi 📚 Ready ga undandi!`);
-    } catch (e) { console.error("academy: docs/send", e && e.message); }
-    const admins = String(process.env.ADMIN_PHONES || "").split(",").map((x) => digits10(x)).filter(Boolean);
-    for (const ph of admins) notify.sendWa(ph, `🎓 *Academy onboarding complete*\n${s.name} (${s.phone}) · ${docs.course(s).name} · ID ${s.id}\nPaid ₹${(s.paid || 0).toLocaleString("en-IN")} · Balance ₹${Math.max(0, (s.fee || docs.course(s).offer) - (s.paid || 0)).toLocaleString("en-IN")}`).catch(() => {});
+    } catch (e) {
+      console.error("academy: docs/send", e && e.message);
+      alertAdmins(`⚠️ *Academy: documents failed*\n${s.name} (${s.phone}) · ID ${s.id}\nForm submit ayindi kani receipt/admission/ID card generate avvaledu.\nError: ${(e && e.message) || "unknown"}\nDashboard → Students → "Resend docs" tho malli try cheyandi.`);
+    }
+    alertAdmins(`🎓 *Academy onboarding complete*\n${s.name} (${s.phone}) · ${docs.course(s).name} · ID ${s.id}\nPaid ₹${(s.paid || 0).toLocaleString("en-IN")} · Balance ₹${Math.max(0, (s.fee || docs.course(s).offer) - (s.paid || 0)).toLocaleString("en-IN")}`);
     return json(res, 200, { ok: true, id: s.id, files: built });
   }
 
@@ -189,7 +197,10 @@ module.exports = async (req, res) => {
   if (a === "material") {
     const t = encodeURIComponent(linkToken(s.id));
     const track = String(s.course) === "hair" ? "hair" : "skin";
-    return json(res, 200, { ok: true, book: `${BASE}/api/material?t=${t}&book=full`, day1: `${BASE}/api/material?t=${t}&track=${track}&day=1` });
+    const day = Math.max(1, Math.min(30, Number(b.day || 1)));
+    return json(res, 200, { ok: true, paid: Number(s.paid) > 0,
+      day: `${BASE}/api/material?t=${t}&track=${track}&day=${day}`,
+      day1: `${BASE}/api/material?t=${t}&track=${track}&day=1` });
   }
   if (a === "note") {
     const t = String(b.text || "").trim().slice(0, 300);

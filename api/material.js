@@ -83,9 +83,10 @@ module.exports = async (req, res) => {
   const book = String(q.book || "");
   let file = null, nice = null;
   if (book) {
+    if (who.kind === "student")
+      return deny(res, "The complete book is for trainers. Your day-by-day material is sent to you on WhatsApp every training morning.");
     if (book === "full") { file = "full-30-day-study-material.pdf"; nice = "DermaLuxe-Academy-30-Day-Study-Material-Skin-and-Hair.pdf"; }
     else if (book === "skin" || book === "hair") { file = `${book}-trainer-manual.pdf`; nice = `DermaLuxe-Academy-${book === "skin" ? "Skin" : "Hair"}-30-Day-Manual.pdf`; }
-    if (file && who.kind === "student" && book !== "full") { /* students may have the full book too */ }
   } else {
     const track = q.track === "hair" ? "hair" : "skin";
     const day = Math.max(1, Math.min(30, Number(q.day || 1)));
