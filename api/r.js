@@ -21,6 +21,10 @@ module.exports = async (req, res) => {
   // the website QR. Each still gets its own click count above.
   const WA_TAGS = {
     jobs: "JOBS", hiring: "JOBS", careers: "JOBS",
+    // Training centre page (academy.html) → course enquiry straight to the agent
+    academy: "ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch 20 Oct 2026.",
+    training: "ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch 20 Oct 2026.",
+    course: "ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch 20 Oct 2026.",
     // Instagram bio link + story links → straight into the WhatsApp agent
     // (owner's call, 2026-09-11: "andaru WhatsApp agent ki connect avvali")
     insta: "Hi DermaLuxe! Instagram nunchi vastunna. Free AI skin & hair analysis kavali.",
