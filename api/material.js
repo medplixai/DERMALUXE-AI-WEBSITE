@@ -12,7 +12,17 @@ const path = require("path");
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 
-const DIR = path.join(__dirname, "..", "assets", "academy", "material");
+// The PDFs travel with this function via functions.includeFiles in vercel.json.
+// Vercel can mount the bundle at a couple of different roots, so probe a few.
+const REL = ["assets", "academy", "material"];
+const CANDIDATES = [path.join(__dirname, "..", ...REL), path.join(process.cwd(), ...REL), path.join("/var/task", ...REL), path.join(__dirname, ...REL)];
+let _dir;
+function dir() {
+  if (_dir !== undefined) return _dir;
+  _dir = CANDIDATES.find((d) => { try { return fs.existsSync(path.join(d, "skin-day-01.pdf")); } catch (e) { return false; } }) || null;
+  if (!_dir) console.error("material: bundle dir not found, tried", CANDIDATES.join(" | "));
+  return _dir;
+}
 const secret = () => process.env.STAFF_SECRET || process.env.ADMIN_KEY || process.env.WA_WEBHOOK_TOKEN || "";
 const sign = (p) => crypto.createHmac("sha256", secret()).update(p).digest("hex");
 const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
@@ -41,6 +51,11 @@ const deny = (res, msg) => {
 
 module.exports = async (req, res) => {
   const q = req.query || {};
+  if (q.diag === "1") {   // harmless health check: can this function see the PDFs?
+    const d = dir();
+    let n = 0; try { n = d ? fs.readdirSync(d).filter((f) => f.endsWith(".pdf")).length : 0; } catch (e) {}
+    return res.status(200).json({ ok: !!d, files: n, dir: d ? "found" : "missing" });
+  }
   if (!secret()) return deny(res, "Material access is not configured yet.");
   const cfg = guard.kvConfig();
   const t = String(q.t || "");
@@ -82,7 +97,9 @@ module.exports = async (req, res) => {
   if (!file) return deny(res, "Unknown material requested.");
 
   try {
-    const buf = fs.readFileSync(path.join(DIR, file));
+    const base = dir();
+    if (!base) return res.status(500).send("Material bundle unavailable — contact the team");
+    const buf = fs.readFileSync(path.join(base, file));
     if (cfg && who.kind === "student") guard.kvCommand(cfg, ["LPUSH", "acad:dl", JSON.stringify({ id: who.name, file, ts: Date.now() })]).then(() => guard.kvCommand(cfg, ["LTRIM", "acad:dl", "0", "999"])).catch(() => {});
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Length", String(buf.length));
