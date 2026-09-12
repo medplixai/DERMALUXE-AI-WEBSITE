@@ -66,6 +66,7 @@ module.exports = async (req, res) => {
       await notify.sendWa(ph, `👩‍🏫 *DermaLuxe Academy — Trainer material*\n\nBatch ${docs.BATCH.no} starts *${docs.BATCH.start}*.\nMottham 30 rojula study material (Skin + Hair) ikkada pampistunnanu — okkasare download chesukondi 📚\n\nRoju students ki aa roju material automatic ga veltundi (Sunday holiday).`);
       await notify.sendWaDocLink(ph, MANUAL("skin"), "DermaLuxe-Academy-Skin-30-Day-Trainer-Manual.pdf", "📘 Skin Care — 30-day trainer manual (all days)");
       await notify.sendWaDocLink(ph, MANUAL("hair"), "DermaLuxe-Academy-Hair-30-Day-Trainer-Manual.pdf", "📗 Hair Care — 30-day trainer manual (all days)");
+      await notify.sendWaDocLink(ph, `${BASE}/assets/academy/material/full-30-day-study-material.pdf`, "DermaLuxe-Academy-30-Day-Study-Material-Skin-and-Hair.pdf", "📚 Skin + Hair — complete 60-day study material in one book");
       out.trainer = ph;
     }
   }
