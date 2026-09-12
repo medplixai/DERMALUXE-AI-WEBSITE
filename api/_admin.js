@@ -572,6 +572,7 @@ async function handle(cfg, digits, text, photo, video) {
     const lines = ["🛠 *Admin commands*",
       "• daily post now — AI poster ippude post · daily on/off · daily status · daily topics",
       "• academy status · academy booked <n> — training seats target (10)",
+      "• staff list · staff add <number> <name> · staff remove <number> — dashboard access",
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
@@ -598,6 +599,35 @@ async function handle(cfg, digits, text, photo, video) {
     const menuRows = ["report", "weekly", "funnel", "reviews", "referrals", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
+  }
+
+  // ---- Staff dashboard team (staff.html) ---------------------------------
+  // staff list · staff add <10-digit> <name> · staff remove <10-digit>   (owner)
+  let sm;
+  if ((sm = t.match(/^staff(?:\s+(list|add|remove|delete))?(?:\s+(\d{10}))?(?:\s+(.+))?$/i))) {
+    if (!cfg) return "Storage ledu.";
+    const sub = (sm[1] || "list").toLowerCase(), ph = sm[2] || "", name = (sm[3] || "").trim().slice(0, 60);
+    const readAll = async () => { const r = await guard.kvCommand(cfg, ["HGETALL", "staff:users"]).catch(() => ({})); const a = r.result || [], o = {}; if (Array.isArray(a)) { for (let i = 0; i + 1 < a.length; i += 2) { try { o[a[i]] = JSON.parse(a[i + 1]); } catch (e) {} } } return o; };
+    if (sub === "add") {
+      if (!owner) return "🔒 Owner matrame.";
+      if (!/^[6-9]\d{9}$/.test(ph) || !name) return "Format: *staff add 9876543210 Priya*";
+      await guard.kvCommand(cfg, ["HSET", "staff:users", ph, JSON.stringify({ name, role: "staff", added: Date.now(), by: digits })]);
+      notify.sendWa(ph, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki add ayyaru.\nLogin: www.dermaluxe.ai/staff.html — mee number ${ph} tho OTP login.`).catch(() => {});
+      return `✅ ${name} (${ph}) staff ga add ayyaru — dermaluxe.ai/staff.html lo OTP tho login cheyochu.`;
+    }
+    if (sub === "remove" || sub === "delete") {
+      if (!owner) return "🔒 Owner matrame.";
+      if (!ph) return "Format: *staff remove 9876543210*";
+      await guard.kvCommand(cfg, ["HDEL", "staff:users", ph]);
+      return `🗑 ${ph} staff access teesesanu.`;
+    }
+    const all = await readAll();
+    const lines = ["👥 *Staff dashboard access* — dermaluxe.ai/staff.html", `Owners: ${String(process.env.ADMIN_PHONES || "").split(",").map((x) => x.trim()).filter(Boolean).join(", ") || "—"}`];
+    const ks = Object.keys(all);
+    if (!ks.length) lines.push("Staff: (none) — add: *staff add 9876543210 Name*");
+    else ks.forEach((k) => lines.push(`• ${all[k].name} — ${k}`));
+    lines.push("", "Commands: *staff add <number> <name>* · *staff remove <number>*");
+    return lines.join("\n");
   }
 
   // ---- Academy seat target ------------------------------------------------

@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>DermaLuxe Staff</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0d0d0f" />
+  <link rel="icon" type="image/png" href="assets/favicon.png" />
+  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&family=Noto+Sans+Telugu:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root{--ink:#0d0d0f;--ink2:#121216;--panel:#16161b;--panel2:#1c1c22;--line:rgba(198,162,92,.18);--soft:rgba(255,255,255,.07);--g1:#f4e2b8;--g2:#e9cf8f;--g3:#c6a25c;--g4:#a87f3c;--text:#ece9e3;--muted:#a39e95;--muted2:#7c776e;--hot:#ff7a59;--warm:#e9cf8f;--cold:#7fa7c9;--ok:#5fd39b;--bad:#ff6b6b;--r:14px}
+    *{box-sizing:border-box;margin:0;padding:0}
+    html{-webkit-text-size-adjust:100%}
+    body{font-family:Jost,system-ui,sans-serif;background:var(--ink);color:var(--text);font-weight:300;line-height:1.5;min-height:100vh}
+    a{color:inherit;text-decoration:none}
+    button,input,select,textarea{font:inherit;color:inherit}
+    .te{font-family:"Noto Sans Telugu",sans-serif}
+    .hide{display:none!important}
+    .wrap{width:min(1100px,100%);margin:0 auto;padding:0 14px}
+    /* login */
+    #login{min-height:100vh;display:grid;place-items:center;padding:20px;background:radial-gradient(60% 40% at 80% -5%,rgba(201,162,92,.12),transparent 60%),var(--ink)}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:26px 22px;width:min(420px,100%)}
+    .card img{height:64px;margin:0 auto 14px;display:block}
+    .card h1{font-family:"Cormorant Garamond",serif;font-size:1.9rem;text-align:center;line-height:1.1}
+    .card p{color:var(--muted);text-align:center;font-size:.92rem;margin:.4rem 0 1.2rem}
+    .field{display:grid;gap:6px;margin-bottom:12px}
+    .field label{font-size:.72rem;letter-spacing:1.5px;text-transform:uppercase;color:var(--g3)}
+    .field input{background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:13px 14px;font-size:1.05rem;letter-spacing:1px;outline:none;width:100%}
+    .field input:focus{border-color:var(--g3)}
+    .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);border-radius:100px;padding:12px 20px;cursor:pointer;background:transparent;font-weight:500;letter-spacing:.5px;transition:.2s}
+    .btn--gold{background:linear-gradient(135deg,#f6e6bd,#e3c074 40%,#c79a4e 75%,#a87f3c);color:#2a1d07;border:0}
+    .btn--full{width:100%}
+    .btn--sm{padding:7px 12px;font-size:.82rem}
+    .btn--wa{background:rgba(37,211,102,.12);border-color:rgba(37,211,102,.45);color:#9ef0bb}
+    .btn--call{background:rgba(201,162,92,.1);color:var(--g1)}
+    .btn:disabled{opacity:.5;cursor:not-allowed}
+    .err{color:var(--bad);font-size:.88rem;margin-top:8px;min-height:1.2em}
+    /* app */
+    header.top{position:sticky;top:0;z-index:20;background:rgba(13,13,15,.92);backdrop-filter:blur(12px);border-bottom:1px solid var(--line)}
+    header.top .wrap{display:flex;align-items:center;justify-content:space-between;height:60px;gap:10px}
+    header.top img{height:38px}
+    .who{font-size:.85rem;color:var(--muted);text-align:right;line-height:1.2}
+    .who b{color:var(--g1);font-weight:500;display:block}
+    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+    .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 10px}
+    .stat b{display:block;font-family:"Cormorant Garamond",serif;font-size:1.9rem;font-weight:600;color:var(--g1);line-height:1}
+    .stat span{font-size:.68rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted2)}
+    .tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
+    .tabs::-webkit-scrollbar{display:none}
+    .tab{white-space:nowrap;border:1px solid var(--line);border-radius:100px;padding:8px 14px;font-size:.85rem;color:var(--muted);background:transparent;cursor:pointer}
+    .tab.on{background:rgba(201,162,92,.14);color:var(--g1);border-color:rgba(201,162,92,.5)}
+    .tab i{font-style:normal;background:rgba(255,255,255,.08);border-radius:100px;padding:0 7px;margin-left:6px;font-size:.75rem}
+    .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+    .filters input,.filters select{background:var(--panel);border:1px solid var(--line);border-radius:100px;padding:8px 12px;font-size:.88rem;outline:none}
+    .filters input{flex:1;min-width:140px}
+    .list{display:grid;gap:8px;padding-bottom:40px}
+    .lead{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 12px 10px;display:grid;gap:8px}
+    .lead.hot{border-left:3px solid var(--hot)}
+    .lead.warm{border-left:3px solid var(--warm)}
+    .lead.cold{border-left:3px solid var(--cold)}
+    .lead .row{display:flex;justify-content:space-between;gap:8px;align-items:flex-start}
+    .lead h3{font-family:Jost,sans-serif;font-weight:500;font-size:1.02rem;line-height:1.2}
+    .lead .meta{font-size:.78rem;color:var(--muted2)}
+    .badge{display:inline-block;font-size:.66rem;letter-spacing:1px;text-transform:uppercase;border-radius:100px;padding:2px 8px;border:1px solid var(--soft);color:var(--muted)}
+    .badge.hot{color:var(--hot);border-color:rgba(255,122,89,.5)}
+    .badge.warm{color:var(--g2);border-color:rgba(233,207,143,.5)}
+    .badge.cold{color:var(--cold);border-color:rgba(127,167,201,.5)}
+    .badge.src{color:var(--g3)}
+    .lead .concern{font-size:.92rem;color:var(--text)}
+    .lead .prep{font-size:.84rem;color:var(--muted);background:rgba(201,162,92,.06);border-left:2px solid var(--g4);padding:6px 10px;border-radius:6px}
+    .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .acts select{background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:7px 10px;font-size:.82rem}
+    .acts select.s-new{color:var(--g2)}.acts select.s-contacted{color:#9ec9ff}.acts select.s-booked{color:var(--ok)}.acts select.s-visited{color:#c8b6ff}.acts select.s-closed{color:var(--muted2)}
+    .notes{display:grid;gap:6px}
+    .note{font-size:.82rem;color:var(--muted);border-top:1px dashed var(--soft);padding-top:6px}
+    .note b{color:var(--g3);font-weight:500}
+    .noteform{display:flex;gap:6px}
+    .noteform input{flex:1;background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:8px 12px;font-size:.86rem;outline:none}
+    .empty{color:var(--muted2);text-align:center;padding:30px 10px;font-size:.9rem}
+    /* academy */
+    .seats{display:grid;grid-template-columns:repeat(10,1fr);gap:6px;margin:10px 0}
+    .seat{aspect-ratio:1;border-radius:8px;border:1px solid var(--line);display:grid;place-items:center;font-size:.75rem;color:var(--muted2);background:var(--panel)}
+    .seat.on{background:linear-gradient(135deg,#f6e6bd,#c79a4e);color:#2a1d07;font-weight:600;border:0}
+    .stepper{display:flex;align-items:center;gap:10px;margin:8px 0 14px}
+    .stepper b{font-family:"Cormorant Garamond",serif;font-size:2rem;color:var(--g1);font-weight:600;min-width:80px;text-align:center}
+    .box{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:10px}
+    .box h2{font-family:"Cormorant Garamond",serif;font-size:1.4rem;margin-bottom:6px}
+    .box p{color:var(--muted);font-size:.9rem}
+    .pill{display:inline-block;font-size:.72rem;border:1px solid var(--line);border-radius:100px;padding:3px 9px;color:var(--g1);background:rgba(201,162,92,.08);margin:2px 4px 2px 0}
+    .qimg{width:100%;max-width:260px;border-radius:10px;border:1px solid var(--line)}
+    .team{display:grid;gap:8px}
+    .team .row{display:flex;justify-content:space-between;align-items:center;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+    .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#1f1f26;border:1px solid var(--line);border-radius:100px;padding:10px 16px;font-size:.88rem;z-index:50;opacity:0;transition:.25s;pointer-events:none}
+    .toast.show{opacity:1}
+    .switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.88rem}
+    .switch input{appearance:none;width:38px;height:22px;border-radius:100px;background:#333;position:relative;outline:none;cursor:pointer}
+    .switch input:checked{background:var(--g3)}
+    .switch input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
+    .switch input:checked::after{left:19px}
+    @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.seats{grid-template-columns:repeat(5,1fr)}}
+  </style>
+</head>
+<body>
+  <!-- LOGIN -->
+  <section id="login">
+    <div class="card">
+      <img src="assets/logo.webp" alt="DermaLuxe by Medicare" />
+      <h1>Staff Dashboard</h1>
+      <p>Leads · Appointments · Academy · Today's post<br /><span class="te">స్టాఫ్ లాగిన్ — మీ WhatsApp నంబర్‌కి OTP వస్తుంది</span></p>
+      <div id="stepPhone">
+        <div class="field"><label>Mobile number (WhatsApp)</label><input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" autocomplete="tel" /></div>
+        <button class="btn btn--gold btn--full" id="sendBtn">Send OTP on WhatsApp</button>
+      </div>
+      <div id="stepOtp" class="hide">
+        <div class="field"><label>OTP (6 digits)</label><input id="otp" type="text" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" /></div>
+        <button class="btn btn--gold btn--full" id="verifyBtn">Login</button>
+        <button class="btn btn--full" style="margin-top:8px" id="backBtn">← Change number</button>
+      </div>
+      <div class="err" id="loginErr"></div>
+    </div>
+  </section>
+
+  <!-- APP -->
+  <div id="app" class="hide">
+    <header class="top"><div class="wrap">
+      <a href="index.html"><img src="assets/logo.webp" alt="DermaLuxe" /></a>
+      <div style="display:flex;align-items:center;gap:10px">
+        <div class="who"><b id="meName">—</b><span id="meRole"></span></div>
+        <button class="btn btn--sm" id="refreshBtn" title="Refresh">↻</button>
+        <button class="btn btn--sm" id="logoutBtn">Logout</button>
+      </div>
+    </div></header>
+
+    <main class="wrap">
+      <div class="stats">
+        <div class="stat"><b id="sToday">0</b><span>Leads today</span></div>
+        <div class="stat"><b id="sHot">0</b><span>Hot · to call</span></div>
+        <div class="stat"><b id="sAppt">0</b><span>Upcoming appts</span></div>
+        <div class="stat"><b id="sSeats">0/10</b><span>Academy seats</span></div>
+      </div>
+      <div class="tabs" id="tabs">
+        <button class="tab on" data-t="leads">Leads<i id="nLeads">0</i></button>
+        <button class="tab" data-t="appts">Appointments<i id="nAppts">0</i></button>
+        <button class="tab" data-t="academy">Academy<i id="nAcad">0</i></button>
+        <button class="tab" data-t="today">Today's post</button>
+        <button class="tab" data-t="reviews">Reviews</button>
+        <button class="tab hide" data-t="team" id="teamTab">Team</button>
+      </div>
+
+      <section id="t-leads">
+        <div class="filters">
+          <input id="q" placeholder="Search name / phone / concern" />
+          <select id="fStatus"><option value="">All status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="booked">Booked</option><option value="visited">Visited</option><option value="closed">Closed</option></select>
+          <select id="fSrc"><option value="">All sources</option><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="web">Website</option></select>
+          <select id="fDays"><option value="7">Last 7 days</option><option value="1">Today</option><option value="30">Last 30 days</option><option value="365" selected>All</option></select>
+        </div>
+        <div class="list" id="leadList"></div>
+      </section>
+      <section id="t-appts" class="hide"><div class="list" id="apptList"></div></section>
+      <section id="t-academy" class="hide">
+        <div class="box">
+          <h2>Batch 1 · 20 Oct 2026 — seats target 10 <span class="te" style="font-size:.85rem;color:var(--g3)">· సీట్లు</span></h2>
+          <div class="seats" id="seats"></div>
+          <div class="stepper"><button class="btn btn--sm" id="seatMinus">−</button><b id="seatNum">0</b><button class="btn btn--sm" id="seatPlus">+</button><span style="color:var(--muted);font-size:.85rem">booked (₹9,999 paid) · <span id="seatLeft">10</span> left · offer till 30 Sep</span></div>
+          <p>Launch offer: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Reserve ₹9,999. Agent WhatsApp lo "ACADEMY" tho enquiries collect chestundi, catalog PDF automatic ga pampistundi.</p>
+        </div>
+        <div class="list" id="acadList"></div>
+      </section>
+      <section id="t-today" class="hide" id="todayBox"></section>
+      <section id="t-reviews" class="hide"><div class="list" id="revList"></div></section>
+      <section id="t-team" class="hide">
+        <div class="box"><h2>Add staff</h2><p>Staff member ki WhatsApp lo login link veltundi. OTP vaari number ki vastundi.</p>
+          <div class="noteform" style="margin-top:10px"><input id="tPhone" placeholder="10-digit mobile" inputmode="numeric" maxlength="10" /><input id="tName" placeholder="Name" /><button class="btn btn--gold btn--sm" id="tAdd">Add</button></div>
+          <div class="err" id="teamErr"></div></div>
+        <div class="box"><label class="switch"><input type="checkbox" id="dailyToggle" /> Daily auto-post (Instagram + Facebook, 8:30 AM)</label></div>
+        <div class="team" id="teamList"></div>
+      </section>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+
+  <script>
+  (function () {
+    var API = "/api/staff", TOK = "dl_staff_tok";
+    var $ = function (id) { return document.getElementById(id); };
+    var state = { data: null, tab: "leads" };
+    var tok = null; try { tok = localStorage.getItem(TOK); } catch (e) {}
+    function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+    function toast(m) { var t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 2200); }
+    function api(a, body, method) {
+      var opt = { method: method || (body ? "POST" : "GET"), headers: {} };
+      if (tok) opt.headers.Authorization = "Bearer " + tok;
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(API + "?a=" + a, opt).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+    }
+    function ago(ts) { var d = Date.now() - ts, m = Math.round(d / 60000); if (m < 1) return "just now"; if (m < 60) return m + " min ago"; var h = Math.round(m / 60); if (h < 24) return h + " h ago"; return Math.round(h / 24) + " d ago"; }
+    function fmtAt(ts) { return new Date(ts).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); }
+    function src(l) { var t = String(l.type || l.page || "").toLowerCase(); if (t.indexOf("insta") > -1) return "instagram"; if (t.indexOf("face") > -1 || t.indexOf("messenger") > -1) return "facebook"; if (t.indexOf("whatsapp") > -1) return "whatsapp"; return "web"; }
+    var heatRank = { hot: 0, warm: 1, "": 2, cold: 3 };
+
+    // ---- login ----
+    $("sendBtn").onclick = function () {
+      var p = $("phone").value.replace(/\D/g, ""); $("loginErr").textContent = "";
+      if (!/^[6-9]\d{9}$/.test(p)) { $("loginErr").textContent = "Valid 10-digit number ivvandi"; return; }
+      $("sendBtn").disabled = true;
+      api("send", { phone: p }).then(function () { $("stepPhone").classList.add("hide"); $("stepOtp").classList.remove("hide"); $("otp").focus(); toast("OTP WhatsApp lo pampam"); })
+        .catch(function (e) { $("loginErr").textContent = e.message; }).finally(function () { $("sendBtn").disabled = false; });
+    };
+    $("verifyBtn").onclick = function () {
+      var p = $("phone").value.replace(/\D/g, ""), c = $("otp").value.trim(); $("loginErr").textContent = "";
+      $("verifyBtn").disabled = true;
+      api("verify", { phone: p, code: c }).then(function (j) { tok = j.token; try { localStorage.setItem(TOK, tok); } catch (e) {} boot(); })
+        .catch(function (e) { $("loginErr").textContent = e.message; }).finally(function () { $("verifyBtn").disabled = false; });
+    };
+    $("backBtn").onclick = function () { $("stepOtp").classList.add("hide"); $("stepPhone").classList.remove("hide"); };
+    $("otp").addEventListener("keydown", function (e) { if (e.key === "Enter") $("verifyBtn").click(); });
+    $("phone").addEventListener("keydown", function (e) { if (e.key === "Enter") $("sendBtn").click(); });
+    $("logoutBtn").onclick = function () { tok = null; try { localStorage.removeItem(TOK); } catch (e) {} location.reload(); };
+    $("refreshBtn").onclick = function () { load(true); };
+
+    // ---- app ----
+    function boot() {
+      if (!tok) { $("login").classList.remove("hide"); $("app").classList.add("hide"); return; }
+      load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); })
+        .catch(function (e) { tok = null; try { localStorage.removeItem(TOK); } catch (x) {} $("loginErr").textContent = e.message === "Login required" ? "" : e.message; $("login").classList.remove("hide"); });
+    }
+    function load(quiet) {
+      return api("data").then(function (d) { state.data = d; render(); if (quiet) toast("Updated"); });
+    }
+    function render() {
+      var d = state.data, me = d.me;
+      $("meName").textContent = me.name; $("meRole").textContent = me.role === "owner" ? "Owner" : "Staff";
+      if (me.role === "owner") $("teamTab").classList.remove("hide");
+      var dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
+      var today = d.leads.filter(function (l) { return l.ts >= dayStart.getTime(); }).length;
+      var hot = d.leads.filter(function (l) { return l.heat === "hot" && (l.status === "new" || l.status === "contacted"); }).length;
+      $("sToday").textContent = today; $("sHot").textContent = hot; $("sAppt").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
+      $("sSeats").textContent = d.academy.booked + "/10";
+      $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
+      $("nAppts").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
+      $("nAcad").textContent = d.academy.leads.length;
+      renderLeads(); renderAppts(); renderAcademy(); renderToday(); renderReviews(); if (me.role === "owner") renderTeam();
+    }
+    function leadCard(l, compact) {
+      var heat = l.heat || "", s = src(l);
+      var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
+      return '<article class="lead ' + heat + '" data-key="' + esc(l.key) + '">' +
+        '<div class="row"><div><h3>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + '</div></div>' +
+        '<div>' + (heat ? '<span class="badge ' + heat + '">' + heat + '</span> ' : '') + '<span class="badge src">' + s + '</span></div></div>' +
+        '<div class="concern">' + esc(l.concern || l.message || "") + '</div>' +
+        (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
+        (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
+        '<div class="acts">' +
+        (l.phone ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' : '<span class="meta">No phone (DM lead)</span>') +
+        '<select class="s-' + l.status + '" data-act="status" data-key="' + esc(l.key) + '">' + state.data.statuses.map(function (o) { return '<option value="' + o + '"' + (o === l.status ? ' selected' : '') + '>' + o.charAt(0).toUpperCase() + o.slice(1) + '</option>'; }).join("") + '</select>' +
+        (state.data.me.role === "owner" ? '<button class="btn btn--sm" data-act="delete" data-key="' + esc(l.key) + '" title="Delete lead">🗑</button>' : '') +
+        '</div>' +
+        '<div class="notes">' + notes + '<form class="noteform" data-act="note" data-key="' + esc(l.key) + '"><input placeholder="Call note… (e.g. spoke, coming Sat 5 PM)" maxlength="400" /><button class="btn btn--sm btn--gold" type="submit">Add</button></form></div>' +
+        '</article>';
+    }
+    function renderLeads() {
+      var d = state.data, q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fsrc = $("fSrc").value, days = Number($("fDays").value);
+      var since = Date.now() - days * 86400000; if (days === 1) { var t0 = new Date(); t0.setHours(0, 0, 0, 0); since = t0.getTime(); }
+      var list = d.leads.filter(function (l) {
+        if (l.ts < since) return false;
+        if (fs && l.status !== fs) return false;
+        if (fsrc && src(l) !== fsrc) return false;
+        if (/^academy/i.test(String(l.concern || ""))) return false;
+        if (q && (String(l.name) + " " + String(l.phone) + " " + String(l.concern) + " " + String(l.message)).toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      }).sort(function (a, b) {
+        var sa = a.status === "new" || a.status === "contacted" ? 0 : 1, sb = b.status === "new" || b.status === "contacted" ? 0 : 1;
+        if (sa !== sb) return sa - sb;
+        var ha = heatRank[a.heat || ""] || 0, hb = heatRank[b.heat || ""] || 0; if (ha !== hb) return ha - hb;
+        return b.ts - a.ts;
+      });
+      $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : '<div class="empty">No leads for this filter.</div>';
+    }
+    function renderAppts() {
+      var d = state.data;
+      $("apptList").innerHTML = d.appts.length ? d.appts.map(function (a) {
+        var past = a.at < Date.now();
+        return '<article class="lead' + (past ? '' : ' warm') + '"><div class="row"><div><h3>' + esc(a.name || "Patient") + ' <span class="meta">· ' + esc(a.ph || "") + '</span></h3><div class="meta">📅 ' + fmtAt(a.at) + (past ? ' · past' : '') + '</div></div></div>' +
+          '<div class="concern">' + esc(a.concern || a.treatment || "") + '</div>' +
+          '<div class="acts">' + (a.ph ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(a.ph) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(a.ph) + '">💬 WhatsApp</a>' : '') + '</div></article>';
+      }).join("") : '<div class="empty">No upcoming appointments. Agent books them in WhatsApp — they appear here.</div>';
+    }
+    function renderAcademy() {
+      var d = state.data, b = d.academy.booked;
+      $("seats").innerHTML = Array.from({ length: 10 }, function (_, i) { return '<div class="seat' + (i < b ? ' on' : '') + '">' + (i + 1) + '</div>'; }).join("");
+      $("seatNum").textContent = b; $("seatLeft").textContent = 10 - b;
+      $("acadList").innerHTML = d.academy.leads.length ? d.academy.leads.map(function (l) { return leadCard(l, true); }).join("") : '<div class="empty">No academy enquiries yet — WhatsApp lo "ACADEMY" ani vachina leads ikkada vastayi.</div>';
+    }
+    function renderToday() {
+      var d = state.data, t = d.today, html = '';
+      html += '<div class="box"><h2>Today\'s auto post</h2>' + (t ? '<p><b style="color:var(--g1);font-weight:500">' + esc(t.h1) + '</b><br /><span class="te">' + esc(t.te || "") + '</span><br /><span class="meta">' + (t.page ? 'Page: ' + esc(t.page) : '') + '</span></p>' : '<p>No post generated yet today (7:00 AM build → 8:30 AM publish).</p>') +
+        '<p style="margin-top:8px"><a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/dermaluxe.ai/">Instagram ↗</a> <a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61592844155911">Facebook ↗</a></p></div>';
+      html += '<div class="box"><h2>Queue</h2>' + (d.queue.length ? d.queue.map(function (it) { return '<div style="display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--soft)"><img class="qimg" src="/api/media?id=' + esc(it.imgId) + '" alt="" onerror="this.style.display=\'none\'" /><div><div class="meta">' + (it.story ? '📸 Story' : '🖼 Feed post') + ' · due ' + fmtAt(it.due) + (it.auto ? ' · auto' : '') + '</div><div style="font-size:.85rem;color:var(--muted);margin-top:4px">' + esc(String(it.caption || "").slice(0, 140)) + '</div></div></div>'; }).join("") : '<p>Queue empty.</p>') + '</div>';
+      $("t-today").innerHTML = html;
+    }
+    function renderReviews() {
+      var d = state.data;
+      $("revList").innerHTML = d.reviews.length ? d.reviews.map(function (r) { var low = Number(r.rating) <= 3; return '<article class="lead' + (low ? ' hot' : '') + '"><div class="row"><div><h3>' + esc(r.name || "Patient") + ' <span class="meta">· ' + esc(r.ph || "") + '</span></h3><div class="meta">' + ago(r.ts) + ' · ' + esc(r.concern || "") + '</div></div><div><span class="badge ' + (low ? 'hot' : 'warm') + '">' + "★".repeat(Number(r.rating) || 0) + '</span></div></div>' + (low && r.ph ? '<div class="acts"><a class="btn btn--sm btn--call" href="tel:+91' + esc(r.ph) + '">📞 Service recovery call</a></div>' : '') + '</article>'; }).join("") : '<div class="empty">No ratings yet.</div>';
+    }
+    function renderTeam() {
+      var d = state.data, t = d.team || {};
+      $("dailyToggle").checked = !!d.dailyOn;
+      var rows = (d.owners || []).map(function (p) { return '<div class="row"><div><b style="font-weight:500">Owner</b> <span class="meta">· ' + esc(p) + '</span></div><span class="badge warm">owner</span></div>'; });
+      Object.keys(t).forEach(function (p) { rows.push('<div class="row"><div><b style="font-weight:500">' + esc(t[p].name) + '</b> <span class="meta">· ' + esc(p) + '</span></div><button class="btn btn--sm" data-act="team-remove" data-phone="' + esc(p) + '">Remove</button></div>'); });
+      $("teamList").innerHTML = rows.join("");
+    }
+
+    // ---- events ----
+    $("tabs").addEventListener("click", function (e) {
+      var b = e.target.closest(".tab"); if (!b) return;
+      document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === b); });
+      ["leads", "appts", "academy", "today", "reviews", "team"].forEach(function (t) { $("t-" + t).classList.toggle("hide", t !== b.dataset.t); });
+    });
+    ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
+    document.addEventListener("change", function (e) {
+      var el = e.target;
+      if (el.dataset.act === "status") {
+        api("status", { key: el.dataset.key, status: el.value }).then(function () { var l = state.data.leads.find(function (x) { return x.key === el.dataset.key; }); if (l) l.status = el.value; el.className = "s-" + el.value; toast("Status: " + el.value); }).catch(function (x) { toast(x.message); });
+      }
+      if (el.id === "dailyToggle") { api("daily", { on: el.checked }).then(function (j) { toast("Daily auto-post " + (j.dailyOn ? "ON" : "OFF")); }).catch(function (x) { toast(x.message); }); }
+    });
+    document.addEventListener("submit", function (e) {
+      var f = e.target; if (f.dataset.act !== "note") return; e.preventDefault();
+      var inp = f.querySelector("input"), text = inp.value.trim(); if (!text) return;
+      api("note", { key: f.dataset.key, text: text }).then(function (j) { var l = state.data.leads.find(function (x) { return x.key === f.dataset.key; }); if (l) l.notes = j.notes; inp.value = ""; renderLeads(); renderAcademy(); toast("Note saved"); }).catch(function (x) { toast(x.message); });
+    });
+    document.addEventListener("click", function (e) {
+      var el = e.target.closest("[data-act]"); if (!el || el.tagName === "SELECT" || el.tagName === "FORM") return;
+      if (el.dataset.act === "delete") { if (!confirm("Delete this lead?")) return; api("delete", { key: el.dataset.key }).then(function () { state.data.leads = state.data.leads.filter(function (x) { return x.key !== el.dataset.key; }); state.data.academy.leads = state.data.academy.leads.filter(function (x) { return x.key !== el.dataset.key; }); render(); toast("Deleted"); }).catch(function (x) { toast(x.message); }); }
+      if (el.dataset.act === "team-remove") { if (!confirm("Remove access for " + el.dataset.phone + "?")) return; api("team-remove", { phone: el.dataset.phone }).then(function (j) { state.data.team = j.team; renderTeam(); toast("Removed"); }).catch(function (x) { toast(x.message); }); }
+    });
+    $("seatMinus").onclick = function () { setSeats(state.data.academy.booked - 1); };
+    $("seatPlus").onclick = function () { setSeats(state.data.academy.booked + 1); };
+    function setSeats(n) { n = Math.max(0, Math.min(10, n)); api("academy", { booked: n }).then(function (j) { state.data.academy.booked = j.booked; state.data.academy.left = j.left; renderAcademy(); $("sSeats").textContent = j.booked + "/10"; toast("Seats booked: " + j.booked); }).catch(function (x) { toast(x.message); }); }
+    $("tAdd").onclick = function () {
+      var p = $("tPhone").value.replace(/\D/g, ""), n = $("tName").value.trim(); $("teamErr").textContent = "";
+      api("team-add", { phone: p, name: n }).then(function (j) { state.data.team = j.team; renderTeam(); $("tPhone").value = ""; $("tName").value = ""; toast(n + " added"); }).catch(function (x) { $("teamErr").textContent = x.message; });
+    };
+    setInterval(function () { if (tok && !document.hidden) load(); }, 120000);
+    boot();
+  })();
+  </script>
+</body>
+</html>
