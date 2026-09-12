@@ -154,6 +154,12 @@ module.exports = async (req, res) => {
   // ---------- staff ----------
   const me = staffUser(req);
   if (!me) return json(res, 401, { error: "Login required" });
+  const caps = require("./staff.js").capsOf(me.role);
+  const can = (c) => caps.includes("*") || caps.includes(c);
+  if (!can("academy.view")) return json(res, 403, { error: "Mee role ki academy access ledu" });
+  if (["create", "pay", "send", "status", "note", "link", "material", "reopen"].includes(a) && !can("academy.edit"))
+    return json(res, 403, { error: "Mee role ki academy lo marpulu chese permission ledu" });
+  if (a === "certify" && !can("academy.certify")) return json(res, 403, { error: "Certificate ivvagaligedi owner/manager matrame" });
   if (a === "list") {
     const rl0 = await guard.rateLimit(cfg, `rl:acl:${me.phone}`, 120, 3600);
     if (!rl0.allowed) return json(res, 429, { error: "Too many requests" });
@@ -242,7 +248,6 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, files: f });
   }
   if (a === "certify") {
-    if (me.role !== "owner") return json(res, 403, { error: "Owner only" });
     const seq = await guard.kvCommand(cfg, ["INCR", "acad:certseq"]).catch(() => ({ result: 1 }));
     s.certNo = `DLA/2026/${String(1000 + Number(seq.result || 1)).slice(-4)}`;
     s.grade = String(b.grade || "A").slice(0, 3); s.issued = Date.now(); s.status = "completed";
@@ -283,7 +288,7 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, url: `${BASE}/academy-join.html?t=${linkToken(s.id)}` });
   }
   if (a === "delete") {
-    if (me.role !== "owner") return json(res, 403, { error: "Owner only" });
+    if (me.role !== "owner") return json(res, 403, { error: "Owner matrame" });
     await guard.kvCommand(cfg, ["LREM", LIST, "1", s.id]).catch(() => {});
     await guard.kvCommand(cfg, ["DEL", `acad:st:${s.id}`]).catch(() => {});
     return json(res, 200, { ok: true });

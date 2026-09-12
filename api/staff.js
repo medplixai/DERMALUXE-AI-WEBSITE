@@ -8,6 +8,26 @@ const guard = require("./_guard.js");
 const notify = require("./_notify.js");
 
 const LEADS = "dl_leads", STATUS = "dl_status", NOTES = "dl_notes", USERS = "staff:users";
+
+// ---- roles & capabilities ---------------------------------------------------
+const CAPS = {
+  "leads.view": "Leads & contact details", "leads.edit": "Lead status + call notes", "leads.delete": "Delete leads",
+  "appts.view": "Appointments", "academy.view": "Academy students & seats", "academy.edit": "Add students, payments, documents",
+  "academy.certify": "Issue certificates", "posts.view": "Today's post & queue", "posts.toggle": "Daily auto-post on/off",
+  "reviews.view": "Patient ratings", "team.manage": "Staff logins & password", "ai.use": "AI Office assistant",
+};
+const ROLES = {
+  owner:     { label: "Owner",     te: "ఓనర్",       caps: ["*"] },
+  manager:   { label: "Manager",   te: "మేనేజర్",     caps: ["leads.view","leads.edit","appts.view","academy.view","academy.edit","academy.certify","posts.view","posts.toggle","reviews.view","ai.use"] },
+  reception: { label: "Reception", te: "రిసెప్షన్",   caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
+  therapist: { label: "Therapist", te: "థెరపిస్ట్",   caps: ["leads.view","appts.view","posts.view","ai.use"] },
+  trainer:   { label: "Trainer",   te: "ట్రైనర్",     caps: ["academy.view","academy.edit","appts.view","ai.use"] },
+  marketing: { label: "Marketing", te: "మార్కెటింగ్", caps: ["leads.view","posts.view","posts.toggle","reviews.view","ai.use"] },
+  staff:     { label: "Staff",     te: "స్టాఫ్",      caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
+};
+const roleOf = (r) => (ROLES[String(r || "staff")] ? String(r) : "staff");
+const capsOf = (r) => ROLES[roleOf(r)].caps;
+const can = (u, cap) => { const c = capsOf(u && u.role); return c.includes("*") || c.includes(cap); };
 const STATUSES = ["new", "contacted", "booked", "visited", "closed"];
 const SESSION_DAYS = 30;
 
@@ -19,7 +39,7 @@ const json = (res, code, obj) => { res.setHeader("Cache-Control", "no-store"); r
 function sign(payload) { return crypto.createHmac("sha256", secret()).update(payload).digest("hex"); }
 function makeToken(u) {
   const exp = Date.now() + SESSION_DAYS * 86400000;
-  const payload = Buffer.from(JSON.stringify({ p: u.phone, n: u.name, r: u.role, exp })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ p: u.phone, n: u.name, r: roleOf(u.role), exp })).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 function readToken(req) {
@@ -63,7 +83,7 @@ async function resolveUser(cfg, phone) {
   const owners = ownerPhones();
   if (owners.includes(phone)) return { phone, name: "Owner", role: "owner" };
   const u = (await users(cfg))[phone];
-  if (u) return { phone, name: u.name || "Staff", role: u.role === "owner" ? "owner" : "staff" };
+  if (u) return { phone, name: u.name || "Staff", role: roleOf(u.role) };
   return null;
 }
 
@@ -102,7 +122,11 @@ async function dataPayload(cfg, me) {
   const queue = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const reviews = (rv.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const team = me.role === "owner" ? await users(cfg) : null;
-  return { me, leads, statuses: STATUSES, appts, academy: { booked, left: 10 - booked, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: me.role === "owner" ? ownerPhones() : undefined, ts: now };
+  const caps = capsOf(me.role), allow = (c) => caps.includes("*") || caps.includes(c);
+  if (!allow("leads.view")) leads.length = 0;
+  if (!allow("reviews.view")) reviews.length = 0;
+  if (!allow("appts.view")) appts.length = 0;
+  return { me: Object.assign({}, me, { caps, roleLabel: ROLES[roleOf(me.role)].label, roleTe: ROLES[roleOf(me.role)].te }), roles: ROLES, capList: CAPS, leads, statuses: STATUSES, appts, academy: { booked, left: 10 - booked, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: me.role === "owner" ? ownerPhones() : undefined, ts: now };
 }
 
 module.exports = async (req, res) => {
@@ -181,12 +205,14 @@ module.exports = async (req, res) => {
   const key = b.key ? String(b.key) : "";
 
   if (a === "status") {
+    if (!can(me, "leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
     const s = String(b.status || "").toLowerCase();
     if (!key || !STATUSES.includes(s)) return json(res, 400, { error: "key + valid status required" });
     await guard.kvCommand(cfg, ["HSET", STATUS, key, s]);
     return json(res, 200, { ok: true });
   }
   if (a === "note") {
+    if (!can(me, "leads.edit")) return json(res, 403, { error: "Mee role ki note add chese permission ledu" });
     const text = String(b.text || "").trim().slice(0, 400);
     if (!key || !text) return json(res, 400, { error: "key + text required" });
     const cur = await guard.kvCommand(cfg, ["HGET", NOTES, key]).catch(() => ({}));
@@ -196,18 +222,24 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, notes: list.slice(0, 30) });
   }
   if (a === "academy") {
+    if (!can(me, "academy.edit")) return json(res, 403, { error: "Mee role ki academy seats marche permission ledu" });
     const n = Math.max(0, Math.min(10, Number(b.booked)));
     if (Number.isNaN(n)) return json(res, 400, { error: "booked 0-10" });
     await guard.kvCommand(cfg, ["SET", "acad:booked", String(n)]);
     return json(res, 200, { ok: true, booked: n, left: 10 - n });
   }
 
-  if (me.role !== "owner") return json(res, 403, { error: "Owner only" });
+  if (a === "delete" && !can(me, "leads.delete")) return json(res, 403, { error: "Owner matrame" });
+  if (a === "daily" && !can(me, "posts.toggle")) return json(res, 403, { error: "Mee role ki idi marche permission ledu" });
+  if (["team-add", "team-remove", "team-role", "set-password"].includes(a) && !can(me, "team.manage")) return json(res, 403, { error: "Owner matrame" });
   if (a === "team-add") {
     const phone = digits10(b.phone), name = String(b.name || "").trim().slice(0, 60);
+    const role = roleOf(b.role);
     if (!/^[6-9]\d{9}$/.test(phone) || !name) return json(res, 400, { error: "phone + name required" });
-    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify({ name, role: b.role === "owner" ? "owner" : "staff", added: Date.now(), by: me.phone })]);
-    notify.sendWa(phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki add ayyaru.\nLogin: www.dermaluxe.ai/staff.html — mee number ${phone} tho OTP login.`).catch(() => {});
+    if (role === "owner" && me.role !== "owner") return json(res, 403, { error: "Owner role ivvagaligedi owner matrame" });
+    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify({ name, role, added: Date.now(), by: me.phone })]);
+    const what = capsOf(role).includes("*") ? "anni" : capsOf(role).map((c) => CAPS[c] || c).join(", ");
+    notify.sendWa(phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki *${ROLES[role].label}* ga add ayyaru.\n\n🔗 www.dermaluxe.ai/staff.html\n📱 Mee number: ${phone}\n🔐 Password leda OTP tho login cheyandi.\n\n📋 Mee access: ${what}`).catch(() => {});
     return json(res, 200, { ok: true, team: await users(cfg) });
   }
   if (a === "set-password") {
@@ -217,6 +249,16 @@ module.exports = async (req, res) => {
     const salt = crypto.randomBytes(16).toString("hex");
     await guard.kvCommand(cfg, ["SET", "staff:pwd", JSON.stringify({ salt, hash: scrypt(pwd, salt), ts: Date.now(), by: me.phone })]);
     return json(res, 200, { ok: true });
+  }
+  if (a === "team-role") {
+    const phone = digits10(b.phone), role = roleOf(b.role);
+    const all = await users(cfg);
+    if (!all[phone]) return json(res, 404, { error: "Staff member not found" });
+    if (role === "owner" && me.role !== "owner") return json(res, 403, { error: "Owner role ivvagaligedi owner matrame" });
+    all[phone].role = role;
+    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify(all[phone])]);
+    notify.sendWa(phone, `🔁 Mee DermaLuxe dashboard role ippudu *${ROLES[role].label}*.`).catch(() => {});
+    return json(res, 200, { ok: true, team: await users(cfg) });
   }
   if (a === "team-remove") {
     const phone = digits10(b.phone);
@@ -236,3 +278,7 @@ module.exports = async (req, res) => {
   }
   return json(res, 400, { error: "Unknown action" });
 };
+module.exports.ROLES = ROLES;
+module.exports.CAPS = CAPS;
+module.exports.capsOf = capsOf;
+module.exports.can = can;

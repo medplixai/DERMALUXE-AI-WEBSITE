@@ -51,6 +51,9 @@
     "api/material.js": {
       "maxDuration": 30,
       "includeFiles": "assets/academy/material/**"
+    },
+    "api/office.js": {
+      "maxDuration": 60
     }
   },
   "crons": [

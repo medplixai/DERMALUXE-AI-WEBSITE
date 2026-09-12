@@ -151,6 +151,7 @@
         <button class="tab" data-t="students">Students<i id="nStud">0</i></button>
         <button class="tab" data-t="today">Today's post</button>
         <button class="tab" data-t="reviews">Reviews</button>
+        <button class="tab hide" data-t="office" id="officeTab">✦ AI Office</button>
         <button class="tab hide" data-t="team" id="teamTab">Team</button>
       </div>
 
@@ -189,9 +190,18 @@
       </section>
       <section id="t-today" class="hide" id="todayBox"></section>
       <section id="t-reviews" class="hide"><div class="list" id="revList"></div></section>
+      <section id="t-office" class="hide">
+        <div class="box"><h2>✦ AI Office</h2><p id="officeHi">Clinic data meeda emaina adagandi — leads, appointments, academy, today's post. <span class="te">తెలుగులో కూడా అడగవచ్చు.</span></p>
+          <div class="chips" id="officeChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div></div>
+        <div id="officeChat" class="list" style="gap:10px"></div>
+        <div class="box" style="position:sticky;bottom:8px;margin-top:8px">
+          <div class="noteform"><input id="officeQ" placeholder="Ex: ee roju enni leads? evariki mundu call cheyyali?" maxlength="1200" /><button class="btn btn--gold btn--sm" id="officeSend">Ask</button></div>
+          <div class="err" id="officeErr"></div></div>
+      </section>
       <section id="t-team" class="hide">
         <div class="box"><h2>Add staff</h2><p>Staff member ki WhatsApp lo login link veltundi. OTP vaari number ki vastundi.</p>
-          <div class="noteform" style="margin-top:10px"><input id="tPhone" placeholder="10-digit mobile" inputmode="numeric" maxlength="10" /><input id="tName" placeholder="Name" /><button class="btn btn--gold btn--sm" id="tAdd">Add</button></div>
+          <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><input id="tPhone" placeholder="10-digit mobile" inputmode="numeric" maxlength="10" style="max-width:150px" /><input id="tName" placeholder="Name" style="min-width:130px" /><select id="tRole" style="background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:8px 12px"></select><button class="btn btn--gold btn--sm" id="tAdd">Add</button></div>
+          <div id="roleHelp" class="meta" style="margin-top:8px"></div>
           <div class="err" id="teamErr"></div></div>
         <div class="box"><h2>Dashboard password</h2><p>Andariki same password + vaalla number. Marchalante kotha password type chesi Save cheyandi.</p>
           <div class="noteform" style="margin-top:10px"><input id="newPwd" type="password" placeholder="New password (6+ characters)" autocomplete="new-password" /><button class="btn btn--gold btn--sm" id="pwdSave">Save</button><button class="btn btn--sm" id="pwdOff" title="Password teesi OTP matrame">OTP only</button></div>
@@ -262,8 +272,17 @@
     }
     function render() {
       var d = state.data, me = d.me;
-      $("meName").textContent = me.name; $("meRole").textContent = me.role === "owner" ? "Owner" : "Staff";
-      if (me.role === "owner") $("teamTab").classList.remove("hide");
+      $("meName").textContent = me.name;
+      var caps = (me.caps || []), allow = function (c) { return caps.indexOf("*") > -1 || caps.indexOf(c) > -1; };
+      state.allow = allow;
+      $("meRole").textContent = me.roleLabel || me.role;
+      if (allow("team.manage")) $("teamTab").classList.remove("hide");
+      if (allow("ai.use")) $("officeTab").classList.remove("hide");
+      [["leads", "leads.view"], ["appts", "appts.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"]].forEach(function (p) {
+        var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
+      });
+      var firstTab = document.querySelector(".tab:not(.hide)");
+      if (firstTab && !document.querySelector(".tab.on:not(.hide)")) firstTab.click();
       var dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
       var today = d.leads.filter(function (l) { return l.ts >= dayStart.getTime(); }).length;
       var hot = d.leads.filter(function (l) { return l.heat === "hot" && (l.status === "new" || l.status === "contacted"); }).length;
@@ -336,10 +355,24 @@
       $("revList").innerHTML = d.reviews.length ? d.reviews.map(function (r) { var low = Number(r.rating) <= 3; return '<article class="lead' + (low ? ' hot' : '') + '"><div class="row"><div><h3>' + esc(r.name || "Patient") + ' <span class="meta">· ' + esc(r.ph || "") + '</span></h3><div class="meta">' + ago(r.ts) + ' · ' + esc(r.concern || "") + '</div></div><div><span class="badge ' + (low ? 'hot' : 'warm') + '">' + "★".repeat(Number(r.rating) || 0) + '</span></div></div>' + (low && r.ph ? '<div class="acts"><a class="btn btn--sm btn--call" href="tel:+91' + esc(r.ph) + '">📞 Service recovery call</a></div>' : '') + '</article>'; }).join("") : '<div class="empty">No ratings yet.</div>';
     }
     function renderTeam() {
-      var d = state.data, t = d.team || {};
+      var d = state.data, t = d.team || {}, R = d.roles || {};
       $("dailyToggle").checked = !!d.dailyOn;
-      var rows = (d.owners || []).map(function (p) { return '<div class="row"><div><b style="font-weight:500">Owner</b> <span class="meta">· ' + esc(p) + '</span></div><span class="badge warm">owner</span></div>'; });
-      Object.keys(t).forEach(function (p) { rows.push('<div class="row"><div><b style="font-weight:500">' + esc(t[p].name) + '</b> <span class="meta">· ' + esc(p) + '</span></div><button class="btn btn--sm" data-act="team-remove" data-phone="' + esc(p) + '">Remove</button></div>'); });
+      if (!$("tRole").options.length) {
+        $("tRole").innerHTML = Object.keys(R).filter(function (k) { return k !== "owner" || state.data.me.role === "owner"; })
+          .map(function (k) { return '<option value="' + k + '"' + (k === "reception" ? " selected" : "") + ">" + esc(R[k].label) + "</option>"; }).join("");
+      }
+      $("roleHelp").innerHTML = Object.keys(R).map(function (k) {
+        var caps = R[k].caps.indexOf("*") > -1 ? "anni (full access)" : R[k].caps.map(function (c) { return (d.capList || {})[c] || c; }).join(" · ");
+        return '<div style="margin:4px 0"><b style="color:var(--g1);font-weight:500">' + esc(R[k].label) + '</b> <span class="te">' + esc(R[k].te || "") + '</span><br><span style="font-size:.8rem">' + esc(caps) + '</span></div>';
+      }).join("");
+      var rows = (d.owners || []).map(function (p) { return '<div class="row"><div><b style="font-weight:500">Owner</b> <span class="meta">· ' + esc(p) + '</span></div><span class="badge warm">Owner</span></div>'; });
+      Object.keys(t).forEach(function (p) {
+        var opts = Object.keys(R).filter(function (k) { return k !== "owner" || state.data.me.role === "owner"; })
+          .map(function (k) { return '<option value="' + k + '"' + (k === (t[p].role || "staff") ? " selected" : "") + ">" + esc(R[k].label) + "</option>"; }).join("");
+        rows.push('<div class="row"><div><b style="font-weight:500">' + esc(t[p].name) + '</b> <span class="meta">· ' + esc(p) + '</span></div>' +
+          '<div style="display:flex;gap:6px;align-items:center"><select data-act="team-role" data-phone="' + esc(p) + '" style="background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:6px 10px;font-size:.82rem">' + opts + '</select>' +
+          '<button class="btn btn--sm" data-act="team-remove" data-phone="' + esc(p) + '">Remove</button></div></div>');
+      });
       $("teamList").innerHTML = rows.join("");
     }
 
@@ -347,7 +380,7 @@
     $("tabs").addEventListener("click", function (e) {
       var b = e.target.closest(".tab"); if (!b) return;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === b); });
-      ["leads", "appts", "academy", "students", "today", "reviews", "team"].forEach(function (t) { $("t-" + t).classList.toggle("hide", t !== b.dataset.t); });
+      ["leads", "appts", "academy", "students", "office", "today", "reviews", "team"].forEach(function (t) { $("t-" + t).classList.toggle("hide", t !== b.dataset.t); });
       if (b.dataset.t === "students") loadStudents();
     });
     ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
@@ -356,6 +389,7 @@
       if (el.dataset.act === "status") {
         api("status", { key: el.dataset.key, status: el.value }).then(function () { var l = state.data.leads.find(function (x) { return x.key === el.dataset.key; }); if (l) l.status = el.value; el.className = "s-" + el.value; toast("Status: " + el.value); }).catch(function (x) { toast(x.message); });
       }
+      if (el.dataset.act === "team-role") { api("team-role", { phone: el.dataset.phone, role: el.value }).then(function (j) { state.data.team = j.team; toast("Role updated"); }).catch(function (x) { toast(x.message); renderTeam(); }); }
       if (el.id === "dailyToggle") { api("daily", { on: el.checked }).then(function (j) { toast("Daily auto-post " + (j.dailyOn ? "ON" : "OFF")); }).catch(function (x) { toast(x.message); }); }
     });
     document.addEventListener("submit", function (e) {
@@ -430,8 +464,40 @@
     };
     $("tAdd").onclick = function () {
       var p = $("tPhone").value.replace(/\D/g, ""), n = $("tName").value.trim(); $("teamErr").textContent = "";
-      api("team-add", { phone: p, name: n }).then(function (j) { state.data.team = j.team; renderTeam(); $("tPhone").value = ""; $("tName").value = ""; toast(n + " added"); }).catch(function (x) { $("teamErr").textContent = x.message; });
+      api("team-add", { phone: p, name: n, role: $("tRole").value }).then(function (j) { state.data.team = j.team; renderTeam(); $("tPhone").value = ""; $("tName").value = ""; toast(n + " added"); }).catch(function (x) { $("teamErr").textContent = x.message; });
     };
+    // ---- AI Office ----
+    var officeHist = [];
+    var CHIPS = ["Ee roju status cheppandi", "Evariki mundu call cheyyali?", "Ivala appointments enni?", "Academy seats & pending fees", "Hot lead ki oka WhatsApp message draft cheyandi", "Ee week lead summary"];
+    function officeBubble(who, text) {
+      var mine = who === "me";
+      return '<article class="lead" style="border-left:3px solid ' + (mine ? "var(--line)" : "var(--g3)") + '">' +
+        '<div class="meta">' + (mine ? esc(state.data.me.name) : "✦ AI Office") + '</div>' +
+        '<div class="concern" style="white-space:pre-wrap">' + esc(text) + '</div></article>';
+    }
+    function askOffice(q) {
+      if (!q) return;
+      $("officeErr").textContent = "";
+      $("officeChat").insertAdjacentHTML("beforeend", officeBubble("me", q));
+      $("officeChat").insertAdjacentHTML("beforeend", '<article class="lead" id="officeWait"><div class="meta">✦ AI Office</div><div class="concern">Alochistunna…</div></article>');
+      $("officeQ").value = ""; $("officeSend").disabled = true;
+      window.scrollTo(0, document.body.scrollHeight);
+      fetch("/api/office", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ q: q, history: officeHist.slice(-3) }) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
+        .then(function (j) {
+          var w = $("officeWait"); if (w) w.remove();
+          $("officeChat").insertAdjacentHTML("beforeend", officeBubble("ai", j.reply));
+          officeHist.push({ q: q, a: j.reply });
+          window.scrollTo(0, document.body.scrollHeight);
+        })
+        .catch(function (e) { var w = $("officeWait"); if (w) w.remove(); $("officeErr").textContent = e.message; })
+        .finally(function () { $("officeSend").disabled = false; });
+    }
+    $("officeSend").onclick = function () { askOffice($("officeQ").value.trim()); };
+    $("officeQ").addEventListener("keydown", function (e) { if (e.key === "Enter") $("officeSend").click(); });
+    $("officeChips").innerHTML = CHIPS.map(function (c) { return '<button class="btn btn--sm" data-chip="' + esc(c) + '">' + esc(c) + "</button>"; }).join("");
+    $("officeChips").addEventListener("click", function (e) { var b = e.target.closest("[data-chip]"); if (b) askOffice(b.dataset.chip); });
+
     setInterval(function () { if (tok && !document.hidden) load(); }, 120000);
     boot();
   })();
