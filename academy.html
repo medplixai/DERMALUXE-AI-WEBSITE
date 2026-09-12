@@ -52,7 +52,8 @@
           "name": "Dr. Meghana Valleti",
           "honorificPrefix": "Dr.",
           "honorificSuffix": "MD, DVL",
-          "jobTitle": "Lead Trainer · Dermatologist & Cosmetologist · Founder & Medical Director"
+          "jobTitle": "Lead Trainer · Dermatologist & Cosmetologist · Founder & Medical Director",
+          "image": "https://www.dermaluxe.ai/assets/founders/meghana.webp"
         }
       },
       {
@@ -173,6 +174,9 @@
     .ac-module__body small { color: var(--muted-2); font-size: .74rem; letter-spacing: 1px; text-transform: uppercase; }
 
     .ac-trainer { display: grid; grid-template-columns: 300px 1fr; gap: clamp(1.6rem, 4vw, 3.5rem); align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(1.5rem, 3vw, 2.5rem); }
+    .ac-trainer__photo { position: relative; aspect-ratio: 3/4; border-radius: 16px; overflow: hidden; border: 1px solid var(--line); background: var(--ink-2); box-shadow: 0 30px 60px -30px rgba(0,0,0,.9); }
+    .ac-trainer__photo img { width: 100%; height: 100%; object-fit: cover; object-position: top; }
+    .ac-trainer__photo span { position: absolute; left: 0; right: 0; bottom: 0; padding: .7rem 1rem; font-size: .7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-1); background: linear-gradient(0deg, rgba(10,10,12,.92), transparent); text-align: center; }
     .ac-trainer__mono { aspect-ratio: 3/4; border-radius: 16px; background: radial-gradient(80% 60% at 50% 20%, rgba(201,162,92,.25), transparent), var(--ink-2); border: 1px solid var(--line); display: grid; place-items: center; text-align: center; padding: 1.5rem; }
     .ac-trainer__mono b { font-family: var(--font-serif); font-size: 4.2rem; font-weight: 600; background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; color: transparent; line-height: 1; }
     .ac-trainer__mono span { display: block; font-size: .72rem; letter-spacing: 2px; text-transform: uppercase; color: var(--muted-2); margin-top: .8rem; }
@@ -181,7 +185,7 @@
     .ac-trainer p { color: var(--muted); margin-bottom: .8rem; }
     .ac-trainer__pills { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
     .ac-trainer__pills span { font-size: .78rem; border: 1px solid var(--line); border-radius: 100px; padding: .3rem .8rem; color: var(--gold-1); }
-    @media (max-width: 760px) { .ac-trainer { grid-template-columns: 1fr; } .ac-trainer__mono { max-width: 240px; } }
+    @media (max-width: 760px) { .ac-trainer { grid-template-columns: 1fr; } .ac-trainer__photo { max-width: 260px; } }
 
     .ac-why { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.1rem; }
     .ac-why div { border: 1px solid var(--line); border-radius: 16px; padding: 1.3rem 1.3rem 1.4rem; background: rgba(255,255,255,.015); }
@@ -438,7 +442,7 @@
           <h2>Learn from a dermatologist, not a demo video</h2>
         </div>
         <div class="ac-trainer">
-          <div class="ac-trainer__mono"><div><b>Dr. M</b><span>Lead trainer</span></div></div>
+          <div class="ac-trainer__photo"><img src="assets/founders/meghana.webp" alt="Dr. Meghana Valleti, MD DVL — lead trainer, DermaLuxe Academy" width="600" height="800" loading="lazy" /><span>Lead trainer</span></div>
           <div>
             <h3>Dr. Meghana Valleti</h3>
             <p class="ac-trainer__role">MD, DVL · Gold Medalist · Dermatologist &amp; Cosmetologist · Founder &amp; Medical Director, DermaLuxe by Medicare</p>
