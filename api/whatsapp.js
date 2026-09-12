@@ -49,7 +49,7 @@ or when booking info is ready:
 heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
 slot_ts: when the patient CONFIRMS a specific day + time, ALSO add "slot_ts":"YYYY-MM-DD HH:mm" (24-hour, IST) inside lead — compute the real calendar date from the current IST date/time given in context (e.g. if today is Sun Aug 10 2026 and they pick "Repu 6:30 PM" → "2026-08-11 18:30"). Omit until a specific time is fixed — our reminder system auto-messages the patient from this.
 cancel: if the patient wants to CANCEL their appointment (and is not picking a new time), add "cancel":true inside lead. For reschedule just output the new slot_ts — old booking auto-replace avutundi. The context shows this patient's upcoming appointment if any — confirm that time with them before cancelling, and be warm about rebooking later.
-Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, and "urgent":"<one line>" for medical emergencies.`;
+Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, "send_catalog":true when someone asks about the DermaLuxe Academy / training courses (the course catalog PDF is sent automatically with your reply — mention "Course catalog PDF ikkada pampistunnanu 📄"), and "urgent":"<one line>" for medical emergencies.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
 const PHOTO_RULES = facts.photoRules("WhatsApp");
@@ -548,6 +548,44 @@ async function fetchMedia(mediaId) {
 
 // Send a picture by public URL (gallery before/after shots live in KV and are
 // served by api/media.js). Failure is silent — the text reply already went.
+const CATALOG_URL = "https://www.dermaluxe.ai/assets/academy/DermaLuxe-Academy-Course-Catalog.pdf";
+const ACADEMY_ASK = /(academy|acadamy|course|cours|training|trainin|cosmetolog|therapist course|nerchuko|nerpist|nerputar|శిక్షణ|కోర్సు|అకాడమీ)/i;
+async function sendCloudDocument(phoneNumberId, to, url, filename, caption) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to || !url) return false;
+  try {
+    const document = { link: url };
+    if (filename) document.filename = String(filename).slice(0, 120);
+    if (caption) document.caption = String(caption).slice(0, 900);
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to, type: "document", document }),
+    });
+    if (!r.ok) {
+      let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+      console.error("wa: document send failed", r.status, d);
+      return false;
+    }
+    return true;
+  } catch (e) { console.error("wa: document send error", e && e.message); return false; }
+}
+// Academy enquiry → send the course catalog PDF once per number per 30 days.
+async function maybeSendCatalog(cfg, cloud, out, text) {
+  const wants = out.send_catalog === true || ACADEMY_ASK.test(String(text || "")) || /^academy/i.test(String((out.lead && out.lead.concern) || ""));
+  if (!wants) return false;
+  const digits = String(cloud.to || "").replace(/\D/g, "").slice(-10);
+  if (cfg && digits) {
+    try {
+      const nx = await guard.kvCommand(cfg, ["SET", `acad:pdf:${digits}`, "1", "NX", "EX", "2592000"]);
+      if (!nx || !nx.result) return false;
+    } catch (e) {}
+  }
+  const ok = await sendCloudDocument(cloud.phoneNumberId, cloud.to, CATALOG_URL, "DermaLuxe-Academy-Course-Catalog.pdf",
+    "📄 DermaLuxe Academy — Course Catalog\nSkin Care · Hair Care · Skin + Hair · Fees & launch offer (till 30 Sep 2026) · Batch 1: 20 Oct 2026 · Only 10 seats\n\nSeat reserve cheyalante *ACADEMY* ani reply cheyandi 😊");
+  if (!ok && cfg && digits) await guard.kvCommand(cfg, ["DEL", `acad:pdf:${digits}`]).catch(() => {});
+  return ok;
+}
 async function sendCloudImage(phoneNumberId, to, url, caption) {
   const token = process.env.WA_CLOUD_TOKEN;
   if (!token || !phoneNumberId || !to || !url) return false;
@@ -1162,6 +1200,8 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.error("wa: gallery send", e && e.message); }
     }
+    // Academy enquiry → course catalog PDF (once per number).
+    try { await maybeSendCatalog(cfg, cloud, out, text); } catch (e) { console.error("wa: catalog send", e && e.message); }
     return res.status(200).json({ ok: true });
   }
   return twiml(res, out.reply);
