@@ -164,11 +164,19 @@ module.exports = async (req, res) => {
     if (!u) return json(res, 403, { error: "Ee number staff list lo ledu. Owner ni adagandi (WhatsApp admin: staff add <number> <name>)." });
     const code = String(crypto.randomInt(100000, 999999));
     await guard.kvCommand(cfg, ["SET", `staff:otp:${phone}`, JSON.stringify({ code, tries: 0 }), "EX", "300"]);
-    const line = `Mee DermaLuxe staff login OTP: *${code}* — 5 nimishalu valid. Meeru login cheyakapothe ignore cheyandi.`;
-    let ok = await notify.sendWa(phone, `🔐 ${line}`);
-    if (!ok) { const t = await notify.sendWaTemplate(phone, "clinic_update", [u.name.split(" ")[0] || "Team", line.replace(/\*/g, "")]); ok = !!(t && t.ok); }
-    if (!ok) return json(res, 502, { error: "OTP WhatsApp lo pampalekapoyam — konchem sepu tarvata try cheyandi" });
-    return json(res, 200, { ok: true });
+    const line = `Mee DermaLuxe staff login OTP: ${code} — 5 nimishalu valid. Meeru login cheyakapothe ignore cheyandi.`;
+    const tried = [];
+    // 1) authentication template — the only channel that always delivers
+    const auth = await notify.sendWaAuthCode(phone, code, "staff_login_code");
+    tried.push(`auth:${auth.ok ? "ok" : auth.msg || "fail"}`);
+    let ok = auth.ok, via = auth.ok ? "template" : "";
+    // 2) plain message (works only if they messaged us in the last 24 h)
+    if (!ok) { const f = await notify.sendWa(phone, `🔐 ${line}`); tried.push(`text:${f ? "ok" : "fail"}`); if (f) { ok = true; via = "message"; } }
+    // 3) last resort: an already-approved utility/marketing template
+    if (!ok) { const t = await notify.sendWaTemplate(phone, "clinic_update", [String(u.name || "Team").split(" ")[0], line]); tried.push(`clinic_update:${t && t.ok ? "ok" : (t && t.msg) || "fail"}`); if (t && t.ok) { ok = true; via = "clinic_update"; } }
+    console.log("staff otp", phone.slice(-4), tried.join(" | "));
+    if (!ok) return json(res, 502, { error: "OTP WhatsApp lo pampalekapoyam. Owner tho password petti login cheyandi (WhatsApp admin: staff password <password>).", tried });
+    return json(res, 200, { ok: true, via });
   }
   if (a === "verify") {
     if (req.method !== "POST") return json(res, 405, { error: "POST" });

@@ -354,6 +354,20 @@ const TEMPLATES = [
       { type: "FOOTER", text: "DermaLuxe Academy, Eluru" },
     ],
   },
+  // ---- Staff dashboard login code (AUTHENTICATION) ----------------------
+  // Authentication templates are the only reliable way to deliver a one-time
+  // code: they bypass the 24-hour service window and render a copy button.
+  {
+    name: "staff_login_code",
+    category: "AUTHENTICATION",
+    language: "en",
+    message_send_ttl_seconds: 600,
+    components: [
+      { type: "BODY", add_security_recommendation: true },
+      { type: "FOOTER", code_expiration_minutes: 5 },
+      { type: "BUTTONS", buttons: [{ type: "OTP", otp_type: "COPY_CODE", text: "Copy code" }] },
+    ],
+  },
 ];
 
 // Meta's generic "Invalid parameter" hides the useful part — surface it.

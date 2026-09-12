@@ -206,6 +206,34 @@ async function leadAlert(cfg, lead) {
 }
 
 
+// One-time code via an AUTHENTICATION template (delivers outside the 24-hour
+// window and shows a "Copy code" button).
+async function sendWaAuthCode(digits, code, templateName) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
+  const to = String(digits || "").replace(/\D/g, "").slice(-10);
+  if (!token || !phoneId || to.length !== 10) return { ok: false, msg: "bad args" };
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to: `91${to}`, type: "template",
+        template: {
+          name: templateName || "staff_login_code", language: { code: "en" },
+          components: [
+            { type: "body", parameters: [{ type: "text", text: String(code) }] },
+            { type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: String(code) }] },
+          ],
+        },
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { console.error("notify: auth code failed", to, r.status, JSON.stringify(d).slice(0, 220)); return { ok: false, msg: (d.error && d.error.message || "send fail").slice(0, 140) }; }
+    return { ok: true, id: (d.messages && d.messages[0] && d.messages[0].id) || "" };
+  } catch (e) { console.error("notify: auth code error", to, e && e.message); return { ok: false, msg: String(e && e.message).slice(0, 120) }; }
+}
+
 // Academy notifications. Tries the dedicated UTILITY template (delivers even
 // when the 24-hour window is shut); falls back to clinic_update while the new
 // templates are still in Meta review.
@@ -239,4 +267,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, sendWa, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
+module.exports = { leadAlert, sendWa, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };

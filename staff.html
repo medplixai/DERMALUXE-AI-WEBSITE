@@ -246,7 +246,7 @@
       var p = $("phone").value.replace(/\D/g, ""); $("loginErr").textContent = "";
       if (!/^[6-9]\d{9}$/.test(p)) { $("loginErr").textContent = "Valid 10-digit number ivvandi"; return; }
       $("sendBtn").disabled = true;
-      api("send", { phone: p }).then(function () { $("stepPhone").classList.add("hide"); $("stepOtp").classList.remove("hide"); $("otp").focus(); toast("OTP WhatsApp lo pampam"); })
+      api("send", { phone: p }).then(function (j) { $("stepPhone").classList.add("hide"); $("stepOtp").classList.remove("hide"); $("otp").focus(); toast("OTP WhatsApp lo pampam" + (j && j.via === "template" ? "" : " (message ga)")); })
         .catch(function (e) { $("loginErr").textContent = e.message; }).finally(function () { $("sendBtn").disabled = false; });
     };
     $("verifyBtn").onclick = function () {
