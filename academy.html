@@ -63,6 +63,7 @@
         "provider": { "@id": "https://www.dermaluxe.ai/academy.html#academy" },
         "courseMode": "Onsite",
         "educationalCredentialAwarded": "DermaLuxe Academy Certificate",
+        "offers": { "@type": "Offer", "price": "49999", "priceCurrency": "INR", "priceValidUntil": "2026-09-30", "availability": "https://schema.org/LimitedAvailability", "url": "https://www.dermaluxe.ai/academy.html#fees" },
         "hasCourseInstance": [
           { "@type": "CourseInstance", "name": "1-month Skin Care batch", "courseMode": "Onsite", "startDate": "2026-10-20", "location": "DermaLuxe by Medicare, Eluru", "maximumAttendeeCapacity": 10 },
           { "@type": "CourseInstance", "name": "2-month Skin Care batch", "courseMode": "Onsite", "startDate": "2026-10-20", "location": "DermaLuxe by Medicare, Eluru", "maximumAttendeeCapacity": 10 }
@@ -75,6 +76,7 @@
         "provider": { "@id": "https://www.dermaluxe.ai/academy.html#academy" },
         "courseMode": "Onsite",
         "educationalCredentialAwarded": "DermaLuxe Academy Certificate",
+        "offers": { "@type": "Offer", "price": "49999", "priceCurrency": "INR", "priceValidUntil": "2026-09-30", "availability": "https://schema.org/LimitedAvailability", "url": "https://www.dermaluxe.ai/academy.html#fees" },
         "hasCourseInstance": [
           { "@type": "CourseInstance", "name": "1-month Hair Care batch", "courseMode": "Onsite", "startDate": "2026-10-20", "location": "DermaLuxe by Medicare, Eluru", "maximumAttendeeCapacity": 10 },
           { "@type": "CourseInstance", "name": "2-month Hair Care batch", "courseMode": "Onsite", "startDate": "2026-10-20", "location": "DermaLuxe by Medicare, Eluru", "maximumAttendeeCapacity": 10 }
@@ -88,7 +90,7 @@
           { "@type": "Question", "name": "How long are the courses?", "acceptedAnswer": { "@type": "Answer", "text": "Two options: a 1-month course and a 2-month advanced course, for both Skin Care Treatments and Hair Care Treatments. The 2-month course adds advanced protocols, more live-client hours and an internship." } },
           { "@type": "Question", "name": "When does the next batch start?", "acceptedAnswer": { "@type": "Answer", "text": "The first batch starts on 20 October 2026. Admissions are open from 10 September 2026. Only 10 seats per batch." } },
           { "@type": "Question", "name": "Do you provide jobs after the course?", "acceptedAnswer": { "@type": "Answer", "text": "Yes. We also provide jobs at our own locations — DermaLuxe by Medicare and the Medicare Skin & Hair Clinics family across Andhra Pradesh. Successful trainees get priority in our hiring." } },
-          { "@type": "Question", "name": "What are the course fees?", "acceptedAnswer": { "@type": "Answer", "text": "Fees depend on the course and duration you choose. Message us on WhatsApp at +91 99591 34666 and our team will share the fee structure and payment options." } }
+          { "@type": "Question", "name": "What are the course fees?", "acceptedAnswer": { "@type": "Answer", "text": "Launch offer for Batch 1, valid till 30 September 2026: Skin Care 1-month course ₹49,999 (regular ₹1,00,000), Hair Care 1-month course ₹49,999 (regular ₹1,00,000), Skin + Hair ₹99,999 (regular ₹2,00,000). Reserve a seat with ₹9,999; balance before the batch starts on 20 October 2026. WhatsApp +91 99591 34666." } }
         ]
       }
     ]
@@ -253,6 +255,24 @@
     .te-s { font-family: "Noto Sans Telugu", var(--font-sans); color: var(--gold-3); font-size: .86rem; line-height: 1.7; display: block; }
     .ac-course .te-p { border-left: 2px solid rgba(201,162,92,.35); padding-left: .8rem; margin: .2rem 0 .3rem; }
     .ac-faq details p.te-p { padding-top: 0; color: var(--gold-2); }
+    .ac-prices { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1.3rem; }
+    .ac-price { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: clamp(1.4rem, 2.5vw, 2rem); display: flex; flex-direction: column; gap: .7rem; overflow: hidden; }
+    .ac-price--hot { background: linear-gradient(160deg, rgba(201,162,92,.16), var(--panel) 60%); border-color: rgba(201,162,92,.5); }
+    .ac-price__tag { font-size: .7rem; letter-spacing: 2px; text-transform: uppercase; color: var(--gold-3); }
+    .ac-price h3 { font-size: 1.6rem; line-height: 1.15; }
+    .ac-price__old { color: var(--muted-2); text-decoration: line-through; text-decoration-color: var(--gold-4); font-size: 1.05rem; }
+    .ac-price__now { font-family: var(--font-serif); font-size: clamp(2.4rem, 4vw, 3.2rem); font-weight: 600; color: var(--gold-1); line-height: 1; font-variant-numeric: tabular-nums; }
+    .ac-price__now small { font-family: var(--font-sans); font-size: .8rem; color: var(--muted); font-weight: 300; margin-left: .4rem; letter-spacing: .5px; }
+    .ac-price__save { display: inline-block; font-size: .78rem; border: 1px solid rgba(201,162,92,.45); border-radius: 100px; padding: .25rem .8rem; color: var(--gold-1); background: rgba(201,162,92,.1); width: max-content; }
+    .ac-price ul { display: grid; gap: .4rem; color: var(--muted); font-size: .93rem; }
+    .ac-price li { position: relative; padding-left: 1.3rem; }
+    .ac-price li::before { content: "✦"; position: absolute; left: 0; top: .15rem; color: var(--gold-3); font-size: .7rem; }
+    .ac-price .btn { margin-top: auto; justify-content: center; }
+    .ac-price .btn--gold { color: #2a1d07; }
+    .ac-reserve { margin-top: 1.4rem; border: 1px dashed rgba(201,162,92,.5); border-radius: 16px; padding: 1.2rem 1.4rem; display: flex; flex-wrap: wrap; gap: 1rem; align-items: center; justify-content: space-between; background: rgba(201,162,92,.05); }
+    .ac-reserve b { font-family: var(--font-serif); font-size: 1.5rem; color: var(--gold-1); font-weight: 600; }
+    .ac-reserve p { color: var(--muted); font-size: .92rem; }
+    .ac-reserve .btn--gold { color: #2a1d07; }
     .ac-note { text-align: center; color: var(--muted-2); font-size: .8rem; margin-top: 1.2rem; }
   </style>
 </head>
@@ -266,6 +286,7 @@
         <a href="#courses">Courses</a>
         <a href="#modules">What you learn</a>
         <a href="#trainer">Trainer</a>
+        <a href="#fees">Fees &amp; offer</a>
         <a href="#batch">Batch details</a>
         <a href="#faq">FAQ</a>
         <a href="index.html">Clinic site</a>
@@ -279,6 +300,7 @@
       <span>🎓 <strong>Admissions open</strong> from 10 September 2026</span>
       <span>📅 <strong>Batch 1 starts 20 October 2026</strong></span>
       <span>👥 Only <strong>10 seats</strong> per batch</span>
+      <span>🎉 <strong>Launch offer ₹49,999</strong> (was ₹1,00,000) till 30 Sep</span>
       <span class="te-s" style="display:inline">అడ్మిషన్స్ ఓపెన్ · బ్యాచ్ 20 అక్టోబర్ 2026 · 10 సీట్లు మాత్రమే</span>
       <span><a href="/r/academy">Reserve your seat on WhatsApp → సీటు రిజర్వ్ చేయండి</a></span>
     </div>
@@ -396,7 +418,7 @@
             <div class="ac-course__foot"><span>Certificate + internship letter · సర్టిఫికేట్ + ఇంటర్న్‌షిప్ లెటర్</span><a href="/r/academy">Enquire → అడగండి</a></div>
           </article>
         </div>
-        <p class="ac-note">Course fees &amp; payment options are shared on WhatsApp. No prior medical degree required — full guidance provided.<br /><span class="te-s" lang="te" style="margin-top:.4rem">ఫీజు &amp; పేమెంట్ వివరాలు WhatsApp లో చెబుతాం. మెడికల్ డిగ్రీ అవసరం లేదు — పూర్తి గైడెన్స్ ఇస్తాం.</span></p>
+        <p class="ac-note">Launch offer: Skin ₹49,999 · Hair ₹49,999 · Skin + Hair ₹99,999 (till 30 Sep 2026) — <a href="#fees" style="color:var(--gold-2)">see fees</a>. No prior medical degree required — full guidance provided.<br /><span class="te-s" lang="te" style="margin-top:.4rem">లాంచ్ ఆఫర్: స్కిన్ ₹49,999 · హెయిర్ ₹49,999 · రెండూ ₹99,999 (30 సెప్టెంబర్ వరకు). మెడికల్ డిగ్రీ అవసరం లేదు — పూర్తి గైడెన్స్ ఇస్తాం.</span></p>
       </div>
     </section>
 
@@ -511,6 +533,56 @@
       </div>
     </section>
 
+    <!-- FEES & OFFER -->
+    <section class="ac-section ac-section--alt" id="fees">
+      <div class="container">
+        <div class="ac-head">
+          <p class="eyebrow">Fees &amp; launch offer</p>
+          <h2>Launch offer — valid till 30 September 2026</h2>
+          <p class="te-h" lang="te">లాంచ్ ఆఫర్ — 30 సెప్టెంబర్ 2026 వరకు మాత్రమే</p>
+          <p>Batch 1 launch pricing on the 1-month courses. Offer closes on 30 September 2026 or when the 10 seats fill — whichever comes first.</p>
+          <span class="te" lang="te">1 నెల కోర్సులకు బ్యాచ్ 1 లాంచ్ ధర. 30 సెప్టెంబర్ 2026 వరకు లేదా 10 సీట్లు నిండే వరకు — ఏది ముందైతే అది.</span>
+        </div>
+        <div class="ac-prices">
+          <article class="ac-price">
+            <span class="ac-price__tag">Skin Care Treatments · 1 month</span>
+            <h3>Skin Care Course</h3>
+            <span class="ac-price__old">Regular fee ₹1,00,000</span>
+            <div class="ac-price__now">₹49,999<small>launch offer</small></div>
+            <span class="ac-price__save">Save ₹50,001 · till 30 Sep 2026</span>
+            <p class="te-p" lang="te">స్కిన్ కేర్ కోర్సు — ₹1,00,000 బదులు <b>₹49,999</b> · 30 సెప్టెంబర్ వరకు</p>
+            <ul><li>Laser hair removal, peels, acne, pigmentation, lasers, Hydrafacial</li><li>Hands-on on live clients · certificate</li></ul>
+            <a href="/r/academy" class="btn btn--gold">Reserve with ₹9,999</a>
+          </article>
+          <article class="ac-price">
+            <span class="ac-price__tag">Hair Care Treatments · 1 month</span>
+            <h3>Hair Care Course</h3>
+            <span class="ac-price__old">Regular fee ₹1,00,000</span>
+            <div class="ac-price__now">₹49,999<small>launch offer</small></div>
+            <span class="ac-price__save">Save ₹50,001 · till 30 Sep 2026</span>
+            <p class="te-p" lang="te">హెయిర్ కేర్ కోర్సు — ₹1,00,000 బదులు <b>₹49,999</b> · 30 సెప్టెంబర్ వరకు</p>
+            <ul><li>Hair fall &amp; dandruff protocols, PRP, GFC, mesotherapy assist</li><li>Hands-on on live clients · certificate</li></ul>
+            <a href="/r/academy" class="btn btn--gold">Reserve with ₹9,999</a>
+          </article>
+          <article class="ac-price ac-price--hot">
+            <span class="ac-price__tag">Skin + Hair · best value</span>
+            <h3>Skin + Hair Course</h3>
+            <span class="ac-price__old">Regular fee ₹2,00,000</span>
+            <div class="ac-price__now">₹99,999<small>launch offer</small></div>
+            <span class="ac-price__save">Save ₹1,00,001 · till 30 Sep 2026</span>
+            <p class="te-p" lang="te">స్కిన్ + హెయిర్ రెండూ — ₹2,00,000 బదులు <b>₹99,999</b> · 30 సెప్టెంబర్ వరకు</p>
+            <ul><li>Every skin &amp; hair module · maximum live-client hours</li><li>Priority for jobs at our locations · certificate</li></ul>
+            <a href="/r/academy" class="btn btn--gold">Reserve with ₹9,999</a>
+          </article>
+        </div>
+        <div class="ac-reserve">
+          <div><b>Reserve your seat now with ₹9,999</b><p>Pay ₹9,999 today to lock your seat and the launch price. Balance before the batch starts on 20 October 2026.</p><p class="te-s" lang="te">ఇప్పుడే ₹9,999 కట్టి మీ సీటు &amp; ఆఫర్ ధర లాక్ చేసుకోండి. మిగతా మొత్తం బ్యాచ్ ప్రారంభం (20 అక్టోబర్ 2026) లోపు.</p></div>
+          <a href="/r/academy" class="btn btn--gold">💬 Reserve on WhatsApp · ₹9,999</a>
+        </div>
+        <p class="ac-note">Offer applies to the 1-month courses for Batch 1. 2-month advanced course fees are shared on WhatsApp. Seats are confirmed in the order of reservation.<br /><span class="te-s" lang="te" style="margin-top:.4rem">ఈ ఆఫర్ బ్యాచ్ 1 లోని 1 నెల కోర్సులకు. 2 నెలల అడ్వాన్స్‌డ్ కోర్సు ఫీజు WhatsApp లో. రిజర్వేషన్ వరుసలో సీట్లు కన్ఫర్మ్ అవుతాయి.</span></p>
+      </div>
+    </section>
+
     <!-- BATCH DETAILS -->
     <section class="ac-section" id="batch">
       <div class="container">
@@ -533,7 +605,7 @@
             <div><span>Certificate<br /><span class="te-s" lang="te" style="text-transform:none;letter-spacing:0;font-size:.8rem">సర్టిఫికేట్</span></span><b>DermaLuxe Academy certificate after practical assessment</b></div>
             <div><span>Placement<br /><span class="te-s" lang="te" style="text-transform:none;letter-spacing:0;font-size:.8rem">ఉద్యోగాలు</span></span><b>Jobs at our locations for successful trainees<br /><span class="te-s" lang="te">బాగా చేసిన ట్రైనీలకు మా క్లినిక్స్‌లో ఉద్యోగాలు</span></b></div>
             <div><span>Venue<br /><span class="te-s" lang="te" style="text-transform:none;letter-spacing:0;font-size:.8rem">చిరునామా</span></span><b>DermaLuxe Skin &amp; Hair Clinics, Rama Mahal, Kasturi Vari Street, Opp. Happy Mobiles, R.R. Peta, Eluru – 534002</b></div>
-            <div><span>Fees<br /><span class="te-s" lang="te" style="text-transform:none;letter-spacing:0;font-size:.8rem">ఫీజు</span></span><b>Shared on WhatsApp — <a href="/r/academy" style="color:var(--gold-2)">ask now →</a></b></div>
+            <div><span>Fees<br /><span class="te-s" lang="te" style="text-transform:none;letter-spacing:0;font-size:.8rem">ఫీజు</span></span><b>Skin ₹49,999 · Hair ₹49,999 · Skin + Hair ₹99,999 (launch offer till 30 Sep 2026; regular ₹1,00,000 / ₹2,00,000) · Reserve with ₹9,999<br /><span class="te-s" lang="te">స్కిన్ ₹49,999 · హెయిర్ ₹49,999 · రెండూ ₹99,999 (30 సెప్టెంబర్ వరకు) · ₹9,999 తో సీటు రిజర్వ్</span></b></div>
           </div>
           <div class="ac-batch__card">
             <img src="assets/academy/dr-batch.webp" alt="Dr. Meghana Valeti with DermaLuxe Academy trainees holding certificates" loading="lazy" />
@@ -579,7 +651,7 @@
           <div><i>🎓</i><b>4. Join Batch 1</b><p>Training begins 20 October 2026 at DermaLuxe, Eluru.</p><p class="te-s" lang="te" style="margin-top:.35rem">20 అక్టోబర్ 2026 న DermaLuxe ఏలూరులో ట్రైనింగ్ ప్రారంభం.</p></div>
         </div>
         <div class="ac-cta" style="margin-top:2.2rem">
-          <span class="chip"><i>✦</i> Admissions open · 10 seats · Batch 20 Oct 2026</span>
+          <span class="chip"><i>✦</i> Launch offer till 30 Sep · Reserve with ₹9,999 · Batch 20 Oct 2026</span>
           <h2>Reserve your seat at DermaLuxe Academy</h2>
           <p class="te-h" lang="te" style="margin:-.2rem 0 .8rem">DermaLuxe Academy లో మీ సీటు రిజర్వ్ చేసుకోండి</p>
           <p>Message <strong>ACADEMY</strong> to our WhatsApp assistant for course details, timings and fees — or call us during clinic hours.</p>
@@ -607,7 +679,7 @@
           <details><summary><span>1 month or 2 months — which should I choose?<span class="te-s" lang="te" style="font-weight:400">1 నెల లేదా 2 నెలలు — ఏది ఎంచుకోవాలి?</span></span></summary><p>The 1-month course gives you the core procedures and a certificate. The 2-month advanced course adds complex cases, combination protocols, more live-client hours and an internship — best if you want to be placed quickly or run your own clinic.</p><p class="te-p" lang="te">1 నెల కోర్సులో కోర్ ప్రొసీజర్స్ + సర్టిఫికేట్ వస్తుంది. 2 నెలల అడ్వాన్స్‌డ్ కోర్సులో కాంప్లెక్స్ కేసులు, కాంబినేషన్ ప్రోటోకాల్స్, ఎక్కువ లైవ్-క్లయింట్ గంటలు, ఇంటర్న్‌షిప్ ఉంటాయి — త్వరగా ఉద్యోగం కావాలన్నా, సొంత క్లినిక్ పెట్టాలన్నా ఇది బెస్ట్.</p></details>
           <details><summary><span>When does the batch start and how do I reserve a seat?<span class="te-s" lang="te" style="font-weight:400">బ్యాచ్ ఎప్పుడు మొదలవుతుంది, సీటు ఎలా రిజర్వ్ చేయాలి?</span></span></summary><p>Admissions are open from 10 September 2026 and Batch 1 starts on 20 October 2026. Message us on WhatsApp — seats are confirmed in the order of admission, and only 10 are available.</p><p class="te-p" lang="te">అడ్మిషన్స్ 10 సెప్టెంబర్ 2026 నుండి ఓపెన్. బ్యాచ్ 1 — 20 అక్టోబర్ 2026. WhatsApp లో మెసేజ్ చేయండి — ముందు వచ్చిన వారికి ముందు సీటు, మొత్తం 10 సీట్లే.</p></details>
           <details><summary><span>Do you provide jobs after the course?<span class="te-s" lang="te" style="font-weight:400">కోర్సు తర్వాత ఉద్యోగం ఇస్తారా?</span></span></summary><p>Yes. We also provide jobs at our own locations — DermaLuxe by Medicare and the Medicare Skin &amp; Hair Clinics family across Andhra Pradesh. Successful trainees get priority in our hiring.</p><p class="te-p" lang="te">అవును. మా సొంత క్లినిక్స్‌లో — DermaLuxe by Medicare &amp; ఆంధ్రప్రదేశ్‌లోని Medicare Skin &amp; Hair Clinics లో ఉద్యోగాలు ఇస్తాం. బాగా చేసిన ట్రైనీలకు హైరింగ్‌లో ప్రయారిటీ.</p></details>
-          <details><summary><span>What are the fees?<span class="te-s" lang="te" style="font-weight:400">ఫీజు ఎంత?</span></span></summary><p>Fees depend on the course and duration you choose. Message us on WhatsApp and our team will share the fee structure and payment options.</p><p class="te-p" lang="te">ఫీజు మీరు ఎంచుకున్న కోర్సు &amp; వ్యవధిని బట్టి ఉంటుంది. WhatsApp చేయండి — మా టీమ్ ఫీజు స్ట్రక్చర్ &amp; పేమెంట్ ఆప్షన్స్ చెబుతుంది.</p></details>
+          <details><summary><span>What are the fees?<span class="te-s" lang="te" style="font-weight:400">ఫీజు ఎంత?</span></span></summary><p>Launch offer for Batch 1 (valid till 30 September 2026): Skin Care 1-month course ₹49,999 (regular ₹1,00,000), Hair Care 1-month course ₹49,999 (regular ₹1,00,000), Skin + Hair ₹99,999 (regular ₹2,00,000). Reserve your seat now with ₹9,999; the balance is due before the batch starts on 20 October 2026. 2-month advanced course fees are shared on WhatsApp.</p><p class="te-p" lang="te">బ్యాచ్ 1 లాంచ్ ఆఫర్ (30 సెప్టెంబర్ 2026 వరకు): స్కిన్ కేర్ 1 నెల కోర్సు ₹49,999 (రెగ్యులర్ ₹1,00,000), హెయిర్ కేర్ 1 నెల కోర్సు ₹49,999 (రెగ్యులర్ ₹1,00,000), స్కిన్ + హెయిర్ ₹99,999 (రెగ్యులర్ ₹2,00,000). ఇప్పుడే ₹9,999 కట్టి సీటు రిజర్వ్ చేసుకోండి; మిగతా మొత్తం 20 అక్టోబర్ 2026 లోపు. 2 నెలల కోర్సు ఫీజు WhatsApp లో.</p></details>
           <details><summary><span>In which language is the training?<span class="te-s" lang="te" style="font-weight:400">ట్రైనింగ్ ఏ భాషలో ఉంటుంది?</span></span></summary><p>Telugu and English, with the clinical terms in English exactly as you will use them at work.</p><p class="te-p" lang="te">తెలుగు &amp; ఇంగ్లీష్ — క్లినికల్ పదాలు మాత్రం పనిలో వాడే విధంగా ఇంగ్లీష్‌లో.</p></details>
           <details><summary><span>I am from outside Eluru — can I attend?<span class="te-s" lang="te" style="font-weight:400">నేను ఏలూరు బయట నుండి — రావచ్చా?</span></span></summary><p>Yes. Trainees come from across West Godavari and Andhra Pradesh. Our team can guide you on nearby stay options when you enquire.</p><p class="te-p" lang="te">తప్పకుండా. పశ్చిమ గోదావరి &amp; ఆంధ్రప్రదేశ్ అంతటి నుండి ట్రైనీలు వస్తారు. దగ్గరలో ఉండే వసతి గురించి మా టీమ్ గైడ్ చేస్తుంది.</p></details>
           <details><summary><span>Will I get a certificate?<span class="te-s" lang="te" style="font-weight:400">సర్టిఫికేట్ వస్తుందా?</span></span></summary><p>Yes — after a practical assessment you receive the DermaLuxe Academy certificate. The 2-month course also includes an internship letter.</p><p class="te-p" lang="te">అవును — ప్రాక్టికల్ పరీక్ష తర్వాత DermaLuxe Academy సర్టిఫికేట్ వస్తుంది. 2 నెలల కోర్సుకి ఇంటర్న్‌షిప్ లెటర్ కూడా.</p></details>
