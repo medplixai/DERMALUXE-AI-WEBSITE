@@ -35,15 +35,18 @@ const daysUntil = (iso) => Math.round((new Date(iso + "T00:00:00Z") - new Date(i
 module.exports = async (req, res) => {
   const q = req.query || {};
   const auth = String(req.headers.authorization || "");
-  const okCron = process.env.CRON_SECRET ? auth === `Bearer ${process.env.CRON_SECRET}` : true;
-  const okAdmin = process.env.ADMIN_KEY ? guard.safeEqual(String(req.headers["x-admin-key"] || q.key || ""), process.env.ADMIN_KEY) : false;
+  const okCron = !!process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`;
+  const okAdmin = !!process.env.ADMIN_KEY && guard.safeEqual(String(req.headers["x-admin-key"] || q.key || ""), process.env.ADMIN_KEY);
   if (!okCron && !okAdmin) return res.status(401).json({ error: "unauthorized" });
+  // overrides can mass-message students, so they need the admin key, not just the cron secret
+  if (!okAdmin && (q.force || q.day !== undefined || q.dry)) return res.status(403).json({ error: "force/day/dry need the admin key" });
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: false, note: "kv not configured" });
 
   const today = istDate(istNow());
   const force = q.force === "1", dry = q.dry === "1";
-  const day = q.day !== undefined ? Number(q.day) : trainingDay(today);
+  const dayGlobal = q.day !== undefined ? Number(q.day) : trainingDay(today);
+  const day = dayGlobal;
   const out = { today, day, sent: [], reminders: [], trainer: null, skipped: null };
 
   if (!force && !dry) {
@@ -77,25 +80,41 @@ module.exports = async (req, res) => {
   }
 
   // ---- daily material + tip ----
-  if (day === -1) out.skipped = "Sunday holiday";
-  else if (day >= 1 && day <= 30) {
+  if (day === -1 && q.day === undefined) out.skipped = "Sunday holiday";
+  else {
     for (const s of active) {
+      const sDay = q.day !== undefined ? day : trainingDay(today, s.startISO || docs.BATCH.startISO);
+      if (!(sDay >= 1 && sDay <= 30)) { continue; }          // not started yet / finished / their Sunday
       const track = String(s.course) === "hair" ? "hair" : "skin";
       const tracks = String(s.course) === "both" ? ["skin", "hair"] : [track];
-      const key = `acad:sent:${s.id}:${day}`;
-      if (dry) { out.sent.push({ id: s.id, day, tracks, dry: true }); continue; }
+      const key = `acad:sent:${s.id}:${sDay}`;
+      if (dry) { out.sent.push({ id: s.id, day: sDay, tracks, dry: true }); continue; }
       if (!force) { const nx = await guard.kvCommand(cfg, ["SET", key, "1", "NX", "EX", "5184000"]).catch(() => ({})); if (!nx || !nx.result) continue; }
-      const d0 = DAYS[tracks[0]][day - 1];
-      const dayLine = `📅 *Day ${day} of 30* — ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "short" })}`;
-      await notify.sendWa(s.phone, `${dayLine}\n\n📚 *${d0.t}*\n${d0.te}\n\n🎯 ${d0.obj}\n🖐 ${d0.hands}\n\n💡 *Remember:* ${d0.keys.join(" · ")}\n\n✨ *Tip of the day:* ${d0.tip}\n\nEe roju material PDF ikkada 👇 Class ki mundu okasari chadavandi.\n\n🔒 Ee link mee personal link — share cheyakandi.`);
-      for (const t of tracks) {
-        const dd = DAYS[t][day - 1];
-        await notify.sendWaDocLink(s.phone, MAT(s.id, t, day), `DermaLuxe-${t === "skin" ? "Skin" : "Hair"}-Day-${String(day).padStart(2, "0")}.pdf`,
-          `📄 Day ${day} · ${t === "skin" ? "Skin Care" : "Hair Care"} — ${dd.t}`);
+      try {
+      const d0 = DAYS[tracks[0]][sDay - 1];
+      const dayLine = `📅 *Day ${sDay} of 30* — ${new Date().toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "short" })}`;
+      const opened = await notify.sendWa(s.phone, `${dayLine}\n\n📚 *${d0.t}*\n${d0.te}\n\n🎯 ${d0.obj}\n🖐 ${d0.hands}\n\n💡 *Remember:* ${d0.keys.join(" · ")}\n\n✨ *Tip of the day:* ${d0.tip}\n\nEe roju material PDF ikkada 👇 Class ki mundu okasari chadavandi.\n\n🔒 Ee link mee personal link — share cheyakandi.`);
+      if (!opened) {
+        // 24-hour window shut: park today's material and nudge with an approved template
+        await guard.kvCommand(cfg, ["SET", `acad:pending:${s.id}`, JSON.stringify({ day: sDay, tracks, ts: Date.now() }), "EX", "604800"]).catch(() => {});
+        const first = String(s.name || "Student").trim().split(" ")[0] || "Student";
+        await notify.sendWaTemplate(s.phone, "clinic_update", [first, `Day ${sDay} training material ready undi — 'hi' ani reply cheyandi, ventane pampistam.`]);
+        out.sent.push({ id: s.id, day: sDay, tracks, queued: true });
+        continue;
       }
-      if (day === 1 && s.status !== "active") { s.status = "active"; await guard.kvCommand(cfg, ["SET", `acad:st:${s.id}`, JSON.stringify(s)]).catch(() => {}); }
-      if (day === 30) await notify.sendWa(s.phone, `🎓 *Last day!* Ee roju final practical exam & viva. All the best ${String(s.name || "").split(" ")[0]} garu! 🌟\nPass ayyaka certificate WhatsApp lo vastundi.`);
-      out.sent.push({ id: s.id, day, tracks });
+      for (const t of tracks) {
+        const dd = DAYS[t][sDay - 1];
+        await notify.sendWaDocLink(s.phone, MAT(s.id, t, sDay), `DermaLuxe-${t === "skin" ? "Skin" : "Hair"}-Day-${String(sDay).padStart(2, "0")}.pdf`,
+          `📄 Day ${sDay} · ${t === "skin" ? "Skin Care" : "Hair Care"} — ${dd.t}`);
+      }
+      if (sDay === 1 && s.status !== "active") { s.status = "active"; await guard.kvCommand(cfg, ["SET", `acad:st:${s.id}`, JSON.stringify(s)]).catch(() => {}); }
+      if (sDay === 30) await notify.sendWa(s.phone, `🎓 *Last day!* Ee roju final practical exam & viva. All the best ${String(s.name || "").split(" ")[0]} garu! 🌟\nPass ayyaka certificate WhatsApp lo vastundi.`);
+      out.sent.push({ id: s.id, day: sDay, tracks });
+      } catch (err) {                                   // release the marker so tomorrow's run retries
+        console.error("cron-academy: student", s.id, err && err.message);
+        await guard.kvCommand(cfg, ["DEL", key]).catch(() => {});
+        out.sent.push({ id: s.id, day: sDay, error: (err && err.message) || "failed" });
+      }
     }
   }
 
@@ -107,11 +126,12 @@ module.exports = async (req, res) => {
       if (bal <= 0) continue;
       const key = `acad:rem:${s.id}:${left}`;
       if (dry) { out.reminders.push({ id: s.id, left, bal, dry: true }); continue; }
-      const nx = await guard.kvCommand(cfg, ["SET", key, "1", "NX", "EX", "2592000"]).catch(() => ({}));
-      if (!nx || !nx.result) continue;
+      if (!force) { const nx = await guard.kvCommand(cfg, ["SET", key, "1", "NX", "EX", "2592000"]).catch(() => ({})); if (!nx || !nx.result) continue; }
       const when = left === 0 ? "*ee roju* (course starting day)" : `*${left} roju${left > 1 ? "lu" : ""}* lo`;
-      await notify.sendWa(s.phone, `💰 *Fee reminder — DermaLuxe Academy*\n\n${String(s.name || "").split(" ")[0]} garu, mee balance *₹${bal.toLocaleString("en-IN")}* ${when} pay cheyali.\n\n🆔 ${s.id} · ${docs.course(s).name}\n🗓 Batch ${docs.BATCH.no} — ${docs.BATCH.start}\n\nPayment details ki ikkade reply cheyandi, leda clinic lo direct ga pay cheyochu 😊`);
-      out.reminders.push({ id: s.id, left, bal });
+      const first = String(s.name || "Student").trim().split(" ")[0] || "Student";
+      const okRem = await notify.sendWa(s.phone, `💰 *Fee reminder — DermaLuxe Academy*\n\n${String(s.name || "").split(" ")[0]} garu, mee balance *₹${bal.toLocaleString("en-IN")}* ${when} pay cheyali.\n\n🆔 ${s.id} · ${docs.course(s).name}\n🗓 Batch ${docs.BATCH.no} — ${docs.BATCH.start}\n\nPayment details ki ikkade reply cheyandi, leda clinic lo direct ga pay cheyochu 😊`);
+      if (!okRem) await notify.sendWaTemplate(s.phone, "clinic_update", [first, `Mee academy balance ₹${bal.toLocaleString("en-IN")} ${left === 0 ? "ee roju" : left + " rojullo"} pay cheyali — details ki reply cheyandi.`]);
+      out.reminders.push({ id: s.id, left, bal, viaTemplate: !okRem });
     }
   }
   return res.status(200).json({ ok: true, ...out, students: active.length });

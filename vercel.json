@@ -37,10 +37,13 @@
       "maxDuration": 300
     },
     "api/academy.js": {
-      "maxDuration": 300
+      "maxDuration": 300,
+      "memory": 2048,
+      "includeFiles": "assets/logo.png"
     },
     "api/cron-academy.js": {
-      "maxDuration": 300
+      "maxDuration": 300,
+      "memory": 1024
     },
     "api/doc.js": {
       "maxDuration": 60

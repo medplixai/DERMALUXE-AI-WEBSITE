@@ -73,7 +73,7 @@ module.exports = async (req, res) => {
       let s = null; try { s = r.result ? JSON.parse(r.result) : null; } catch (e) {}
       if (!s) return deny(res, "This link is not valid any more. Please contact the academy team.");
       if (!(Number(s.paid) > 0)) return deny(res, "Your seat payment is not recorded yet. Once the advance is paid, your study material unlocks automatically.");
-      if (String(s.status) === "dropped") return deny(res, "This account is inactive. Please contact the academy team.");
+      if (["dropped", "enquiry"].includes(String(s.status))) return deny(res, "This account is not active for study material. Please contact the academy team.");
       who = { kind: "student", name: s.id, course: s.course };
     }
   }
@@ -89,7 +89,10 @@ module.exports = async (req, res) => {
     else if (book === "skin" || book === "hair") { file = `${book}-trainer-manual.pdf`; nice = `DermaLuxe-Academy-${book === "skin" ? "Skin" : "Hair"}-30-Day-Manual.pdf`; }
   } else {
     const track = q.track === "hair" ? "hair" : "skin";
-    const day = Math.max(1, Math.min(30, Number(q.day || 1)));
+    const dayNum = Number(q.day);
+    if (q.day !== undefined && (!Number.isFinite(dayNum) || dayNum < 1 || dayNum > 30))
+      return deny(res, "That day does not exist — material runs from day 1 to day 30.");
+    const day = Number.isFinite(dayNum) ? Math.max(1, Math.min(30, dayNum)) : 1;
     if (who.kind === "student" && who.course && who.course !== "both" && who.course !== track)
       return deny(res, "This material belongs to the other specialisation. Please open the link sent for your course.");
     file = `${track}-day-${String(day).padStart(2, "0")}.pdf`;
@@ -100,7 +103,13 @@ module.exports = async (req, res) => {
   try {
     const base = dir();
     if (!base) return res.status(500).send("Material bundle unavailable — contact the team");
-    const buf = fs.readFileSync(path.join(base, file));
+    const full = path.join(base, file);
+    const st = fs.statSync(full);
+    if (st.size > 4200000) {                       // Vercel caps a function response at 4.5 MB
+      if (book === "full") return deny(res, "The complete book is too large to send here — please use the Skin and Hair manuals sent to you on WhatsApp.");
+      return res.status(503).send("This file is too large to serve — please contact the academy team.");
+    }
+    const buf = fs.readFileSync(full);
     if (cfg && who.kind === "student") guard.kvCommand(cfg, ["LPUSH", "acad:dl", JSON.stringify({ id: who.name, file, ts: Date.now() })]).then(() => guard.kvCommand(cfg, ["LTRIM", "acad:dl", "0", "999"])).catch(() => {});
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader("Content-Length", String(buf.length));

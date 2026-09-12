@@ -31,20 +31,40 @@ function staffUser(req) {
   try { const u = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")); return u.exp > Date.now() ? { phone: u.p, name: u.n, role: u.r } : null; } catch (e) { return null; }
 }
 
+// A free-form WhatsApp message only delivers inside the 24-hour customer window.
+// Try it; if the window is shut, open it with an approved template so the student
+// replies and the pending item is delivered by api/whatsapp.js.
+async function waSend(cfg, s, text, templateLine) {
+  const first = String(s.name || "Student").trim().split(" ")[0] || "Student";
+  if (await notify.sendWa(s.phone, text)) return true;
+  const t = await notify.sendWaTemplate(s.phone, "clinic_update", [first, String(templateLine || "DermaLuxe Academy nunchi meeku oka update undi — 'hi' ani reply cheyandi.").slice(0, 250)]);
+  return !!(t && t.ok);
+}
 const getSt = async (cfg, id) => { const r = await guard.kvCommand(cfg, ["GET", `acad:st:${id}`]).catch(() => ({})); try { return r.result ? JSON.parse(r.result) : null; } catch (e) { return null; } };
-const putSt = (cfg, s) => guard.kvCommand(cfg, ["SET", `acad:st:${s.id}`, JSON.stringify(s)]);
+async function putSt(cfg, s) {
+  const r = await guard.kvCommand(cfg, ["SET", `acad:st:${s.id}`, JSON.stringify(s)]);
+  if (!r || r.error) throw new Error("Could not save the student record (storage)");
+  if (s.phone) await guard.kvCommand(cfg, ["SET", `acad:ph:${digits10(s.phone)}`, s.id, "EX", "31536000"]).catch(() => {});
+  return r;
+}
 
 async function saveDoc(cfg, b64, kind, name) {
   const id = crypto.randomBytes(16).toString("hex");
-  await guard.kvCommand(cfg, ["SET", `acad:doc:${id}`, JSON.stringify({ t: kind, b: b64, n: name }), "EX", String(DOC_TTL)]);
+  const r = await guard.kvCommand(cfg, ["SET", `acad:doc:${id}`, JSON.stringify({ t: kind, b: b64, n: name }), "EX", String(DOC_TTL)]);
+  if (!r || r.error) throw new Error("Document storage failed for " + name);
   return { id, url: `${BASE}/api/doc?id=${id}`, name };
 }
 // Build + store the documents a student needs. which: receipt|admission|idcard|certificate
 async function buildDocs(cfg, s, which, extra = {}) {
   const jobs = [];
   if (which.includes("receipt")) {
-    const p = extra.payment || { no: `DLA-R-${s.id}`, amount: s.paid || 9999, mode: s.payMode || "UPI", ref: s.payRef || "", label: extra.label || "Seat reservation advance", ts: s.paidOn || Date.now() };
-    jobs.push({ key: "receipt", html: docs.receiptHtml(s, p), kind: "a4", name: `DermaLuxe-Receipt-${s.id}.pdf`, type: "pdf" });
+    const amt = extra.payment ? Number(extra.payment.amount) : Number(s.paid || 0);
+    if (amt > 0) {
+      const seq = (s.payments || []).length || 1;
+      const p = extra.payment || { no: `R-${s.id}-${seq}`, amount: amt, mode: s.payMode || "UPI", ref: s.payRef || "", label: extra.label || "Seat reservation advance", ts: s.paidOn || Date.now() };
+      if (!p.no) p.no = `R-${s.id}-${seq}`;
+      jobs.push({ key: "receipt", html: docs.receiptHtml(s, p), kind: "a4", name: `DermaLuxe-Receipt-${s.id}-${seq}.pdf`, type: "pdf" });
+    }
   }
   if (which.includes("admission")) jobs.push({ key: "admission", html: docs.admissionHtml(s), kind: "a4", name: `DermaLuxe-Admission-${s.id}.pdf`, type: "pdf" });
   if (which.includes("idcard")) jobs.push({ key: "idcard", html: docs.idCardHtml(s), kind: "jpg", w: 454, h: 371, name: `DermaLuxe-IDCard-${s.id}.jpg`, type: "jpg" });
@@ -58,7 +78,7 @@ async function buildDocs(cfg, s, which, extra = {}) {
   return out;
 }
 const adminPhones = () => String(process.env.ADMIN_PHONES || "").split(",").map(digits10).filter((x) => x.length === 10);
-function alertAdmins(text) { for (const ph of adminPhones()) notify.sendWa(ph, text).catch(() => {}); }
+async function alertAdmins(text) { await Promise.allSettled(adminPhones().map((ph) => notify.sendWa(ph, text))); }
 
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -86,6 +106,7 @@ module.exports = async (req, res) => {
     if (!rl.allowed) return json(res, 429, { error: "Too many submissions — try later" });
     const s = await getSt(cfg, id);
     if (!s) return json(res, 404, { error: "Student not found" });
+    if (s.onboarded) return json(res, 409, { error: "Ee form already submit ayindi. Emaina marchalante mana team ki WhatsApp cheyandi." });
     const str = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
     if (!str(b.name, 80) || !/^[6-9]\d{9}$/.test(digits10(b.phone))) return json(res, 400, { error: "Name and a valid 10-digit mobile number are required" });
     Object.assign(s, {
@@ -94,25 +115,27 @@ module.exports = async (req, res) => {
       qualification: str(b.qualification, 80), background: str(b.background, 120), experience: str(b.experience, 40),
       idproof: str(b.idproof, 40), blood: str(b.blood, 6), duration: str(b.duration, 20) || s.duration || "1 month",
       docs: { photo: !!b.docPhoto, id: !!b.docId, qualification: !!b.docQual, experience: !!b.docExp, signed: false },
-      onboarded: Date.now(), status: s.status === "enquiry" ? "enrolled" : (s.status || "enrolled"),
+      status: s.status === "enquiry" ? "enrolled" : (s.status || "enrolled"),
     });
-    if (b.photo && /^data:image\/(jpe?g|png);base64,/.test(String(b.photo)) && String(b.photo).length < 900000) s.photo = String(b.photo);
+    if (b.photo && /^data:image\/(jpe?g|png);base64,/.test(String(b.photo)) && String(b.photo).length < 260000) s.photo = String(b.photo);
     await putSt(cfg, s);
     // documents + WhatsApp delivery (best effort; form must not fail on send errors)
     let built = {};
     try {
       built = await buildDocs(cfg, s, ["receipt", "admission", "idcard"]);
+      s.onboarded = Date.now(); await putSt(cfg, s);
       const c = docs.course(s), bal = Math.max(0, (s.fee || c.offer) - (s.paid || 0));
-      await notify.sendWa(s.phone, `🎓 *Welcome to DermaLuxe Academy, ${s.name.split(" ")[0]}!*\n\nMee onboarding form submit ayindi ✅\n\n📚 Course: *${c.name}* (${s.duration})\n🗓 Batch ${docs.BATCH.no} — starts *${docs.BATCH.start}*\n🆔 Student ID: *${s.id}*\n💰 Paid: ₹${(s.paid || 0).toLocaleString("en-IN")} · Balance: ₹${bal.toLocaleString("en-IN")} (course starting roju)\n\nMee documents ikkada pampistunnanu 👇`);
+      await waSend(cfg, s, `🎓 *Welcome to DermaLuxe Academy, ${s.name.split(" ")[0]}!*\n\nMee onboarding form submit ayindi ✅\n\n📚 Course: *${c.name}* (${s.duration})\n🗓 Batch ${docs.BATCH.no} — starts *${docs.BATCH.start}*\n🆔 Student ID: *${s.id}*\n💰 Paid: ₹${(s.paid || 0).toLocaleString("en-IN")} · Balance: ₹${bal.toLocaleString("en-IN")} (course starting roju)\n\nMee documents ikkada pampistunnanu 👇`, "Mee academy documents ready — 'hi' ani reply cheyandi, receipt & ID card pampistam.");
       if (built.receipt) await notify.sendWaDocLink(s.phone, built.receipt.url, built.receipt.name, "🧾 Payment receipt · రసీదు");
       if (built.admission) await notify.sendWaDocLink(s.phone, built.admission.url, built.admission.name, "📋 Admission form — print chesi sign chesi first day teesukuni randi.\nఅడ్మిషన్ ఫారం — ప్రింట్ చేసి సంతకం చేసి తీసుకురండి.");
       if (built.idcard) await notify.sendWaImageLink(s.phone, built.idcard.url, `🆔 Mee student ID card — ${s.id}. First day ki print chesi teesukuni randi.`);
-      await notify.sendWa(s.phone, `📄 *First day ki teesukuni raavalsinavi:*\n• Signed admission form (print)\n• 2 passport photos\n• Aadhaar/ID proof copy\n• Qualification certificate copy\n• Balance fee ₹${bal.toLocaleString("en-IN")}\n\n📍 ${docs.BRAND.addr}\n🕘 Mon–Sat · Sunday holiday\n\nRoju training material & tips ikkade WhatsApp lo vastayi 📚 Ready ga undandi!`);
+      await waSend(cfg, s, `📄 *First day ki teesukuni raavalsinavi:*\n• Signed admission form (print)\n• 2 passport photos\n• Aadhaar/ID proof copy\n• Qualification certificate copy\n• Balance fee ₹${bal.toLocaleString("en-IN")}\n\n📍 ${docs.BRAND.addr}\n🕘 Mon–Sat · Sunday holiday\n\nRoju training material & tips ikkade WhatsApp lo vastayi 📚 Ready ga undandi!`, "First day checklist pampanu — 'hi' ani reply cheyandi.");
     } catch (e) {
       console.error("academy: docs/send", e && e.message);
-      alertAdmins(`⚠️ *Academy: documents failed*\n${s.name} (${s.phone}) · ID ${s.id}\nForm submit ayindi kani receipt/admission/ID card generate avvaledu.\nError: ${(e && e.message) || "unknown"}\nDashboard → Students → "Resend docs" tho malli try cheyandi.`);
+      s.docsPending = true; await putSt(cfg, s).catch(() => {});
+      await alertAdmins(`⚠️ *Academy: documents failed*\n${s.name} (${s.phone}) · ID ${s.id}\nForm submit ayindi kani receipt/admission/ID card generate avvaledu.\nError: ${(e && e.message) || "unknown"}\nDashboard → Students → "Resend docs" tho malli try cheyandi.`);
     }
-    alertAdmins(`🎓 *Academy onboarding complete*\n${s.name} (${s.phone}) · ${docs.course(s).name} · ID ${s.id}\nPaid ₹${(s.paid || 0).toLocaleString("en-IN")} · Balance ₹${Math.max(0, (s.fee || docs.course(s).offer) - (s.paid || 0)).toLocaleString("en-IN")}`);
+    await alertAdmins(`🎓 *Academy onboarding complete*\n${s.name} (${s.phone}) · ${docs.course(s).name} · ID ${s.id}\nPaid ₹${(s.paid || 0).toLocaleString("en-IN")} · Balance ₹${Math.max(0, (s.fee || docs.course(s).offer) - (s.paid || 0)).toLocaleString("en-IN")}`);
     return json(res, 200, { ok: true, id: s.id, files: built });
   }
 
@@ -120,10 +143,17 @@ module.exports = async (req, res) => {
   const me = staffUser(req);
   if (!me) return json(res, 401, { error: "Login required" });
   if (a === "list") {
+    const rl0 = await guard.rateLimit(cfg, `rl:acl:${me.phone}`, 120, 3600);
+    if (!rl0.allowed) return json(res, 429, { error: "Too many requests" });
     const r = await guard.kvCommand(cfg, ["LRANGE", LIST, "0", "299"]).catch(() => ({}));
-    const ids = r.result || [];
     const students = [];
-    for (const id of ids) { const s = await getSt(cfg, id); if (s) students.push(s); }
+    for (const id of (r.result || [])) {
+      const s = await getSt(cfg, id);
+      if (!s) continue;
+      students.push({ id: s.id, name: s.name, phone: s.phone, course: s.course, duration: s.duration, status: s.status,
+        fee: s.fee, paid: s.paid, batch: s.batch, created: s.created, onboarded: s.onboarded, startISO: s.startISO,
+        certNo: s.certNo, grade: s.grade, docsPending: !!s.docsPending, notes: (s.notes || []).slice(0, 3) });
+    }
     return json(res, 200, { ok: true, students, batch: docs.BATCH, courses: docs.COURSES });
   }
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
@@ -134,18 +164,30 @@ module.exports = async (req, res) => {
     const name = String(b.name || "").trim().slice(0, 80), phone = digits10(b.phone);
     const cKey = ["skin", "hair", "both"].includes(String(b.course)) ? String(b.course) : "skin";
     if (!name || !/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Name + valid 10-digit mobile required" });
-    const seq = await guard.kvCommand(cfg, ["INCR", "acad:seq"]).catch(() => ({ result: Date.now() % 10000 }));
-    const id = "DLA-" + String(1000 + Number(seq.result || 1)).slice(-4);
     const c = docs.COURSES[cKey];
-    const s = { id, name, phone, course: cKey, duration: String(b.duration || "1 month"), fee: Number(b.fee || c.offer),
-      paid: Number(b.paid || 0), paidOn: b.paid ? Date.now() : null, payMode: String(b.payMode || "UPI"), payRef: String(b.payRef || "").slice(0, 40),
-      status: "enrolled", batch: docs.BATCH.no, created: Date.now(), createdBy: me.name, joined: Date.now(), validTill: "31 Dec 2026", files: {} };
+    const num = (v, d) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : d; };
+    let id = "";
+    for (let i = 0; i < 6 && !id; i++) {
+      const seq = await guard.kvCommand(cfg, ["INCR", "acad:seq"]).catch(() => ({}));
+      const cand = "DLA-" + String(1000 + Number(seq && seq.result ? seq.result : Math.floor(Math.random() * 8999) + 1)).slice(-4);
+      if (!(await getSt(cfg, cand))) id = cand;
+    }
+    if (!id) return json(res, 500, { error: "Could not allocate a student ID — try again" });
+    const paid0 = Math.min(num(b.paid, 0), 1000000);
+    const s = { id, name, phone, course: cKey, duration: String(b.duration || "1 month"), fee: num(b.fee, c.offer),
+      paid: paid0, paidOn: paid0 ? Date.now() : null, payMode: String(b.payMode || "UPI"), payRef: String(b.payRef || "").slice(0, 40),
+      payments: paid0 ? [{ amount: paid0, mode: String(b.payMode || "UPI"), ref: String(b.payRef || "").slice(0, 40), ts: Date.now(), by: me.name }] : [],
+      status: "enrolled", batch: docs.BATCH.no, startISO: String(b.startISO || docs.BATCH.startISO),
+      created: Date.now(), createdBy: me.name, joined: Date.now(), validTill: "31 Dec 2026", files: {} };
     await putSt(cfg, s);
     await guard.kvCommand(cfg, ["LPUSH", LIST, id]);
     const url = `${BASE}/academy-join.html?t=${linkToken(id)}`;
     const bal = Math.max(0, s.fee - s.paid);
-    await notify.sendWa(phone, `🎓 *Welcome to DermaLuxe Academy!*\n\n${name} garu, mee seat ${docs.COURSES[cKey].name} (${s.duration}) ki reserve ayindi ✅\n🆔 Student ID: *${id}*\n🗓 Batch ${docs.BATCH.no} — starts *${docs.BATCH.start}*\n💰 Paid ₹${s.paid.toLocaleString("en-IN")} · Balance ₹${bal.toLocaleString("en-IN")} (course starting roju)\n\n📝 *Onboarding form fill cheyandi* (2 nimishalu):\n${url}\n\nForm submit chesaka receipt, admission form, ID card anni ikkade vastayi 📄`);
-    if (s.paid > 0) { try { const f = await buildDocs(cfg, s, ["receipt"]); if (f.receipt) await notify.sendWaDocLink(phone, f.receipt.url, f.receipt.name, "🧾 Advance payment receipt · రసీదు"); } catch (e) { console.error("receipt", e && e.message); } }
+    await waSend(cfg, s, `🎓 *Welcome to DermaLuxe Academy!*\n\n${name} garu, mee seat ${docs.COURSES[cKey].name} (${s.duration}) ki reserve ayindi ✅\n🆔 Student ID: *${id}*\n🗓 Batch ${docs.BATCH.no} — starts *${docs.BATCH.start}*\n💰 Paid ₹${s.paid.toLocaleString("en-IN")} · Balance ₹${bal.toLocaleString("en-IN")} (course starting roju)\n\n📝 *Onboarding form fill cheyandi* (2 nimishalu):\n${url}\n\nForm submit chesaka receipt, admission form, ID card anni ikkade vastayi 📄`, `Mee academy seat confirm ayindi (ID ${id}). Onboarding form fill cheyadaniki 'hi' ani reply cheyandi.`);
+    if (s.paid > 0) {
+      try { const f = await buildDocs(cfg, s, ["receipt"]); if (f.receipt) await notify.sendWaDocLink(phone, f.receipt.url, f.receipt.name, "🧾 Advance payment receipt · రసీదు"); }
+      catch (e) { console.error("receipt", e && e.message); await alertAdmins(`⚠️ Academy: receipt generate avvaledu — ${s.name} (${s.id}). Dashboard lo "Resend docs" try cheyandi.`); }
+    }
     return json(res, 200, { ok: true, student: s, formUrl: url });
   }
 
@@ -158,14 +200,26 @@ module.exports = async (req, res) => {
     s.paid = Number(s.paid || 0) + amt; s.paidOn = Date.now(); s.payMode = String(b.mode || s.payMode || "UPI"); s.payRef = String(b.ref || "").slice(0, 40);
     s.payments = (s.payments || []).concat([{ amount: amt, mode: s.payMode, ref: s.payRef, ts: Date.now(), by: me.name }]);
     if (s.paid >= (s.fee || 0)) s.feeCleared = true;
-    await putSt(cfg, s);
-    const f = await buildDocs(cfg, s, ["receipt"], { payment: { no: `DLA-R-${s.id}-${s.payments.length}`, amount: amt, mode: s.payMode, ref: s.payRef, label: b.label || (s.feeCleared ? "Course fee (balance)" : "Part payment"), ts: Date.now() } });
-    if (f.receipt) await notify.sendWaDocLink(s.phone, f.receipt.url, f.receipt.name, `🧾 Receipt — ₹${amt.toLocaleString("en-IN")} received. ${s.feeCleared ? "Fee fully paid ✅" : "Balance ₹" + Math.max(0, s.fee - s.paid).toLocaleString("en-IN")}`);
-    return json(res, 200, { ok: true, student: s, receipt: f.receipt });
+    await putSt(cfg, s);                       // money is recorded first and never lost
+    let receipt = null, warn = null;
+    try {
+      const f = await buildDocs(cfg, s, ["receipt"], { payment: { no: `R-${s.id}-${s.payments.length}`, amount: amt, mode: s.payMode, ref: s.payRef, label: b.label || (s.feeCleared ? "Course fee (balance)" : "Part payment"), ts: Date.now() } });
+      receipt = f.receipt || null;
+      if (receipt) await notify.sendWaDocLink(s.phone, receipt.url, receipt.name, `🧾 Receipt — ₹${amt.toLocaleString("en-IN")} received. ${s.feeCleared ? "Fee fully paid ✅" : "Balance ₹" + Math.max(0, s.fee - s.paid).toLocaleString("en-IN")}`);
+    } catch (e) {
+      console.error("academy: pay receipt", e && e.message);
+      warn = "Payment record ayindi ✅ kani receipt generate avvaledu — 'Resend docs' tho malli try cheyandi.";
+    }
+    return json(res, 200, { ok: true, student: s, receipt, warn });
   }
   if (a === "send") {
-    const which = Array.isArray(b.which) ? b.which : [String(b.which || "admission")];
-    const f = await buildDocs(cfg, s, which);
+    const ALLOW = ["receipt", "admission", "idcard", "certificate"];
+    const raw = Array.isArray(b.which) ? b.which : [b.which || "admission"];
+    const which = raw.map((x) => String(x)).filter((x) => ALLOW.includes(x));
+    if (!which.length) return json(res, 400, { error: "which must be one of " + ALLOW.join(", ") });
+    let f;
+    try { f = await buildDocs(cfg, s, which); }
+    catch (e) { console.error("academy: send", e && e.message); return json(res, 200, { ok: false, warn: "Documents generate avvaledu — konchem sepu tarvata malli try cheyandi." }); }
     for (const k of which) {
       const d = f[k]; if (!d) continue;
       if (k === "idcard") await notify.sendWaImageLink(s.phone, d.url, `🆔 Mee student ID card — ${s.id}`);
@@ -179,9 +233,11 @@ module.exports = async (req, res) => {
     s.certNo = `DLA/2026/${String(1000 + Number(seq.result || 1)).slice(-4)}`;
     s.grade = String(b.grade || "A").slice(0, 3); s.issued = Date.now(); s.status = "completed";
     await putSt(cfg, s);
-    const f = await buildDocs(cfg, s, ["certificate"]);
+    let f = {};
+    try { f = await buildDocs(cfg, s, ["certificate"]); }
+    catch (e) { console.error("academy: certify", e && e.message); return json(res, 200, { ok: false, student: s, warn: "Certificate generate avvaledu — malli try cheyandi." }); }
     if (f.certificate) {
-      await notify.sendWa(s.phone, `🎉 *Congratulations ${s.name.split(" ")[0]} garu!*\n\nMeeru ${docs.course(s).name} course successfully complete chesaru 🎓\nCertificate No: *${s.certNo}* · Grade: *${s.grade}*\n\nMee certificate ikkada 👇`);
+      await waSend(cfg, s, `🎉 *Congratulations ${s.name.split(" ")[0]} garu!*\n\nMeeru ${docs.course(s).name} course successfully complete chesaru 🎓\nCertificate No: *${s.certNo}* · Grade: *${s.grade}*\n\nMee certificate ikkada 👇`, "Mee DermaLuxe Academy certificate ready — 'hi' ani reply cheyandi.");
       await notify.sendWaDocLink(s.phone, f.certificate.url, f.certificate.name, "🎓 DermaLuxe Academy — Certificate of Completion");
       await notify.sendWa(s.phone, `💼 Job opportunities mana clinics lo unnayi — interested ayithe ikkade reply cheyandi.\nAlumni group lo kotha protocols, refresher sessions & job openings share chestam. All the best! 🌟`);
     }
@@ -206,6 +262,10 @@ module.exports = async (req, res) => {
     const t = String(b.text || "").trim().slice(0, 300);
     if (t) { s.notes = [{ ts: Date.now(), by: me.name, text: t }].concat(s.notes || []).slice(0, 30); await putSt(cfg, s); }
     return json(res, 200, { ok: true, notes: s.notes || [] });
+  }
+  if (a === "reopen") {                         // let a student fill the form again
+    s.onboarded = 0; await putSt(cfg, s);
+    return json(res, 200, { ok: true, url: `${BASE}/academy-join.html?t=${linkToken(s.id)}` });
   }
   if (a === "delete") {
     if (me.role !== "owner") return json(res, 403, { error: "Owner only" });

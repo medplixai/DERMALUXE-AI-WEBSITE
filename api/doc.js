@@ -15,7 +15,8 @@ module.exports = async (req, res) => {
     res.setHeader("Content-Type", rec.t === "jpg" ? "image/jpeg" : "application/pdf");
     res.setHeader("Content-Length", String(buf.length));
     res.setHeader("Content-Disposition", `inline; filename="${(rec.n || "dermaluxe").replace(/[^\w.\-]/g, "_")}"`);
-    res.setHeader("Cache-Control", "public, max-age=604800, immutable");
+    res.setHeader("Cache-Control", "private, max-age=86400");
+    res.setHeader("X-Robots-Tag", "noindex, nofollow");
     return res.status(200).end(buf);
   } catch (e) {
     return res.status(500).send("error");

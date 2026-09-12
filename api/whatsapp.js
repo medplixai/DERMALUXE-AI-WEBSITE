@@ -581,6 +581,32 @@ async function academyCtx(cfg, hist, text) {
     return `[ACADEMY SEATS STATUS: booked ${booked}/10, seats left ${left}; launch offer ends 30 Sep 2026 (${days} days left); batch starts 20 Oct 2026] `;
   } catch (e) { return ""; }
 }
+// Material parked by cron-academy while the 24-hour window was shut: the moment
+// the student writes to us, deliver it.
+async function flushPendingMaterial(cfg, cloud) {
+  if (!cfg) return false;
+  const digits = String(cloud.to || "").replace(/\D/g, "").slice(-10);
+  if (digits.length !== 10) return false;
+  try {
+    const idr = await guard.kvCommand(cfg, ["GET", `acad:ph:${digits}`]);
+    const id = idr && idr.result ? String(idr.result) : "";
+    if (!id) return false;
+    const pr = await guard.kvCommand(cfg, ["GET", `acad:pending:${id}`]);
+    if (!pr || !pr.result) return false;
+    let pend; try { pend = JSON.parse(pr.result); } catch (e) { return false; }
+    await guard.kvCommand(cfg, ["DEL", `acad:pending:${id}`]).catch(() => {});
+    const secret = process.env.STAFF_SECRET || process.env.ADMIN_KEY || process.env.WA_WEBHOOK_TOKEN || "";
+    const tok = `${id}.${require("crypto").createHmac("sha256", secret).update("acad:" + id).digest("hex").slice(0, 24)}`;
+    for (const t of (pend.tracks || ["skin"])) {
+      const url = `https://www.dermaluxe.ai/api/material?t=${encodeURIComponent(tok)}&track=${t}&day=${pend.day}`;
+      await sendCloudDocument(cloud.phoneNumberId, cloud.to, url,
+        `DermaLuxe-${t === "skin" ? "Skin" : "Hair"}-Day-${String(pend.day).padStart(2, "0")}.pdf`,
+        `📄 Day ${pend.day} study material — ${t === "skin" ? "Skin Care" : "Hair Care"}.\n🔒 Mee personal link, share cheyakandi.`);
+    }
+    return true;
+  } catch (e) { console.error("wa: pending material", e && e.message); return false; }
+}
+
 // Academy enquiry → send the course catalog PDF once per number per 30 days.
 async function maybeSendCatalog(cfg, cloud, out, text) {
   const wants = out.send_catalog === true || ACADEMY_ASK.test(String(text || "")) || /^academy/i.test(String((out.lead && out.lead.concern) || ""));
@@ -1213,6 +1239,8 @@ module.exports = async (req, res) => {
     }
     // Academy enquiry → course catalog PDF (once per number).
     try { await maybeSendCatalog(cfg, cloud, out, text); } catch (e) { console.error("wa: catalog send", e && e.message); }
+    // Enrolled student wrote to us → hand over any material we could not deliver earlier.
+    try { await flushPendingMaterial(cfg, cloud); } catch (e) { console.error("wa: pending", e && e.message); }
     return res.status(200).json({ ok: true });
   }
   return twiml(res, out.reply);
