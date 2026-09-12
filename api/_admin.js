@@ -573,6 +573,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• daily post now — AI poster ippude post · daily on/off · daily status · daily topics",
       "• academy status · academy booked <n> — training seats target (10)",
       "• staff list · staff add <number> <name> [owner] · staff remove <number> · staff password <pwd> — dashboard access",
+      "• templates · templates create — WhatsApp template approval status / submit",
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
@@ -599,6 +600,41 @@ async function handle(cfg, digits, text, photo, video) {
     const menuRows = ["report", "weekly", "funnel", "reviews", "referrals", "appointments", "checkups", "blocks", "results", "insta report", "leads report", "leads report week", "ideas", "queue", "campaigns"];
     if (owner) menuRows.splice(4, 0, "marketing report");
     return { text: lines.join("\n"), menuRows };
+  }
+
+  // ---- WhatsApp message templates (wa-setup.js) --------------------------
+  // templates · templates create · templates academy
+  let tm;
+  if ((tm = t.match(/^templates?(?:\s+(create|status|academy|list))?$/i))) {
+    if (!owner) return "🔒 Owner matrame.";
+    const sub = (tm[1] || "list").toLowerCase();
+    const u = new URL("https://www.dermaluxe.ai/api/wa-setup");
+    u.searchParams.set("key", process.env.ADMIN_KEY || "");
+    if (sub === "create" || sub === "academy") u.searchParams.set("action", "create");
+    try {
+      const r = await fetch(u.toString(), { headers: { "x-admin-key": process.env.ADMIN_KEY || "" } });
+      const d = await r.json().catch(() => ({}));
+      if (sub === "create" || sub === "academy") {
+        const rows = (d.created || []).filter((x) => sub !== "academy" || /^academy/.test(x.name));
+        const ok = rows.filter((x) => x.ok), bad = rows.filter((x) => !x.ok);
+        const lines = [`📤 *Templates submit chesanu* — ${ok.length} pampam, ${bad.length} fail/already`];
+        ok.forEach((x) => lines.push(`✅ ${x.name} — review lo (Meta 1-24 gantalu teesukuntundi)`));
+        bad.slice(0, 8).forEach((x) => lines.push(`⚠️ ${x.name} — ${String(x.resp).slice(0, 90)}`));
+        lines.push("", "Status chudataniki: *templates*");
+        return lines.join("\n");
+      }
+      const tpl = d.templates || [];
+      const by = { APPROVED: [], PENDING: [], REJECTED: [] };
+      tpl.forEach((x) => (by[x.status] || (by[x.status] = [])).push(x));
+      const lines = [`📋 *WhatsApp templates* — ${tpl.length} total`];
+      if (d.account) lines.push(`Account review: ${d.account.account_review_status || "—"} · Business verification: ${d.account.business_verification_status || "—"}`);
+      lines.push("", `✅ Approved: ${(by.APPROVED || []).length}`, `⏳ Pending: ${(by.PENDING || []).length}`, `❌ Rejected: ${(by.REJECTED || []).length}`);
+      const acad = tpl.filter((x) => /^academy/.test(x.name));
+      if (acad.length) { lines.push("", "*Academy templates:*"); acad.forEach((x) => lines.push(`${x.status === "APPROVED" ? "✅" : x.status === "REJECTED" ? "❌" : "⏳"} ${x.name} — ${x.status}${x.rejected_reason ? " (" + x.rejected_reason + ")" : ""}`)); }
+      else lines.push("", "Academy templates inka create cheyaledu — *templates create* ani pampandi.");
+      (by.REJECTED || []).slice(0, 5).forEach((x) => lines.push(`❌ ${x.name}: ${x.rejected_reason || "—"}`));
+      return lines.join("\n");
+    } catch (e) { return "Templates check cheyaleka poyanu: " + String((e && e.message) || e).slice(0, 90); }
   }
 
   // ---- Staff dashboard team (staff.html) ---------------------------------

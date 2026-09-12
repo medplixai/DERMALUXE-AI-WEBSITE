@@ -272,6 +272,88 @@ const TEMPLATES = [
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
     ],
   },
+  // ---- DermaLuxe Academy (student lifecycle) ----------------------------
+  // All UTILITY: they are sent only to enrolled students about a course they
+  // have paid for. Each carries a dynamic URL button so the student gets the
+  // file even when the 24-hour service window is closed.
+  {
+    name: "academy_welcome",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      { type: "BODY",
+        text: "Hi {{1}}! Mee DermaLuxe Academy seat confirm ayindi.\n\nStudent ID: {{2}}\nCourse: {{3}}\nBatch starts: {{4}}\n\nOnboarding form fill cheyandi — kinda button nokkandi. Form submit chesaka receipt, admission form mariyu ID card ikkade vastayi.",
+        example: { body_text: [["Priya", "DLA-1042", "Advanced Skin Care Treatments", "20 October 2026"]] } },
+      { type: "FOOTER", text: "DermaLuxe Academy, Eluru" },
+      { type: "BUTTONS", buttons: [
+        { type: "URL", text: "Open form", url: "https://www.dermaluxe.ai/academy-join.html?t={{1}}", example: ["https://www.dermaluxe.ai/academy-join.html?t=DLA-1042.ab12cd34ef56"] },
+      ] },
+    ],
+  },
+  {
+    name: "academy_daily_material",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      { type: "BODY",
+        text: "Hi {{1}}! Day {{2}} of 30 — {{3}}\n\nEe roju study material ready undi. Kinda button nokki mee PDF download cheskondi. Class ki mundu okasari chadavandi.",
+        example: { body_text: [["Priya", "5", "Cleansing, exfoliation and the basic facial protocol"]] } },
+      { type: "FOOTER", text: "Mee personal link — share cheyakandi" },
+      { type: "BUTTONS", buttons: [
+        { type: "URL", text: "Open material", url: "https://www.dermaluxe.ai/api/material?k={{1}}", example: ["https://www.dermaluxe.ai/api/material?k=DLA-1042.ab12cd34ef56~skin~5"] },
+      ] },
+    ],
+  },
+  {
+    name: "academy_document",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      { type: "BODY",
+        text: "Hi {{1}}! Mee DermaLuxe Academy {{2}} ready ayindi.\n\nStudent ID: {{3}}\n\nKinda button nokki download cheskondi. Admission form aithe print chesi, sign chesi first day teesukuni randi.",
+        example: { body_text: [["Priya", "admission form", "DLA-1042"]] } },
+      { type: "FOOTER", text: "DermaLuxe Academy, Eluru" },
+      { type: "BUTTONS", buttons: [
+        { type: "URL", text: "Open document", url: "https://www.dermaluxe.ai/api/doc?id={{1}}", example: ["https://www.dermaluxe.ai/api/doc?id=9f2c1a7b4e6d8c0a"] },
+      ] },
+    ],
+  },
+  {
+    name: "academy_fee_reminder",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      { type: "BODY",
+        text: "Hi {{1}}! DermaLuxe Academy fee reminder.\n\nStudent ID: {{2}}\nBalance: {{3}}\nDue: {{4}}\n\nPayment details kavalante ee message ki reply cheyandi, leda clinic lo direct ga pay cheyochu.",
+        example: { body_text: [["Priya", "DLA-1042", "Rs 40,000", "20 October 2026 (course starting day)"]] } },
+      { type: "FOOTER", text: "DermaLuxe Academy, Eluru" },
+    ],
+  },
+  {
+    name: "academy_certificate",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      { type: "BODY",
+        text: "Congratulations {{1}}! Meeru {{2}} course successfully complete chesaru.\n\nCertificate No: {{3}}\nGrade: {{4}}\n\nMee certificate kinda button lo undi. Job opportunities kosam ee message ki reply cheyandi.",
+        example: { body_text: [["Priya", "Advanced Skin Care Treatments", "DLA/2026/0042", "A"]] } },
+      { type: "FOOTER", text: "DermaLuxe Academy, Eluru" },
+      { type: "BUTTONS", buttons: [
+        { type: "URL", text: "Open certificate", url: "https://www.dermaluxe.ai/api/doc?id={{1}}", example: ["https://www.dermaluxe.ai/api/doc?id=9f2c1a7b4e6d8c0a"] },
+      ] },
+    ],
+  },
+  {
+    name: "academy_batch_update",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      { type: "BODY",
+        text: "Hi {{1}}! DermaLuxe Academy batch update:\n\n{{2}}\n\nEdaina doubt unte ee message ki reply cheyandi.",
+        example: { body_text: [["Priya", "Repu class 10 AM ki shift ayindi — PRP practical session undi, scrubs teesukuni randi."]] } },
+      { type: "FOOTER", text: "DermaLuxe Academy, Eluru" },
+    ],
+  },
 ];
 
 // Meta's generic "Invalid parameter" hides the useful part — surface it.

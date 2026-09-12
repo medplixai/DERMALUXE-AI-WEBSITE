@@ -58,6 +58,14 @@ module.exports = async (req, res) => {
   }
   if (!secret()) return deny(res, "Material access is not configured yet.");
   const cfg = guard.kvConfig();
+  // k=<token>~<track>~<day>  — one value, so a WhatsApp dynamic URL button can carry it
+  if (q.k && !q.t) {
+    const parts = String(q.k).split("~");
+    q.t = parts[0] || "";
+    if (parts[1] === "skin" || parts[1] === "hair") q.track = parts[1];
+    else if (parts[1] === "full" || parts[1] === "bskin" || parts[1] === "bhair") q.book = parts[1].replace(/^b/, "");
+    if (parts[2]) q.day = parts[2];
+  }
   const t = String(q.t || "");
   const [id, sig] = t.split(".");
   let who = null;

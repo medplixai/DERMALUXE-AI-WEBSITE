@@ -98,7 +98,9 @@ module.exports = async (req, res) => {
         // 24-hour window shut: park today's material and nudge with an approved template
         await guard.kvCommand(cfg, ["SET", `acad:pending:${s.id}`, JSON.stringify({ day: sDay, tracks, ts: Date.now() }), "EX", "604800"]).catch(() => {});
         const first = String(s.name || "Student").trim().split(" ")[0] || "Student";
-        await notify.sendWaTemplate(s.phone, "clinic_update", [first, `Day ${sDay} training material ready undi — 'hi' ani reply cheyandi, ventane pampistam.`]);
+        const suffix = `${tokenFor(s.id)}~${tracks[0]}~${sDay}`;
+        await notify.sendAcademyTemplate(s.phone, "academy_daily_material", [first, String(sDay), d0.t], suffix,
+          `Day ${sDay} training material ready undi — 'hi' ani reply cheyandi, ventane pampistam.`);
         out.sent.push({ id: s.id, day: sDay, tracks, queued: true });
         continue;
       }
@@ -130,7 +132,9 @@ module.exports = async (req, res) => {
       const when = left === 0 ? "*ee roju* (course starting day)" : `*${left} roju${left > 1 ? "lu" : ""}* lo`;
       const first = String(s.name || "Student").trim().split(" ")[0] || "Student";
       const okRem = await notify.sendWa(s.phone, `💰 *Fee reminder — DermaLuxe Academy*\n\n${String(s.name || "").split(" ")[0]} garu, mee balance *₹${bal.toLocaleString("en-IN")}* ${when} pay cheyali.\n\n🆔 ${s.id} · ${docs.course(s).name}\n🗓 Batch ${docs.BATCH.no} — ${docs.BATCH.start}\n\nPayment details ki ikkade reply cheyandi, leda clinic lo direct ga pay cheyochu 😊`);
-      if (!okRem) await notify.sendWaTemplate(s.phone, "clinic_update", [first, `Mee academy balance ₹${bal.toLocaleString("en-IN")} ${left === 0 ? "ee roju" : left + " rojullo"} pay cheyali — details ki reply cheyandi.`]);
+      if (!okRem) await notify.sendAcademyTemplate(s.phone, "academy_fee_reminder",
+        [first, s.id, `Rs ${bal.toLocaleString("en-IN")}`, left === 0 ? `${docs.BATCH.start} (course starting day)` : `${docs.BATCH.start} — ${left} roju${left > 1 ? "lu" : ""} lo`], null,
+        `Mee academy balance Rs ${bal.toLocaleString("en-IN")} ${left === 0 ? "ee roju" : left + " rojullo"} pay cheyali — details ki reply cheyandi.`);
       out.reminders.push({ id: s.id, left, bal, viaTemplate: !okRem });
     }
   }

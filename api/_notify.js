@@ -38,7 +38,8 @@ async function sendWa(digits, text) {
 
 // Template message send (works OUTSIDE the 24h window — reminders/broadcasts).
 // params = array of strings for {{1}}, {{2}}... in the template body.
-async function sendWaTemplate(digits, templateName, params, lang) {
+// params: body variables. opts.urlSuffix: value for a dynamic URL button ({{1}} at the end of the link).
+async function sendWaTemplate(digits, templateName, params, lang, opts) {
   const token = process.env.WA_CLOUD_TOKEN;
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
   const to = String(digits || "").replace(/\D/g, "").slice(-10);
@@ -49,10 +50,12 @@ async function sendWaTemplate(digits, templateName, params, lang) {
       template: {
         name: templateName,
         language: { code: lang || "en" },
-        components: params && params.length ? [{
-          type: "body",
-          parameters: params.map((v) => ({ type: "text", text: String(v).slice(0, 500) })),
-        }] : [],
+        components: (() => {
+          const c = [];
+          if (params && params.length) c.push({ type: "body", parameters: params.map((v) => ({ type: "text", text: String(v).slice(0, 500) })) });
+          if (opts && opts.urlSuffix) c.push({ type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: String(opts.urlSuffix).slice(0, 200) }] });
+          return c;
+        })(),
       },
     };
     const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
@@ -203,6 +206,17 @@ async function leadAlert(cfg, lead) {
 }
 
 
+// Academy notifications. Tries the dedicated UTILITY template (delivers even
+// when the 24-hour window is shut); falls back to clinic_update while the new
+// templates are still in Meta review.
+async function sendAcademyTemplate(digits, name, params, urlSuffix, fallbackLine) {
+  const first = String((params && params[0]) || "Student");
+  let out = await sendWaTemplate(digits, name, params, "en", urlSuffix ? { urlSuffix } : undefined);
+  if (out && out.ok) return { ok: true, via: name };
+  out = await sendWaTemplate(digits, "clinic_update", [first, String(fallbackLine || "DermaLuxe Academy nunchi update — 'hi' ani reply cheyandi.").slice(0, 250)]);
+  return { ok: !!(out && out.ok), via: out && out.ok ? "clinic_update" : "none" };
+}
+
 // Instagram/Messenger → WhatsApp handoff: the moment a DM lead gives a valid
 // mobile number, open a WhatsApp thread with them via an approved template so
 // the WhatsApp agent (slots, reminders, follow-ups) takes over. Once per
@@ -225,4 +239,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, sendWa, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, waHandoff };
+module.exports = { leadAlert, sendWa, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
