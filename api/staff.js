@@ -42,8 +42,25 @@ async function users(cfg) {
   else if (a && typeof a === "object") { for (const k of Object.keys(a)) { try { out[k] = JSON.parse(a[k]); } catch (e) {} } }
   return out;
 }
+function ownerPhones() {
+  return Array.from(new Set(phones(process.env.ADMIN_PHONES).concat(phones(process.env.STAFF_OWNERS || "9010427777"))));
+}
+// Shared dashboard password (optional). Set by the owner from WhatsApp:
+// "staff password <new password>"  → scrypt hash in KV (never stored in plain).
+// Fallback: STAFF_PASSWORD env var.
+function scrypt(pwd, salt) { return crypto.scryptSync(String(pwd), String(salt), 32).toString("hex"); }
+async function checkPassword(cfg, pwd) {
+  if (!pwd) return false;
+  const r = await guard.kvCommand(cfg, ["GET", "staff:pwd"]).catch(() => ({}));
+  if (r && r.result) {
+    try { const rec = JSON.parse(r.result); return guard.safeEqual(scrypt(pwd, rec.salt), rec.hash); } catch (e) { return false; }
+  }
+  const env = process.env.STAFF_PASSWORD;
+  return env ? guard.safeEqual(String(pwd), env) : null; // null = no password configured
+}
+
 async function resolveUser(cfg, phone) {
-  const owners = phones(process.env.ADMIN_PHONES);
+  const owners = ownerPhones();
   if (owners.includes(phone)) return { phone, name: "Owner", role: "owner" };
   const u = (await users(cfg))[phone];
   if (u) return { phone, name: u.name || "Staff", role: u.role === "owner" ? "owner" : "staff" };
@@ -85,7 +102,7 @@ async function dataPayload(cfg, me) {
   const queue = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const reviews = (rv.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const team = me.role === "owner" ? await users(cfg) : null;
-  return { me, leads, statuses: STATUSES, appts, academy: { booked, left: 10 - booked, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: me.role === "owner" ? phones(process.env.ADMIN_PHONES) : undefined, ts: now };
+  return { me, leads, statuses: STATUSES, appts, academy: { booked, left: 10 - booked, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: me.role === "owner" ? ownerPhones() : undefined, ts: now };
 }
 
 module.exports = async (req, res) => {
@@ -98,6 +115,21 @@ module.exports = async (req, res) => {
   const ip = guard.getIp(req);
 
   // ---- login ----
+  if (a === "login") {
+    if (req.method !== "POST") return json(res, 405, { error: "POST" });
+    const phone = digits10(b.phone), pwd = String(b.password || "");
+    if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit mobile number ivvandi" });
+    const rlIp = await guard.rateLimit(cfg, `rl:stp:${ip}`, 20, 3600);
+    const rlPh = await guard.rateLimit(cfg, `rl:stp:p:${phone}`, 10, 3600);
+    if (!rlIp.allowed || !rlPh.allowed) return json(res, 429, { error: "Too many attempts — 1 gantha tarvata try cheyandi (leda OTP vadandi)" });
+    const u = await resolveUser(cfg, phone);
+    if (!u) return json(res, 403, { error: "Ee number staff list lo ledu. Owner ni adagandi." });
+    const ok = await checkPassword(cfg, pwd);
+    if (ok === null) return json(res, 501, { error: "Password inka set cheyaledu — OTP tho login cheyandi (owner: WhatsApp lo 'staff password <new password>')" });
+    if (!ok) return json(res, 401, { error: "Password tappu" });
+    await guard.kvCommand(cfg, ["HSET", "staff:lastlogin", phone, String(Date.now())]).catch(() => {});
+    return json(res, 200, { ok: true, token: makeToken(u), me: u });
+  }
   if (a === "send") {
     if (req.method !== "POST") return json(res, 405, { error: "POST" });
     const phone = digits10(b.phone);
@@ -177,6 +209,14 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify({ name, role: b.role === "owner" ? "owner" : "staff", added: Date.now(), by: me.phone })]);
     notify.sendWa(phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki add ayyaru.\nLogin: www.dermaluxe.ai/staff.html — mee number ${phone} tho OTP login.`).catch(() => {});
     return json(res, 200, { ok: true, team: await users(cfg) });
+  }
+  if (a === "set-password") {
+    const pwd = String(b.password || "");
+    if (b.off === true) { await guard.kvCommand(cfg, ["DEL", "staff:pwd"]); return json(res, 200, { ok: true, off: true }); }
+    if (pwd.length < 6) return json(res, 400, { error: "Password kaneesam 6 characters undali" });
+    const salt = crypto.randomBytes(16).toString("hex");
+    await guard.kvCommand(cfg, ["SET", "staff:pwd", JSON.stringify({ salt, hash: scrypt(pwd, salt), ts: Date.now(), by: me.phone })]);
+    return json(res, 200, { ok: true });
   }
   if (a === "team-remove") {
     const phone = digits10(b.phone);

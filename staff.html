@@ -110,15 +110,17 @@
     <div class="card">
       <img src="assets/logo.webp" alt="DermaLuxe by Medicare" />
       <h1>Staff Dashboard</h1>
-      <p>Leads · Appointments · Academy · Today's post<br /><span class="te">స్టాఫ్ లాగిన్ — మీ WhatsApp నంబర్‌కి OTP వస్తుంది</span></p>
+      <p>Leads · Appointments · Academy · Today's post<br /><span class="te">స్టాఫ్ లాగిన్ — మీ నంబర్ + పాస్‌వర్డ్ (లేదా WhatsApp OTP)</span></p>
       <div id="stepPhone">
-        <div class="field"><label>Mobile number (WhatsApp)</label><input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" autocomplete="tel" /></div>
-        <button class="btn btn--gold btn--full" id="sendBtn">Send OTP on WhatsApp</button>
+        <div class="field"><label>Mobile number</label><input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" autocomplete="username" /></div>
+        <div class="field" id="pwdField"><label>Password</label><input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password" /></div>
+        <button class="btn btn--gold btn--full" id="loginBtn">Login</button>
+        <button class="btn btn--full" style="margin-top:8px" id="sendBtn">Password ledha? WhatsApp OTP pampandi</button>
       </div>
       <div id="stepOtp" class="hide">
         <div class="field"><label>OTP (6 digits)</label><input id="otp" type="text" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" /></div>
         <button class="btn btn--gold btn--full" id="verifyBtn">Login</button>
-        <button class="btn btn--full" style="margin-top:8px" id="backBtn">← Change number</button>
+        <button class="btn btn--full" style="margin-top:8px" id="backBtn">← Back</button>
       </div>
       <div class="err" id="loginErr"></div>
     </div>
@@ -176,6 +178,9 @@
         <div class="box"><h2>Add staff</h2><p>Staff member ki WhatsApp lo login link veltundi. OTP vaari number ki vastundi.</p>
           <div class="noteform" style="margin-top:10px"><input id="tPhone" placeholder="10-digit mobile" inputmode="numeric" maxlength="10" /><input id="tName" placeholder="Name" /><button class="btn btn--gold btn--sm" id="tAdd">Add</button></div>
           <div class="err" id="teamErr"></div></div>
+        <div class="box"><h2>Dashboard password</h2><p>Andariki same password + vaalla number. Marchalante kotha password type chesi Save cheyandi.</p>
+          <div class="noteform" style="margin-top:10px"><input id="newPwd" type="password" placeholder="New password (6+ characters)" autocomplete="new-password" /><button class="btn btn--gold btn--sm" id="pwdSave">Save</button><button class="btn btn--sm" id="pwdOff" title="Password teesi OTP matrame">OTP only</button></div>
+          <div class="err" id="pwdErr"></div></div>
         <div class="box"><label class="switch"><input type="checkbox" id="dailyToggle" /> Daily auto-post (Instagram + Facebook, 8:30 AM)</label></div>
         <div class="team" id="teamList"></div>
       </section>
@@ -203,6 +208,15 @@
     var heatRank = { hot: 0, warm: 1, "": 2, cold: 3 };
 
     // ---- login ----
+    $("loginBtn").onclick = function () {
+      var p = $("phone").value.replace(/\D/g, ""), pw = $("pwd").value; $("loginErr").textContent = "";
+      if (!/^[6-9]\d{9}$/.test(p)) { $("loginErr").textContent = "Valid 10-digit number ivvandi"; return; }
+      if (!pw) { $("loginErr").textContent = "Password ivvandi (leda OTP vadandi)"; return; }
+      $("loginBtn").disabled = true;
+      api("login", { phone: p, password: pw }).then(function (j) { tok = j.token; try { localStorage.setItem(TOK, tok); } catch (e) {} $("pwd").value = ""; boot(); })
+        .catch(function (e) { $("loginErr").textContent = e.message; }).finally(function () { $("loginBtn").disabled = false; });
+    };
+    $("pwd").addEventListener("keydown", function (e) { if (e.key === "Enter") $("loginBtn").click(); });
     $("sendBtn").onclick = function () {
       var p = $("phone").value.replace(/\D/g, ""); $("loginErr").textContent = "";
       if (!/^[6-9]\d{9}$/.test(p)) { $("loginErr").textContent = "Valid 10-digit number ivvandi"; return; }
@@ -218,7 +232,7 @@
     };
     $("backBtn").onclick = function () { $("stepOtp").classList.add("hide"); $("stepPhone").classList.remove("hide"); };
     $("otp").addEventListener("keydown", function (e) { if (e.key === "Enter") $("verifyBtn").click(); });
-    $("phone").addEventListener("keydown", function (e) { if (e.key === "Enter") $("sendBtn").click(); });
+    $("phone").addEventListener("keydown", function (e) { if (e.key === "Enter") $("pwd").focus(); });
     $("logoutBtn").onclick = function () { tok = null; try { localStorage.removeItem(TOK); } catch (e) {} location.reload(); };
     $("refreshBtn").onclick = function () { load(true); };
 
@@ -341,6 +355,14 @@
     $("seatMinus").onclick = function () { setSeats(state.data.academy.booked - 1); };
     $("seatPlus").onclick = function () { setSeats(state.data.academy.booked + 1); };
     function setSeats(n) { n = Math.max(0, Math.min(10, n)); api("academy", { booked: n }).then(function (j) { state.data.academy.booked = j.booked; state.data.academy.left = j.left; renderAcademy(); $("sSeats").textContent = j.booked + "/10"; toast("Seats booked: " + j.booked); }).catch(function (x) { toast(x.message); }); }
+    $("pwdSave").onclick = function () {
+      var v = $("newPwd").value; $("pwdErr").textContent = "";
+      api("set-password", { password: v }).then(function () { $("newPwd").value = ""; toast("Password updated"); }).catch(function (x) { $("pwdErr").textContent = x.message; });
+    };
+    $("pwdOff").onclick = function () {
+      if (!confirm("Password teesestara? Appudu OTP login matrame untundi.")) return;
+      api("set-password", { off: true }).then(function () { toast("Password removed — OTP only"); }).catch(function (x) { $("pwdErr").textContent = x.message; });
+    };
     $("tAdd").onclick = function () {
       var p = $("tPhone").value.replace(/\D/g, ""), n = $("tName").value.trim(); $("teamErr").textContent = "";
       api("team-add", { phone: p, name: n }).then(function (j) { state.data.team = j.team; renderTeam(); $("tPhone").value = ""; $("tName").value = ""; toast(n + " added"); }).catch(function (x) { $("teamErr").textContent = x.message; });
