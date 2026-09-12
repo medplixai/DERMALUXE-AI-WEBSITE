@@ -129,7 +129,7 @@
     .ac-stat b { display: block; font-family: var(--font-serif); font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 600; color: var(--gold-1); line-height: 1; }
     .ac-stat span { display: block; margin-top: .35rem; font-size: .72rem; letter-spacing: 1.3px; text-transform: uppercase; color: var(--muted-2); }
     .ac-hero__art { position: relative; }
-    .ac-hero__art img { width: 100%; aspect-ratio: 16/11; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: 0 40px 80px -30px rgba(0,0,0,.9); }
+    .ac-hero__art img { width: 100%; height: auto; aspect-ratio: 16/10; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: 0 40px 80px -30px rgba(0,0,0,.9); }
     .ac-hero__art::before { content: ""; position: absolute; inset: -14% -10% auto auto; width: 62%; height: 62%; background: radial-gradient(closest-side, rgba(201,162,92,.22), transparent); filter: blur(30px); z-index: -1; }
     .ac-hero__badge { position: absolute; left: -14px; bottom: 22px; background: rgba(13,13,15,.9); border: 1px solid var(--line); border-radius: 14px; padding: .8rem 1rem; backdrop-filter: blur(8px); display: flex; gap: .8rem; align-items: center; }
     .ac-hero__badge i { font-style: normal; font-size: 1.4rem; }
@@ -165,7 +165,7 @@
     .ac-modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.2rem; }
     .ac-module { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; transition: transform .4s var(--ease), border-color .4s; }
     .ac-module:hover { transform: translateY(-4px); border-color: rgba(201,162,92,.4); }
-    .ac-module img { width: 100%; aspect-ratio: 4/3; object-fit: cover; }
+    .ac-module img { width: 100%; height: auto; aspect-ratio: 4/3; object-fit: cover; }
     .ac-module__body { padding: 1.1rem 1.2rem 1.3rem; display: grid; gap: .45rem; }
     .ac-module__body h3 { font-size: 1.35rem; line-height: 1.15; }
     .ac-module__body .te { color: var(--gold-3); font-size: .85rem; }
