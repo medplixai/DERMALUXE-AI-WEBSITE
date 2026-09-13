@@ -1,0 +1,19 @@
+node_modules/
+www/
+
+# Android build output
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/.idea/
+android/app/src/main/assets/public/
+android/capacitor-cordova-android-plugins/
+
+# Signing — NEVER commit these. Back them up somewhere safe instead.
+keystore.properties
+*.keystore
+*.jks
+
+# Built APKs
+dist/

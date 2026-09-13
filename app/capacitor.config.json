@@ -1,0 +1,18 @@
+{
+  "appId": "ai.dermaluxe.staff",
+  "appName": "DermaLuxe Staff",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    }
+  }
+}

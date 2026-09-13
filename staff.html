@@ -216,7 +216,7 @@
   <!-- APP -->
   <div id="app" class="hide">
     <header class="top"><div class="wrap">
-      <a href="index.html"><img src="assets/logo.webp" alt="DermaLuxe" /></a>
+      <a href="index.html" class="homelink"><img src="assets/logo.webp" alt="DermaLuxe" /></a>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="who"><b id="meName">—</b><span id="meRole"></span></div>
         <button class="btn btn--sm" id="refreshBtn" title="Refresh">↻</button>
@@ -347,7 +347,12 @@
 
   <script>
   (function () {
-    var API = "/api/staff", TOK = "dl_staff_tok";
+    // Inside the Android app the page is served from https://localhost, so every
+    // call has to name the real origin. On the website ORIGIN stays "" and the
+    // relative paths behave exactly as before.
+    var NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    var ORIGIN = NATIVE ? "https://www.dermaluxe.ai" : "";
+    var API = ORIGIN + "/api/staff", TOK = "dl_staff_tok";
     var $ = function (id) { return document.getElementById(id); };
     var state = { data: null, tab: "leads", allow: function () { return false; } };
     var tok = null; try { tok = localStorage.getItem(TOK); } catch (e) {}
@@ -490,7 +495,7 @@
       var d = state.data, t = d.today, html = '';
       html += '<div class="box"><h2>Today\'s auto post</h2>' + (t ? '<p><b style="color:var(--g1);font-weight:500">' + esc(t.h1) + '</b><br /><span class="te">' + esc(t.te || "") + '</span><br /><span class="meta">' + (t.page ? 'Page: ' + esc(t.page) : '') + '</span></p>' : '<p>No post generated yet today (7:00 AM build → 8:30 AM publish).</p>') +
         '<p style="margin-top:8px"><a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/dermaluxe.ai/">Instagram ↗</a> <a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61592844155911">Facebook ↗</a></p></div>';
-      html += '<div class="box"><h2>Queue</h2>' + (d.queue.length ? d.queue.map(function (it) { return '<div style="display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--soft)"><img class="qimg" src="/api/media?id=' + esc(it.imgId) + '" alt="" onerror="this.style.display=\'none\'" /><div><div class="meta">' + (it.story ? '📸 Story' : '🖼 Feed post') + ' · due ' + fmtAt(it.due) + (it.auto ? ' · auto' : '') + '</div><div style="font-size:.85rem;color:var(--muted);margin-top:4px">' + esc(String(it.caption || "").slice(0, 140)) + '</div></div></div>'; }).join("") : '<p>Queue empty.</p>') + '</div>';
+      html += '<div class="box"><h2>Queue</h2>' + (d.queue.length ? d.queue.map(function (it) { return '<div style="display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--soft)"><img class="qimg" src="' + ORIGIN + '/api/media?id=' + esc(it.imgId) + '" alt="" onerror="this.style.display=\'none\'" /><div><div class="meta">' + (it.story ? '📸 Story' : '🖼 Feed post') + ' · due ' + fmtAt(it.due) + (it.auto ? ' · auto' : '') + '</div><div style="font-size:.85rem;color:var(--muted);margin-top:4px">' + esc(String(it.caption || "").slice(0, 140)) + '</div></div></div>'; }).join("") : '<p>Queue empty.</p>') + '</div>';
       $("t-today").innerHTML = html;
     }
     function renderReviews() {
@@ -709,11 +714,16 @@
     })();
 
     // ---- install & update ----
-    if (matchMedia("(display-mode: standalone)").matches || navigator.standalone)
+    if (matchMedia("(display-mode: standalone)").matches || navigator.standalone || NATIVE)
       document.documentElement.classList.add("standalone");
+    if (NATIVE) {
+      document.documentElement.classList.add("native");
+      var hl = document.querySelector(".homelink");
+      if (hl) hl.removeAttribute("href");
+    }
 
     var deferredInstall = null;
-    addEventListener("beforeinstallprompt", function (e) {
+    if (!NATIVE) addEventListener("beforeinstallprompt", function (e) {
       e.preventDefault(); deferredInstall = e;
       var said = null; try { said = localStorage.getItem("dl_install_no"); } catch (x) {}
       if (!said) setTimeout(function () { $("installBar").classList.add("show"); }, 2500);
@@ -732,7 +742,7 @@
       $("installBar").classList.remove("show"); toast("App install ayindi 🎉");
     });
 
-    if ("serviceWorker" in navigator) {
+    if ("serviceWorker" in navigator && !NATIVE) {
       addEventListener("load", function () {
         navigator.serviceWorker.register("/sw.js").then(function (reg) {
           function offerUpdate(w) {
@@ -836,7 +846,7 @@
     function sapi(a, body) {
       var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
       if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch("/api/academy?a=" + a, opt).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+      return fetch(ORIGIN + "/api/academy?a=" + a, opt).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
     }
     var students = [];
     function loadStudents() { sapi("list").then(function (j) { students = j.students || []; renderStudents(); }).catch(function (e) { toast(e.message); }); }
@@ -913,7 +923,7 @@
       $("officeChat").insertAdjacentHTML("beforeend", '<article class="lead" id="officeWait"><div class="meta">✦ AI Office</div><div class="concern">Alochistunna…</div></article>');
       $("officeQ").value = ""; $("officeSend").disabled = true;
       window.scrollTo(0, document.body.scrollHeight);
-      fetch("/api/office", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ q: q, history: officeHist.slice(-3) }) })
+      fetch(ORIGIN + "/api/office", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify({ q: q, history: officeHist.slice(-3) }) })
         .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
         .then(function (j) {
           var w = $("officeWait"); if (w) w.remove();
