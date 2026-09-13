@@ -4,13 +4,13 @@
 // Public on purpose: it carries a version number and a download link, nothing
 // else, and the app has to reach it before anyone has logged in.
 const LATEST = {
-  version: "1.7.0",
-  versionCode: 8,
+  version: "1.8.0",
+  versionCode: 9,
   // Below this, the app is too old to trust — it nags until they update.
   minVersionCode: 6,
   url: "https://www.dermaluxe.ai/assets/app/DermaLuxe-Staff.apk",
   page: "https://www.dermaluxe.ai/staff-app.html",
-  notes: "Patient file — oka manishi mottam history, before/after photos okate chota.",
+  notes: "Money — bills, payments, pending dues, roju collection.",
 };
 
 module.exports = async (req, res) => {
