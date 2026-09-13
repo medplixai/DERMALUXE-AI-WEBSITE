@@ -43,6 +43,7 @@ const CAPS = {
   "money.bill":       "Bill cheyyadam & payment record",
   "reviews.view":     "Patient ratings",
   "ai.use":           "AI Office assistant",
+  "msg.send":         "Patient ki message pampadam",
   "team.manage":      "Control panel — logins & roles",
   "settings.manage":  "Dashboard password & switches",
 };
@@ -53,7 +54,7 @@ const CAP_TE = {
   "academy.material": "మెటీరియల్ లింక్", "academy.certify": "సర్టిఫికెట్", "academy.delete": "స్టూడెంట్ తొలగింపు",
   "pkg.log": "సెషన్ నమోదు", "reports.view": "నంబర్లు / రిపోర్ట్‌లు", "money.view": "కలెక్షన్ & బాకీలు", "money.bill": "బిల్ & పేమెంట్",
   "posts.view": "ఈరోజు పోస్ట్", "posts.toggle": "ఆటో-పోస్ట్ ఆన్/ఆఫ్", "reviews.view": "పేషెంట్ రేటింగ్స్",
-  "ai.use": "AI ఆఫీస్", "team.manage": "కంట్రోల్ ప్యానెల్", "settings.manage": "సెట్టింగ్స్",
+  "ai.use": "AI ఆఫీస్", "msg.send": "మెసేజ్ పంపడం", "team.manage": "కంట్రోల్ ప్యానెల్", "settings.manage": "సెట్టింగ్స్",
 };
 const CAP_GROUPS = [
   { key: "leads",   label: "Leads & patients", te: "లీడ్స్",        caps: ["leads.view", "leads.edit", "leads.delete"] },
@@ -62,7 +63,7 @@ const CAP_GROUPS = [
   { key: "money",   label: "Money",             te: "డబ్బు",         caps: ["money.view", "money.bill", "reports.view"] },
   { key: "posts",   label: "Marketing & posts", te: "మార్కెటింగ్",   caps: ["posts.view", "posts.toggle"] },
   { key: "reviews", label: "Reviews",          te: "రివ్యూలు",      caps: ["reviews.view"] },
-  { key: "admin",   label: "Admin",            te: "అడ్మిన్",       caps: ["ai.use", "team.manage", "settings.manage"] },
+  { key: "admin",   label: "Admin",            te: "అడ్మిన్",       caps: ["ai.use", "msg.send", "team.manage", "settings.manage"] },
 ];
 // Shipped defaults. The owner can retune any of these, or invent new roles,
 // from the Control panel — the edits live in KV hash `staff:roles` and are
@@ -71,11 +72,11 @@ const BUILTIN_ROLES = {
   owner:     { label: "Owner",     te: "ఓనర్",       note: "Anni powers — ee role marchalemu.",
     caps: ["*"] },
   manager:   { label: "Manager",   te: "మేనేజర్",     note: "Clinic mottam nadipevaru. Delete tappa dadapu anni.",
-    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","reports.view","posts.view","posts.toggle","reviews.view","ai.use","team.manage"] },
+    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","reports.view","posts.view","posts.toggle","reviews.view","ai.use","msg.send","team.manage"] },
   doctor:    { label: "Doctor",    te: "డాక్టర్",     note: "Consultations + academy training. Money/settings ledu.",
-    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use"] },
+    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use","msg.send"] },
   reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count.",
-    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use"] },
+    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use","msg.send"] },
   accounts:  { label: "Accounts",  te: "అకౌంట్స్",    note: "Fees, receipts, documents. Leads edit cheyaleru.",
     caps: ["leads.view","appts.view","academy.view","academy.money","academy.docs","money.view","money.bill","reports.view","reviews.view","ai.use"] },
   therapist: { label: "Therapist", te: "థెరపిస్ట్",   note: "Treatments chese vaaru — chudatam matrame.",

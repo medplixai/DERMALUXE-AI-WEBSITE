@@ -54,6 +54,9 @@
     },
     "api/office.js": {
       "maxDuration": 60
+    },
+    "api/act.js": {
+      "maxDuration": 30
     }
   },
   "crons": [

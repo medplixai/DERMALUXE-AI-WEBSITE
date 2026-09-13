@@ -18,6 +18,11 @@ module.exports = async (req, res) => {
 
   const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "99"]);
   const now = Date.now();
+  // The hour of the day in Eluru, worked out once. Every timed block below
+  // compares against this; a block that computed its own copy inside a try
+  // was invisible to the blocks after it, and one of them had been silently
+  // throwing a ReferenceError into its catch since the day it shipped.
+  const istHour = new Date(now + 330 * 60000).getUTCHours();
   let sent = 0, checked = 0;
 
   for (const raw of (r.result || [])) {
@@ -45,8 +50,7 @@ module.exports = async (req, res) => {
   // Guardrails: skip booked/opted-out/jobs, NX marker 30d, max 8 per day.
   let day3 = 0;
   try {
-    const istNow = new Date(now + 330 * 60000);
-    if (istNow.getUTCHours() === 11) {
+    if (istHour === 11) {
       const booked = new Set();
       for (const key of ["appt:q", "appt:done"]) {
         const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
@@ -113,17 +117,16 @@ module.exports = async (req, res) => {
   }
   let day7 = 0, day21 = 0;
   try {
-    const h = new Date(now + 330 * 60000).getUTCHours();
     const concern = (l) => String(l.concern || "skin/hair treatment").slice(0, 40);
-    if (h === 11) day7 = await leadTouch(156, 180, "lead_checkin", "ntf:fu7", 2592000, 8, concern);
-    if (h === 12) day21 = await leadTouch(492, 516, "we_miss_you", "ntf:fu21", 5184000, 6, concern);
+    if (istHour === 11) day7 = await leadTouch(156, 180, "lead_checkin", "ntf:fu7", 2592000, 8, concern);
+    if (istHour === 12) day21 = await leadTouch(492, 516, "we_miss_you", "ntf:fu21", 5184000, 6, concern);
   } catch (e) { console.error("cron: lead touches", e && e.message); }
 
   // ---- Day-before confirmation (6:15 PM IST): appointment_confirm template
   // with ✅ Vastanu / 🔁 Reschedule quick replies. One attempt per booking (c1).
   let confirmAsked = 0;
   try {
-    if (new Date(now + 330 * 60000).getUTCHours() === 18) {
+    if (istHour === 18) {
       const istDay = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
       const tomorrow = istDay(now + 86400000);
       const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
@@ -144,7 +147,7 @@ module.exports = async (req, res) => {
   // templates service_followup / session_reminder carry the message.
   let visit7 = 0, visit30 = 0, rated = 0;
   try {
-    if (new Date(now + 330 * 60000).getUTCHours() === 10) {
+    if (istHour === 10) {
       const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "299"]);
       for (const raw of (dq.result || [])) {
         let a; try { a = JSON.parse(raw); } catch (e) { continue; }
@@ -181,8 +184,7 @@ module.exports = async (req, res) => {
   // falls back to the visit_followup template so delivery never dies quietly.
   let visited = 0;
   try {
-    const istNow = new Date(now + 330 * 60000);
-    if (istNow.getUTCHours() === 10) {
+    if (istHour === 10) {
       const istDay = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
       const yday = istDay(now - 86400000);
       const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]);
@@ -208,7 +210,7 @@ module.exports = async (req, res) => {
   // existed there was nothing to fire it from.
   let recalls = 0;
   try {
-    if (istNow.getUTCHours() === 5) {                       // 10:30 IST
+    if (istHour === 12) {                                  // 12:45 PM IST
       const pkg = require("./package.js");
       const rows = await pkg.due(cfg, 0);
       for (const p of rows) {
@@ -236,5 +238,64 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: recalls", e && e.message); }
 
-  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls });
+  // ---- morning briefing (9:15 IST) ---------------------------------------
+  // The day, before it starts, on everyone's phone. Deliberately worked out
+  // from the data rather than asked of the AI: this fires every morning
+  // whether or not an AI key is configured, it costs nothing, and it can
+  // never invent a number. The AI Office is there for the questions that
+  // follow — this is only the opening.
+  let briefed = 0;
+  try {
+    if (istHour === 9) {                                   // 9:45 AM IST
+      const nx = await guard.kvCommand(cfg, ["SET", `brief:${new Date(now + 330 * 60000).toISOString().slice(0, 10)}`, "1", "NX", "EX", "86400"]).catch(() => ({}));
+      if (nx && nx.result) {
+        const istDay = (ms) => new Date(ms + 330 * 60000).toISOString().slice(0, 10);
+        const today = istDay(now);
+        const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "399"]).catch(() => ({}));
+        const appts = [];
+        for (const raw of (aq.result || [])) {
+          let a; try { a = JSON.parse(raw); } catch (e) { continue; }
+          if (a && a.at && istDay(a.at) === today && a.status !== "cancelled") appts.push(a);
+        }
+        appts.sort((x, y) => x.at - y.at);
+        const unconfirmed = appts.filter((a) => !a.cf).length;
+
+        const lr = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}));
+        const stR = await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}));
+        const st = {}; const sa = (stR && stR.result) || {};
+        if (Array.isArray(sa)) { for (let i = 0; i + 1 < sa.length; i += 2) st[sa[i]] = sa[i + 1]; }
+        else Object.assign(st, sa);
+        let openHot = 0;
+        for (const raw of (lr.result || [])) {
+          let l; try { l = JSON.parse(raw); } catch (e) { continue; }
+          if (!l || !l.ts) continue;
+          const key = `${l.ts}|${String(l.phone || "").replace(/\D/g, "").slice(-10) || l.src_id || ""}`;
+          const status = st[key] || "new";
+          if (l.heat === "hot" && ["new", "contacted"].includes(status)) openHot++;
+        }
+
+        let dueToday = 0;
+        try { dueToday = (await require("./package.js").due(cfg, 0)).length; } catch (e) {}
+
+        const lines = [];
+        if (appts.length) lines.push(`📅 ${appts.length} appointments — modati ${admin.fmtIst(appts[0].at)}`);
+        else lines.push("📅 Ee roju appointments inka ledu");
+        if (unconfirmed) lines.push(`❓ ${unconfirmed} inka confirm kaledu`);
+        if (openHot) lines.push(`🔥 ${openHot} hot lead${openHot > 1 ? "s" : ""} ki call cheyyali`);
+        if (dueToday) lines.push(`🔁 ${dueToday} patient${dueToday > 1 ? "s" : ""} ki next sitting due`);
+
+        const push = require("./_push.js");
+        if (push.enabled()) {
+          await push.notifyCap(cfg, "appts.view", {
+            title: appts.length ? `☀️ Ee roju ${appts.length} appointments` : "☀️ Good morning — DermaLuxe",
+            body: lines.join("\n"),
+            tab: "appts", data: { kind: "brief" },
+          });
+          briefed = lines.length;
+        }
+      }
+    }
+  } catch (e) { console.error("cron: briefing", e && e.message); }
+
+  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed });
 };

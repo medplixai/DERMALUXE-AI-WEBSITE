@@ -89,6 +89,38 @@ async function tellPatient(ph, text) {
   } catch (e) { console.error("schedule: notify", e && e.message); }
 }
 
+// Booking, in one place: the AI Office approves through here too, so a
+// booking made from a suggestion gets the same clash check and sends the
+// same message to the patient as one typed in by hand.
+async function createAppt(cfg, me, b) {
+  const ph = digits10(b.ph);
+  const at = Number(b.at);
+  if (!/^[6-9]\d{9}$/.test(ph)) return { code: 400, body: { error: "Valid number ivvandi" } };
+  if (!at || at < Date.now() - 86400000) return { code: 400, body: { error: "Sarpaina date & time ivvandi" } };
+  const next = {
+    id: crypto.randomBytes(6).toString("hex"),
+    ph, name: clean(b.name, 60) || "Patient", at,
+    concern: clean(b.concern, 80),
+    mins: Math.max(10, Math.min(240, Number(b.mins) || 30)),
+    staff: digits10(b.staff), staffName: clean(b.staffName, 40),
+    room: clean(b.room, 20), status: "booked", cf: false,
+    note: clean(b.note, 200), by: me.name, ts: Date.now(),
+  };
+  const rows = await readQ(cfg);
+  const cl = clash(rows, next, null);
+  if (cl && !b.force) {
+    return { code: 409, body: {
+      error: cl.who === "doctor"
+        ? `${cl.name} ki aa time lo already ${cl.name2 || "oka patient"} undi (${cl.at}). Vere time chudandi.`
+        : `Ee patient ki aa time lo already appointment undi (${cl.at}).`,
+      clash: cl,
+    } };
+  }
+  await guard.kvCommand(cfg, ["LPUSH", Q, JSON.stringify(next)]);
+  await tellPatient(ph, `📅 ${next.name}, mee appointment book ayindi — ${istTime(at)}, ${new Date(at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })}.\nDermaLuxe by Medicare, Eluru.`);
+  return { code: 200, body: { ok: true, appt: shape(next) } };
+}
+
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
   const cfg = guard.kvConfig();
@@ -146,32 +178,8 @@ module.exports = async (req, res) => {
   if (!rl2.allowed) return json(res, 429, { error: "Too many requests" });
 
   if (a === "create") {
-    const ph = digits10(b.ph);
-    const at = Number(b.at);
-    if (!/^[6-9]\d{9}$/.test(ph)) return json(res, 400, { error: "Valid number ivvandi" });
-    if (!at || at < Date.now() - 86400000) return json(res, 400, { error: "Sarpaina date & time ivvandi" });
-    const next = {
-      id: crypto.randomBytes(6).toString("hex"),
-      ph, name: clean(b.name, 60) || "Patient", at,
-      concern: clean(b.concern, 80),
-      mins: Math.max(10, Math.min(240, Number(b.mins) || 30)),
-      staff: digits10(b.staff), staffName: clean(b.staffName, 40),
-      room: clean(b.room, 20), status: "booked", cf: false,
-      note: clean(b.note, 200), by: me.name, ts: Date.now(),
-    };
-    const rows = await readQ(cfg);
-    const cl = clash(rows, next, null);
-    if (cl && !b.force) {
-      return json(res, 409, {
-        error: cl.who === "doctor"
-          ? `${cl.name} ki aa time lo already ${cl.name2 || "oka patient"} undi (${cl.at}). Vere time chudandi.`
-          : `Ee patient ki aa time lo already appointment undi (${cl.at}).`,
-        clash: cl,
-      });
-    }
-    await guard.kvCommand(cfg, ["LPUSH", Q, JSON.stringify(next)]);
-    await tellPatient(ph, `📅 ${next.name}, mee appointment book ayindi — ${istTime(at)}, ${new Date(at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })}.\nDermaLuxe by Medicare, Eluru.`);
-    return json(res, 200, { ok: true, appt: shape(next) });
+    const out = await createAppt(cfg, me, b);
+    return json(res, out.code, out.body);
   }
 
   // For a reschedule, `at` is where it is going — the record is still found at
@@ -229,3 +237,5 @@ module.exports = async (req, res) => {
 
   return json(res, 400, { error: "Unknown action" });
 };
+
+module.exports.createAppt = createAppt;

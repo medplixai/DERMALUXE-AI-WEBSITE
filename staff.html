@@ -78,6 +78,8 @@
     .badge.cold{color:var(--cold);border-color:rgba(127,167,201,.5)}
     .badge.src{color:var(--g3)}
     .lead .concern{font-size:.92rem;color:var(--text)}
+    .aitext{width:100%;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:.9rem;line-height:1.45;outline:none;resize:vertical}
+    .aitext:focus{border-color:var(--g3)}
     .lead .prep{font-size:.84rem;color:var(--muted);background:rgba(201,162,92,.06);border-left:2px solid var(--g4);padding:6px 10px;border-radius:6px}
     .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
     .acts select{background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:7px 10px;font-size:.82rem}
@@ -2178,6 +2180,66 @@
         '<div class="meta">' + (mine ? esc(state.data.me.name) : "✦ AI Office") + '</div>' +
         '<div class="concern" style="white-space:pre-wrap">' + esc(text) + '</div></article>';
     }
+    // The assistant proposes; the colleague decides. Every suggestion lands
+    // here as a card with the exact words that will go out — editable, because
+    // the person sending it is the one answerable for it — and nothing leaves
+    // the phone until Approve is tapped. Approving calls /api/act, which
+    // re-checks the same permission on the server.
+    var actSeq = 0, actStore = {};
+    function actTitle(a) {
+      if (a.type === "message") return "📤 " + esc(a.name || a.phone) + " ki WhatsApp message";
+      if (a.type === "book") return "📅 " + esc(a.name || a.phone) + " — " + esc(fmtAt(a.at));
+      if (a.type === "note") return "📝 Lead meeda note";
+      if (a.type === "status") return "🏷 Status → " + esc(a.status);
+      if (a.type === "pkglog") return "✅ Oka sitting done ani mark cheyyadam";
+      return "Action";
+    }
+    function officeActions(list) {
+      if (!list || !list.length) return "";
+      var rows = list.map(function (a) {
+        var id = "act" + (++actSeq);
+        actStore[id] = a;
+        var body = "";
+        if (a.type === "message") body = '<textarea id="' + id + 'x" rows="4" class="aitext">' + esc(a.text) + "</textarea>";
+        else if (a.type === "note" || a.type === "pkglog") body = a.text ? '<div class="concern">' + esc(a.text) + "</div>" : "";
+        return '<div class="lead" data-card="' + id + '" style="border-left:3px solid var(--g3);margin-top:8px">' +
+          '<div class="meta">' + actTitle(a) + "</div>" +
+          (a.why ? '<div style="font-size:12px;color:var(--muted2)">' + esc(a.why) + "</div>" : "") + body +
+          '<div style="display:flex;gap:6px;margin-top:8px;align-items:center">' +
+          '<button class="btn btn--gold btn--sm" data-aiok="' + id + '">Approve</button>' +
+          '<button class="btn btn--sm" data-aino="' + id + '">Vaddu</button>' +
+          '<span data-aiout="' + id + '" style="font-size:12px;color:var(--muted2)"></span></div></div>';
+      }).join("");
+      return '<div class="box" style="margin-top:8px"><div class="meta">✦ Meeru approve cheste ivi chestanu</div>' + rows + "</div>";
+    }
+    document.addEventListener("click", function (e) {
+      var skip = e.target.closest("[data-aino]");
+      if (skip) { var c = document.querySelector('[data-card="' + skip.dataset.aino + '"]'); if (c) c.remove(); return; }
+      var btn = e.target.closest("[data-aiok]");
+      if (!btn) return;
+      var id = btn.dataset.aiok, a = actStore[id];
+      if (!a) return;
+      var out = document.querySelector('[data-aiout="' + id + '"]');
+      var payload = Object.assign({}, a);
+      if (a.type === "message") {
+        var ta = $(id + "x");
+        payload.text = ta ? ta.value.trim() : a.text;
+        if (payload.text.length < 5) { out.textContent = "Message khaali"; return; }
+      }
+      btn.disabled = true; out.textContent = "Chestunna…";
+      fetch(ORIGIN + "/api/act", { method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + tok }, body: JSON.stringify(payload) })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
+        .then(function (j) {
+          out.textContent = "✓ " + (j.did || "Ayindi");
+          btn.remove();
+          var sk = document.querySelector('[data-aino="' + id + '"]'); if (sk) sk.remove();
+          var ta = $(id + "x"); if (ta) ta.disabled = true;
+          toast(j.did || "Ayindi");
+          if (a.type !== "message") load().catch(function () {});
+        })
+        .catch(function (x) { out.textContent = x.message; btn.disabled = false; });
+    });
+
     function askOffice(q) {
       if (!q) return;
       $("officeErr").textContent = "";
@@ -2189,7 +2251,7 @@
         .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
         .then(function (j) {
           var w = $("officeWait"); if (w) w.remove();
-          $("officeChat").insertAdjacentHTML("beforeend", officeBubble("ai", j.reply));
+          $("officeChat").insertAdjacentHTML("beforeend", officeBubble("ai", j.reply) + officeActions(j.actions));
           officeHist.push({ q: q, a: j.reply });
           window.scrollTo(0, document.body.scrollHeight);
         })

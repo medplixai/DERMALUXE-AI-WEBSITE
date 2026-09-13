@@ -19,6 +19,20 @@ function staffUser(req) {
   try { const u = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")); return u.exp > Date.now() ? { phone: u.p, name: u.n, role: u.r } : null; } catch (e) { return null; }
 }
 const has = (u, cap) => { const c = (u && u.caps) || staff.capsOf(u && u.role); return c.includes("*") || c.includes(cap); };
+// What this colleague may be offered as a card, in the model's own words.
+// It mirrors the capability check in /api/act — the AI is never told it can
+// propose something the person would be refused for.
+const ACT_CAP = { message: "msg.send", book: "appts.edit", note: "leads.edit", status: "leads.edit", pkglog: "pkg.log" };
+const ACT_HELP = {
+  message: "message — send a WhatsApp message to a patient",
+  book: "book — book an appointment",
+  note: "note — add a note on a lead",
+  status: "status — change a lead's status",
+  pkglog: "pkglog — mark one sitting of a package done",
+};
+const okTypes = (caps) => Object.keys(ACT_CAP).filter((t) => caps.includes("*") || caps.includes(ACT_CAP[t]));
+const ACT_LIST = (caps) => okTypes(caps).map((t) => ACT_HELP[t]).join(" · ");
+
 const istNow = () => new Date(Date.now() + 19800000);
 const dayStart = () => { const d = istNow(); d.setUTCHours(0, 0, 0, 0); return d.getTime() - 19800000; };
 const fmt = (ts) => new Date(ts).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -56,9 +70,17 @@ async function snapshot(cfg, me) {
     out.push(`  by source (7d): ${JSON.stringify(by(wk, "type"))}`);
     const hot = leads.filter((l) => l.heat === "hot" && ["new", "contacted"].includes(l.status)).slice(0, 12);
     out.push(`  HOT & still open (${hot.length}):`);
-    hot.forEach((l) => out.push(`   • ${l.name || "?"} | ${l.phone || l.src_id || "no phone"} | ${l.concern || "-"} | ${l.status} | ${fmt(l.ts)}${l.call_prep ? " | prep: " + String(l.call_prep).slice(0, 90) : ""}`));
+    hot.forEach((l) => out.push(`   • ${l.name || "?"} | ${l.phone || l.src_id || "no phone"} | ${l.concern || "-"} | ${l.status} | ${fmt(l.ts)} | key=${leadKey(l)}${l.call_prep ? " | prep: " + String(l.call_prep).slice(0, 90) : ""}`));
     const stale = leads.filter((l) => l.status === "new" && l.ts < now - 2 * 86400000).length;
     if (stale) out.push(`  ${stale} leads are still "new" and older than 2 days.`);
+    // packages: who is due for their next sitting — the recall the clinic
+    // actually earns money from, and the AI could not see until now
+    try {
+      const pkg = require("./package.js");
+      const rows = await pkg.due(cfg, 3);
+      out.push(`RECALLS — ${rows.length} sittings due in the next 3 days (${rows.filter((r) => r.overdueDays > 0).length} already overdue).`);
+      rows.slice(0, 12).forEach((r) => out.push(`   • ${r.name} | ${r.phone} | ${r.treatment} | sitting ${r.done + 1} of ${r.total}${r.overdueDays ? ` | ${r.overdueDays} days overdue` : " | due now"} | pkg=${r.id}`));
+    } catch (e) { console.error("office: pkg", e && e.message); }
   }
   if (has(me, "appts.view")) {
     const appts = parseList(ar).filter((a) => a.at && a.at > now - 6 * 3600000 && a.at < now + 8 * 86400000).sort((a, b) => a.at - b.at);
@@ -97,6 +119,50 @@ Doctors: Dr. Nikhitha Priyanka (MD DVL, main consultant), Dr. Meghana Valeti (MD
 Services: lasers (Diode LHR, PICO, CO2, MNRF), peels, Hydrafacial, acne/pigmentation/anti-ageing, hair fall, PRP & GFC, hair transplant (FUE/DHI), medical dermatology, weight loss, bridal packages.
 DermaLuxe Academy: Skin Care / Hair Care / Skin+Hair courses, 1 or 2 months, 10 seats per batch, Batch 1 starts 20 Oct 2026. Launch offer ₹49,999 / ₹49,999 / ₹99,999 till 30 Sep 2026; ₹9,999 reserves a seat. Trainer Dr. Meghana Valeti.
 Automation already running: WhatsApp AI agent (bookings, reminders, follow-ups, reviews, referrals), Instagram/Facebook DM agents, daily auto-post to Instagram + Facebook, academy daily study material + fee reminders, staff dashboard.`;
+
+// Separate the proposal block from the answer the colleague reads, and throw
+// away anything malformed or beyond this person's powers. /api/act checks all
+// of it again before it runs — this pass only keeps rubbish off the screen.
+function splitActions(raw, caps) {
+  const text = String(raw || "");
+  const m = text.match(/<actions>([\s\S]*?)<\/actions>/);
+  if (!m) return { text: text.trim(), actions: [] };
+  const visible = text.slice(0, m.index).trim();
+  let list = [];
+  try { list = JSON.parse(m[1].trim()); } catch (e) { return { text: visible, actions: [] }; }
+  if (!Array.isArray(list)) return { text: visible, actions: [] };
+  const allowed = okTypes(caps);
+  const out = [];
+  for (const it of list.slice(0, 4)) {
+    if (!it || typeof it !== "object") continue;
+    const type = String(it.type || "");
+    if (!allowed.includes(type)) continue;
+    const phone = String(it.phone || "").replace(/\D/g, "").slice(-10);
+    const a = { type, why: String(it.why || "").slice(0, 120) };
+    if (type === "message") {
+      if (!/^[6-9]\d{9}$/.test(phone)) continue;
+      const body = String(it.text || "").trim().slice(0, 900);
+      if (body.length < 5) continue;
+      Object.assign(a, { phone, name: String(it.name || "").slice(0, 60), text: body });
+    } else if (type === "book") {
+      const at = Number(it.at);
+      if (!/^[6-9]\d{9}$/.test(phone) || !at || at < Date.now() - 3600000) continue;
+      Object.assign(a, { phone, name: String(it.name || "").slice(0, 60), at, mins: Number(it.mins) || 30, concern: String(it.concern || "").slice(0, 80) });
+    } else if (type === "note") {
+      if (!it.key || !it.text) continue;
+      Object.assign(a, { key: String(it.key).slice(0, 80), text: String(it.text).slice(0, 400) });
+    } else if (type === "status") {
+      const st = String(it.status || "").toLowerCase();
+      if (!it.key || !["new", "contacted", "booked", "visited", "closed"].includes(st)) continue;
+      Object.assign(a, { key: String(it.key).slice(0, 80), status: st });
+    } else if (type === "pkglog") {
+      if (!it.id) continue;
+      Object.assign(a, { id: String(it.id).slice(0, 24), text: String(it.text || "").slice(0, 200) });
+    }
+    out.push(a);
+  }
+  return { text: visible, actions: out };
+}
 
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -141,9 +207,21 @@ HOW TO ANSWER
 - Be short and operational. Lead with the answer. Use a few bullet lines with a fitting emoji, never long paragraphs.
 - When you use numbers, take them from LIVE DATA above. Never invent a number, name or phone. If something isn't in the data, say so plainly.
 - When they ask "what should I do now", give a prioritised action list (max 5) from the real data — hot leads to call first, appointments today, students with pending forms or fees, 3★ ratings needing a recovery call.
-- If they ask you to draft a message for a patient or student, write it ready-to-send in the clinic's style (warm, respectful, one clear next step, no prices, no medical promises) and tell them to send it from the lead's WhatsApp button. You cannot send messages yourself.
+- If they ask you to draft a message for a patient or student, write it ready-to-send in the clinic's style (warm, respectful, one clear next step, no prices, no medical promises).
 - Never quote treatment prices (academy course fees are fine — they are published). Never give a medical diagnosis or name medicines; for clinical questions say the doctor decides.
-- If asked about something you cannot see (money in the bank, staff salaries, another branch), say so.`;
+- If asked about something you cannot see (money in the bank, staff salaries, another branch), say so.
+
+WHAT YOU MAY PROPOSE
+You cannot do anything yourself. You may *propose* the steps below; each one is shown to ${me.name} as a card with an Approve button, and nothing happens until they tap it. Propose only what this colleague already has the power to do: ${ACT_LIST(caps) || "nothing — do not propose any action"}.
+Put proposals at the very end of your reply, inside one block exactly like this and nothing after it:
+<actions>[{"type":"message","phone":"9876543210","name":"Sita","text":"the full message, ready to send","why":"3 days ayina reply raledu"}]</actions>
+Rules for the block:
+- JSON array, at most 4 items, or leave the block out entirely. Never write the block twice.
+- Every phone, key= and pkg= value must be copied exactly from LIVE DATA. Never invent one.
+- Types: message {phone,name,text,why} · book {phone,name,at (epoch ms),mins,concern,why} · note {key,text,why} · status {key,status (new|contacted|booked|visited|closed),why} · pkglog {id,text,why}
+- "why" is one short Tenglish line telling the colleague why this is worth doing.
+- Propose only what the conversation actually calls for. A question that just asks for information gets an answer and no block.
+- Do not describe the cards in your text — they appear on their own.`;
 
   const messages = [];
   history.forEach((h) => { if (h && h.q && h.a) { messages.push({ role: "user", content: String(h.q).slice(0, 800) }); messages.push({ role: "assistant", content: String(h.a).slice(0, 1500) }); } });
@@ -157,12 +235,15 @@ HOW TO ANSWER
     });
     if (!r.ok) { const t = await r.text().catch(() => ""); console.error("office: claude", r.status, t.slice(0, 200)); return json(res, 502, { error: "AI reply raledu — malli try cheyandi" }); }
     const d = await r.json();
-    const reply = ((d.content || []).find((c) => c.type === "text") || {}).text || "";
+    let reply = ((d.content || []).find((c) => c.type === "text") || {}).text || "";
+    const { text, actions } = splitActions(reply, caps);
+    reply = text;
     await guard.kvCommand(cfg, ["LPUSH", "office:log", JSON.stringify({ by: me.name, role: me.role, q: q.slice(0, 200), ts: Date.now() })]).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", "office:log", "0", "499"]).catch(() => {});
-    return json(res, 200, { ok: true, reply: reply || "Sorry, reply generate avvaledu — malli adagandi." });
+    return json(res, 200, { ok: true, reply: reply || "Sorry, reply generate avvaledu — malli adagandi.", actions });
   } catch (e) {
     console.error("office", e && e.message);
     return json(res, 500, { error: "AI Office error — malli try cheyandi" });
   }
 };
+module.exports.splitActions = splitActions;
