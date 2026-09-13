@@ -571,7 +571,7 @@ async function handle(cfg, digits, text, photo, video) {
   if (/^(help|commands)$/i.test(t)) {
     const lines = ["🛠 *Admin commands*",
       "• daily post now — AI poster ippude post · daily on/off · daily status · daily topics",
-      "• academy status · academy booked <n> — training seats target (10)",
+      "• academy status · academy booked <n> · academy notify <msg> — training seats & broadcast",
       "• staff list · staff add <number> <name> [owner] · staff remove <number> · staff password <pwd> — dashboard access",
       "• templates · templates create — WhatsApp template approval status / submit",
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
@@ -678,6 +678,29 @@ async function handle(cfg, digits, text, photo, video) {
     else ks.forEach((k) => lines.push(`• ${all[k].name} — ${k}`));
     lines.push("", "Commands: *staff add <number> <name>* (owner ki chivara *owner* pettandi) · *staff remove <number>* · *staff password <pwd>*");
     return lines.join("\n");
+  }
+
+  // ---- Academy broadcast --------------------------------------------------
+  // academy notify <message>  → all active students (template-backed)
+  let abm;
+  if ((abm = t.match(/^academy\s+(?:notify|msg|message)\s+([\s\S]+)$/i))) {
+    if (!cfg) return "Storage ledu.";
+    if (!owner) return "🔒 Owner matrame.";
+    const msg = abm[1].trim().slice(0, 400);
+    if (msg.length < 5) return "Message chinnaga undi — inka konchem rayandi.";
+    const lr = await guard.kvCommand(cfg, ["LRANGE", "acad:st:list", "0", "199"]).catch(() => ({}));
+    let sent = 0, failed = 0;
+    for (const id of (lr.result || [])) {
+      const r = await guard.kvCommand(cfg, ["GET", `acad:st:${id}`]).catch(() => ({}));
+      let st = null; try { st = r.result ? JSON.parse(r.result) : null; } catch (e) {}
+      if (!st || !["enrolled", "active"].includes(String(st.status || "enrolled"))) continue;
+      const first = String(st.name || "Student").trim().split(" ")[0] || "Student";
+      const ok = await notify.sendWa(st.phone, `📢 *DermaLuxe Academy*\n\n${msg}`);
+      if (ok) { sent++; continue; }
+      const tpl = await notify.sendAcademyTemplate(st.phone, "academy_batch_update", [first, msg], null, msg);
+      if (tpl && tpl.ok) sent++; else failed++;
+    }
+    return `📢 *Academy broadcast*\nPampam: ${sent} students${failed ? ` · fail: ${failed}` : ""}\n\n"${msg.slice(0, 120)}"`;
   }
 
   // ---- Academy seat target ------------------------------------------------

@@ -35,12 +35,28 @@ module.exports = async (req, res) => {
   const verifySid = process.env.TWILIO_VERIFY_SERVICE_SID;
   const secret = process.env.OTP_TOKEN_SECRET || token || "dermaluxe-dev-secret";
 
-  // Demo mode
+  // WhatsApp code (api/send-otp stores it in KV)
+  const cfg = guard.kvConfig();
+  if (cfg) {
+    const r = await guard.kvCommand(cfg, ["GET", `otp:wa:${phone}`]).catch(() => ({}));
+    let rec = null; try { rec = r && r.result ? JSON.parse(r.result) : null; } catch (e) {}
+    if (rec) {
+      if (rec.tries >= 5) { await guard.kvCommand(cfg, ["DEL", `otp:wa:${phone}`]).catch(() => {}); return res.status(429).json({ error: "Too many wrong attempts — malli OTP pampandi" }); }
+      if (guard.safeEqual(code, rec.code)) {
+        await guard.kvCommand(cfg, ["DEL", `otp:wa:${phone}`]).catch(() => {});
+        return res.status(200).json({ ok: true, token: signToken(phone, secret) });
+      }
+      await guard.kvCommand(cfg, ["SET", `otp:wa:${phone}`, JSON.stringify({ code: rec.code, tries: rec.tries + 1 }), "EX", "300"]).catch(() => {});
+      return res.status(401).json({ error: "Incorrect OTP" });
+    }
+  }
+
+  // Demo mode — only when explicitly enabled for development
   if (!sid || !token || !verifySid) {
-    if (code === "123456") {
+    if (process.env.ALLOW_DEMO_OTP === "1" && code === "123456") {
       return res.status(200).json({ ok: true, demo: true, token: signToken(phone, secret) });
     }
-    return res.status(401).json({ error: "Incorrect OTP" });
+    return res.status(401).json({ error: "Incorrect or expired OTP" });
   }
 
   try {

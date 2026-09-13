@@ -368,6 +368,18 @@ const TEMPLATES = [
       { type: "BUTTONS", buttons: [{ type: "OTP", otp_type: "COPY_CODE", text: "Copy code" }] },
     ],
   },
+  // Patient-facing one-time code (website AI analysis / portal login).
+  {
+    name: "verification_code",
+    category: "AUTHENTICATION",
+    language: "en",
+    message_send_ttl_seconds: 600,
+    components: [
+      { type: "BODY", add_security_recommendation: true },
+      { type: "FOOTER", code_expiration_minutes: 5 },
+      { type: "BUTTONS", buttons: [{ type: "OTP", otp_type: "COPY_CODE", text: "Copy code" }] },
+    ],
+  },
 ];
 
 // Meta's generic "Invalid parameter" hides the useful part — surface it.
