@@ -12,6 +12,8 @@ android/capacitor-cordova-android-plugins/
 
 # Signing — NEVER commit these. Back them up somewhere safe instead.
 keystore.properties
+firebase-service-account*.json
+firebase-service-account*.txt
 *.keystore
 *.jks
 
