@@ -16,7 +16,10 @@ const CAPS = {
   "academy.certify": "Issue certificates", "posts.view": "Today's post & queue", "posts.toggle": "Daily auto-post on/off",
   "reviews.view": "Patient ratings", "team.manage": "Staff logins & password", "ai.use": "AI Office assistant",
 };
-const ROLES = {
+// Shipped defaults. The owner can retune any of these, or invent new roles,
+// from the Control panel — the edits live in KV hash `staff:roles` and are
+// merged over these on every request. `owner` is deliberately not editable.
+const BUILTIN_ROLES = {
   owner:     { label: "Owner",     te: "ఓనర్",       caps: ["*"] },
   manager:   { label: "Manager",   te: "మేనేజర్",     caps: ["leads.view","leads.edit","appts.view","academy.view","academy.edit","academy.certify","posts.view","posts.toggle","reviews.view","ai.use"] },
   reception: { label: "Reception", te: "రిసెప్షన్",   caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
@@ -25,9 +28,41 @@ const ROLES = {
   marketing: { label: "Marketing", te: "మార్కెటింగ్", caps: ["leads.view","posts.view","posts.toggle","reviews.view","ai.use"] },
   staff:     { label: "Staff",     te: "స్టాఫ్",      caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
 };
-const roleOf = (r) => (ROLES[String(r || "staff")] ? String(r) : "staff");
-const capsOf = (r) => ROLES[roleOf(r)].caps;
-const can = (u, cap) => { const c = capsOf(u && u.role); return c.includes("*") || c.includes(cap); };
+const ROLES_KEY = "staff:roles";
+const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
+// Merged role book: defaults, then the owner's saved edits and custom roles.
+async function loadRoles(cfg) {
+  const out = {};
+  for (const k of Object.keys(BUILTIN_ROLES)) out[k] = { label: BUILTIN_ROLES[k].label, te: BUILTIN_ROLES[k].te, caps: BUILTIN_ROLES[k].caps.slice(), builtin: true, edited: false };
+  const saved = await hashAll(cfg, ROLES_KEY).catch(() => ({}));
+  for (const k of Object.keys(saved)) {
+    if (k === "owner") continue; // owner is always full access
+    let v = null; try { v = JSON.parse(saved[k]); } catch (e) { continue; }
+    if (!v || typeof v !== "object") continue;
+    const caps = Array.isArray(v.caps) ? v.caps.filter((c) => CAPS[c]) : [];
+    out[k] = { label: clean(v.label, 40) || k, te: clean(v.te, 40), caps, builtin: !!BUILTIN_ROLES[k], edited: true };
+  }
+  return out;
+}
+const roleOf = (r, roles) => ((roles || BUILTIN_ROLES)[String(r || "staff")] ? String(r) : "staff");
+const capsOf = (r, roles) => ((roles || BUILTIN_ROLES)[roleOf(r, roles)] || BUILTIN_ROLES.staff).caps;
+// A person's real powers: their role, plus anything granted to them alone,
+// minus anything taken away from them alone.
+function effCaps(roles, u) {
+  const base = capsOf(u && u.role, roles);
+  if (base.includes("*")) return ["*"];
+  const set = new Set(base);
+  for (const c of (u && Array.isArray(u.extra) ? u.extra : [])) if (CAPS[c]) set.add(c);
+  for (const c of (u && Array.isArray(u.revoked) ? u.revoked : [])) set.delete(c);
+  return Array.from(set);
+}
+const can = (u, cap, roles) => { const c = effCaps(roles, u); return c.includes("*") || c.includes(cap); };
+// Every control-panel change is written down, so the owner can see who did what.
+async function audit(cfg, me, what) {
+  const rec = JSON.stringify({ ts: Date.now(), by: (me && me.name) || "?", phone: (me && me.phone) || "", what: clean(what, 200) });
+  await guard.kvCommand(cfg, ["LPUSH", "staff:audit", rec]).catch(() => {});
+  await guard.kvCommand(cfg, ["LTRIM", "staff:audit", "0", "199"]).catch(() => {});
+}
 const STATUSES = ["new", "contacted", "booked", "visited", "closed"];
 const SESSION_DAYS = 30;
 
@@ -79,11 +114,11 @@ async function checkPassword(cfg, pwd) {
   return env ? guard.safeEqual(String(pwd), env) : null; // null = no password configured
 }
 
-async function resolveUser(cfg, phone) {
+async function resolveUser(cfg, phone, roles) {
   const owners = ownerPhones();
   if (owners.includes(phone)) return { phone, name: "Owner", role: "owner" };
   const u = (await users(cfg))[phone];
-  if (u) return { phone, name: u.name || "Staff", role: roleOf(u.role) };
+  if (u) return { phone, name: u.name || "Staff", role: roleOf(u.role, roles), extra: u.extra || [], revoked: u.revoked || [], off: !!u.off };
   return null;
 }
 
@@ -121,12 +156,14 @@ async function dataPayload(cfg, me) {
   let today = null; try { today = dp.result ? JSON.parse(dp.result) : null; } catch (e) {}
   const queue = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const reviews = (rv.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
-  const team = me.role === "owner" ? await users(cfg) : null;
-  const caps = capsOf(me.role), allow = (c) => caps.includes("*") || caps.includes(c);
+  const roles = await loadRoles(cfg);
+  const team = can(me, "team.manage", roles) ? await users(cfg) : null;
+  const caps = effCaps(roles, me), allow = (c) => caps.includes("*") || caps.includes(c);
   if (!allow("leads.view")) leads.length = 0;
   if (!allow("reviews.view")) reviews.length = 0;
   if (!allow("appts.view")) appts.length = 0;
-  return { me: Object.assign({}, me, { caps, roleLabel: ROLES[roleOf(me.role)].label, roleTe: ROLES[roleOf(me.role)].te }), roles: ROLES, capList: CAPS, leads, statuses: STATUSES, appts, academy: { booked, left: 10 - booked, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: me.role === "owner" ? ownerPhones() : undefined, ts: now };
+  const rk = roleOf(me.role, roles);
+  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, leads, statuses: STATUSES, appts, academy: { booked, left: 10 - booked, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now };
 }
 
 module.exports = async (req, res) => {
@@ -148,6 +185,7 @@ module.exports = async (req, res) => {
     if (!rlIp.allowed || !rlPh.allowed) return json(res, 429, { error: "Too many attempts — 1 gantha tarvata try cheyandi (leda OTP vadandi)" });
     const u = await resolveUser(cfg, phone);
     if (!u) return json(res, 403, { error: "Ee number staff list lo ledu. Owner ni adagandi." });
+    if (u.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
     const ok = await checkPassword(cfg, pwd);
     if (ok === null) return json(res, 501, { error: "Password inka set cheyaledu — OTP tho login cheyandi (owner: WhatsApp lo 'staff password <new password>')" });
     if (!ok) return json(res, 401, { error: "Password tappu" });
@@ -162,6 +200,7 @@ module.exports = async (req, res) => {
     if (!rl.allowed) return json(res, 429, { error: "Too many attempts — try later" });
     const u = await resolveUser(cfg, phone);
     if (!u) return json(res, 403, { error: "Ee number staff list lo ledu. Owner ni adagandi (WhatsApp admin: staff add <number> <name>)." });
+    if (u.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
     const code = String(crypto.randomInt(100000, 999999));
     await guard.kvCommand(cfg, ["SET", `staff:otp:${phone}`, JSON.stringify({ code, tries: 0 }), "EX", "300"]);
     const line = `Mee DermaLuxe staff login OTP: ${code} — 5 nimishalu valid. Meeru login cheyakapothe ignore cheyandi.`;
@@ -200,12 +239,41 @@ module.exports = async (req, res) => {
   const me = readToken(req);
   if (!me) return json(res, 401, { error: "Login required" });
   // re-check the allowlist so removed staff lose access immediately
-  const live = await resolveUser(cfg, me.phone);
+  const roles = await loadRoles(cfg);
+  const live = await resolveUser(cfg, me.phone, roles);
   if (!live) return json(res, 403, { error: "Access removed" });
-  me.role = live.role; me.name = live.name;
+  if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
+  me.role = live.role; me.name = live.name; me.extra = live.extra; me.revoked = live.revoked;
+  // Powers are recomputed here on every request, so a role edit or a revoked
+  // capability takes effect immediately — no re-login, no stale token.
+  const allow = (c) => can(me, c, roles);
 
-  if (a === "me") return json(res, 200, { ok: true, me });
+  if (a === "me") return json(res, 200, { ok: true, me: Object.assign({}, me, { caps: effCaps(roles, me) }) });
   if (a === "data") return json(res, 200, await dataPayload(cfg, me));
+
+  // ---- control panel (read) ----
+  if (a === "panel") {
+    if (!allow("team.manage")) return json(res, 403, { error: "Control panel owner/manager ki matrame" });
+    const [team, last, pwd, log] = await Promise.all([
+      users(cfg), hashAll(cfg, "staff:lastlogin").catch(() => ({})),
+      guard.kvCommand(cfg, ["GET", "staff:pwd"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["LRANGE", "staff:audit", "0", "49"]).catch(() => ({})),
+    ]);
+    const people = Object.keys(team).map((ph) => {
+      const u = Object.assign({ phone: ph }, team[ph]);
+      u.role = roleOf(u.role, roles);
+      u.caps = effCaps(roles, u);
+      u.lastLogin = Number(last[ph] || 0) || null;
+      return u;
+    }).sort((x, y) => (y.lastLogin || 0) - (x.lastLogin || 0));
+    const audit = (log.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+    return json(res, 200, {
+      ok: true, roles, capList: CAPS, people,
+      owners: ownerPhones().map((ph) => ({ phone: ph, lastLogin: Number(last[ph] || 0) || null })),
+      passwordSet: !!(pwd && pwd.result) || !!process.env.STAFF_PASSWORD,
+      audit, me: Object.assign({}, me, { caps: effCaps(roles, me) }),
+    });
+  }
 
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
   const rl = await guard.rateLimit(cfg, `rl:sta:${me.phone}`, 600, 3600);
@@ -213,14 +281,14 @@ module.exports = async (req, res) => {
   const key = b.key ? String(b.key) : "";
 
   if (a === "status") {
-    if (!can(me, "leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
+    if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
     const s = String(b.status || "").toLowerCase();
     if (!key || !STATUSES.includes(s)) return json(res, 400, { error: "key + valid status required" });
     await guard.kvCommand(cfg, ["HSET", STATUS, key, s]);
     return json(res, 200, { ok: true });
   }
   if (a === "note") {
-    if (!can(me, "leads.edit")) return json(res, 403, { error: "Mee role ki note add chese permission ledu" });
+    if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki note add chese permission ledu" });
     const text = String(b.text || "").trim().slice(0, 400);
     if (!key || !text) return json(res, 400, { error: "key + text required" });
     const cur = await guard.kvCommand(cfg, ["HGET", NOTES, key]).catch(() => ({}));
@@ -230,48 +298,116 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, notes: list.slice(0, 30) });
   }
   if (a === "academy") {
-    if (!can(me, "academy.edit")) return json(res, 403, { error: "Mee role ki academy seats marche permission ledu" });
+    if (!allow("academy.edit")) return json(res, 403, { error: "Mee role ki academy seats marche permission ledu" });
     const n = Math.max(0, Math.min(10, Number(b.booked)));
     if (Number.isNaN(n)) return json(res, 400, { error: "booked 0-10" });
     await guard.kvCommand(cfg, ["SET", "acad:booked", String(n)]);
     return json(res, 200, { ok: true, booked: n, left: 10 - n });
   }
 
-  if (a === "delete" && !can(me, "leads.delete")) return json(res, 403, { error: "Owner matrame" });
-  if (a === "daily" && !can(me, "posts.toggle")) return json(res, 403, { error: "Mee role ki idi marche permission ledu" });
-  if (["team-add", "team-remove", "team-role", "set-password"].includes(a) && !can(me, "team.manage")) return json(res, 403, { error: "Owner matrame" });
+  if (a === "delete" && !allow("leads.delete")) return json(res, 403, { error: "Owner matrame" });
+  if (a === "daily" && !allow("posts.toggle")) return json(res, 403, { error: "Mee role ki idi marche permission ledu" });
+  const PANEL = ["team-add", "team-remove", "team-role", "team-caps", "team-suspend", "set-password", "role-save", "role-delete"];
+  if (PANEL.includes(a) && !allow("team.manage")) return json(res, 403, { error: "Idi control panel access unna vallake" });
   if (a === "team-add") {
-    const phone = digits10(b.phone), name = String(b.name || "").trim().slice(0, 60);
-    const role = roleOf(b.role);
+    const phone = digits10(b.phone), name = clean(b.name, 60);
+    const role = roleOf(b.role, roles);
     if (!/^[6-9]\d{9}$/.test(phone) || !name) return json(res, 400, { error: "phone + name required" });
     if (role === "owner" && me.role !== "owner") return json(res, 403, { error: "Owner role ivvagaligedi owner matrame" });
-    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify({ name, role, added: Date.now(), by: me.phone })]);
-    const what = capsOf(role).includes("*") ? "anni" : capsOf(role).map((c) => CAPS[c] || c).join(", ");
-    notify.sendWa(phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki *${ROLES[role].label}* ga add ayyaru.\n\n🔗 www.dermaluxe.ai/staff.html\n📱 Mee number: ${phone}\n🔐 Password leda OTP tho login cheyandi.\n\n📋 Mee access: ${what}`).catch(() => {});
+    if (ownerPhones().includes(phone)) return json(res, 400, { error: "Ee number already owner — daanini ikkada add cheyakkarledu." });
+    const existing = (await users(cfg))[phone];
+    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify({ name, role, extra: [], revoked: [], off: false, added: (existing && existing.added) || Date.now(), by: me.phone })]);
+    const what = capsOf(role, roles).includes("*") ? "anni" : capsOf(role, roles).map((c) => CAPS[c] || c).join(", ");
+    await audit(cfg, me, `${existing ? "Updated" : "Added"} login ${name} (${phone}) — ${roles[role].label}`);
+    notify.sendWa(phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki *${roles[role].label}* ga add ayyaru.\n\n🔗 www.dermaluxe.ai/staff.html\n📱 Mee number: ${phone}\n🔐 Password leda OTP tho login cheyandi.\n\n📋 Mee access: ${what}`).catch(() => {});
     return json(res, 200, { ok: true, team: await users(cfg) });
   }
   if (a === "set-password") {
     const pwd = String(b.password || "");
-    if (b.off === true) { await guard.kvCommand(cfg, ["DEL", "staff:pwd"]); return json(res, 200, { ok: true, off: true }); }
+    if (b.off === true) { await guard.kvCommand(cfg, ["DEL", "staff:pwd"]); await audit(cfg, me, "Password teesesaru — OTP only"); return json(res, 200, { ok: true, off: true }); }
     if (pwd.length < 6) return json(res, 400, { error: "Password kaneesam 6 characters undali" });
     const salt = crypto.randomBytes(16).toString("hex");
     await guard.kvCommand(cfg, ["SET", "staff:pwd", JSON.stringify({ salt, hash: scrypt(pwd, salt), ts: Date.now(), by: me.phone })]);
+    await audit(cfg, me, "Dashboard password set chesaru");
     return json(res, 200, { ok: true });
   }
   if (a === "team-role") {
-    const phone = digits10(b.phone), role = roleOf(b.role);
+    const phone = digits10(b.phone), role = roleOf(b.role, roles);
     const all = await users(cfg);
     if (!all[phone]) return json(res, 404, { error: "Staff member not found" });
     if (role === "owner" && me.role !== "owner") return json(res, 403, { error: "Owner role ivvagaligedi owner matrame" });
     all[phone].role = role;
     await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify(all[phone])]);
-    notify.sendWa(phone, `🔁 Mee DermaLuxe dashboard role ippudu *${ROLES[role].label}*.`).catch(() => {});
+    await audit(cfg, me, `${all[phone].name} (${phone}) role → ${roles[role].label}`);
+    notify.sendWa(phone, `🔁 Mee DermaLuxe dashboard role ippudu *${roles[role].label}*.`).catch(() => {});
+    return json(res, 200, { ok: true, team: await users(cfg) });
+  }
+  // Give or take away ONE power for ONE person, without touching their role.
+  if (a === "team-caps") {
+    const phone = digits10(b.phone);
+    const all = await users(cfg);
+    if (!all[phone]) return json(res, 404, { error: "Staff member not found" });
+    const pick = (v) => (Array.isArray(v) ? v : []).filter((c) => CAPS[c]).slice(0, 20);
+    const extra = pick(b.extra), revoked = pick(b.revoked).filter((c) => !extra.includes(c));
+    if ((extra.includes("team.manage") || revoked.includes("team.manage")) && me.role !== "owner")
+      return json(res, 403, { error: "Control panel access ivvagaligedi owner matrame" });
+    all[phone].extra = extra; all[phone].revoked = revoked;
+    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify(all[phone])]);
+    const label = (c) => CAPS[c] || c;
+    await audit(cfg, me, `${all[phone].name} (${phone}) powers — extra: ${extra.map(label).join(", ") || "none"} · off: ${revoked.map(label).join(", ") || "none"}`);
+    return json(res, 200, { ok: true, team: await users(cfg) });
+  }
+  // Pause a login without deleting it (keeps the person's history).
+  if (a === "team-suspend") {
+    const phone = digits10(b.phone), off = b.off === true;
+    const all = await users(cfg);
+    if (!all[phone]) return json(res, 404, { error: "Staff member not found" });
+    all[phone].off = off;
+    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify(all[phone])]);
+    await audit(cfg, me, `${all[phone].name} (${phone}) access ${off ? "OFF chesaru" : "malli ON chesaru"}`);
+    notify.sendWa(phone, off
+      ? "🔒 Mee DermaLuxe dashboard access ippudu off lo undi. Doubt unte owner ni adagandi."
+      : "🔓 Mee DermaLuxe dashboard access malli on ayindi — www.dermaluxe.ai/staff.html").catch(() => {});
     return json(res, 200, { ok: true, team: await users(cfg) });
   }
   if (a === "team-remove") {
     const phone = digits10(b.phone);
+    const all = await users(cfg);
     await guard.kvCommand(cfg, ["HDEL", USERS, phone]);
+    await guard.kvCommand(cfg, ["HDEL", "staff:lastlogin", phone]).catch(() => {});
+    await audit(cfg, me, `Removed login ${(all[phone] && all[phone].name) || ""} (${phone})`);
     return json(res, 200, { ok: true, team: await users(cfg) });
+  }
+  // ---- roles: create one, retune one, or put a default back ----
+  if (a === "role-save") {
+    const key = String(b.key || "").toLowerCase().replace(/[^a-z0-9_]/g, "").slice(0, 20);
+    if (!key || key.length < 2) return json(res, 400, { error: "Role key 2-20 letters (a-z, 0-9, _)" });
+    if (key === "owner") return json(res, 400, { error: "Owner role marchalemu — adi eppudu full access." });
+    const caps = (Array.isArray(b.caps) ? b.caps : []).filter((c) => CAPS[c]);
+    if (!caps.length) return json(res, 400, { error: "Kaneesam oka power select cheyandi" });
+    if (caps.includes("team.manage") && me.role !== "owner") return json(res, 403, { error: "Control panel power ivvagaligedi owner matrame" });
+    const label = clean(b.label, 40) || key;
+    await guard.kvCommand(cfg, ["HSET", ROLES_KEY, key, JSON.stringify({ label, te: clean(b.te, 40), caps })]);
+    await audit(cfg, me, `Role ${label} (${key}) — ${caps.map((c) => CAPS[c] || c).join(", ")}`);
+    return json(res, 200, { ok: true, roles: await loadRoles(cfg) });
+  }
+  if (a === "role-delete") {
+    const key = String(b.key || "");
+    if (key === "owner" || key === "staff") return json(res, 400, { error: "Ee role ni teeyalemu" });
+    const saved = await hashAll(cfg, ROLES_KEY).catch(() => ({}));
+    if (!saved[key]) return json(res, 404, { error: "Ee role KV lo ledu" });
+    await guard.kvCommand(cfg, ["HDEL", ROLES_KEY, key]);
+    let moved = 0;
+    if (!BUILTIN_ROLES[key]) { // custom role deleted — park its people on "staff"
+      const all = await users(cfg);
+      for (const ph of Object.keys(all)) {
+        if (all[ph].role !== key) continue;
+        all[ph].role = "staff"; moved++;
+        await guard.kvCommand(cfg, ["HSET", USERS, ph, JSON.stringify(all[ph])]);
+      }
+    }
+    await audit(cfg, me, BUILTIN_ROLES[key] ? `Role ${key} default ki reset chesaru` : `Role ${key} teesesaru (${moved} → Staff)`);
+    return json(res, 200, { ok: true, roles: await loadRoles(cfg), moved, reset: !!BUILTIN_ROLES[key] });
   }
   if (a === "delete") {
     if (!key) return json(res, 400, { error: "key required" });
@@ -286,7 +422,15 @@ module.exports = async (req, res) => {
   }
   return json(res, 400, { error: "Unknown action" });
 };
-module.exports.ROLES = ROLES;
+module.exports.ROLES = BUILTIN_ROLES;
 module.exports.CAPS = CAPS;
 module.exports.capsOf = capsOf;
 module.exports.can = can;
+module.exports.loadRoles = loadRoles;
+module.exports.effCaps = effCaps;
+// What another endpoint should call: merged roles + this person's own grants.
+module.exports.liveUser = (cfg, phone, roles) => resolveUser(cfg, phone, roles);
+module.exports.capsFor = async function (cfg, user) {
+  const roles = await loadRoles(cfg);
+  return effCaps(roles, user);
+};

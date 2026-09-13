@@ -154,7 +154,13 @@ module.exports = async (req, res) => {
   // ---------- staff ----------
   const me = staffUser(req);
   if (!me) return json(res, 401, { error: "Login required" });
-  const caps = require("./staff.js").capsOf(me.role);
+  // Live powers, not the ones frozen into the login token: a role edit or a
+  // revoked capability in the Control panel applies here on the next request.
+  const staffMod = require("./staff.js");
+  const liveMe = await staffMod.liveUser(cfg, me.phone);
+  if (!liveMe) return json(res, 403, { error: "Access removed" });
+  if (liveMe.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
+  const caps = await staffMod.capsFor(cfg, liveMe);
   const can = (c) => caps.includes("*") || caps.includes(c);
   if (!can("academy.view")) return json(res, 403, { error: "Mee role ki academy access ledu" });
   if (["create", "pay", "send", "status", "note", "link", "material", "reopen"].includes(a) && !can("academy.edit"))

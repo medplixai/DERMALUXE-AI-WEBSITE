@@ -18,7 +18,7 @@ function staffUser(req) {
   if (!payload || !sig || !secret() || !guard.safeEqual(sig, sign(payload))) return null;
   try { const u = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")); return u.exp > Date.now() ? { phone: u.p, name: u.n, role: u.r } : null; } catch (e) { return null; }
 }
-const has = (u, cap) => { const c = staff.capsOf(u.role); return c.includes("*") || c.includes(cap); };
+const has = (u, cap) => { const c = (u && u.caps) || staff.capsOf(u && u.role); return c.includes("*") || c.includes(cap); };
 const istNow = () => new Date(Date.now() + 19800000);
 const dayStart = () => { const d = istNow(); d.setUTCHours(0, 0, 0, 0); return d.getTime() - 19800000; };
 const fmt = (ts) => new Date(ts).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
@@ -103,9 +103,15 @@ module.exports = async (req, res) => {
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
   const me = staffUser(req);
   if (!me) return json(res, 401, { error: "Login required" });
-  if (!has(me, "ai.use")) return json(res, 403, { error: "Mee role ki AI Office access ledu" });
   const cfg = guard.kvConfig();
   if (!cfg) return json(res, 501, { error: "Storage not configured" });
+  // Live powers from the Control panel, not the ones baked into the token.
+  const live = await staff.liveUser(cfg, me.phone);
+  if (!live) return json(res, 403, { error: "Access removed" });
+  if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
+  me.role = live.role; me.name = live.name;
+  me.caps = await staff.capsFor(cfg, live);
+  if (!has(me, "ai.use")) return json(res, 403, { error: "Mee role ki AI Office access ledu" });
   if (!process.env.ANTHROPIC_API_KEY) return json(res, 501, { error: "AI key configure cheyaledu" });
 
   const rl = await guard.rateLimit(cfg, `rl:off:${me.phone}`, 120, 3600);
@@ -119,7 +125,7 @@ module.exports = async (req, res) => {
   let snap = "";
   try { snap = await snapshot(cfg, me); } catch (e) { console.error("office: snapshot", e && e.message); snap = "(live data unavailable right now)"; }
 
-  const caps = staff.capsOf(me.role);
+  const caps = (me && me.caps) || staff.capsOf(me.role);
   const system = `You are "DermaLuxe AI Office" — the internal assistant inside the clinic's staff dashboard. You are talking to a colleague, not a patient.
 
 WHO YOU ARE TALKING TO: ${me.name}, role "${(staff.ROLES[me.role] || {}).label || me.role}". They can access: ${caps.includes("*") ? "everything" : caps.join(", ")}. Never reveal data outside that list; if they ask for it, say their role doesn't have access and suggest asking the owner.
