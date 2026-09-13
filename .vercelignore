@@ -1,4 +1,6 @@
-app/
-material/
-academy_ig3/
-catalog/
+# Leading slash matters: "app/" alone would also match assets/app/, which is
+# where the downloadable APK and the app icons live.
+/app/
+/material/
+/academy_ig3/
+/catalog/
