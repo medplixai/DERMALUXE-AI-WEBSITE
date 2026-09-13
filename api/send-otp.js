@@ -1,8 +1,15 @@
 // POST /api/send-otp  { phone: "9876543210" }
 // Sends a 6-digit code. Preference order:
 //   1. WhatsApp AUTHENTICATION template "verification_code" (no SMS cost, instant)
-//   2. Twilio Verify, if those env vars are configured
-//   3. Demo mode (fixed 123456) — ONLY when ALLOW_DEMO_OTP=1, never in production
+//   2. WhatsApp free-form text — only delivers inside the 24-hour service window
+//   3. WhatsApp "clinic_update" template — approved, delivers to anyone
+//   4. Twilio Verify, if those env vars are configured
+//   5. Demo mode (fixed 123456) — ONLY when ALLOW_DEMO_OTP=1, never in production
+//
+// Steps 2-3 exist because Meta has NOT granted this WABA the AUTHENTICATION
+// category (needs ~2,000 delivered template messages in 30 days), so step 1
+// fails every time and without a fallback the whole website analysis funnel
+// returned 503. Drop steps 2-3 once "verification_code" is approved.
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 const notify = require("./_notify.js");
@@ -25,9 +32,22 @@ module.exports = async (req, res) => {
   if (process.env.WA_CLOUD_TOKEN && cfg) {
     const code = String(crypto.randomInt(100000, 999999));
     await guard.kvCommand(cfg, ["SET", `otp:wa:${phone}`, JSON.stringify({ code, tries: 0 }), "EX", "300"]).catch(() => {});
+    const line = `Mee DermaLuxe verification code: ${code} — 5 nimishalu valid. Meeru adagakapothe ignore cheyandi.`;
+    const tried = [];
+
     const r = await notify.sendWaAuthCode(phone, code, "verification_code");
+    tried.push(`auth:${r && r.ok ? "ok" : (r && r.msg) || "fail"}`);
     if (r && r.ok) return res.status(200).json({ ok: true, channel: "whatsapp" });
-    console.error("send-otp: whatsapp failed", phone.slice(-4), r && r.msg);
+
+    const f = await notify.sendWa(phone, `🔐 ${line}`);
+    tried.push(`text:${f ? "ok" : "fail"}`);
+    if (f) return res.status(200).json({ ok: true, channel: "whatsapp" });
+
+    const t = await notify.sendWaTemplate(phone, "clinic_update", ["there", line]);
+    tried.push(`clinic_update:${t && t.ok ? "ok" : (t && t.msg) || "fail"}`);
+    if (t && t.ok) return res.status(200).json({ ok: true, channel: "whatsapp" });
+
+    console.error("send-otp: whatsapp failed", phone.slice(-4), tried.join(" | "));
     await guard.kvCommand(cfg, ["DEL", `otp:wa:${phone}`]).catch(() => {});
   }
 
