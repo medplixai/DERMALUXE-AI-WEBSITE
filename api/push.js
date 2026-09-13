@@ -47,8 +47,19 @@ module.exports = async (req, res) => {
     if (token.length < 20 || token.length > 512) return json(res, 400, { error: "Bad device token" });
     // Register even before the Firebase key is in place — then the first push
     // reaches every phone already installed, with nothing to redo.
+    const known = await guard.kvCommand(cfg, ["GET", `push:dev:${token}`]).catch(() => ({}));
+    const isNew = !(known && known.result);
     await push.saveDevice(cfg, token, { phone: me.phone, name: me.name, role: me.role, platform: String(b.platform || "android").slice(0, 16) });
-    return json(res, 200, { ok: true, configured: push.enabled() });
+    // A brand-new phone gets one confirmation, so the person sees for
+    // themselves that notifications work — no test button to hunt for.
+    if (isNew && push.enabled()) {
+      push.sendToTokens(cfg, [token], {
+        title: "Notifications on ✅",
+        body: `${String(me.name || "").split(" ")[0] || "Hi"}, kotha leads ikkade ventane kanipistayi.`,
+        tab: "leads", urgent: true,
+      }).catch(() => {});
+    }
+    return json(res, 200, { ok: true, configured: push.enabled(), first: isNew });
   }
 
   if (a === "unregister") {
