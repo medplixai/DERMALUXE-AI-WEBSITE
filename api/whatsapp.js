@@ -432,7 +432,7 @@ async function recordRating(cfg, phone, rating, askRaw, profileName) {
   }
   const team = Array.from(new Set(
     String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",")
-      .concat(String(process.env.ADMIN_PHONES || "").split(","))
+      .concat(guard.ownerPhones())
       .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
   for (const to of team) {
     await notify.sendWa(to, `⚠️ *Low rating — ${rating}⭐*\n\n👤 ${name || "Patient"} (${phone})\n🩺 ${ask.concern || "-"}\n\nIvala call chesi issue teluskondi — service recovery 🙏`).catch(() => {});
@@ -968,13 +968,14 @@ module.exports = async (req, res) => {
 
   if (!digits || (!text && !imageId && !audioId && !videoId && !docId)) return respond(FALLBACK_REPLY);
 
-  // Owner/admin commands (ADMIN_PHONES allowlist; explicit commands only —
+  // Owner/admin commands (owner allowlist = ADMIN_PHONES ∪ STAFF_OWNERS;
+  // explicit commands only —
   // anything else from the admin falls through to the normal agent).
   // Admin-looking command from a number that is not on the admin allowlist:
   // tell them, instead of letting the patient agent answer it.
   const ADMIN_CMD = /^(templates?|staff|academy\s+(booked|status|notify|msg|message)|daily\s+(post|on|off|status|topics)|report|weekly|funnel|reviews|referrals|appointments|checkups|blocks|results|insta\s+report|leads\s+report|ideas|queue|campaigns|marketing\s+report)\b/i;
   if (isMeta && !admin.isAdmin(digits) && ADMIN_CMD.test(String(text || "").trim())) {
-    return respond(`🔒 Ee command *owner number* nunchi matrame pani chestundi.\n\nMee number: ${digits}\nOwner numbers: ADMIN_PHONES lo unnavi matrame.\n\nMee number ni owner ga add cheyalante, existing owner number nunchi cheppandi.`);
+    return respond(`🔒 Ee command *owner number* nunchi matrame pani chestundi.\n\nMee number: ${digits}\nOwner numbers: ${guard.ownerPhones().map((x) => x.slice(0, 2) + "xxxxx" + x.slice(-3)).join(", ") || "—"}\n\nMee number ni owner ga add cheyalante, existing owner number nunchi cheppandi.`);
   }
 
   if (isMeta && admin.isAdmin(digits)) {
@@ -1037,7 +1038,7 @@ module.exports = async (req, res) => {
       if (out.ok) {
         const team = Array.from(new Set(
           String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",")
-            .concat(String(process.env.ADMIN_PHONES || "").split(","))
+            .concat(guard.ownerPhones())
             .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
         for (const to of team) {
           await notify.sendWa(to, `🎁 *Referral!*\n\n👤 ${profileName || "Patient"} (${digits})\n🔗 Code *${out.code}* — referrer: ${out.owner}\n\nVisit lo iddariki ${offer} ivvandi 🙏`).catch(() => {});
@@ -1190,7 +1191,7 @@ module.exports = async (req, res) => {
       if (go) {
         const team = Array.from(new Set(
           String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",")
-            .concat(String(process.env.ADMIN_PHONES || "").split(","))
+            .concat(guard.ownerPhones())
             .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
         const who = (out.lead && out.lead.name) || profileName || "Patient";
         const body = `🚨 *URGENT — patient ki ventane call cheyandi!*\n\n👤 ${who}\n📱 ${digits}\n⚠️ ${String(out.urgent).slice(0, 200)}\n\n💬 "${String(text).slice(0, 160)}"\n\nAgent vaalliki clinic number ichhindi — kaani mana nunchi call vellite better 🙏`;

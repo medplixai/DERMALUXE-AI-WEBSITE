@@ -18,7 +18,9 @@ const IG_GRAPH = "https://graph.instagram.com/v21.0";
 // pettam" is owner-only by request).
 function adminRole(digits) {
   const norm = (v) => String(v || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter(Boolean);
-  if (norm(process.env.ADMIN_PHONES).indexOf(String(digits)) !== -1) return "owner";
+  // Owner = ADMIN_PHONES ∪ STAFF_OWNERS (see _guard.ownerPhones) — same list the
+  // staff dashboard uses, so an owner number works on WhatsApp and on the web.
+  if (guard.ownerPhones().indexOf(String(digits).replace(/\D/g, "").slice(-10)) !== -1) return "owner";
   if (norm(process.env.MARKETING_PHONES).indexOf(String(digits)) !== -1) return "marketing";
   if (norm(process.env.HR_PHONES).indexOf(String(digits)) !== -1) return "hr";
   return null;
@@ -672,7 +674,7 @@ async function handle(cfg, digits, text, photo, video) {
       return `🗑 ${ph} staff access teesesanu.`;
     }
     const all = await readAll();
-    const lines = ["👥 *Staff dashboard access* — dermaluxe.ai/staff.html", `Owners: ${String(process.env.ADMIN_PHONES || "").split(",").map((x) => x.trim()).filter(Boolean).join(", ") || "—"}`];
+    const lines = ["👥 *Staff dashboard access* — dermaluxe.ai/staff.html", `Owners: ${guard.ownerPhones().join(", ") || "—"}`];
     const ks = Object.keys(all);
     if (!ks.length) lines.push("Staff: (none) — add: *staff add 9876543210 Name*");
     else ks.forEach((k) => lines.push(`• ${all[k].name} — ${k}`));

@@ -76,8 +76,23 @@ async function rateLimit(cfg, key, limit, windowSec) {
   }
 }
 
+// --- Owner (admin) phone list -------------------------------------------------
+// Single source of truth for "who is an owner" across WhatsApp admin commands,
+// the staff dashboard and every owner alert. ADMIN_PHONES (env) ∪ STAFF_OWNERS
+// (env, default 9010427777). All values normalised to the last 10 digits.
+function phones10(v) {
+  return String(v || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10);
+}
+function ownerPhones() {
+  return Array.from(new Set(phones10(process.env.ADMIN_PHONES).concat(phones10(process.env.STAFF_OWNERS || "9010427777"))));
+}
+function isOwnerPhone(digits) {
+  const d = String(digits || "").replace(/\D/g, "").slice(-10);
+  return d.length === 10 && ownerPhones().indexOf(d) !== -1;
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { kvConfig, kvCommand, getIp, originAllowed, rateLimit, today, safeEqual };
+module.exports = { kvConfig, kvCommand, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };

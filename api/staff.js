@@ -63,7 +63,7 @@ async function users(cfg) {
   return out;
 }
 function ownerPhones() {
-  return Array.from(new Set(phones(process.env.ADMIN_PHONES).concat(phones(process.env.STAFF_OWNERS || "9010427777"))));
+  return guard.ownerPhones(); // ADMIN_PHONES ∪ STAFF_OWNERS (default 9010427777)
 }
 // Shared dashboard password (optional). Set by the owner from WhatsApp:
 // "staff password <new password>"  → scrypt hash in KV (never stored in plain).

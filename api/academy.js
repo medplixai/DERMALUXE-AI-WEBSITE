@@ -89,7 +89,7 @@ async function buildDocs(cfg, s, which, extra = {}) {
   await putSt(cfg, s);
   return out;
 }
-const adminPhones = () => String(process.env.ADMIN_PHONES || "").split(",").map(digits10).filter((x) => x.length === 10);
+const adminPhones = () => guard.ownerPhones();
 async function alertAdmins(text) { await Promise.allSettled(adminPhones().map((ph) => notify.sendWa(ph, text))); }
 
 module.exports = async (req, res) => {

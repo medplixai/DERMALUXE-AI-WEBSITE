@@ -65,7 +65,7 @@ module.exports = async (req, res) => {
   const active = students.filter((s) => ["enrolled", "active"].includes(String(s.status || "enrolled")) && digits10(s.phone).length === 10);
 
   // ---- trainer manual (once, from 3 days before the batch) ----
-  const trainers = phones(process.env.ACADEMY_TRAINER_PHONES || process.env.ADMIN_PHONES);
+  const trainers = process.env.ACADEMY_TRAINER_PHONES ? phones(process.env.ACADEMY_TRAINER_PHONES) : guard.ownerPhones();
   if (daysUntil(docs.BATCH.startISO) <= 3 && trainers.length) {
     for (const ph of trainers) {
       if (dry) { out.trainer = "would send " + ph; continue; }

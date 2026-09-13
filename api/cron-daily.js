@@ -65,7 +65,7 @@ module.exports = async (req, res) => {
   } catch (e) {
     console.error("cron-daily: build failed", e && e.message);
     if (!force) await guard.kvCommand(cfg, ["DEL", `dp:done:${daily.todayIst()}`]).catch(() => {});
-    const to = daily.phones(process.env.ADMIN_PHONES)[0];
+    const to = guard.ownerPhones()[0];
     if (to) await waText(to, `❌ Daily poster generate avvaledu: ${(e && e.message) || "unknown"}. 'daily post now' tho malli try cheyandi.`);
     return res.status(500).json({ ok: false, error: (e && e.message) || "failed" });
   }

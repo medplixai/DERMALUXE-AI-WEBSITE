@@ -23,7 +23,7 @@ module.exports = async (req, res) => {
   const norm = (v) => String(v || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
   let targets = norm(process.env.DIGEST_PHONES);
   if (!targets.length) {
-    targets = Array.from(new Set(norm(process.env.ADMIN_PHONES).concat(norm(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666"))));
+    targets = Array.from(new Set(guard.ownerPhones().concat(norm(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666"))));
   }
   if (!targets.length) return res.status(200).json({ ok: true, note: "no targets" });
 

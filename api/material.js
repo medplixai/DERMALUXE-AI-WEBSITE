@@ -26,7 +26,7 @@ function dir() {
 const secret = () => process.env.STAFF_SECRET || process.env.ADMIN_KEY || process.env.WA_WEBHOOK_TOKEN || "";
 const sign = (p) => crypto.createHmac("sha256", secret()).update(p).digest("hex");
 const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
-const trainerPhones = () => String(process.env.ACADEMY_TRAINER_PHONES || process.env.ADMIN_PHONES || "").split(",").map(digits10).filter((x) => x.length === 10);
+const trainerPhones = () => (process.env.ACADEMY_TRAINER_PHONES ? String(process.env.ACADEMY_TRAINER_PHONES).split(",").map(digits10).filter((x) => x.length === 10) : guard.ownerPhones());
 
 function staffUser(req) {
   const h = String(req.headers.authorization || "");

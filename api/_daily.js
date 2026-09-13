@@ -313,7 +313,7 @@ async function createDailyPost(cfg, opts = {}) {
   const b64 = await renderPoster(posterHtml(topic, img));
   const imgId = crypto.randomBytes(16).toString("hex");
   const due = opts.dueMs || todayAtIst(8, 30);
-  const admins = phones(process.env.ADMIN_PHONES);
+  const admins = guard.ownerPhones();
   const by = opts.by || admins[0] || "";
   const notifyList = Array.from(new Set(phones(process.env.DAILY_POST_PHONES).length ? phones(process.env.DAILY_POST_PHONES) : admins.concat(phones(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666"))));
   if (cfg) {

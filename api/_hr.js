@@ -93,7 +93,7 @@ async function findApp(cfg, phone) {
 async function alertTeam(cfg, app) {
   const normList = (v) => String(v || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
   let targets = normList(process.env.HR_PHONES);
-  targets = Array.from(new Set(targets.concat(normList(process.env.ADMIN_PHONES))));
+  targets = Array.from(new Set(targets.concat(guard.ownerPhones())));
   const body = [
     "💼 *New Job Application!*",
     `🧑‍⚕️ Role: *${app.role}*`,
