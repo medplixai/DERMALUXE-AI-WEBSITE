@@ -8,11 +8,17 @@ so those calls go through native HTTP and need no CORS headers on the server.
 ## Rebuild the APK
 
 ```bash
-export ANDROID_HOME="$HOME/Library/Android/sdk"
-cd app
-npm run apk
-cp android/app/build/outputs/apk/release/app-release.apk dist/DermaLuxe-Staff-<version>.apk
+cd app && npm run apk
 ```
+
+That runs `build-apk.sh`, which refreshes `www/`, mirrors the project to
+`~/.dermaluxe-staff-app/project`, builds there, and copies the signed APK back
+into `dist/`.
+
+**Why the mirror:** this repo lives in iCloud Drive, and Gradle merges resources
+and assets by creating hard links, which iCloud refuses with "Operation not
+permitted". `node_modules` is a symlink to `~/.dermaluxe-staff-app/node_modules`
+for the same reason. Building in place will fail; use the script.
 
 `npm run shell` alone refreshes `www/` from the website files.
 
@@ -32,7 +38,12 @@ key. Both are gitignored and exist only on this Mac.
 the installed app: every phone would have to uninstall and reinstall, losing
 its session. There is no way to recover or reissue the same key.
 
+## Plugins
+
+`@capacitor/push-notifications`, `camera`, `share`, `haptics`, `app`, and
+`@aparajita/capacitor-biometric-auth`.
+
 ## What is deliberately not here
 
-No Firebase, no push, no camera, no biometrics yet — those are phases 3 and 4.
-The app today is the dashboard, installed, with its own icon and splash.
+No offline data cache yet — that is phase 5. The app reads live from the API
+every time.
