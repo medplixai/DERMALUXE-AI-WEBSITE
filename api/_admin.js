@@ -623,12 +623,14 @@ async function handle(cfg, digits, text, photo, video) {
         const rows = (d.created || []).filter((x) => sub !== "academy" || /^academy/.test(x.name));
         const ok = rows.filter((x) => x.ok);
         const skipped = rows.filter((x) => !x.ok && x.skipped);
-        const bad = rows.filter((x) => !x.ok && !x.skipped);
+        const later = rows.filter((x) => !x.ok && !x.skipped && x.optional);
+        const bad = rows.filter((x) => !x.ok && !x.skipped && !x.optional);
         const lines = [`📤 *Templates submit chesanu* — ${ok.length} pampam · ${bad.length} fail · ${skipped.length} already Meta lo`];
         ok.forEach((x) => lines.push(`✅ ${x.name} — review lo (Meta 1-24 gantalu teesukuntundi)`));
         // Failures are the whole point of this reply — show them in full.
         bad.slice(0, 12).forEach((x) => lines.push(`\n⚠️ *${x.name}*\n${String(x.resp).slice(0, 220)}`));
         if (bad.length > 12) lines.push(`… inka ${bad.length - 12} fail`);
+        later.forEach((x) => lines.push(`\n⏳ *${x.name}* — Meta inka permission ivvaledu\n${String(x.resp).slice(0, 220)}`));
         if (skipped.length) lines.push("", `⏭ Already Meta lo: ${skipped.map((x) => x.name).join(", ").slice(0, 300)}`);
         lines.push("", "Status chudataniki: *templates* · malli try: *templates retry*");
         return lines.join("\n");

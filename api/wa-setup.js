@@ -355,9 +355,19 @@ const TEMPLATES = [
     ],
   },
   // ---- Staff dashboard login code (AUTHENTICATION) ----------------------
-  // Authentication templates are the only reliable way to deliver a one-time
-  // code: they bypass the 24-hour service window and render a copy button.
+  // Authentication templates bypass the 24-hour service window and render a
+  // copy button — the ideal OTP channel. BUT Meta gates the AUTHENTICATION
+  // category behind business verification (done, Aug 2026) AND messaging
+  // volume: roughly 2,000 delivered business-initiated template messages to
+  // unique users in 30 days. Until the volume is there, creating these
+  // returns "This WhatsApp business account does not have permission to
+  // create message template" (checked 13 Sep 2026, also fails in the Meta UI).
+  // They stay in this list so a later "templates create" picks them up the
+  // moment Meta opens the category; optional:true keeps the report honest.
+  // Until then OTPs go out as free-form text, falling back to clinic_update.
   {
+    optional: true,
+    optionalWhy: "Meta AUTHENTICATION category inka unlock avvaledu — 30 rojullo ~2,000 delivered template messages taruvata vastundi. Appatidaka OTP clinic_update tho veltundi.",
     name: "staff_login_code",
     category: "AUTHENTICATION",
     language: "en",
@@ -369,7 +379,10 @@ const TEMPLATES = [
     ],
   },
   // Patient-facing one-time code (website AI analysis / portal login).
+  // Same AUTHENTICATION gate as staff_login_code above.
   {
+    optional: true,
+    optionalWhy: "Meta AUTHENTICATION category inka unlock avvaledu — 30 rojullo ~2,000 delivered template messages taruvata vastundi. Appatidaka OTP clinic_update tho veltundi.",
     name: "verification_code",
     category: "AUTHENTICATION",
     language: "en",
@@ -381,6 +394,13 @@ const TEMPLATES = [
     ],
   },
 ];
+
+// Local bookkeeping keys (optional/optionalWhy) must not reach Graph.
+function payload(tpl) {
+  const out = {};
+  for (const k of Object.keys(tpl)) if (k !== "optional" && k !== "optionalWhy") out[k] = tpl[k];
+  return out;
+}
 
 // Meta's generic "Invalid parameter" hides the useful part — surface it.
 function errText(d) {
@@ -467,12 +487,12 @@ module.exports = async (req, res) => {
         const r = await fetch(`https://graph.facebook.com/v21.0/${WABA}/message_templates`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-          body: JSON.stringify(tpl),
+          body: JSON.stringify(payload(tpl)),
         });
         const d = await r.json().catch(() => ({}));
-        out.push({ name: tpl.name, ok: r.ok, resp: r.ok ? d : errText(d) });
+        out.push({ name: tpl.name, ok: r.ok, optional: !!tpl.optional, resp: r.ok ? d : (tpl.optional ? `${tpl.optionalWhy} (Meta: ${errText(d)})` : errText(d)) });
       } catch (e) {
-        out.push({ name: tpl.name, ok: false, resp: String(e && e.message) });
+        out.push({ name: tpl.name, ok: false, optional: !!tpl.optional, resp: String(e && e.message) });
       }
     }
     return res.status(200).json({ created: out });
