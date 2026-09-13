@@ -434,6 +434,14 @@ async function recordRating(cfg, phone, rating, askRaw, profileName) {
     String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",")
       .concat(guard.ownerPhones())
       .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
+  try {
+    const push = require("./_push.js");
+    if (push.enabled()) await push.notifyCap(cfg, "reviews.view", {
+      title: `⚠️ ${rating}★ rating — ${name || "Patient"}`,
+      body: `${ask.concern || "Feedback"} · ${phone || ""} — ivala call cheyandi`.slice(0, 160),
+      tab: "reviews", urgent: true, data: { kind: "rating", phone: phone || "" },
+    });
+  } catch (e) { console.error("push: rating", e && e.message); }
   for (const to of team) {
     await notify.sendWa(to, `⚠️ *Low rating — ${rating}⭐*\n\n👤 ${name || "Patient"} (${phone})\n🩺 ${ask.concern || "-"}\n\nIvala call chesi issue teluskondi — service recovery 🙏`).catch(() => {});
   }
@@ -1194,6 +1202,14 @@ module.exports = async (req, res) => {
             .concat(guard.ownerPhones())
             .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
         const who = (out.lead && out.lead.name) || profileName || "Patient";
+        try {
+          const push = require("./_push.js");
+          if (push.enabled()) await push.notifyCap(cfg, "leads.view", {
+            title: `🚨 Urgent — ${who}`,
+            body: `${String(out.urgent).slice(0, 120)} · ${digits}`,
+            tab: "leads", urgent: true, data: { kind: "urgent", phone: digits },
+          });
+        } catch (e) { console.error("push: urgent", e && e.message); }
         const body = `🚨 *URGENT — patient ki ventane call cheyandi!*\n\n👤 ${who}\n📱 ${digits}\n⚠️ ${String(out.urgent).slice(0, 200)}\n\n💬 "${String(text).slice(0, 160)}"\n\nAgent vaalliki clinic number ichhindi — kaani mana nunchi call vellite better 🙏`;
         for (const to of team) await notify.sendWa(to, body).catch(() => {});
       }

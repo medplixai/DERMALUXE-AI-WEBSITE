@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "93507486530",
+    "project_id": "dermaluxe-dcd94",
+    "storage_bucket": "dermaluxe-dcd94.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:93507486530:android:9f9508269cecab9274bedb",
+        "android_client_info": {
+          "package_name": "ai.dermaluxe.staff"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAtcvMLsTu3a9tCgW2VO7c-3JwTZFkPv9U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

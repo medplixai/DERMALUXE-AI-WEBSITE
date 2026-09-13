@@ -314,6 +314,11 @@
             <div class="noteform" style="margin-top:10px"><input id="newPwd" type="password" placeholder="New password (6+ characters)" autocomplete="new-password" /><button class="btn btn--gold btn--sm" id="pwdSave">Save</button><button class="btn btn--sm" id="pwdOff" title="Password teesi OTP matrame">OTP only</button></div>
             <div class="meta" id="pwdState" style="margin-top:8px"></div>
             <div class="err" id="pwdErr"></div></div>
+          <div class="box"><h2>Notifications <span class="te" style="font-size:.9rem;color:var(--g3)">· నోటిఫికేషన్లు</span></h2>
+            <p>Kotha lead vachina, urgent patient unna, fee vachina — app unna phones ki ventane veltundi. Evari role batti vaariki sambandhinchinavi matrame.</p>
+            <div class="meta" id="pushState" style="margin-top:8px"></div>
+            <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn--gold btn--sm" id="pushTest">Naaku test pampu</button><button class="btn btn--sm" id="pushOff">Ee phone lo aapu</button></div>
+            <div id="deviceList" style="margin-top:10px"></div></div>
           <div class="box"><h2>Auto-post</h2><label class="switch"><input type="checkbox" id="dailyToggle" /> Daily auto-post (Instagram + Facebook, 8:30 AM)</label></div>
           <div class="box"><h2>Owner numbers</h2><p>Ee numbers ki eppudu full access — WhatsApp admin commands kuda. Vercel lo <b style="color:var(--g1);font-weight:500">ADMIN_PHONES</b> / <b style="color:var(--g1);font-weight:500">STAFF_OWNERS</b> lo matrame marchagalam.</p>
             <div id="ownerList" class="meta" style="margin-top:8px"></div></div>
@@ -405,7 +410,7 @@
       // an app that opens instantly beats one that opens to a blank screen.
       $("login").classList.add("hide"); $("app").classList.remove("hide");
       $("leadList").innerHTML = '<div class="sk"><div></div><div></div><div></div><div></div></div>';
-      load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); })
+      load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); initPush(); })
         .catch(function (e) { tok = null; try { localStorage.removeItem(TOK); } catch (x) {} $("leadList").innerHTML = ""; $("app").classList.add("hide"); $("loginErr").textContent = e.message === "Login required" ? "" : e.message; $("login").classList.remove("hide"); });
     }
     function load(quiet) {
@@ -585,12 +590,26 @@
       // --- controls
       $("pwdState").textContent = panel.passwordSet ? "Password set chesi undi. Staff password leda OTP tho login cheyochu." : "Password inka set cheyaledu — ippudu OTP matrame pani chestundi.";
       $("ownerList").innerHTML = (panel.owners || []).map(function (o) { return "• " + esc(o.phone); }).join("<br>") || "—";
+      renderDevices();
 
       // --- activity
       $("auditList").innerHTML = (panel.audit || []).map(function (x) {
         return '<div class="auditrow"><b style="color:var(--g1);font-weight:500">' + esc(x.by) + '</b> · ' + ago(x.ts) + '<br>' + esc(x.what) + '</div>';
       }).join("") || '<p class="meta">Inka marpulu emi ledu.</p>';
     }
+    function renderDevices() {
+      papi("devices").then(function (j) {
+        $("pushState").textContent = j.configured
+          ? (j.devices.length ? j.devices.length + " phone(s) lo app install ayindi." : "Inka e phone lo app login avvaledu.")
+          : "Push inka configure cheyaledu — Firebase key Vercel lo pettali.";
+        $("deviceList").innerHTML = (j.devices || []).map(function (d) {
+          return '<div class="row" style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:6px">' +
+            '<div><b style="font-weight:500">' + esc(d.name || d.phone) + '</b> <span class="meta">· ' + esc(d.phone) + '</span><div class="meta" style="font-size:.76rem">' + esc(d.platform || "android") + ' · ' + ago(d.ts) + '</div></div>' +
+            '<button class="btn btn--sm" data-act="dev-revoke" data-token="' + esc(d.token) + '">Block</button></div>';
+        }).join("");
+      }).catch(function (e) { $("pushState").textContent = e.message; });
+    }
+
     // A person's chips: tick = they have it. Untick a role-given power and it
     // is revoked for them alone; tick an extra one and it is granted to them.
     function savePersonCaps(phone) {
@@ -687,6 +706,45 @@
       if (e.target.closest("[data-close]")) closeSheet();
     });
     addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
+
+    // ---- push notifications (native app only) ---------------------------
+    function papi(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/push?a=" + a, opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    var pushReady = false;
+    function pushPlugin() {
+      return window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.PushNotifications;
+    }
+    function initPush() {
+      var PN = pushPlugin();
+      if (!NATIVE || !PN || pushReady) return Promise.resolve(false);
+      pushReady = true;
+      // Two channels so an urgent lead can ring through while routine updates
+      // stay quiet — Android lets the user tune each one separately.
+      try {
+        PN.createChannel({ id: "dl_urgent", name: "Urgent — hot leads", description: "Ventane call cheyalsinavi", importance: 5, visibility: 1, vibration: true, lights: true });
+        PN.createChannel({ id: "dl_default", name: "Updates", description: "Leads, academy, reviews", importance: 4, visibility: 1, vibration: true });
+      } catch (e) {}
+      PN.addListener("registration", function (t) {
+        papi("register", { token: t.value, platform: "android" }).catch(function () {});
+      });
+      PN.addListener("registrationError", function (e) { console.error("push register", e); });
+      // Tapping a notification should land on the thing it is about.
+      PN.addListener("pushNotificationActionPerformed", function (ev) {
+        var d = (ev && ev.notification && ev.notification.data) || {};
+        if (d.tab) { hashDone = true; goTab(d.tab); }
+        load(true).catch(function () {});
+      });
+      PN.addListener("pushNotificationReceived", function () { load(true).catch(function () {}); });
+      return PN.checkPermissions()
+        .then(function (p) { return p.receive === "granted" ? p : PN.requestPermissions(); })
+        .then(function (p) { if (p.receive === "granted") { PN.register(); return true; } return false; })
+        .catch(function () { return false; });
+    }
 
     // ---- pull to refresh ----
     (function () {
@@ -796,6 +854,12 @@
       $("cpnav").querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
       ["people", "roles", "controls", "log"].forEach(function (t) { $("cp-" + t).classList.toggle("hide", t !== cpTab); });
     });
+    $("pushTest").onclick = function () {
+      papi("test", {}).then(function (j) { toast("Pampanu — phone chudandi (" + j.sent + ")"); }).catch(function (x) { toast(x.message); });
+    };
+    $("pushOff").onclick = function () {
+      papi("unregister", {}).then(function () { toast("Ee phone lo notifications aagipoyayi"); renderDevices(); }).catch(function (x) { toast(x.message); });
+    };
     $("rAdd").onclick = function () {
       var key = $("rKey").value.trim().toLowerCase().replace(/[^a-z0-9_]/g, ""), label = $("rLabel").value.trim();
       $("roleErr").textContent = "";
@@ -826,6 +890,10 @@
       if (el.dataset.act === "delete") { if (!confirm("Delete this lead?")) return; api("delete", { key: el.dataset.key }).then(function () { state.data.leads = state.data.leads.filter(function (x) { return x.key !== el.dataset.key; }); state.data.academy.leads = state.data.academy.leads.filter(function (x) { return x.key !== el.dataset.key; }); render(); toast("Deleted"); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "p-remove") { if (!confirm("Remove access for " + el.dataset.phone + "?")) return; api("team-remove", { phone: el.dataset.phone }).then(function () { toast("Removed"); return loadPanel(); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "p-suspend") { var off = el.dataset.off === "1"; if (off && !confirm("Ee login ni off chestara?")) return; api("team-suspend", { phone: el.dataset.phone, off: off }).then(function () { toast(off ? "Access off" : "Access on"); return loadPanel(); }).catch(function (x) { toast(x.message); }); }
+      if (el.dataset.act === "dev-revoke") {
+        if (!confirm("Ee phone nunchi notifications aapesi, device ni teesestara?")) return;
+        papi("revoke", { token: el.dataset.token }).then(function () { toast("Device blocked"); renderDevices(); }).catch(function (x) { toast(x.message); });
+      }
       if (el.dataset.act === "r-save") { saveRole(el.dataset.role); }
       if (el.dataset.act === "r-copy") {
         var src = panel.roles[el.dataset.role] || {};

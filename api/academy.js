@@ -147,6 +147,14 @@ module.exports = async (req, res) => {
       s.docsPending = true; await putSt(cfg, s).catch(() => {});
       await alertAdmins(`⚠️ *Academy: documents failed*\n${s.name} (${s.phone}) · ID ${s.id}\nForm submit ayindi kani receipt/admission/ID card generate avvaledu.\nError: ${(e && e.message) || "unknown"}\nDashboard → Students → "Resend docs" tho malli try cheyandi.`);
     }
+    try {
+      const push = require("./_push.js");
+      if (push.enabled()) await push.notifyCap(cfg, "academy.view", {
+        title: `🎓 Form submit ayindi — ${s.name}`,
+        body: `${docs.course(s).name} · ${s.id} · documents WhatsApp lo pampamu`,
+        tab: "students", data: { kind: "onboarded", id: s.id },
+      });
+    } catch (e) { console.error("push: onboarding", e && e.message); }
     await alertAdmins(`🎓 *Academy onboarding complete*\n${s.name} (${s.phone}) · ${docs.course(s).name} · ID ${s.id}\nPaid ₹${(s.paid || 0).toLocaleString("en-IN")} · Balance ₹${Math.max(0, (s.fee || docs.course(s).offer) - (s.paid || 0)).toLocaleString("en-IN")}`);
     return json(res, 200, { ok: true, id: s.id, files: built });
   }
@@ -244,6 +252,14 @@ module.exports = async (req, res) => {
     s.payments = (s.payments || []).concat([{ amount: amt, mode: s.payMode, ref: s.payRef, ts: Date.now(), by: me.name }]);
     if (s.paid >= (s.fee || 0)) s.feeCleared = true;
     await putSt(cfg, s);                       // money is recorded first and never lost
+    try {
+      const push = require("./_push.js");
+      if (push.enabled()) await push.notifyCap(cfg, "academy.view", {
+        title: `💰 Fee received — ${s.name}`,
+        body: `₹${amt.toLocaleString("en-IN")} ${s.payMode || ""} · ${s.id} · balance ₹${Math.max(0, (s.fee || 0) - s.paid).toLocaleString("en-IN")}`,
+        tab: "students", data: { kind: "payment", id: s.id }, exceptPhone: me.phone,
+      });
+    } catch (e) { console.error("push: academy pay", e && e.message); }
     let receipt = null, warn = null;
     try {
       const f = await buildDocs(cfg, s, ["receipt"], { payment: { no: `R-${s.id}-${s.payments.length}`, amount: amt, mode: s.payMode, ref: s.payRef, label: b.label || (s.feeCleared ? "Course fee (balance)" : "Part payment"), ts: Date.now() } });

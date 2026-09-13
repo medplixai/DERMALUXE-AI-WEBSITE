@@ -190,6 +190,23 @@ async function leadAlert(cfg, lead) {
 
   const when = [lead.date, lead.slot, lead.mode].filter(Boolean).join(" · ");
   const heatTag = lead.heat === "hot" ? " 🔥 HOT" : lead.heat === "warm" ? " 🌤 Warm" : "";
+
+  // Ring the staff app too. Every channel — website, WhatsApp, Instagram,
+  // Messenger, a missed call — funnels through here, so one hook covers all of
+  // them. Only people whose role lets them see leads get the notification.
+  try {
+    const push = require("./_push.js");
+    if (push.enabled()) {
+      await push.notifyCap(cfg, "leads.view", {
+        title: `${lead.heat === "hot" ? "🔥 Hot lead" : "New lead"} — ${lead.name}`,
+        body: [lead.concern || "", lead.phone ? `📱 ${lead.phone}` : "", when].filter(Boolean).join(" · ").slice(0, 160) || "Kotha lead vachindi",
+        tab: "leads",
+        urgent: lead.heat === "hot",
+        data: { kind: "lead", phone: lead.phone || "", src: lead.type || "web" },
+      });
+    }
+  } catch (e) { console.error("push: lead alert", e && e.message); }
+
   const body = [
     `🚨 *New Lead!*${heatTag} (${lead.type || "website"})`,
     `👤 ${lead.name}`,

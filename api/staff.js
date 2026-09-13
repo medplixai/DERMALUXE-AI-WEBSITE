@@ -506,6 +506,8 @@ module.exports.loadRoles = loadRoles;
 module.exports.effCaps = effCaps;
 // What another endpoint should call: merged roles + this person's own grants.
 module.exports.liveUser = (cfg, phone, roles) => resolveUser(cfg, phone, roles);
+// Decode a staff bearer token (identity only — never trust its role/caps).
+module.exports.tokenUser = (req) => readToken(req);
 module.exports.capsFor = async function (cfg, user) {
   const roles = await loadRoles(cfg);
   return effCaps(roles, user);
