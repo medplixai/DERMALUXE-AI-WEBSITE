@@ -1,17 +1,22 @@
 {
   "name": "dermaluxe-staff-app",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "private": true,
   "description": "DermaLuxe by Medicare \u2014 staff Android app (Capacitor shell around the staff dashboard).",
   "scripts": {
     "shell": "node build-shell.js",
     "sync": "npm run shell && npx cap sync android",
-    "apk": "npm run sync && cd android && ./gradlew assembleRelease"
+    "apk": "./build-apk.sh"
   },
   "dependencies": {
+    "@aparajita/capacitor-biometric-auth": "^10.0.0",
     "@capacitor/android": "^8.5.2",
+    "@capacitor/app": "^8.1.1",
+    "@capacitor/camera": "^8.2.4",
     "@capacitor/cli": "^8.5.2",
     "@capacitor/core": "^8.5.2",
-    "@capacitor/push-notifications": "^8.1.2"
+    "@capacitor/haptics": "^8.0.2",
+    "@capacitor/push-notifications": "^8.1.2",
+    "@capacitor/share": "^8.0.1"
   }
 }

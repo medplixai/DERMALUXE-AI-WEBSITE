@@ -181,6 +181,15 @@
       main.wrap{padding-bottom:calc(var(--navh) + 18px)}
       .top .wrap{padding-top:env(safe-area-inset-top)}
     }
+    .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .thumb{width:62px;height:62px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--ink2);padding:0;cursor:pointer}
+    .thumb img{width:100%;height:100%;object-fit:cover;display:block}
+    .viewer{position:fixed;inset:0;z-index:95;background:rgba(0,0,0,.93);display:grid;place-items:center;padding:16px}
+    .viewer img{max-width:100%;max-height:100%;border-radius:10px}
+    .lock{position:fixed;inset:0;z-index:99;background:var(--ink);display:grid;place-items:center;text-align:center;padding:24px}
+    .lock img{width:72px;height:72px;border-radius:18px;margin-bottom:16px}
+    .lock h2{font-family:"Cormorant Garamond",serif;font-size:1.6rem;color:var(--g1);margin-bottom:6px}
+    .lock p{color:var(--muted);font-size:.9rem;max-width:30ch;margin:0 auto 18px}
     html.standalone .hide-in-app{display:none!important}
     @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
     .switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.88rem}
@@ -258,6 +267,7 @@
           <div class="seats" id="seats"></div>
           <div class="stepper"><button class="btn btn--sm" id="seatMinus">−</button><b id="seatNum">0</b><button class="btn btn--sm" id="seatPlus">+</button><span style="color:var(--muted);font-size:.85rem">booked (₹9,999 paid) · <span id="seatLeft">10</span> left · offer till 30 Sep</span></div>
           <p>Launch offer: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Reserve ₹9,999. Agent WhatsApp lo "ACADEMY" tho enquiries collect chestundi, catalog PDF automatic ga pampistundi.</p>
+          <p style="margin-top:8px"><button class="btn btn--sm" data-act="share-catalog">📤 Catalog share cheyandi</button></p>
         </div>
         <div class="list" id="acadList"></div>
       </section>
@@ -410,7 +420,7 @@
       // an app that opens instantly beats one that opens to a blank screen.
       $("login").classList.add("hide"); $("app").classList.remove("hide");
       $("leadList").innerHTML = '<div class="sk"><div></div><div></div><div></div><div></div></div>';
-      load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); initPush(); })
+      load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); initPush(); initLock(); checkPendingCall(); })
         .catch(function (e) { tok = null; try { localStorage.removeItem(TOK); } catch (x) {} $("leadList").innerHTML = ""; $("app").classList.add("hide"); $("loginErr").textContent = e.message === "Login required" ? "" : e.message; $("login").classList.remove("hide"); });
     }
     function load(quiet) {
@@ -437,7 +447,7 @@
       $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
       $("nAppts").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("nAcad").textContent = d.academy.leads.length;
-      renderLeads(); renderAppts(); renderAcademy(); renderToday(); renderReviews();
+      renderLeads(); renderAppts(); renderAcademy(); renderToday(); renderReviews(); fillThumbs();
       if ($("dailyToggle")) $("dailyToggle").checked = !!d.dailyOn;
       // buttons follow the powers, so nobody clicks something that will 403
       [["seatMinus", "academy.seats"], ["seatPlus", "academy.seats"], ["stAdd", "academy.edit"]].forEach(function (p) {
@@ -456,12 +466,21 @@
         (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
         '<div class="acts">' +
-        (l.phone ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' : '<span class="meta">No phone (DM lead)</span>') +
+        (l.phone ? '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '" data-phone="' + esc(l.phone) + '" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' : '<span class="meta">No phone (DM lead)</span>') +
         '<select class="s-' + l.status + '" data-act="status" data-key="' + esc(l.key) + '">' + state.data.statuses.map(function (o) { return '<option value="' + o + '"' + (o === l.status ? ' selected' : '') + '>' + o.charAt(0).toUpperCase() + o.slice(1) + '</option>'; }).join("") + '</select>' +
-        (state.data.me.role === "owner" ? '<button class="btn btn--sm" data-act="delete" data-key="' + esc(l.key) + '" title="Delete lead">🗑</button>' : '') +
+        (NATIVE && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="lead" data-ref="' + esc(l.key) + '" data-who="' + esc(l.name || "") + '">📷 Photo</button>' : '') +
+        (state.allow("leads.delete") ? '<button class="btn btn--sm" data-act="delete" data-key="' + esc(l.key) + '" title="Delete lead">🗑</button>' : '') +
         '</div>' +
+        '<div class="phwrap" data-kind="lead" data-ref="' + esc(l.key) + '"></div>' +
         '<div class="notes">' + notes + '<form class="noteform" data-act="note" data-key="' + esc(l.key) + '"><input placeholder="Call note… (e.g. spoke, coming Sat 5 PM)" maxlength="400" /><button class="btn btn--sm btn--gold" type="submit">Add</button></form></div>' +
         '</article>';
+    }
+    function fillThumbs() {
+      if (!NATIVE) return;
+      document.querySelectorAll(".phwrap:not([data-loaded])").forEach(function (h) {
+        h.setAttribute("data-loaded", "1");
+        loadPhotos(h.dataset.kind, h.dataset.ref, h);
+      });
     }
     function renderLeads() {
       var d = state.data, q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fsrc = $("fSrc").value, days = Number($("fDays").value);
@@ -656,7 +675,19 @@
     var NAV_PREF = ["leads","appts","students","office","academy","today","reviews","team"];
     var NAV_BADGE = { leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad" };
 
-    function haptic(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {} }
+    function plug(n) { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n]) || null; }
+    function haptic(ms) {
+      var H = plug("Haptics");
+      if (H) { try { H.impact({ style: (ms || 8) > 12 ? "Medium" : "Light" }); return; } catch (e) {} }
+      try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {}
+    }
+    function nativeShare(title, text, url) {
+      var S = plug("Share");
+      if (S) return S.share({ title: title, text: text, url: url, dialogTitle: "Pampandi" }).catch(function () {});
+      if (navigator.share) return navigator.share({ title: title, text: text, url: url }).catch(function () {});
+      try { navigator.clipboard.writeText(url || text); toast("Link copy ayindi"); } catch (e) {}
+      return Promise.resolve();
+    }
     function visibleTabs() {
       return NAV_PREF.filter(function (t) {
         var b = document.querySelector('.tab[data-t="' + t + '"]');
@@ -746,6 +777,86 @@
         .catch(function () { return false; });
     }
 
+    // ---- clinical photos -------------------------------------------------
+    // Patient pictures. Nothing is taken before the consent tick, nothing is
+    // written to the phone gallery, and every read carries the session token.
+    function phapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/photo?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    var photoCache = {};
+    function photoSrc(id) {
+      if (photoCache[id]) return Promise.resolve(photoCache[id]);
+      return fetch(ORIGIN + "/api/photo?a=get&id=" + encodeURIComponent(id), { headers: { Authorization: "Bearer " + tok } })
+        .then(function (r) { if (!r.ok) throw new Error("photo"); return r.blob(); })
+        .then(function (bl) { var u = URL.createObjectURL(bl); photoCache[id] = u; return u; });
+    }
+    function paintThumbs(el) {
+      el.querySelectorAll("img[data-pid]:not([data-done])").forEach(function (im) {
+        im.setAttribute("data-done", "1");
+        photoSrc(im.dataset.pid).then(function (u) { im.src = u; }).catch(function () { im.remove(); });
+      });
+    }
+    function loadPhotos(kind, ref, host) {
+      return phapi("list", null, "&kind=" + kind + "&ref=" + encodeURIComponent(ref)).then(function (j) {
+        if (!j.photos.length) { host.innerHTML = ""; return; }
+        host.innerHTML = '<div class="thumbs">' + j.photos.map(function (p) {
+          return '<button class="thumb" data-act="photo-open" data-pid="' + esc(p.id) + '" title="' + esc((p.label || "") + " · " + p.by) + '"><img data-pid="' + esc(p.id) + '" alt="" /></button>';
+        }).join("") + "</div>";
+        paintThumbs(host);
+      }).catch(function () { host.innerHTML = ""; });
+    }
+    // The consent gate. It is a real gate: cancel here and no camera opens.
+    function askConsent(who) {
+      return new Promise(function (resolve) {
+        var wrap = document.createElement("div");
+        wrap.className = "sheet open";
+        wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
+          '<h2>Patient consent</h2>' +
+          '<p style="color:var(--muted);font-size:.9rem;margin-bottom:4px">' + esc(who || "Ee patient") + ' photo teeyadaniki oppukunnara?</p>' +
+          '<p style="color:var(--muted2);font-size:.82rem">Photo clinic record lo matrame untundi. Phone gallery lo save avvadu. Evaru eppudu teesaro record avutundi.</p>' +
+          '<label class="pw" style="margin:14px 0;padding:10px 14px"><input type="checkbox" id="cTick" /> Avunu, patient oppukunnaru</label>' +
+          '<div style="display:flex;gap:8px"><button class="btn btn--gold btn--sm" id="cGo" disabled style="flex:1">Camera teeyandi</button>' +
+          '<button class="btn btn--sm" id="cNo">Vaddu</button></div></div>';
+        document.body.appendChild(wrap);
+        var done = function (v) { wrap.remove(); resolve(v); };
+        wrap.querySelector("#cTick").onchange = function () { wrap.querySelector("#cGo").disabled = !this.checked; };
+        wrap.querySelector("#cGo").onclick = function () { done(true); };
+        wrap.querySelector("#cNo").onclick = function () { done(false); };
+        wrap.querySelector(".sheet-bg").onclick = function () { done(false); };
+      });
+    }
+    function takePhoto(kind, ref, who, host) {
+      var C = plug("Camera");
+      if (!C) { toast("Camera app lo matrame pani chestundi"); return; }
+      askConsent(who).then(function (ok) {
+        if (!ok) return;
+        haptic(14);
+        return C.getPhoto({
+          quality: 72, width: 1280, allowEditing: false,
+          resultType: "dataUrl", source: "CAMERA",
+          saveToGallery: false, correctOrientation: true,
+        }).then(function (img) {
+          if (!img || !img.dataUrl) return;
+          toast("Upload avutondi…");
+          return phapi("put", { kind: kind, ref: ref, dataUrl: img.dataUrl, consent: true })
+            .then(function () { toast("Photo save ayindi"); if (host) loadPhotos(kind, ref, host); });
+        });
+      }).catch(function (e) { if (e && e.message && !/cancel/i.test(e.message)) toast(e.message); });
+    }
+    function openPhoto(id) {
+      photoSrc(id).then(function (u) {
+        var v = document.createElement("div");
+        v.className = "viewer";
+        v.innerHTML = '<img src="' + u + '" alt="" /><button class="btn btn--sm" style="position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px">Close</button>';
+        v.onclick = function () { v.remove(); };
+        document.body.appendChild(v);
+      }).catch(function () { toast("Photo teeyaleka poyam"); });
+    }
+
     // ---- pull to refresh ----
     (function () {
       var y0 = null, dist = 0, busy = false, el = $("ptr");
@@ -770,6 +881,117 @@
         });
       }, { passive: true });
     })();
+
+    // ---- call, then the note ---------------------------------------------
+    // The gap this closes: staff call from the lead card and the call note
+    // never gets written. The app notices it came back from the dialer and
+    // asks straight away, with one tap for the usual outcomes.
+    var PEND = "dl_pending_call";
+    function rememberCall(key, name, phone) {
+      try { localStorage.setItem(PEND, JSON.stringify({ key: key, name: name, phone: phone, at: Date.now() })); } catch (e) {}
+    }
+    function pendingCall() {
+      try { var v = JSON.parse(localStorage.getItem(PEND) || "null"); return v && v.key ? v : null; } catch (e) { return null; }
+    }
+    function clearCall() { try { localStorage.removeItem(PEND); } catch (e) {} }
+    var OUTCOMES = [
+      { k: "booked",    label: "✅ Booked",        status: "booked",    note: "Call — appointment book ayindi" },
+      { k: "callback",  label: "🔁 Malli call",    status: "contacted", note: "Call — malli call cheyyamannaru" },
+      { k: "noanswer",  label: "📵 Ettaledu",      status: "contacted", note: "Call — ettaledu" },
+      { k: "thinking",  label: "🤔 Alochistunnaru", status: "contacted", note: "Call — alochinchi cheptanannaru" },
+      { k: "no",        label: "🚫 Vaddannaru",    status: "closed",    note: "Call — interest ledu" },
+    ];
+    function askCallResult(pc) {
+      var mins = Math.max(1, Math.round((Date.now() - pc.at) / 60000));
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
+        '<h2>' + esc(pc.name || "Call") + ' ki call chesara?</h2>' +
+        '<p style="color:var(--muted2);font-size:.82rem;margin-bottom:12px">' + mins + ' nimishala kritam · ' + esc(pc.phone || "") + '</p>' +
+        '<div class="pwrow" style="gap:7px">' + OUTCOMES.map(function (o) {
+          return '<button class="pw" style="padding:9px 13px;font-size:.85rem" data-out="' + o.k + '">' + o.label + "</button>";
+        }).join("") + "</div>" +
+        '<form class="noteform" style="margin-top:12px" id="cnForm"><input id="cnText" placeholder="Em maatladaru? (optional)" maxlength="300" /><button class="btn btn--sm btn--gold" type="submit">Save</button></form>' +
+        '<button class="btn btn--sm" id="cnSkip" style="margin-top:9px;width:100%">Ippudu vaddu</button></div>';
+      document.body.appendChild(wrap);
+      var picked = null;
+      var close = function () { wrap.remove(); clearCall(); };
+      wrap.querySelectorAll("[data-out]").forEach(function (btn) {
+        btn.onclick = function () {
+          picked = OUTCOMES.filter(function (o) { return o.k === btn.dataset.out; })[0];
+          wrap.querySelectorAll("[data-out]").forEach(function (x) { x.style.borderColor = ""; x.style.color = ""; });
+          btn.style.borderColor = "var(--g3)"; btn.style.color = "var(--g1)";
+          haptic();
+          save();
+        };
+      });
+      function save() {
+        var extra = (wrap.querySelector("#cnText").value || "").trim();
+        if (!picked && !extra) { close(); return; }
+        var text = [picked ? picked.note : "Call chesamu", extra].filter(Boolean).join(" — ").slice(0, 380);
+        var jobs = [api("note", { key: pc.key, text: text })];
+        if (picked) jobs.push(api("status", { key: pc.key, status: picked.status }));
+        close();
+        Promise.all(jobs).then(function () { toast("Note save ayindi"); return load(true); }).catch(function (e) { toast(e.message); });
+      }
+      wrap.querySelector("#cnForm").onsubmit = function (e) { e.preventDefault(); save(); };
+      wrap.querySelector("#cnSkip").onclick = close;
+      wrap.querySelector(".sheet-bg").onclick = close;
+    }
+    function checkPendingCall() {
+      var pc = pendingCall();
+      if (!pc) return;
+      var age = Date.now() - pc.at;
+      if (age < 12000 || age > 45 * 60000) { if (age > 45 * 60000) clearCall(); return; }
+      if (document.querySelector(".sheet.open")) return;
+      askCallResult(pc);
+    }
+
+    // ---- lock the app when it has been away ------------------------------
+    var LOCK_AFTER = 5 * 60 * 1000, awaySince = 0, locked = false;
+    function bio() { return plug("BiometricAuth"); }
+    function showLock() {
+      if (locked) return;
+      locked = true;
+      var el = document.createElement("div");
+      el.className = "lock";
+      el.innerHTML = '<div><img src="assets/app/icon-192.png" alt="" /><h2>DermaLuxe Staff</h2>' +
+        '<p>Patient vivaralu unnayi — konchem confirm cheyandi.</p>' +
+        '<button class="btn btn--gold btn--sm" id="lkGo">Unlock</button></div>';
+      document.body.appendChild(el);
+      var go = function () {
+        var B = bio();
+        if (!B) { el.remove(); locked = false; return; }
+        B.authenticate({ reason: "DermaLuxe Staff unlock", cancelTitle: "Cancel", allowDeviceCredential: true, androidTitle: "Unlock", androidSubtitle: "Vellimudra leda screen lock" })
+          .then(function () { el.remove(); locked = false; haptic(); })
+          .catch(function () { /* stay locked, they can tap again */ });
+      };
+      el.querySelector("#lkGo").onclick = go;
+      go();
+    }
+    function initLock() {
+      var A = plug("App"), B = bio();
+      if (!A) return;
+      A.addListener("appStateChange", function (st) {
+        if (!st.isActive) { awaySince = Date.now(); return; }
+        // back in the foreground
+        if (B && awaySince && Date.now() - awaySince > LOCK_AFTER) showLock();
+        awaySince = 0;
+        checkPendingCall();
+        if (!locked) load(true).catch(function () {});
+      });
+      // Android back button: close a sheet first, never drop out of the app
+      A.addListener("backButton", function () {
+        var sheet = document.querySelector(".sheet.open");
+        if (sheet) { if (sheet.id === "moreSheet") closeSheet(); else sheet.remove(); return; }
+        var viewer = document.querySelector(".viewer");
+        if (viewer) { viewer.remove(); return; }
+        var first = document.querySelector(".tab:not(.hide)");
+        var cur = document.querySelector(".tab.on");
+        if (first && cur && first !== cur) { first.click(); return; }
+        A.minimizeApp();
+      });
+    }
 
     // ---- install & update ----
     if (matchMedia("(display-mode: standalone)").matches || navigator.standalone || NATIVE)
@@ -890,6 +1112,22 @@
       if (el.dataset.act === "delete") { if (!confirm("Delete this lead?")) return; api("delete", { key: el.dataset.key }).then(function () { state.data.leads = state.data.leads.filter(function (x) { return x.key !== el.dataset.key; }); state.data.academy.leads = state.data.academy.leads.filter(function (x) { return x.key !== el.dataset.key; }); render(); toast("Deleted"); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "p-remove") { if (!confirm("Remove access for " + el.dataset.phone + "?")) return; api("team-remove", { phone: el.dataset.phone }).then(function () { toast("Removed"); return loadPanel(); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "p-suspend") { var off = el.dataset.off === "1"; if (off && !confirm("Ee login ni off chestara?")) return; api("team-suspend", { phone: el.dataset.phone, off: off }).then(function () { toast(off ? "Access off" : "Access on"); return loadPanel(); }).catch(function (x) { toast(x.message); }); }
+      if (el.dataset.act === "call") {
+        // let the tel: link do its thing, then ask about it on the way back
+        rememberCall(el.dataset.key, el.dataset.name, el.dataset.phone);
+        haptic();
+        return;
+      }
+      if (el.dataset.act === "photo") {
+        var host = document.querySelector('.phwrap[data-kind="' + el.dataset.kind + '"][data-ref="' + el.dataset.ref + '"]');
+        takePhoto(el.dataset.kind, el.dataset.ref, el.dataset.who, host);
+        return;
+      }
+      if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
+      if (el.dataset.act === "share-catalog") {
+        nativeShare("DermaLuxe Academy", "DermaLuxe Academy — course catalog", "https://www.dermaluxe.ai/assets/academy/DermaLuxe-Academy-Course-Catalog.pdf");
+        return;
+      }
       if (el.dataset.act === "dev-revoke") {
         if (!confirm("Ee phone nunchi notifications aapesi, device ni teesestara?")) return;
         papi("revoke", { token: el.dataset.token }).then(function () { toast("Device blocked"); renderDevices(); }).catch(function (x) { toast(x.message); });
@@ -917,7 +1155,7 @@
       return fetch(ORIGIN + "/api/academy?a=" + a, opt).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
     }
     var students = [];
-    function loadStudents() { sapi("list").then(function (j) { students = j.students || []; renderStudents(); }).catch(function (e) { toast(e.message); }); }
+    function loadStudents() { sapi("list").then(function (j) { students = j.students || []; renderStudents(); fillThumbs(); }).catch(function (e) { toast(e.message); }); }
     function money(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
     function renderStudents() {
       $("nStud").textContent = students.length;
@@ -936,6 +1174,7 @@
           (state.allow("academy.docs") ? '<button class="btn btn--sm" data-sact="send" data-id="' + esc(s.id) + '">📄 Resend docs</button>' : "") +
           (state.allow("academy.material") ? '<button class="btn btn--sm" data-sact="material" data-id="' + esc(s.id) + '">📚 Material link</button>' : "") +
           (state.allow("academy.certify") ? '<button class="btn btn--sm btn--gold" data-sact="certify" data-id="' + esc(s.id) + '">🎓 Certificate</button>' : "") +
+          (NATIVE && state.allow("academy.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="student" data-ref="' + esc(s.id) + '" data-who="' + esc(s.name) + '">📷 Document</button>' : "") +
           '</div><div class="notes">' + notes + '<form class="noteform" data-sact="note" data-id="' + esc(s.id) + '"><input placeholder="Note…" maxlength="300" /><button class="btn btn--sm" type="submit">Add</button></form></div></article>';
       }).join("") : '<div class="empty">No students yet. Advance pay chesina vaarini paina add cheyandi.</div>';
     }
