@@ -188,6 +188,108 @@ module.exports = async (req, res) => {
     }[NEED[a]];
     return json(res, 403, { error: `Mee role ki ${why} permission ledu` });
   }
+  // The seat board: everyone who has shown interest in Batch 1, in one list,
+  // with the person's stage worked out rather than guessed. Enquiries live in
+  // the lead book, reserved seats live as student records, and the same person
+  // is usually in both — so they are merged on phone number.
+  if (a === "funnel") {
+    const rlf = await guard.rateLimit(cfg, `rl:acf:${me.phone}`, 120, 3600);
+    if (!rlf.allowed) return json(res, 429, { error: "Too many requests" });
+
+    const [sr, lr, st, nt] = await Promise.all([
+      guard.kvCommand(cfg, ["LRANGE", LIST, "0", "299"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "799"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["HGETALL", "dl_notes"]).catch(() => ({})),
+    ]);
+    const hash = (r) => {
+      const a2 = (r && r.result) || {}, out = {};
+      if (Array.isArray(a2)) { for (let i = 0; i + 1 < a2.length; i += 2) out[a2[i]] = a2[i + 1]; }
+      else Object.assign(out, a2);
+      return out;
+    };
+    const statuses = hash(st), notesBy = hash(nt);
+
+    const people = new Map();                       // phone → entry
+    const put = (e) => {
+      const prev = people.get(e.phone);
+      people.set(e.phone, prev ? Object.assign(prev, e) : e);
+    };
+
+    // enquiries from the lead book
+    for (const raw of (lr.result || [])) {
+      let l = null; try { l = JSON.parse(raw); } catch (e) { continue; }
+      if (!l || !/^academy/i.test(String(l.concern || ""))) continue;
+      const phone = digits10(l.phone);
+      if (!phone) continue;
+      const key = `${l.ts}|${phone}`;
+      let notes = []; try { notes = JSON.parse(notesBy[key] || "[]"); } catch (e) {}
+      const prev = people.get(phone);
+      if (prev && prev.enquiredAt && prev.enquiredAt <= l.ts) continue;   // keep the first enquiry
+      put({
+        phone, name: l.name || (prev && prev.name) || "Enquiry",
+        interest: String(l.concern || "").replace(/^academy[\s:—-]*/i, "").slice(0, 60),
+        src: l.src || l.type || "whatsapp",
+        enquiredAt: l.ts, leadKey: key,
+        leadStatus: statuses[key] || "new",
+        lastNote: notes[0] ? { ts: notes[0].ts, by: notes[0].by, text: notes[0].text } : null,
+      });
+    }
+
+    // reserved seats and enrolled students
+    for (const id of (sr.result || [])) {
+      const s2 = await getSt(cfg, id);
+      if (!s2) continue;
+      const phone = digits10(s2.phone);
+      if (!phone) continue;
+      const n2 = (s2.notes || [])[0];
+      put({
+        phone, name: s2.name, id: s2.id, course: s2.course, duration: s2.duration,
+        fee: Number(s2.fee || 0), paid: Number(s2.paid || 0),
+        studentStatus: s2.status || "enrolled", onboarded: !!s2.onboarded,
+        createdAt: s2.created || null,
+        lastNote: n2 ? { ts: n2.ts, by: n2.by, text: n2.text } : undefined,
+      });
+    }
+
+    const OFFER_ENDS = Date.UTC(2026, 8, 30, 18, 29, 59);      // 30 Sep 2026, 23:59:59 IST
+    const BATCH_STARTS = Date.UTC(2026, 9, 19, 18, 30, 0);     // 20 Oct 2026, 00:00 IST
+    const now = Date.now();
+    const days = (t) => Math.max(0, Math.ceil((t - now) / 86400000));
+
+    const rows = Array.from(people.values()).map((p) => {
+      const paid = Number(p.paid || 0);
+      const dropped = p.studentStatus === "dropped" || p.leadStatus === "closed";
+      const stage = dropped ? "lost" : paid > 0 ? "reserved" : "enquiry";
+      const touched = p.lastNote ? p.lastNote.ts : (p.enquiredAt || p.createdAt || 0);
+      return Object.assign({}, p, {
+        stage,
+        paid,
+        balance: Math.max(0, Number(p.fee || 0) - paid),
+        lastTouch: touched,
+        // an enquiry nobody has come back to is the whole point of this screen
+        quietDays: touched ? Math.floor((now - touched) / 86400000) : null,
+      });
+    }).sort((a2, b2) => (b2.lastTouch || 0) - (a2.lastTouch || 0));
+
+    const reserved = rows.filter((r) => r.stage === "reserved");
+    const collected = reserved.reduce((n, r) => n + r.paid, 0);
+    const pending = reserved.reduce((n, r) => n + r.balance, 0);
+
+    return json(res, 200, {
+      ok: true,
+      rows,
+      seats: { total: 10, booked: reserved.length, left: Math.max(0, 10 - reserved.length) },
+      money: { collected, pending },
+      counts: {
+        reserved: reserved.length,
+        enquiry: rows.filter((r) => r.stage === "enquiry").length,
+        lost: rows.filter((r) => r.stage === "lost").length,
+      },
+      deadline: { offerDays: days(OFFER_ENDS), batchDays: days(BATCH_STARTS), offer: "30 Sep 2026", batch: "20 Oct 2026" },
+    });
+  }
+
   if (a === "list") {
     const rl0 = await guard.rateLimit(cfg, `rl:acl:${me.phone}`, 120, 3600);
     if (!rl0.allowed) return json(res, 429, { error: "Too many requests" });

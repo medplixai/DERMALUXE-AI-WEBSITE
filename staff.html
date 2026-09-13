@@ -186,6 +186,27 @@
     .netbar.off{color:var(--hot);border-color:rgba(255,122,89,.3)}
     .netbar.sync{color:var(--g2);border-color:var(--line2,rgba(198,162,92,.32))}
     .netbar.stale{color:var(--muted)}
+    .countdown{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);
+      border-radius:var(--r);overflow:hidden;margin-bottom:10px}
+    .countdown div{background:var(--panel);padding:11px 14px;text-align:center}
+    .countdown b{display:block;font-family:"Cormorant Garamond",serif;font-size:1.7rem;font-weight:600;line-height:1.1;color:var(--g2)}
+    .countdown.urgent b{color:var(--hot)}
+    .countdown span{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted2)}
+    .grp{margin-top:16px}
+    .grp-h{display:flex;align-items:baseline;gap:8px;margin-bottom:8px}
+    .grp-h h2{font-family:"Cormorant Garamond",serif;font-size:1.35rem;color:var(--g1)}
+    .grp-h i{font-style:normal;font-size:.78rem;color:var(--muted2)}
+    .seat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:13px 15px;margin-bottom:8px}
+    .seat.quiet{border-left:2px solid var(--hot)}
+    .seat.done{border-left:2px solid var(--ok)}
+    .seat .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
+    .seat h3{font-size:1rem;font-weight:500}
+    .seat .meta{font-size:.8rem}
+    .seat .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .chip{display:inline-block;font-size:.7rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;
+      border-radius:100px;border:1px solid var(--line);color:var(--muted)}
+    .chip.hot{color:var(--hot);border-color:rgba(255,122,89,.35)}
+    .chip.ok{color:var(--ok);border-color:rgba(95,211,155,.35)}
     .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     .thumb{width:62px;height:62px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--ink2);padding:0;cursor:pointer}
     .thumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -268,14 +289,17 @@
       </section>
       <section id="t-appts" class="hide"><div class="list" id="apptList"></div></section>
       <section id="t-academy" class="hide">
+        <div class="countdown" id="acadCount"></div>
         <div class="box">
-          <h2>Batch 1 · 20 Oct 2026 — seats target 10 <span class="te" style="font-size:.85rem;color:var(--g3)">· సీట్లు</span></h2>
+          <h2>Batch 1 seats <span class="te" style="font-size:.85rem;color:var(--g3)">· సీట్లు</span></h2>
           <div class="seats" id="seats"></div>
-          <div class="stepper"><button class="btn btn--sm" id="seatMinus">−</button><b id="seatNum">0</b><button class="btn btn--sm" id="seatPlus">+</button><span style="color:var(--muted);font-size:.85rem">booked (₹9,999 paid) · <span id="seatLeft">10</span> left · offer till 30 Sep</span></div>
-          <p>Launch offer: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Reserve ₹9,999. Agent WhatsApp lo "ACADEMY" tho enquiries collect chestundi, catalog PDF automatic ga pampistundi.</p>
-          <p style="margin-top:8px"><button class="btn btn--sm" data-act="share-catalog">📤 Catalog share cheyandi</button></p>
+          <div id="seatMoney" class="meta" style="margin-top:8px"></div>
+          <p style="margin-top:10px">Launch offer: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Seat reserve ₹9,999.</p>
+          <p style="margin-top:8px"><button class="btn btn--sm" data-act="share-catalog">📤 Catalog share cheyandi</button>
+            <button class="btn btn--sm" id="acadRefresh">↻ Refresh</button></p>
         </div>
-        <div class="list" id="acadList"></div>
+        <div id="acadToday"></div>
+        <div id="acadBoard"></div>
       </section>
       <section id="t-students" class="hide">
         <div class="box"><h2>Add student <span class="te" style="font-size:.9rem;color:var(--g3)">· స్టూడెంట్ add</span></h2>
@@ -512,7 +536,7 @@
       renderLeads(); renderAppts(); renderAcademy(); renderToday(); renderReviews(); fillThumbs();
       if ($("dailyToggle")) $("dailyToggle").checked = !!d.dailyOn;
       // buttons follow the powers, so nobody clicks something that will 403
-      [["seatMinus", "academy.seats"], ["seatPlus", "academy.seats"], ["stAdd", "academy.edit"]].forEach(function (p) {
+      [["stAdd", "academy.edit"]].forEach(function (p) {
         var el = $(p[0]); if (el) el.classList.toggle("hide", !allow(p[1]));
       });
       buildNav();
@@ -571,12 +595,82 @@
           '<div class="acts">' + (a.ph ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(a.ph) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(a.ph) + '">💬 WhatsApp</a>' : '') + '</div></article>';
       }).join("") : '<div class="empty">No upcoming appointments. Agent books them in WhatsApp — they appear here.</div>';
     }
-    function renderAcademy() {
-      var d = state.data, b = d.academy.booked;
-      $("seats").innerHTML = Array.from({ length: 10 }, function (_, i) { return '<div class="seat' + (i < b ? ' on' : '') + '">' + (i + 1) + '</div>'; }).join("");
-      $("seatNum").textContent = b; $("seatLeft").textContent = 10 - b;
-      $("acadList").innerHTML = d.academy.leads.length ? d.academy.leads.map(function (l) { return leadCard(l, true); }).join("") : '<div class="empty">No academy enquiries yet — WhatsApp lo "ACADEMY" ani vachina leads ikkada vastayi.</div>';
+    // ---- Batch 1 seat board ---------------------------------------------
+    // One screen for the 10 seats: who has paid, who enquired and went quiet,
+    // and who to call today. Enquiries and student records are merged on the
+    // phone number by /api/academy?a=funnel.
+    var funnel = null;
+    function loadFunnel() {
+      return sapi("funnel").then(function (j) { funnel = j; renderSeatBoard(); })
+        .catch(function (e) { $("acadBoard").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
+    function seatCard(r) {
+      var wa = "https://wa.me/91" + esc(r.phone);
+      var quiet = r.stage === "enquiry" && r.quietDays !== null && r.quietDays >= 2;
+      var chips = r.stage === "reserved"
+        ? '<span class="chip ok">₹' + Number(r.paid).toLocaleString("en-IN") + " paid</span>" +
+          (r.balance ? ' <span class="chip">balance ₹' + Number(r.balance).toLocaleString("en-IN") + "</span>" : "") +
+          (r.onboarded ? ' <span class="chip ok">form ✓</span>' : ' <span class="chip hot">form pending</span>')
+        : r.stage === "lost" ? '<span class="chip">closed</span>'
+        : (quiet ? '<span class="chip hot">' + r.quietDays + " rojulu silent</span>" : '<span class="chip">enquiry</span>');
+      var last = r.lastNote
+        ? '<div class="note"><b>' + esc(r.lastNote.by || "") + "</b> · " + ago(r.lastNote.ts) + " — " + esc(r.lastNote.text || "") + "</div>"
+        : '<div class="meta" style="margin-top:6px">Inka note emi ledu.</div>';
+      return '<article class="seat ' + (r.stage === "reserved" ? "done" : quiet ? "quiet" : "") + '" data-phone="' + esc(r.phone) + '">' +
+        '<div class="row1"><div><h3>' + esc(r.name || "Enquiry") + ' <span class="meta">· ' + esc(r.phone) + (r.id ? " · " + esc(r.id) : "") + '</span></h3>' +
+        '<div class="meta">' + esc(r.interest || (r.course ? ({ skin: "Skin Care", hair: "Hair Care", both: "Skin + Hair" }[r.course] || r.course) : "Academy")) +
+        (r.enquiredAt ? " · " + ago(r.enquiredAt) : "") + "</div></div><div>" + chips + "</div></div>" +
+        last +
+        '<div class="acts">' +
+        '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc(r.leadKey || "") + '" data-name="' + esc(r.name || "") + '" data-phone="' + esc(r.phone) + '" href="tel:+91' + esc(r.phone) + '">📞 Call</a>' +
+        '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="' + wa + '">💬 WhatsApp</a>' +
+        '<button class="btn btn--sm" data-act="share-catalog">📤 Catalog</button>' +
+        (r.stage !== "reserved" && state.allow("academy.money")
+          ? '<button class="btn btn--sm btn--gold" data-act="seat-reserve" data-phone="' + esc(r.phone) + '" data-name="' + esc(r.name || "") + '" data-id="' + esc(r.id || "") + '">💰 Seat reserve ayindi</button>' : "") +
+        (r.leadKey && state.allow("leads.edit")
+          ? '<button class="btn btn--sm" data-act="seat-note" data-key="' + esc(r.leadKey) + '" data-name="' + esc(r.name || "") + '">📝 Note</button>' : "") +
+        "</div></article>";
+    }
+    function renderSeatBoard() {
+      if (!funnel) return;
+      var d = funnel;
+      $("acadCount").className = "countdown" + (d.deadline.offerDays <= 20 ? " urgent" : "");
+      $("acadCount").innerHTML =
+        "<div><b>" + d.deadline.offerDays + "</b><span>Rojulu — offer " + esc(d.deadline.offer) + "</span></div>" +
+        "<div><b>" + d.seats.left + "</b><span>Seats migilayi</span></div>";
+      $("seats").innerHTML = Array.from({ length: d.seats.total }).map(function (_, i) {
+        return '<i class="' + (i < d.seats.booked ? "on" : "") + '"></i>';
+      }).join("");
+      $("seatMoney").innerHTML = "Collected <b style=\"color:var(--ok);font-weight:500\">₹" + Number(d.money.collected).toLocaleString("en-IN") +
+        '</b> · Balance pending <b style="color:var(--warm);font-weight:500">₹' + Number(d.money.pending).toLocaleString("en-IN") + "</b>" +
+        " · " + d.counts.enquiry + " enquiries · batch " + d.deadline.batchDays + " rojullo";
+
+      // who has gone quiet — the actual job of this screen
+      var call = d.rows.filter(function (r) { return r.stage === "enquiry" && r.quietDays !== null && r.quietDays >= 2; })
+        .sort(function (a, b) { return b.quietDays - a.quietDays; }).slice(0, 8);
+      $("acadToday").innerHTML = call.length
+        ? '<div class="grp"><div class="grp-h"><h2>Ivala call cheyyali</h2><i>' + call.length + " mandhi 2+ rojulu silent</i></div>" +
+          call.map(seatCard).join("") + "</div>"
+        : '<div class="grp"><div class="grp-h"><h2>Ivala call cheyyali</h2><i>evaru pending ledu 👍</i></div></div>';
+
+      var groups = [
+        ["reserved", "Seat reserve ayinavi", d.counts.reserved],
+        ["enquiry", "Enquiries", d.counts.enquiry],
+        ["lost", "Vaddannaru", d.counts.lost],
+      ];
+      $("acadBoard").innerHTML = groups.map(function (g) {
+        var rows = d.rows.filter(function (r) { return r.stage === g[0]; });
+        if (!rows.length) return "";
+        return '<div class="grp"><div class="grp-h"><h2>' + esc(g[1]) + "</h2><i>" + g[2] + "</i></div>" + rows.map(seatCard).join("") + "</div>";
+      }).join("") || '<div class="empty">Inka academy enquiries raledu.</div>';
+    }
+
+    function renderAcademy() {
+      // the board is loaded on demand; this only keeps the header stat honest
+      if (funnel) $("sSeats").textContent = funnel.seats.booked + "/10";
+      else if (state.data && state.data.academy) $("sSeats").textContent = state.data.academy.booked + "/10";
+    }
+
     function renderToday() {
       var d = state.data, t = d.today, html = '';
       html += '<div class="box"><h2>Today\'s auto post</h2>' + (t ? '<p><b style="color:var(--g1);font-weight:500">' + esc(t.h1) + '</b><br /><span class="te">' + esc(t.te || "") + '</span><br /><span class="meta">' + (t.page ? 'Page: ' + esc(t.page) : '') + '</span></p>' : '<p>No post generated yet today (7:00 AM build → 8:30 AM publish).</p>') +
@@ -1266,6 +1360,7 @@
       window.scrollTo({ top: 0, behavior: "instant" in document.documentElement.style ? "instant" : "auto" });
       if (t === "students") loadStudents();
       if (t === "team") loadPanel();
+      if (t === "academy") loadFunnel();
     });
     // Deep link from an app shortcut or a shared URL: /staff.html#office
     var hashDone = false;
@@ -1299,6 +1394,7 @@
         .then(function () { $("rKey").value = ""; $("rLabel").value = ""; $("rTe").value = ""; toast(label + " role created — ippudu powers tick cheyandi"); return loadPanel(); })
         .catch(function (x) { $("roleErr").textContent = x.message; });
     };
+    if ($("acadRefresh")) $("acadRefresh").onclick = function () { loadFunnel(); };
     ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
     document.addEventListener("change", function (e) {
       var el = e.target;
@@ -1364,6 +1460,32 @@
         return;
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
+      if (el.dataset.act === "seat-reserve") {
+        var nm = el.dataset.name || prompt("Peru?") || "";
+        if (!nm.trim()) { toast("Peru kavali"); return; }
+        var course = prompt("E course? skin / hair / both", "skin");
+        if (!course) return;
+        course = String(course).trim().toLowerCase();
+        if (["skin", "hair", "both"].indexOf(course) === -1) { toast("skin, hair leda both ani raayandi"); return; }
+        var amt = Number(prompt("Enta vachindi? (₹)", "9999") || 0);
+        if (!(amt > 0)) return;
+        var ref = prompt("UPI / reference (optional)", "") || "";
+        var job = el.dataset.id
+          ? sapi("pay", { id: el.dataset.id, amount: amt, ref: ref })
+          : sapi("create", { name: nm.trim(), phone: el.dataset.phone, course: course, duration: "1 month", paid: amt, payRef: ref });
+        job.then(function () { toast("Seat reserve ayindi 🎉"); return loadFunnel(); })
+          .then(function () { return load(true); })
+          .catch(function (x) { toast(x.message); });
+        return;
+      }
+      if (el.dataset.act === "seat-note") {
+        var t2 = prompt((el.dataset.name || "Ee manishi") + " gurinchi note:", "");
+        if (!t2 || !t2.trim()) return;
+        api("note", { key: el.dataset.key, text: t2.trim(), at: Date.now() })
+          .then(function () { toast("Note save ayindi"); return loadFunnel(); })
+          .catch(function (x) { toast(x.message); });
+        return;
+      }
       if (el.dataset.act === "share-catalog") {
         nativeShare("DermaLuxe Academy", "DermaLuxe Academy — course catalog", "https://www.dermaluxe.ai/assets/academy/DermaLuxe-Academy-Course-Catalog.pdf");
         return;
@@ -1439,9 +1561,9 @@
       var inp = f.querySelector("input"), t2 = inp.value.trim(); if (!t2) return;
       sapi("note", { id: f.dataset.id, text: t2 }).then(function (j) { students = students.map(function (x) { return x.id === f.dataset.id ? Object.assign({}, x, { notes: j.notes }) : x; }); inp.value = ""; renderStudents(); toast("Note saved"); }).catch(function (x) { toast(x.message); });
     });
-    $("seatMinus").onclick = function () { setSeats(state.data.academy.booked - 1); };
-    $("seatPlus").onclick = function () { setSeats(state.data.academy.booked + 1); };
-    function setSeats(n) { n = Math.max(0, Math.min(10, n)); api("academy", { booked: n }).then(function (j) { state.data.academy.booked = j.booked; state.data.academy.left = j.left; renderAcademy(); $("sSeats").textContent = j.booked + "/10"; toast("Seats booked: " + j.booked); }).catch(function (x) { toast(x.message); }); }
+    // The seat count is no longer typed in by hand; it is however many people
+    // have actually paid. api("academy", {booked}) still exists for the old
+    // WhatsApp command, but nothing in the app sets it any more.
     $("pwdSave").onclick = function () {
       var v = $("newPwd").value; $("pwdErr").textContent = "";
       api("set-password", { password: v }).then(function () { $("newPwd").value = ""; toast("Password updated"); }).catch(function (x) { $("pwdErr").textContent = x.message; });
