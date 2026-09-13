@@ -115,6 +115,44 @@ async function buildDigest(cfg, live) {
     }
   } catch (e) {}
 
+  // Yesterday's money — the number the owner actually wants at closing time.
+  try {
+    const mn = require("./money.js");
+    const yday = mn.istDay(now - 86400000);
+    const r = await guard.kvCommand(cfg, ["LRANGE", `bill:day:${yday}`, "0", "299"]).catch(() => ({}));
+    const seen = new Set();
+    let collected = 0, billed = 0;
+    const byMode = { cash: 0, upi: 0, card: 0, other: 0 };
+    for (const id of (r.result || [])) {
+      if (seen.has(id)) continue;
+      seen.add(id);
+      const raw = await guard.kvCommand(cfg, ["GET", `bill:${id}`]).catch(() => ({}));
+      let bill = null; try { bill = raw.result ? JSON.parse(raw.result) : null; } catch (e) {}
+      if (!bill) continue;
+      if (mn.istDay(bill.ts) === yday) billed += mn.totals(bill).total;
+      for (const pay of (bill.payments || [])) {
+        if (mn.istDay(pay.ts) !== yday) continue;
+        const amt = Math.max(0, Math.round(Number(pay.amount) || 0));
+        collected += amt;
+        byMode[["cash", "upi", "card"].includes(pay.mode) ? pay.mode : "other"] += amt;
+      }
+    }
+    if (collected || billed) {
+      const rup = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
+      const modes = ["cash", "upi", "card", "other"].filter((k) => byMode[k]).map((k) => `${k} ${rup(byMode[k])}`).join(" · ");
+      lines.push("", `💰 Ninna collection: *${rup(collected)}*${modes ? "\n   " + modes : ""}`);
+      if (billed > collected) lines.push(`   Bill chesindi ${rup(billed)} — ${rup(billed - collected)} inka raavali`);
+      const open = await guard.kvCommand(cfg, ["LRANGE", "bill:open", "0", "299"]).catch(() => ({}));
+      let due = 0;
+      for (const id of (open.result || [])) {
+        const raw = await guard.kvCommand(cfg, ["GET", `bill:${id}`]).catch(() => ({}));
+        let bill = null; try { bill = raw.result ? JSON.parse(raw.result) : null; } catch (e) {}
+        if (bill) due += mn.totals(bill).balance;
+      }
+      if (due) lines.push(`   Mottam pending: *${rup(due)}*`);
+    }
+  } catch (e) { console.error("digest: money", e && e.message); }
+
   // Yesterday's smart-link clicks
   try {
     const y = new Date(now - 86400000).toISOString().slice(0, 10);

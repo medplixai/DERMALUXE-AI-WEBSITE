@@ -299,6 +299,7 @@
         <button class="tab" data-t="appts">Appointments<i id="nAppts">0</i></button>
         <button class="tab" data-t="academy">Academy<i id="nAcad">0</i></button>
         <button class="tab" data-t="patients">Patients<i id="nPt">0</i></button>
+        <button class="tab" data-t="money">Money</button>
         <button class="tab" data-t="students">Students<i id="nStud">0</i></button>
         <button class="tab" data-t="today">Today's post</button>
         <button class="tab" data-t="reviews">Reviews</button>
@@ -320,6 +321,13 @@
         <div class="filters"><input id="ptQ" placeholder="Peru leda number tho vetakandi" /></div>
         <div class="meta" id="ptStat" style="margin-bottom:8px"></div>
         <div id="ptList"></div>
+      </section>
+      <section id="t-money" class="hide">
+        <div class="countdown" id="mnHead"></div>
+        <div class="box"><h2>Ee roju collection <span class="te" style="font-size:.85rem;color:var(--g3)">· ఈరోజు</span></h2>
+          <div id="mnModes" class="meta"></div>
+          <div id="mnList" style="margin-top:10px"></div></div>
+        <div class="grp"><div class="grp-h"><h2>Pending dues</h2><i id="mnDueCount"></i></div><div id="mnDues"></div></div>
       </section>
       <section id="t-academy" class="hide">
         <div class="countdown" id="acadCount"></div>
@@ -392,6 +400,11 @@
             <div class="meta" id="pushState" style="margin-top:8px"></div>
             <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn--gold btn--sm" id="pushTest">Naaku test pampu</button><button class="btn btn--sm" id="pushOff">Ee phone lo aapu</button></div>
             <div id="deviceList" style="margin-top:10px"></div></div>
+          <div class="box"><h2>Treatment prices <span class="te" style="font-size:.9rem;color:var(--g3)">· రేట్లు</span></h2>
+            <p>Ivi <b style="color:var(--g2);font-weight:500">staff ki matrame</b> — website lo eppatiki raavu. Bill chesinappudu ee list nunchi select chestaru.</p>
+            <div id="rateList" style="margin-top:10px"></div>
+            <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><input id="rtName" placeholder="Treatment peru" /><input id="rtPrice" placeholder="₹" inputmode="numeric" style="max-width:110px" /><button class="btn btn--gold btn--sm" id="rtAdd">Add</button></div>
+            <div class="err" id="rtErr"></div></div>
           <div class="box"><h2>Auto-post</h2><label class="switch"><input type="checkbox" id="dailyToggle" /> Daily auto-post (Instagram + Facebook, 8:30 AM)</label></div>
           <div class="box"><h2>Owner numbers</h2><p>Ee numbers ki eppudu full access — WhatsApp admin commands kuda. Vercel lo <b style="color:var(--g1);font-weight:500">ADMIN_PHONES</b> / <b style="color:var(--g1);font-weight:500">STAFF_OWNERS</b> lo matrame marchagalam.</p>
             <div id="ownerList" class="meta" style="margin-top:8px"></div></div>
@@ -557,7 +570,7 @@
       $("meRole").textContent = me.roleLabel || me.role;
       if (allow("team.manage")) $("teamTab").classList.remove("hide");
       if (allow("ai.use")) $("officeTab").classList.remove("hide");
-      [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"]].forEach(function (p) {
+      [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"]].forEach(function (p) {
         var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
       });
       var firstTab = document.querySelector(".tab:not(.hide)");
@@ -632,6 +645,93 @@
           '<div class="acts">' + (a.ph ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(a.ph) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(a.ph) + '">💬 WhatsApp</a>' : '') + '</div></article>';
       }).join("") : '<div class="empty">No upcoming appointments. Agent books them in WhatsApp — they appear here.</div>';
     }
+    // ---- money -----------------------------------------------------------
+    // What came in today and what is still owed. Prices are staff-only and
+    // never leave this screen.
+    function mnapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/money?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    var rateCard = null;
+    function rupee(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
+    function loadMoney() {
+      return Promise.all([mnapi("day"), mnapi("dues")]).then(function (r) {
+        var day = r[0], dues = r[1];
+        $("mnHead").className = "countdown";
+        $("mnHead").innerHTML =
+          "<div><b>" + rupee(day.collected) + "</b><span>Ee roju vachindi</span></div>" +
+          "<div><b>" + rupee(dues.due) + "</b><span>Pending mottam</span></div>";
+        var m = day.byMode || {};
+        $("mnModes").textContent = "Cash " + rupee(m.cash) + " · UPI " + rupee(m.upi) + " · Card " + rupee(m.card) +
+          (m.other ? " · Other " + rupee(m.other) : "") + " · " + day.count + " payments";
+        $("mnList").innerHTML = day.payments.length ? day.payments.map(function (p) {
+          return '<div class="vrow"><b>' + rupee(p.amount) + " · " + esc(p.name || p.phone) + "</b>" +
+            '<div class="meta">' + esc(p.mode) + (p.ref ? " · " + esc(p.ref) : "") + " · " + esc(p.by || "") + " · " + ago(p.ts) + " · " + esc(p.billId) + "</div></div>";
+        }).join("") : '<p class="meta">Ee roju inka payment ledu.</p>';
+        $("mnDueCount").textContent = dues.rows.length + " bills";
+        $("mnDues").innerHTML = dues.rows.length ? dues.rows.map(function (d2) {
+          return '<article class="seat"><div class="row1"><div><h3 data-act="pt-open" data-phone="' + esc(d2.phone) + '" style="cursor:pointer">' +
+            esc(d2.name) + ' <span class="meta">· ' + esc(d2.phone) + "</span></h3>" +
+            '<div class="meta">' + esc(d2.id) + " · " + ago(d2.ts) + " · billed " + rupee(d2.total) + ", paid " + rupee(d2.paid) + "</div></div>" +
+            '<span class="chip hot">' + rupee(d2.balance) + " due</span></div>" +
+            '<div class="acts">' +
+            '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(d2.phone) + '">💬 WhatsApp</a>' +
+            (state.allow("money.bill") ? '<button class="btn btn--sm btn--gold" data-act="mn-pay" data-id="' + esc(d2.id) + '" data-bal="' + d2.balance + '" data-name="' + esc(d2.name) + '">💰 Payment vachindi</button>' : "") +
+            "</div></article>";
+        }).join("") : '<p class="meta">Evaru bakee ledu 👍</p>';
+      }).catch(function (e) { $("mnList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
+    function loadRates() {
+      if (rateCard) return Promise.resolve(rateCard);
+      return mnapi("rates").then(function (j) { rateCard = j.rates || []; return rateCard; });
+    }
+    // Raising a bill from the patient screen: pick treatments off the rate
+    // card, then anything paid right now goes in with it.
+    function newBill(phone, name) {
+      loadRates().then(function (list) {
+        var menu = list.map(function (r, i) { return (i + 1) + ") " + r.name + " " + rupee(r.price); }).join("\n");
+        var pick = prompt("E treatments? Numbers comma tho (e.g. 1,3,3)\n\n" + menu, "");
+        if (!pick) return;
+        var items = [];
+        String(pick).split(",").forEach(function (x) {
+          var n = parseInt(String(x).trim(), 10);
+          if (!n || !list[n - 1]) return;
+          var r = list[n - 1];
+          var hit = items.filter(function (it) { return it.name === r.name; })[0];
+          if (hit) hit.qty++; else items.push({ name: r.name, price: r.price, qty: 1 });
+        });
+        if (!items.length) { toast("Emi select avvaledu"); return; }
+        var total = items.reduce(function (n, i) { return n + i.price * i.qty; }, 0);
+        var paid = Number(prompt("Total " + rupee(total) + ".\nIppudu enta vachindi? (0 ante tarvata)", String(total)) || 0);
+        var mode = paid > 0 ? (prompt("Ela vachindi? cash / upi / card", "upi") || "cash").toLowerCase().trim() : "cash";
+        mnapi("bill", { phone: phone, name: name, items: items, paid: paid, mode: mode })
+          .then(function (j) {
+            toast("Bill " + j.bill.id + " · balance " + rupee(j.bill.balance));
+            if (ptOpen && ptOpen.phone === phone) loadPatientMoney(phone);
+          })
+          .catch(function (x) { toast(x.message); });
+      }).catch(function (x) { toast(x.message); });
+    }
+    function loadPatientMoney(phone) {
+      var host = $("ptMoney"); if (!host) return;
+      mnapi("of", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
+        host.innerHTML =
+          '<div class="meta" style="margin-bottom:8px">' + (j.due ? 'Bakee <b style="color:var(--hot);font-weight:500">' + rupee(j.due) + "</b>" : "Bakee ledu 👍") + "</div>" +
+          (state.allow("money.bill") ? '<button class="btn btn--sm btn--gold" data-act="mn-new" data-phone="' + esc(phone) + '" data-name="' + esc((ptOpen || {}).name || "") + '">🧾 Kotha bill</button> ' : "") +
+          j.bills.map(function (bl) {
+            return '<div class="vrow"><b>' + esc(bl.id) + " · " + rupee(bl.total) + "</b>" +
+              '<div class="meta">' + fmtDay(bl.ts) + " · " + bl.items.map(function (i) { return esc(i.name) + (i.qty > 1 ? " ×" + i.qty : ""); }).join(", ") +
+              " · paid " + rupee(bl.paid) + (bl.balance ? ' · <b style="color:var(--hot)">' + rupee(bl.balance) + " due</b>" : "") + "</div>" +
+              (bl.balance && state.allow("money.bill")
+                ? '<button class="btn btn--sm" style="margin-top:6px" data-act="mn-pay" data-id="' + esc(bl.id) + '" data-bal="' + bl.balance + '" data-name="' + esc(bl.name) + '">💰 Payment vachindi</button>' : "") +
+              "</div>";
+          }).join("");
+      }).catch(function (e) { host.innerHTML = '<p class="meta">' + esc(e.message) + "</p>"; });
+    }
+
     // ---- patient file ----------------------------------------------------
     // The same person across every enquiry: their history, their notes, and
     // their photos on one timeline, oldest first, so a before and an after
@@ -708,6 +808,7 @@
           '<button class="btn btn--sm" data-act="pt-edit" data-phone="' + esc(p.phone) + '">✎ Details</button>' : "") +
         "</div>" +
 
+        (state.allow("money.view") ? '<div class="pt-sec"><h3>Bills <span class="te" style="font-size:.85rem">· బిల్లులు</span></h3><div id="ptMoney"><p class="meta">Loading…</p></div></div>' : "") +
         '<div class="pt-sec"><h3>Before / after <span class="te" style="font-size:.85rem">· ఫోటోలు</span></h3>' + tl + "</div>" +
         (upcoming.length ? '<div class="pt-sec"><h3>Upcoming</h3>' + upcoming.map(function (a) {
           return '<div class="vrow"><b>' + fmtAt(a.at) + "</b><div class=\"meta\">" + esc(a.concern || "") + "</div></div>";
@@ -715,6 +816,7 @@
         '<div class="pt-sec"><h3>Anni enquiries</h3>' + visits + "</div>" +
         '<div class="pt-sec"><h3>Notes</h3>' + notes + "</div>";
       paintThumbs($("ptBody"));
+      if (state.allow("money.view")) loadPatientMoney(p.phone);
     }
     function fmtDay(ts) {
       return new Date(ts).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "2-digit" });
@@ -892,11 +994,29 @@
       $("pwdState").textContent = panel.passwordSet ? "Mee password set chesi undi." : "Meeku password ledu — ippudu OTP tho login avutunnaru.";
       $("ownerList").innerHTML = (panel.owners || []).map(function (o) { return "• " + esc(o.phone); }).join("<br>") || "—";
       renderDevices();
+      if (state.allow("money.view")) renderRates();
 
       // --- activity
       $("auditList").innerHTML = (panel.audit || []).map(function (x) {
         return '<div class="auditrow"><b style="color:var(--g1);font-weight:500">' + esc(x.by) + '</b> · ' + ago(x.ts) + '<br>' + esc(x.what) + '</div>';
       }).join("") || '<p class="meta">Inka marpulu emi ledu.</p>';
+    }
+    function renderRates() {
+      var host = $("rateList"); if (!host) return;
+      loadRates().then(function (list) {
+        var canEdit = state.allow("settings.manage");
+        host.innerHTML = list.map(function (r, i) {
+          return '<div class="row" style="display:flex;justify-content:space-between;align-items:center;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:8px 12px;margin-bottom:6px">' +
+            "<div><b style=\"font-weight:500\">" + esc(r.name) + "</b>" + (r.sessions ? ' <span class="chip">' + r.sessions + " sittings</span>" : "") + "</div>" +
+            '<div style="display:flex;gap:8px;align-items:center"><b style="color:var(--g2);font-weight:500">' + rupee(r.price) + "</b>" +
+            (canEdit ? '<button class="btn btn--sm" data-act="rt-edit" data-i="' + i + '">✎</button><button class="btn btn--sm" data-act="rt-del" data-i="' + i + '">🗑</button>' : "") +
+            "</div></div>";
+        }).join("") || '<p class="meta">Price list khaali.</p>';
+      }).catch(function (e) { host.innerHTML = '<p class="meta">' + esc(e.message) + "</p>"; });
+    }
+    function saveRates() {
+      return mnapi("rates-save", { rates: rateCard }).then(function (j) { rateCard = j.rates; renderRates(); toast("Prices save ayyayi"); })
+        .catch(function (x) { rateCard = null; $("rtErr").textContent = x.message; renderRates(); });
     }
     function renderDevices() {
       papi("devices").then(function (j) {
@@ -947,6 +1067,7 @@
       leads:'<svg viewBox="0 0 24 24"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M17 11h4M19 9v4"/></svg>',
       appts:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
       students:'<svg viewBox="0 0 24 24"><path d="M12 4 3 8.5l9 4.5 9-4.5L12 4Z"/><path d="M6.5 10.8v4.4c0 1.6 2.5 2.9 5.5 2.9s5.5-1.3 5.5-2.9v-4.4M21 8.5v5"/></svg>',
+      money:'<svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 12h.01M17.5 12h.01"/></svg>',
       patients:'<svg viewBox="0 0 24 24"><path d="M12 20.5s-7-4.3-7-9.3A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 3.2c0 5-7 9.3-7 9.3Z"/><path d="M12 11.2v3.4M10.3 12.9h3.4"/></svg>',
       academy:'<svg viewBox="0 0 24 24"><path d="M5 20V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"/><path d="M5 20h14M9 8h6M9 12h6M9 16h3"/></svg>',
       office:'<svg viewBox="0 0 24 24"><path d="M12 3.5 13.7 9l5.3 1.8L13.7 12.6 12 18l-1.7-5.4L5 10.8 10.3 9 12 3.5Z"/><path d="M18.5 16.2l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></svg>',
@@ -954,8 +1075,8 @@
       reviews:'<svg viewBox="0 0 24 24"><path d="m12 4 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8L12 4Z"/></svg>',
       team:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'
     };
-    var NAV_LABEL = { leads:"Leads", appts:"Appts", patients:"Patients", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", team:"Panel" };
-    var NAV_PREF = ["leads","appts","patients","academy","students","office","today","reviews","team"];
+    var NAV_LABEL = { leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", team:"Panel" };
+    var NAV_PREF = ["leads","appts","patients","money","academy","students","office","today","reviews","team"];
     var NAV_BADGE = { leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad", patients:"nPt" };
 
     function plug(n) { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n]) || null; }
@@ -1479,7 +1600,7 @@
       var b = e.target.closest(".tab"); if (!b) return;
       var t = b.dataset.t;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === b); });
-      ["leads", "appts", "patients", "academy", "students", "office", "today", "reviews", "team"].forEach(function (x) { $("t-" + x).classList.toggle("hide", x !== t); });
+      ["leads", "appts", "patients", "money", "academy", "students", "office", "today", "reviews", "team"].forEach(function (x) { $("t-" + x).classList.toggle("hide", x !== t); });
       $("appbar").querySelectorAll("[data-nav]").forEach(function (n) {
         n.classList.toggle("on", n.dataset.nav === t || (n.dataset.nav === "__more" && !$("appbar").querySelector('[data-nav="' + t + '"]')));
       });
@@ -1489,6 +1610,7 @@
       if (t === "team") loadPanel();
       if (t === "academy") loadFunnel();
       if (t === "patients") loadPatients();
+      if (t === "money") loadMoney();
     });
     // Deep link from an app shortcut or a shared URL: /staff.html#office
     var hashDone = false;
@@ -1506,6 +1628,16 @@
       $("cpnav").querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b); });
       ["people", "roles", "controls", "log"].forEach(function (t) { $("cp-" + t).classList.toggle("hide", t !== cpTab); });
     });
+    if ($("rtAdd")) $("rtAdd").onclick = function () {
+      var nm4 = ($("rtName").value || "").trim(), pr2 = Number($("rtPrice").value || 0);
+      $("rtErr").textContent = "";
+      if (!nm4) { $("rtErr").textContent = "Treatment peru ivvandi"; return; }
+      loadRates().then(function (list) {
+        list.push({ id: nm4.toLowerCase().replace(/[^a-z0-9]+/g, "-").slice(0, 32), name: nm4, price: pr2 });
+        rateCard = list; $("rtName").value = ""; $("rtPrice").value = "";
+        return saveRates();
+      });
+    };
     $("pushTest").onclick = function () {
       papi("test", {}).then(function (j) { toast("Pampanu — phone chudandi (" + j.sent + ")"); }).catch(function (x) { toast(x.message); });
     };
@@ -1590,6 +1722,22 @@
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
       if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "mn-new") { newBill(el.dataset.phone, el.dataset.name); return; }
+      if (el.dataset.act === "mn-pay") {
+        var bal = Number(el.dataset.bal || 0);
+        var amt2 = Number(prompt((el.dataset.name || "") + " — bakee " + rupee(bal) + ".\nEnta vachindi?", String(bal)) || 0);
+        if (!(amt2 > 0)) return;
+        var md = (prompt("Ela vachindi? cash / upi / card", "upi") || "cash").toLowerCase().trim();
+        var rf = prompt("UPI / reference (optional)", "") || "";
+        mnapi("pay", { id: el.dataset.id, amount: amt2, mode: md, ref: rf })
+          .then(function (j) {
+            toast("Save ayindi · balance " + rupee(j.bill.balance));
+            if (ptOpen) loadPatientMoney(ptOpen.phone);
+            if (!$("t-money").classList.contains("hide")) loadMoney();
+          })
+          .catch(function (x) { toast(x.message); });
+        return;
+      }
       if (el.dataset.act === "pt-close") { closePatient(); return; }
       if (el.dataset.act === "pt-note") {
         var nt2 = prompt((el.dataset.name || "Ee patient") + " gurinchi note:", "");
@@ -1639,6 +1787,18 @@
       if (el.dataset.act === "share-catalog") {
         nativeShare("DermaLuxe Academy", "DermaLuxe Academy — course catalog", "https://www.dermaluxe.ai/assets/academy/DermaLuxe-Academy-Course-Catalog.pdf");
         return;
+      }
+      if (el.dataset.act === "rt-edit") {
+        var i2 = Number(el.dataset.i), r2 = rateCard[i2];
+        var nm3 = prompt("Treatment peru:", r2.name); if (nm3 === null) return;
+        var pr = prompt("Price (₹):", String(r2.price)); if (pr === null) return;
+        r2.name = nm3.trim() || r2.name; r2.price = Number(pr) || 0;
+        saveRates(); return;
+      }
+      if (el.dataset.act === "rt-del") {
+        var i3 = Number(el.dataset.i);
+        if (!confirm("“" + rateCard[i3].name + "” teesestara?")) return;
+        rateCard.splice(i3, 1); saveRates(); return;
       }
       if (el.dataset.act === "dev-revoke") {
         if (!confirm("Ee phone nunchi notifications aapesi, device ni teesestara?")) return;
