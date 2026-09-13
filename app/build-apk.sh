@@ -16,6 +16,12 @@ export ANDROID_SDK_ROOT="$ANDROID_HOME"
 echo "→ refreshing www/ from the website files"
 node "$HERE/build-shell.js"
 
+# cap copy is what actually puts www/ into android/app/src/main/assets/public.
+# Without it Gradle happily packs the PREVIOUS build's HTML under a new version
+# number — a "new release" that is the old app.
+echo "→ cap copy android"
+( cd "$HERE" && npx cap copy android )
+
 echo "→ mirroring the project to $WORK"
 mkdir -p "$WORK"
 # node_modules travels too: the plugins' Android sources are compiled from it,
@@ -36,5 +42,14 @@ VERSION="$(node -p "require('$HERE/package.json').version")"
 mkdir -p "$HERE/dist"
 cp "$WORK/android/app/build/outputs/apk/release/app-release.apk" "$HERE/dist/DermaLuxe-Staff-$VERSION.apk"
 echo "✓ dist/DermaLuxe-Staff-$VERSION.apk"
+# guard against ever shipping a stale shell again
+BUILT="$(unzip -p "$HERE/dist/DermaLuxe-Staff-$VERSION.apk" assets/public/index.html | md5 -q)"
+WANT="$(md5 -q "$HERE/www/index.html")"
+if [ "$BUILT" != "$WANT" ]; then
+  echo "✗ APK contains a different index.html than www/ — stale build, refusing." >&2
+  exit 1
+fi
+echo "✓ APK shell matches www/"
+
 SIGNER="$(ls -d "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)"
 "$SIGNER" verify "$HERE/dist/DermaLuxe-Staff-$VERSION.apk" && echo "✓ signature verified"

@@ -99,9 +99,9 @@ async function allDevices(cfg) {
 }
 
 // ---- sending ----------------------------------------------------------------
-// 22:00–07:00 IST only urgent gets through; everything else waits for morning.
+// 22:00–07:00 IST. Urgent still rings; everything else is delivered on a
+// silent channel and is waiting when they wake up. Nothing is discarded.
 function quietNow() {
-  const ist = new Date(Date.now() + (5.5 * 3600 - new Date().getTimezoneOffset() * -60) * 0);
   const h = Number(new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", hour: "2-digit", hour12: false }).format(new Date()));
   return h >= 22 || h < 7;
 }
@@ -116,13 +116,14 @@ async function sendRaw(cfg, tok, token, msg) {
       android: {
         priority: msg.urgent ? "HIGH" : "NORMAL",
         notification: {
-          channel_id: msg.urgent ? "dl_urgent" : "dl_default",
+          channel_id: msg.urgent ? "dl_urgent" : msg.quiet ? "dl_quiet" : "dl_default",
           color: "#c6a25c",
           icon: "ic_stat_dl",
           click_action: "FCM_PLUGIN_ACTIVITY",
         },
-        // a lead alert is worthless tomorrow
-        ttl: (msg.ttlSec || 6 * 3600) + "s",
+        // a daytime lead alert is worthless tomorrow; a night one must survive
+        // until morning, when the person actually looks at their phone
+        ttl: (msg.ttlSec || (msg.quiet ? 12 * 3600 : 6 * 3600)) + "s",
       },
     },
   };
@@ -137,7 +138,7 @@ async function sendRaw(cfg, tok, token, msg) {
   const d = await r.json().catch(() => ({}));
   const status = (d.error && d.error.status) || String(r.status);
   // the app was uninstalled or the token rotated — forget this device
-  if (r.status === 404 || status === "NOT_FOUND" || status === "UNREGISTERED" || status === "INVALID_ARGUMENT") {
+  if (r.status === 404 || status === "NOT_FOUND" || status === "UNREGISTERED") {
     await dropDevice(cfg, token);
     return { ok: false, dropped: true, msg: status };
   }
@@ -148,15 +149,18 @@ async function sendToTokens(cfg, tokens, msg) {
   if (!enabled() || !cfg) return { ok: false, sent: 0, skipped: "push not configured" };
   const list = Array.from(new Set((tokens || []).filter(Boolean)));
   if (!list.length) return { ok: true, sent: 0 };
-  if (!msg.urgent && quietNow()) return { ok: true, sent: 0, skipped: "quiet hours" };
+  // At night nothing is dropped — it is delivered on a silent channel, so the
+  // phone does not ring but the notification is waiting in the morning.
+  const quiet = !msg.urgent && quietNow();
   const tok = await accessToken(cfg);
   if (!tok) return { ok: false, sent: 0, skipped: "no access token" };
   let sent = 0, dropped = 0, failed = 0;
+  const outgoing = quiet ? Object.assign({}, msg, { quiet: true }) : msg;
   for (const t of list) {
-    const r = await sendRaw(cfg, tok, t, msg).catch(() => ({ ok: false }));
+    const r = await sendRaw(cfg, tok, t, outgoing).catch(() => ({ ok: false }));
     if (r.ok) sent++; else if (r.dropped) dropped++; else failed++;
   }
-  return { ok: true, sent, dropped, failed };
+  return { ok: true, sent, dropped, failed, quiet };
 }
 
 async function sendToPhone(cfg, phone, msg) {

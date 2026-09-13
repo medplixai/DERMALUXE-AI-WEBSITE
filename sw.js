@@ -9,7 +9,7 @@
  * Bump CACHE on every release — activate() deletes anything with another name,
  * and the page shows an "update ready" prompt when a new worker takes over.
  */
-const CACHE = "dl-staff-v1";
+const CACHE = "dl-staff-v2";
 
 // The shell: enough to paint a working dashboard with no network.
 const SHELL = [
@@ -29,7 +29,9 @@ const isAsset = (url) =>
   url.pathname.startsWith("/assets/") && !url.pathname.startsWith("/assets/academy/material/");
 const CACHEABLE_MAX = 2 * 1024 * 1024;
 function cacheable(res) {
-  if (!res || !res.ok || res.type === "opaque") return !!(res && res.type === "opaque");
+  if (!res) return false;
+  if (res.type === "opaque") return false;   // status is 0 — could be a captive-portal failure
+  if (!res.ok) return false;
   if (/no-store/i.test(res.headers.get("cache-control") || "")) return false;
   const len = Number(res.headers.get("content-length") || 0);
   return !(len && len > CACHEABLE_MAX);
@@ -74,10 +76,13 @@ async function shellFirst(req) {
   const cache = await caches.open(CACHE);
   try {
     const res = await fetch(req);
-    if (cacheable(res)) cache.put("/staff.html", res.clone());
+    // Cache each page under its OWN url. Writing everything to "/staff.html"
+    // meant opening the public academy form once replaced the offline
+    // dashboard with the enrolment page.
+    if (cacheable(res)) cache.put(new URL(req.url).pathname, res.clone());
     return res;
   } catch (e) {
-    return (await cache.match(req)) || (await cache.match("/staff.html")) ||
+    return (await cache.match(new URL(req.url).pathname)) || (await cache.match(req)) ||
            (await cache.match("/offline.html")) || Response.error();
   }
 }

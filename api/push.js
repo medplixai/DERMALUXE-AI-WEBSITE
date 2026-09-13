@@ -27,16 +27,10 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, present: !!raw, parsed, configured: push.enabled(), project });
   }
 
-  const me0 = staff.tokenUser(req);
-  if (!me0) return json(res, 401, { error: "Login required" });
-
-  const roles = await staff.loadRoles(cfg);
-  const live = await staff.liveUser(cfg, me0.phone, roles);
-  if (!live) return json(res, 403, { error: "Access removed" });
-  if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
-  const me = { phone: live.phone, name: live.name, role: live.role };
-  const caps = staff.effCaps(roles, live);
-  const allow = (c) => caps.includes("*") || caps.includes(c);
+  const auth = await staff.requireStaff(cfg, req);
+  if (!auth.ok) return json(res, auth.code, { error: auth.error });
+  const me = { phone: auth.me.phone, name: auth.me.name, role: auth.me.role };
+  const allow = auth.allow;
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "");
@@ -58,7 +52,11 @@ module.exports = async (req, res) => {
     // Register even before the Firebase key is in place — then the first push
     // reaches every phone already installed, with nothing to redo.
     const known = await guard.kvCommand(cfg, ["GET", `push:dev:${token}`]).catch(() => ({}));
-    const isNew = !(known && known.result);
+    let prev = null; try { prev = known && known.result ? JSON.parse(known.result) : null; } catch (e) {}
+    // Re-binding someone else's device would re-point who its notifications
+    // are filtered for. Only the phone that owns it may move it.
+    if (prev && prev.phone && prev.phone !== me.phone) await push.dropDevice(cfg, token);
+    const isNew = !prev || prev.phone !== me.phone;
     await push.saveDevice(cfg, token, { phone: me.phone, name: me.name, role: me.role, platform: String(b.platform || "android").slice(0, 16) });
     // A brand-new phone gets one confirmation, so the person sees for
     // themselves that notifications work — no test button to hunt for.
@@ -74,8 +72,11 @@ module.exports = async (req, res) => {
 
   if (a === "unregister") {
     const token = String(b.token || "").trim();
-    if (token) await push.dropDevice(cfg, token);
-    else for (const t of await push.devicesOf(cfg, me.phone)) await push.dropDevice(cfg, t);
+    const mine = await push.devicesOf(cfg, me.phone);
+    if (token) {
+      if (mine.indexOf(token) === -1) return json(res, 403, { error: "Adi mee device kadu" });
+      await push.dropDevice(cfg, token);
+    } else for (const t of mine) await push.dropDevice(cfg, t);
     return json(res, 200, { ok: true });
   }
 

@@ -77,12 +77,9 @@ module.exports = async (req, res) => {
   if (staff && cfg) {
     try {
       const staffMod = require("./staff.js");
-      const roles = await staffMod.loadRoles(cfg);
-      const live = await staffMod.liveUser(cfg, digits10(staff.p), roles);
-      if (live && !live.off) {
-        const caps = staffMod.effCaps(roles, live);
-        const has = (c) => caps.includes("*") || caps.includes(c);
-        if (has("academy.material")) who = { kind: "staff", name: live.name, full: has("academy.certify") || has("*") };
+      const auth = await staffMod.requireStaff(cfg, req);
+      if (auth.ok && auth.allow("academy.material")) {
+        who = { kind: "staff", name: auth.me.name, full: auth.allow("academy.certify") };
       }
     } catch (e) { console.error("material: staff check failed", e && e.message); }
     if (!who) return deny(res, "Mee login ki course material access ledu. Owner ni adagandi.");

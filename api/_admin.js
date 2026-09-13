@@ -656,12 +656,15 @@ async function handle(cfg, digits, text, photo, video) {
     if (!cfg) return "Storage ledu.";
     if (!owner) return "🔒 Owner matrame.";
     const pwd = pwm[1].trim();
-    if (/^off$/i.test(pwd)) { await guard.kvCommand(cfg, ["DEL", "staff:pwd"]); return "🔓 Dashboard password teesesanu — ippudu OTP login matrame."; }
-    if (pwd.length < 6) return "Password kaneesam 6 characters undali.";
+    // A password belongs to one person. This command now sets the SENDER's own
+    // password — a clinic-wide one would let anyone log in as the owner just by
+    // typing the owner's number.
+    if (/^off$/i.test(pwd)) { await guard.kvCommand(cfg, ["HDEL", "staff:pwd", digits]); return "🔓 Mee password teesesanu — ippudu OTP login matrame."; }
+    if (pwd.length < 8) return "Password kaneesam 8 characters undali.";
     const crypto = require("crypto");
     const salt = crypto.randomBytes(16).toString("hex");
-    await guard.kvCommand(cfg, ["SET", "staff:pwd", JSON.stringify({ salt, hash: crypto.scryptSync(pwd, salt, 32).toString("hex"), ts: Date.now(), by: digits })]);
-    return "✅ Staff dashboard password set ayindi (andariki same password + valla number).\nLogin: www.dermaluxe.ai/staff.html\nTeeseyalante: *staff password off*\n\n🔐 Security: ee message ni chat lo delete cheyandi.";
+    await guard.kvCommand(cfg, ["HSET", "staff:pwd", digits, JSON.stringify({ salt, hash: crypto.scryptSync(pwd, salt, 32).toString("hex"), ts: Date.now() })]);
+    return "✅ *Mee* password set ayindi — mee number tho matrame pani chestundi.\nLogin: www.dermaluxe.ai/staff.html\nTeeseyalante: *staff password off*\n\nStaff prathi okkaru vaalla sonta password ni ila pettukovali, leda OTP tho login avvachu.\n\n🔐 Ee message ni chat lo delete cheyandi.";
   }
   let sm;
   if ((sm = t.match(/^staff(?:\s+(list|add|remove|delete|roles))?(?:\s+(\d{10}))?(?:\s+(.+))?$/i))) {

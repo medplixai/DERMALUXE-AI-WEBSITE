@@ -29,14 +29,9 @@ module.exports = async (req, res) => {
   const cfg = guard.kvConfig();
   if (!cfg) return json(res, 501, { error: "Storage not configured" });
 
-  const me0 = staff.tokenUser(req);
-  if (!me0) return json(res, 401, { error: "Login required" });
-  const roles = await staff.loadRoles(cfg);
-  const live = await staff.liveUser(cfg, me0.phone, roles);
-  if (!live) return json(res, 403, { error: "Access removed" });
-  if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
-  const caps = staff.effCaps(roles, live);
-  const allow = (c) => caps.includes("*") || caps.includes(c);
+  const auth = await staff.requireStaff(cfg, req);
+  if (!auth.ok) return json(res, auth.code, { error: auth.error });
+  const live = auth.me, allow = auth.allow;
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "list");
@@ -53,6 +48,11 @@ module.exports = async (req, res) => {
     if (!r || !r.result) return json(res, 404, { error: "Not found" });
     let rec = null; try { rec = JSON.parse(r.result); } catch (e) {}
     if (!rec || !rec.b64) return json(res, 404, { error: "Not found" });
+    // The capability comes from the record, never from the query string —
+    // otherwise ?kind=lead would open a student's document to anyone with
+    // leads.view, and the other way round.
+    const realCap = (rec.kind === "student") ? "academy.view" : "leads.view";
+    if (!allow(realCap)) return json(res, 403, { error: "Mee role ki idi chuse permission ledu" });
     const buf = Buffer.from(rec.b64, "base64");
     res.setHeader("Content-Type", rec.type || "image/jpeg");
     res.setHeader("Cache-Control", "no-store, private");
@@ -102,7 +102,7 @@ module.exports = async (req, res) => {
     const meta = JSON.stringify({ id, ts: now, by: live.name, label: rec.label, type });
     await guard.kvCommand(cfg, ["LPUSH", listKey(kind, ref), meta]).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", listKey(kind, ref), "0", "49"]).catch(() => {});
-    console.log("photo saved", kind, ref.slice(0, 24), bytes, "bytes by", live.phone.slice(-4));
+    console.log("photo saved", kind, ref.slice(0, 13), bytes, "bytes by", live.phone.slice(-4));  // timestamp only — never the patient's number
     return json(res, 200, { ok: true, id, ts: now });
   }
 

@@ -326,8 +326,8 @@
         </div>
 
         <div id="cp-controls" class="hide">
-          <div class="box"><h2>Dashboard password</h2><p>Andariki same password + vaalla sonta number. Marchalante kotha password type chesi Save cheyandi.</p>
-            <div class="noteform" style="margin-top:10px"><input id="newPwd" type="password" placeholder="New password (6+ characters)" autocomplete="new-password" /><button class="btn btn--gold btn--sm" id="pwdSave">Save</button><button class="btn btn--sm" id="pwdOff" title="Password teesi OTP matrame">OTP only</button></div>
+          <div class="box"><h2>Mee password <span class="te" style="font-size:.9rem;color:var(--g3)">· మీ పాస్‌వర్డ్</span></h2><p>Idi <b style="color:var(--g2);font-weight:500">mee sonta</b> password — mee number tho matrame pani chestundi. Prati okkaru vaalla sonta di pettukovali. Password vaddante OTP tho login avvochu.</p>
+            <div class="noteform" style="margin-top:10px"><input id="newPwd" type="password" placeholder="Kotha password (8+ characters)" autocomplete="new-password" /><button class="btn btn--gold btn--sm" id="pwdSave">Save</button><button class="btn btn--sm" id="pwdOff" title="Password teesi OTP matrame">OTP only</button></div>
             <div class="meta" id="pwdState" style="margin-top:8px"></div>
             <div class="err" id="pwdErr"></div></div>
           <div class="box"><h2>Notifications <span class="te" style="font-size:.9rem;color:var(--g3)">· నోటిఫికేషన్లు</span></h2>
@@ -383,14 +383,24 @@
       var opt = { method: method || (body ? "POST" : "GET"), headers: {} };
       if (tok) opt.headers.Authorization = "Bearer " + tok;
       if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(API + "?a=" + a, opt).then(function (r) {
-        return r.json().then(function (j) {
-          // the owner signed this device out from the control panel
+      // Network failure and "the server answered with an error" are completely
+      // different things, and the offline queue depends on telling them apart.
+      // Matching words in an error message is not good enough — CapacitorHttp
+      // surfaces Java exceptions whose text we do not control — so the
+      // distinction is carried on the error object itself.
+      return fetch(API + "?a=" + a, opt).catch(function (e) {
+        var err = new Error("Internet andaledu");
+        err.net = true; err.cause = e && e.message;
+        throw err;
+      }).then(function (r) {
+        return r.text().then(function (body) {
+          var j = {};
+          try { j = JSON.parse(body); } catch (e) { j = { error: "Server sarigga spandinchaledu (" + r.status + ")" }; }
           if (r.status === 401 && /logout chesaru/i.test(j.error || "")) {
             tok = null; try { localStorage.removeItem(TOK); } catch (e) {}
             clearCache(); location.reload();
           }
-          if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+          if (!r.ok) { var err = new Error(j.error || ("HTTP " + r.status)); err.status = r.status; throw err; }
           return j;
         });
       });
@@ -429,12 +439,15 @@
     $("logoutBtn").onclick = function () {
       var pending = readQueue().length;
       if (pending && !confirm(pending + " marpu(lu) inka pampaledu. Logout aithe avi potayi. Sare naa?")) return;
-      tok = null;
-      try { localStorage.removeItem(TOK); } catch (e) {}
-      clearCache();                       // no patient data left on the phone
-      location.reload();
+      // stop this phone receiving patient names on the lock screen
+      papi("unregister", {}).catch(function () {}).finally(function () {
+        tok = null;
+        try { localStorage.removeItem(TOK); } catch (e) {}
+        clearCache();                     // no patient data left on the phone
+        location.reload();
+      });
     };
-    $("refreshBtn").onclick = function () { load(true); };
+    $("refreshBtn").onclick = function () { flushQueue().then(function () { return load(true); }).catch(function (e) { toast(e.message); }); };
 
     // ---- app ----
     function boot() {
@@ -448,8 +461,16 @@
       flushQueue();
       load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); initPush(); initLock(); initPrivacy(); checkPendingCall(); checkAppVersion(); })
         .catch(function (e) {
-          // Offline with a cached dashboard: stay in the app, say so plainly.
-          if (state.data && /network|failed|fetch/i.test(e.message || "")) { online = false; paintNet(); initLock(); checkPendingCall(); return; }
+          // Offline, or the server hiccuped, with a cached dashboard: stay in
+          // the app. Only a real authentication failure ends the session, and
+          // even then the queue is kept unless the token is genuinely dead.
+          var authFailed = e.status === 401 || e.status === 403;
+          if (state.data && !authFailed) { online = !e.net; paintNet(); initLock(); initPrivacy(); checkPendingCall(); return; }
+          if (!authFailed) {
+            $("loginErr").textContent = e.message;
+            $("login").classList.remove("hide"); $("app").classList.add("hide");
+            return;                                   // token kept, queue kept
+          }
           tok = null; try { localStorage.removeItem(TOK); } catch (x) {} clearCache();
           $("leadList").innerHTML = ""; $("app").classList.add("hide");
           $("loginErr").textContent = e.message === "Login required" ? "" : e.message;
@@ -463,7 +484,7 @@
         saveCache(d); render(); paintNet();
         if (quiet) toast("Updated");
       }).catch(function (e) {
-        if (/network|failed|fetch/i.test(e.message || "")) { online = false; paintNet(); }
+        if (e.net) { online = false; paintNet(); }
         throw e;
       });
     }
@@ -500,9 +521,9 @@
     function leadCard(l, compact) {
       var heat = l.heat || "", s = src(l);
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
-      return '<article class="lead ' + heat + '" data-key="' + esc(l.key) + '">' +
+      return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + '</div></div>' +
-        '<div>' + (heat ? '<span class="badge ' + heat + '">' + heat + '</span> ' : '') + '<span class="badge src">' + s + '</span></div></div>' +
+        '<div>' + (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '') + '<span class="badge src">' + s + '</span></div></div>' +
         '<div class="concern">' + esc(l.concern || l.message || "") + '</div>' +
         (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
@@ -649,7 +670,7 @@
       }).join("");
 
       // --- controls
-      $("pwdState").textContent = panel.passwordSet ? "Password set chesi undi. Staff password leda OTP tho login cheyochu." : "Password inka set cheyaledu — ippudu OTP matrame pani chestundi.";
+      $("pwdState").textContent = panel.passwordSet ? "Mee password set chesi undi." : "Meeku password ledu — ippudu OTP tho login avutunnaru.";
       $("ownerList").innerHTML = (panel.owners || []).map(function (o) { return "• " + esc(o.phone); }).join("<br>") || "—";
       renderDevices();
 
@@ -801,6 +822,8 @@
       try {
         PN.createChannel({ id: "dl_urgent", name: "Urgent — hot leads", description: "Ventane call cheyalsinavi", importance: 5, visibility: 1, vibration: true, lights: true });
         PN.createChannel({ id: "dl_default", name: "Updates", description: "Leads, academy, reviews", importance: 4, visibility: 1, vibration: true });
+        // 10pm-7am: it arrives and waits, it does not ring
+        PN.createChannel({ id: "dl_quiet", name: "Raatri updates", description: "Raatri vachinavi — udayam chudandi", importance: 2, visibility: 1, vibration: false });
       } catch (e) {}
       PN.addListener("registration", function (t) {
         papi("register", { token: t.value, platform: "android" }).catch(function () {});
@@ -840,7 +863,14 @@
     function readCache() {
       try { var v = JSON.parse(localStorage.getItem(CACHE_K) || "null"); return v && v.me ? v : null; } catch (e) { return null; }
     }
-    function clearCache() { try { localStorage.removeItem(CACHE_K); localStorage.removeItem(QUEUE_K); } catch (e) {} }
+    function clearCache() {
+      try {
+        localStorage.removeItem(CACHE_K); localStorage.removeItem(QUEUE_K);
+        localStorage.removeItem(PEND);              // a patient name and number
+        localStorage.removeItem("dl_unlocked");
+      } catch (e) {}
+      try { Object.keys(photoCache).forEach(function (k) { URL.revokeObjectURL(photoCache[k]); delete photoCache[k]; }); } catch (e) {}
+    }
 
     function readQueue() {
       try { var v = JSON.parse(localStorage.getItem(QUEUE_K) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; }
@@ -858,7 +888,7 @@
       var q = readQueue();
       if (flushing || !q.length) return Promise.resolve(0);
       flushing = true;
-      var done = 0;
+      var done = 0, stuck = false;
       function step() {
         var list = readQueue();
         if (!list.length) return Promise.resolve();
@@ -866,9 +896,13 @@
         return api(item.a, item.body).then(function () {
           writeQueue(readQueue().slice(1)); done++; return step();
         }).catch(function (e) {
-          if (/network|failed|fetch/i.test(e.message || "")) throw e;   // still offline: keep it
-          writeQueue(readQueue().slice(1));                              // server rejected it: drop it
-          console.warn("queue item dropped:", item.a, e.message);
+          if (e.net) throw e;                       // still offline: keep it, stop here
+          // Only a 400 means the write itself was bad. A 401 (token expired
+          // while offline), 429 or 5xx must NOT throw away a call note — keep
+          // it and try again later.
+          if (e.status !== 400) { stuck = true; throw e; }
+          writeQueue(readQueue().slice(1));
+          console.warn("queue item dropped as invalid:", item.a, e.message);
           return step();
         });
       }
@@ -877,6 +911,7 @@
         .then(function (n) {
           flushing = false;
           if (n) { toast(n + " marpu(lu) sync ayyayi"); load(true).catch(function () {}); }
+          else if (stuck) toast("Marpulu inka pampaleka potunnam — malli try chestamu");
           paintNet();
           return n;
         });
@@ -1087,17 +1122,27 @@
         var B = bio();
         if (!B) { el.remove(); locked = false; return; }
         B.authenticate({ reason: "DermaLuxe Staff unlock", cancelTitle: "Cancel", allowDeviceCredential: true, androidTitle: "Unlock", androidSubtitle: "Vellimudra leda screen lock" })
-          .then(function () { el.remove(); locked = false; haptic(); })
+          .then(function () { el.remove(); locked = false; haptic(); try { localStorage.setItem("dl_unlocked", String(Date.now())); } catch (e) {} })
           .catch(function () { /* stay locked, they can tap again */ });
       };
       el.querySelector("#lkGo").onclick = go;
       go();
     }
+    var lockInit = false;
     function initLock() {
+      if (lockInit) return;
+      lockInit = true;
       var A = plug("App"), B = bio();
+      // A killed-and-relaunched app is the likely case for a lost phone, so
+      // lock on cold start as well. Remember when we were last unlocked.
+      if (B) {
+        var last = 0;
+        try { last = Number(localStorage.getItem("dl_unlocked") || 0); } catch (e) {}
+        if (!last || Date.now() - last > LOCK_AFTER) showLock();
+      }
       if (!A) return;
       A.addListener("appStateChange", function (st) {
-        if (!st.isActive) { awaySince = Date.now(); return; }
+        if (!st.isActive) { awaySince = Date.now(); try { localStorage.setItem("dl_unlocked", String(Date.now())); } catch (e) {} return; }
         // back in the foreground
         if (B && awaySince && Date.now() - awaySince > LOCK_AFTER) showLock();
         awaySince = 0;
@@ -1107,7 +1152,17 @@
       // Android back button: close a sheet first, never drop out of the app
       A.addListener("backButton", function () {
         var sheet = document.querySelector(".sheet.open");
-        if (sheet) { if (sheet.id === "moreSheet") closeSheet(); else sheet.remove(); return; }
+        if (sheet) {
+          if (sheet.id === "moreSheet") closeSheet();
+          else {
+            // a sheet dismissed with Back must settle like any other dismiss,
+            // or it comes back on every app resume for the next 45 minutes
+            var bg = sheet.querySelector(".sheet-bg");
+            if (bg && bg.onclick) bg.onclick();
+            else sheet.remove();
+          }
+          return;
+        }
         var viewer = document.querySelector(".viewer");
         if (viewer) { viewer.remove(); return; }
         var first = document.querySelector(".tab:not(.hide)");
@@ -1250,6 +1305,7 @@
       if (el.dataset.act === "status") {
         var k = el.dataset.key, v = el.value;
         var l = state.data.leads.find(function (x) { return x.key === k; });
+        var before = l ? l.status : null;
         if (l) l.status = v;                        // show it straight away
         el.className = "s-" + v;
         saveCache(state.data);
@@ -1259,8 +1315,8 @@
             else toast("Status: " + v);
           })
           .catch(function (x) {
-            if (/network|failed|fetch/i.test(x.message || "")) { online = false; enqueue("status", { key: k, status: v }); toast("Offline — network vachaka veltundi"); }
-            else toast(x.message);
+            if (x.net) { online = false; paintNet(); enqueue("status", { key: k, status: v }); toast("Offline — network vachaka veltundi"); }
+            else { if (l) l.status = before; saveCache(state.data); renderLeads(); toast(x.message); }
           });
       }
       if (el.dataset.act === "p-role") { api("team-role", { phone: el.dataset.phone, role: el.value }).then(function () { toast("Role updated"); return loadPanel(); }).catch(function (x) { toast(x.message); loadPanel(); }); }
@@ -1278,8 +1334,13 @@
         if (lead) lead.notes = j.notes;
         renderLeads(); renderAcademy(); saveCache(state.data); toast("Note saved");
       }).catch(function (x) {
-        if (/network|failed|fetch/i.test(x.message || "")) { online = false; enqueue("note", { key: nk, text: text }); toast("Offline — note phone lo aagi undi"); }
-        else toast(x.message);
+        if (x.net) { online = false; paintNet(); enqueue("note", { key: nk, text: text }); toast("Offline — note phone lo aagi undi"); }
+        else {
+          // the server said no: take the note back off the screen rather than
+          // leave it looking saved
+          if (lead) lead.notes = (lead.notes || []).filter(function (n) { return n.ts !== at; });
+          renderLeads(); renderAcademy(); saveCache(state.data); toast(x.message);
+        }
       });
     });
     document.addEventListener("click", function (e) {
@@ -1425,7 +1486,10 @@
     $("officeChips").innerHTML = CHIPS.map(function (c) { return '<button class="btn btn--sm" data-chip="' + esc(c) + '">' + esc(c) + "</button>"; }).join("");
     $("officeChips").addEventListener("click", function (e) { var b = e.target.closest("[data-chip]"); if (b) askOffice(b.dataset.chip); });
 
-    setInterval(function () { if (tok && !document.hidden) load(); }, 120000);
+    setInterval(function () {
+      if (!tok || document.hidden || locked || busyTyping()) return;
+      load().catch(function () {});
+    }, 120000);
     boot();
   })();
   </script>

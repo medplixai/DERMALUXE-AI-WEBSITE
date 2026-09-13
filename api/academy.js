@@ -165,13 +165,10 @@ module.exports = async (req, res) => {
   // Live powers, not the ones frozen into the login token: a role edit or a
   // revoked capability in the Control panel applies here on the next request.
   const staffMod = require("./staff.js");
-  const roleBook = await staffMod.loadRoles(cfg);
-  const liveMe = await staffMod.liveUser(cfg, me.phone, roleBook);
-  if (!liveMe) return json(res, 403, { error: "Access removed" });
-  if (liveMe.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
-  me.role = liveMe.role; me.name = liveMe.name;
-  const caps = staffMod.effCaps(roleBook, liveMe);
-  const can = (c) => caps.includes("*") || caps.includes(c);
+  const auth = await staffMod.requireStaff(cfg, req);
+  if (!auth.ok) return json(res, auth.code, { error: auth.error });
+  me.role = auth.me.role; me.name = auth.me.name; me.phone = auth.me.phone;
+  const can = auth.allow;
   if (!can("academy.view")) return json(res, 403, { error: "Mee role ki academy access ledu" });
   // One capability per action, so the owner can hand out fee entry without
   // handing out certificates (and so on) from the Control panel.

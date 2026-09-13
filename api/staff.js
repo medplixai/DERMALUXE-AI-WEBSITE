@@ -169,14 +169,16 @@ function ownerPhones() {
 // "staff password <new password>"  → scrypt hash in KV (never stored in plain).
 // Fallback: STAFF_PASSWORD env var.
 function scrypt(pwd, salt) { return crypto.scryptSync(String(pwd), String(salt), 32).toString("hex"); }
-async function checkPassword(cfg, pwd) {
-  if (!pwd) return false;
-  const r = await guard.kvCommand(cfg, ["GET", "staff:pwd"]).catch(() => ({}));
+// A password belongs to ONE person. A single clinic-wide password would let
+// anyone who knows it log in as the owner simply by typing the owner's number,
+// so the hash is stored per phone.
+async function checkPassword(cfg, phone, pwd) {
+  if (!pwd || !phone) return false;
+  const r = await guard.kvCommand(cfg, ["HGET", "staff:pwd", phone]).catch(() => ({}));
   if (r && r.result) {
     try { const rec = JSON.parse(r.result); return guard.safeEqual(scrypt(pwd, rec.salt), rec.hash); } catch (e) { return false; }
   }
-  const env = process.env.STAFF_PASSWORD;
-  return env ? guard.safeEqual(String(pwd), env) : null; // null = no password configured
+  return null;                              // null = this person has no password yet
 }
 
 async function resolveUser(cfg, phone, roles) {
@@ -255,8 +257,8 @@ module.exports = async (req, res) => {
     const u = await resolveUser(cfg, phone);
     if (!u) return json(res, 403, { error: "Ee number staff list lo ledu. Owner ni adagandi." });
     if (u.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
-    const ok = await checkPassword(cfg, pwd);
-    if (ok === null) return json(res, 501, { error: "Password inka set cheyaledu — OTP tho login cheyandi (owner: WhatsApp lo 'staff password <new password>')" });
+    const ok = await checkPassword(cfg, phone, pwd);
+    if (ok === null) return json(res, 501, { error: "Ee number ki password set cheyaledu — OTP tho login cheyandi." });
     if (!ok) return json(res, 401, { error: "Password tappu" });
     await guard.kvCommand(cfg, ["HSET", "staff:lastlogin", phone, String(Date.now())]).catch(() => {});
     return json(res, 200, { ok: true, token: makeToken(u, await epochOf(cfg, phone)), me: u });
@@ -331,7 +333,7 @@ module.exports = async (req, res) => {
     if (!allow("team.manage")) return json(res, 403, { error: "Control panel owner/manager ki matrame" });
     const [team, last, pwd, log] = await Promise.all([
       users(cfg), hashAll(cfg, "staff:lastlogin").catch(() => ({})),
-      guard.kvCommand(cfg, ["GET", "staff:pwd"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["HGET", "staff:pwd", me.phone]).catch(() => ({})),
       guard.kvCommand(cfg, ["LRANGE", "staff:audit", "0", "49"]).catch(() => ({})),
     ]);
     const people = Object.keys(team).map((ph) => {
@@ -345,7 +347,7 @@ module.exports = async (req, res) => {
     return json(res, 200, {
       ok: true, roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, people,
       owners: ownerPhones().map((ph) => ({ phone: ph, lastLogin: Number(last[ph] || 0) || null })),
-      passwordSet: !!(pwd && pwd.result) || !!process.env.STAFF_PASSWORD,
+      passwordSet: !!(pwd && pwd.result),
       audit, me: Object.assign({}, me, { caps: effCaps(roles, me) }),
     });
   }
@@ -405,6 +407,8 @@ module.exports = async (req, res) => {
   if (!isOwner && ["team-role", "team-caps", "team-suspend", "team-remove"].includes(a) && digits10(b.phone) === me.phone)
     return json(res, 403, { error: "Mee sonta access ni meere marchukolekaru. Owner ni adagandi." });
   if (!isOwner && ["team-add", "team-role"].includes(a)) {
+    if (capsOf(roleOf(b.role, roles), roles).includes("team.manage"))
+      return json(res, 403, { error: "Control panel unna role ivvagaligedi owner matrame" });
     const short = cannotGrant(capsOf(roleOf(b.role, roles), roles));
     if (short.length) return json(res, 403, { error: `Meeku leni powers ivvalemu: ${short.map((c) => CAPS[c] || c).join(", ")}` });
   }
@@ -416,7 +420,7 @@ module.exports = async (req, res) => {
     const short = cannotGrant(Array.isArray(b.caps) ? b.caps : []);
     if (short.length) return json(res, 403, { error: `Meeku leni powers role ki pettalemu: ${short.map((c) => CAPS[c] || c).join(", ")}` });
   }
-  if (a === "set-password" && !allow("settings.manage")) return json(res, 403, { error: "Password marchagaligedi settings access unna vallake" });
+
   if (a === "team-add") {
     const phone = digits10(b.phone), name = clean(b.name, 60);
     const role = roleOf(b.role, roles);
@@ -430,13 +434,19 @@ module.exports = async (req, res) => {
     notify.sendWa(phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki *${roles[role].label}* ga add ayyaru.\n\n🔗 www.dermaluxe.ai/staff.html\n📱 Mee number: ${phone}\n🔐 Password leda OTP tho login cheyandi.\n\n📋 Mee access: ${what}`).catch(() => {});
     return json(res, 200, { ok: true, team: await users(cfg) });
   }
+  // Your own password, nobody else's. An owner cannot set a password for a
+  // staff member — that person sets their own, or logs in with an OTP.
   if (a === "set-password") {
     const pwd = String(b.password || "");
-    if (b.off === true) { await guard.kvCommand(cfg, ["DEL", "staff:pwd"]); await audit(cfg, me, "Password teesesaru — OTP only"); return json(res, 200, { ok: true, off: true }); }
-    if (pwd.length < 6) return json(res, 400, { error: "Password kaneesam 6 characters undali" });
+    if (b.off === true) {
+      await guard.kvCommand(cfg, ["HDEL", "staff:pwd", me.phone]);
+      await audit(cfg, me, "Sonta password teesesaru — OTP only");
+      return json(res, 200, { ok: true, off: true });
+    }
+    if (pwd.length < 8) return json(res, 400, { error: "Password kaneesam 8 characters undali" });
     const salt = crypto.randomBytes(16).toString("hex");
-    await guard.kvCommand(cfg, ["SET", "staff:pwd", JSON.stringify({ salt, hash: scrypt(pwd, salt), ts: Date.now(), by: me.phone })]);
-    await audit(cfg, me, "Dashboard password set chesaru");
+    await guard.kvCommand(cfg, ["HSET", "staff:pwd", me.phone, JSON.stringify({ salt, hash: scrypt(pwd, salt), ts: Date.now() })]);
+    await audit(cfg, me, "Sonta password set chesukunnaru");
     return json(res, 200, { ok: true });
   }
   if (a === "team-role") {
@@ -472,7 +482,7 @@ module.exports = async (req, res) => {
     if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid number ivvandi" });
     if (!isOwner && phone === me.phone) return json(res, 403, { error: "Mee sonta session ni ikkada nunchi aapukolekaru — Logout vaadandi." });
     const all = await users(cfg);
-    if (!isOwner && all[phone] && all[phone].role === "owner") return json(res, 403, { error: "Owner record ni marchagaligedi owner matrame" });
+    if (!isOwner && guard.isOwnerPhone(phone)) return json(res, 403, { error: "Owner ni logout cheyagaligedi owner matrame" });
     const n = await bumpEpoch(cfg, phone);
     // their phones should stop getting notifications too
     try { const push = require("./_push.js"); for (const t of await push.devicesOf(cfg, phone)) await push.dropDevice(cfg, t); } catch (e) {}
@@ -500,7 +510,7 @@ module.exports = async (req, res) => {
   if (a === "team-remove") {
     const phone = digits10(b.phone);
     const all = await users(cfg);
-    if (!isOwner && all[phone] && all[phone].role === "owner") return json(res, 403, { error: "Owner record ni teeyagaligedi owner matrame" });
+    if (!isOwner && (guard.isOwnerPhone(phone) || (all[phone] && all[phone].role === "owner"))) return json(res, 403, { error: "Owner record ni teeyagaligedi owner matrame" });
     await guard.kvCommand(cfg, ["HDEL", USERS, phone]);
     await guard.kvCommand(cfg, ["HDEL", "staff:lastlogin", phone]).catch(() => {});
     await bumpEpoch(cfg, phone);
@@ -563,6 +573,22 @@ module.exports.effCaps = effCaps;
 module.exports.liveUser = (cfg, phone, roles) => resolveUser(cfg, phone, roles);
 // Decode a staff bearer token (identity only — never trust its role/caps).
 module.exports.tokenUser = (req) => readToken(req);
+// The only correct way for another endpoint to authenticate a staff request.
+// Returns { ok:false, code, error } or { ok:true, me, caps, roles, allow }.
+// Every rule lives here — signature, expiry, still-employed, not suspended,
+// and the session epoch that "sign out from all phones" bumps.
+module.exports.requireStaff = async function (cfg, req) {
+  const tok = readToken(req);
+  if (!tok) return { ok: false, code: 401, error: "Login required" };
+  const roles = await loadRoles(cfg);
+  const live = await resolveUser(cfg, tok.phone, roles);
+  if (!live) return { ok: false, code: 403, error: "Access removed" };
+  if (live.off) return { ok: false, code: 403, error: "Mee access ippudu off lo undi. Owner ni adagandi." };
+  const liveEpoch = await epochOf(cfg, tok.phone);
+  if (Number(tok.epoch || 0) < liveEpoch) return { ok: false, code: 401, error: "Ee device nunchi logout chesaru. Malli login cheyandi." };
+  const caps = effCaps(roles, live);
+  return { ok: true, me: live, caps, roles, allow: (c) => caps.includes("*") || caps.includes(c) };
+};
 module.exports.capsFor = async function (cfg, user) {
   const roles = await loadRoles(cfg);
   return effCaps(roles, user);

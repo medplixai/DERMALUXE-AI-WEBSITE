@@ -106,13 +106,11 @@ module.exports = async (req, res) => {
   const cfg = guard.kvConfig();
   if (!cfg) return json(res, 501, { error: "Storage not configured" });
   // Live powers from the Control panel, not the ones baked into the token.
-  const roleBook = await staff.loadRoles(cfg);
-  const live = await staff.liveUser(cfg, me.phone, roleBook);
-  if (!live) return json(res, 403, { error: "Access removed" });
-  if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
-  me.role = live.role; me.name = live.name;
-  me.caps = staff.effCaps(roleBook, live);
-  me.roleLabel = (roleBook[live.role] || {}).label || live.role;
+  const auth = await staff.requireStaff(cfg, req);
+  if (!auth.ok) return json(res, auth.code, { error: auth.error });
+  me.role = auth.me.role; me.name = auth.me.name; me.phone = auth.me.phone;
+  me.caps = auth.caps;
+  me.roleLabel = (auth.roles[auth.me.role] || {}).label || auth.me.role;
   if (!has(me, "ai.use")) return json(res, 403, { error: "Mee role ki AI Office access ledu" });
   if (!process.env.ANTHROPIC_API_KEY) return json(res, 501, { error: "AI key configure cheyaledu" });
 
