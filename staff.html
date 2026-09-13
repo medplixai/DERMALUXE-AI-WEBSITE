@@ -337,6 +337,7 @@
           <button class="btn btn--sm btn--gold hide" id="schNew">+ Kotha appointment</button>
         </div>
         <div id="schList"></div>
+        <div class="grp"><div class="grp-h"><h2>Next sitting due <span class="te" style="font-size:.85rem">· రీకాల్</span></h2><i id="dueCount"></i></div><div id="dueList"></div></div>
       </section>
       <section id="t-patients" class="hide">
         <div class="filters"><input id="ptQ" placeholder="Peru leda number tho vetakandi" /></div>
@@ -673,7 +674,7 @@
       schDay = schDay || istToday();
       return Promise.all([schapi("week"), schapi("day", null, "&day=" + schDay)]).then(function (r) {
         schWeek = r[0]; schData = r[1];
-        renderSchedule();
+        renderSchedule(); loadDue();
       }).catch(function (e) { $("schList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
     function renderSchedule() {
@@ -734,6 +735,48 @@
           }
           toast(e.message);
         });
+    }
+    // ---- packages & recalls ---------------------------------------------
+    function pkapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/package?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    function pkgLine(p) {
+      return esc(p.treatment) + " " + p.done + "/" + p.total +
+        (p.left === 0 ? " ✓" : p.overdueDays ? ' · <b style="color:var(--hot)">' + p.overdueDays + " rojulu late</b>"
+          : p.nextDue ? " · next " + fmtDay(p.nextDue) : "");
+    }
+    function loadDue() {
+      var host = $("dueList"); if (!host) return Promise.resolve();
+      return pkapi("due", null, "&days=3").then(function (j) {
+        $("dueCount").textContent = j.overdue ? j.overdue + " late · " + j.rows.length + " mottam" : j.rows.length + " mandhi";
+        host.innerHTML = j.rows.length ? j.rows.map(function (p) {
+          return '<article class="seat' + (p.overdueDays ? " quiet" : "") + '"><div class="row1">' +
+            "<div><h3 data-act=\"pt-open\" data-phone=\"" + esc(p.phone) + "\" style=\"cursor:pointer\">" + esc(p.name) + ' <span class="meta">· ' + esc(p.phone) + "</span></h3>" +
+            '<div class="meta">' + pkgLine(p) + "</div></div>" +
+            (p.overdueDays ? '<span class="chip hot">' + p.overdueDays + "d late</span>" : '<span class="chip">due</span>') + "</div>" +
+            '<div class="acts">' +
+            '<a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(p.name) + '" data-phone="' + esc(p.phone) + '" href="tel:+91' + esc(p.phone) + '">📞 Call</a>' +
+            '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(p.phone) + '">💬 WhatsApp</a>' +
+            (state.allow("pkg.log") ? '<button class="btn btn--sm btn--gold" data-act="pkg-log" data-id="' + esc(p.id) + '" data-n="' + (p.done + 1) + '" data-t="' + esc(p.treatment) + '">✅ Sitting ' + (p.done + 1) + " chesamu</button>" : "") +
+            "</div></article>";
+        }).join("") : '<p class="meta">Evariki due ledu 👍</p>';
+      }).catch(function (e) { host.innerHTML = '<p class="meta">' + esc(e.message) + "</p>"; });
+    }
+    function loadPatientPkgs(phone) {
+      var host = $("ptPkgs"); if (!host) return;
+      pkapi("of", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
+        host.innerHTML = (j.rows.length ? j.rows.map(function (p) {
+          return '<div class="vrow"><b>' + pkgLine(p) + "</b>" +
+            '<div class="meta">' + (p.sessions || []).slice(-3).map(function (x) { return "#" + x.n + " " + fmtDay(x.at); }).join(" · ") + "</div>" +
+            (p.left > 0 && state.allow("pkg.log") ? '<button class="btn btn--sm" style="margin-top:6px" data-act="pkg-log" data-id="' + esc(p.id) + '" data-n="' + (p.done + 1) + '" data-t="' + esc(p.treatment) + '">✅ Sitting ' + (p.done + 1) + " chesamu</button>" : "") +
+            "</div>";
+        }).join("") : '<p class="meta">Packages emi ledu.</p>') +
+          (state.allow("pkg.log") ? '<button class="btn btn--sm" style="margin-top:8px" data-act="pkg-new" data-phone="' + esc(phone) + '" data-name="' + esc((ptOpen || {}).name || "") + '">+ Package</button>' : "");
+      }).catch(function (e) { host.innerHTML = '<p class="meta">' + esc(e.message) + "</p>"; });
     }
     function renderAppts() { /* the day view loads on demand */ }
 
@@ -897,6 +940,7 @@
           '<button class="btn btn--sm" data-act="pt-edit" data-phone="' + esc(p.phone) + '">✎ Details</button>' : "") +
         "</div>" +
 
+        '<div class="pt-sec"><h3>Packages <span class="te" style="font-size:.85rem">· సిట్టింగ్‌లు</span></h3><div id="ptPkgs"><p class="meta">Loading…</p></div></div>' +
         (state.allow("money.view") ? '<div class="pt-sec"><h3>Bills <span class="te" style="font-size:.85rem">· బిల్లులు</span></h3><div id="ptMoney"><p class="meta">Loading…</p></div></div>' : "") +
         '<div class="pt-sec"><h3>Before / after <span class="te" style="font-size:.85rem">· ఫోటోలు</span></h3>' + tl + "</div>" +
         (upcoming.length ? '<div class="pt-sec"><h3>Upcoming</h3>' + upcoming.map(function (a) {
@@ -905,6 +949,7 @@
         '<div class="pt-sec"><h3>Anni enquiries</h3>' + visits + "</div>" +
         '<div class="pt-sec"><h3>Notes</h3>' + notes + "</div>";
       paintThumbs($("ptBody"));
+      loadPatientPkgs(p.phone);
       if (state.allow("money.view")) loadPatientMoney(p.phone);
     }
     function fmtDay(ts) {
@@ -1823,6 +1868,25 @@
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
       if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "pkg-log") {
+        var nt6 = prompt("Sitting " + el.dataset.n + " — " + el.dataset.t + "\nNote (optional):", "");
+        if (nt6 === null) return;
+        pkapi("log", { id: el.dataset.id, note: nt6 }).then(function (j) {
+          toast(j.pkg.left ? "Sitting " + j.pkg.done + "/" + j.pkg.total + " · next " + fmtDay(j.pkg.nextDue) : "Package ayipoyindi 🎉");
+          if (ptOpen) loadPatientPkgs(ptOpen.phone);
+          loadDue();
+        }).catch(function (x) { toast(x.message); });
+        return;
+      }
+      if (el.dataset.act === "pkg-new") {
+        var tr = prompt("E treatment?", "Laser hair removal — face"); if (!tr) return;
+        var tot = Number(prompt("Enni sittings?", "6") || 0); if (!(tot > 1)) return;
+        var gap = Number(prompt("Rendu sittings madhya enni rojulu?", "30") || 30);
+        pkapi("create", { phone: el.dataset.phone, name: el.dataset.name, treatment: tr, total: tot, gapDays: gap })
+          .then(function () { toast("Package modalu ayindi"); loadPatientPkgs(el.dataset.phone); })
+          .catch(function (x) { toast(x.message); });
+        return;
+      }
       if (el.dataset.act === "sch-day") { schDay = el.dataset.day; haptic(); loadSchedule(); return; }
       if (el.dataset.act === "sch-arrived") { schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "arrived" }, "Vachharu ani mark chesamu"); return; }
       if (el.dataset.act === "sch-done") {

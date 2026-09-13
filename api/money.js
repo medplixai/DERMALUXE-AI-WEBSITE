@@ -37,10 +37,10 @@ const DEFAULT_RATES = [
   { id: "skin-analysis", name: "Skin & hair analysis", price: 1000 },
   { id: "hydrafacial", name: "HydraFacial", price: 3500 },
   { id: "peel", name: "Chemical peel", price: 2500 },
-  { id: "lhr-face", name: "Laser hair removal — face", price: 2500, sessions: 6 },
-  { id: "lhr-full", name: "Laser hair removal — full body", price: 12000, sessions: 6 },
-  { id: "prp-hair", name: "PRP — hair", price: 5000, sessions: 6 },
-  { id: "gfc-hair", name: "GFC — hair", price: 7000, sessions: 4 },
+  { id: "lhr-face", name: "Laser hair removal — face", price: 2500, sessions: 6, gapDays: 30 },
+  { id: "lhr-full", name: "Laser hair removal — full body", price: 12000, sessions: 6, gapDays: 30 },
+  { id: "prp-hair", name: "PRP — hair", price: 5000, sessions: 6, gapDays: 30 },
+  { id: "gfc-hair", name: "GFC — hair", price: 7000, sessions: 4, gapDays: 21 },
   { id: "acne", name: "Acne treatment — sitting", price: 2000 },
   { id: "pigmentation", name: "Pigmentation — sitting", price: 3000 },
 ];
@@ -149,6 +149,7 @@ module.exports = async (req, res) => {
       name: clean(x.name, 60),
       price: money(x.price),
       sessions: Number(x.sessions) > 1 ? Math.min(24, Number(x.sessions)) : undefined,
+      gapDays: Number(x.gapDays) > 0 ? Math.min(120, Number(x.gapDays)) : undefined,
     })).filter((x) => x.name).slice(0, 120);
     if (!list.length) return json(res, 400, { error: "Kaneesam oka treatment kavali" });
     await guard.kvCommand(cfg, ["SET", "rate:card", JSON.stringify(list)]);
@@ -185,7 +186,14 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["EXPIRE", `bill:day:${day}`, String(400 * 86400)]).catch(() => {});
     const t = totals(bill);
     if (t.balance > 0) await guard.kvCommand(cfg, ["LPUSH", "bill:open", id]).catch(() => {});
-    return json(res, 200, { ok: true, bill: Object.assign({}, bill, t) });
+    // A six-sitting laser sold here becomes a package here too, so nobody has
+    // to remember a second step and the recall has something to fire from.
+    let packages = [];
+    try {
+      const pkg = require("./package.js");
+      packages = await pkg.fromBill(cfg, bill, await rates(cfg));
+    } catch (e) { console.error("bill: package", e && e.message); }
+    return json(res, 200, { ok: true, bill: Object.assign({}, bill, t), packages: packages.length });
   }
 
   // Money received against an existing bill.

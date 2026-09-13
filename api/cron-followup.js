@@ -202,5 +202,39 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: visit followup", e && e.message); }
 
-  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30 });
+  // ---- next sitting is due -------------------------------------------------
+  // Once a day, tell anyone whose multi-sitting treatment is due. This is what
+  // the approved session_reminder template was always for; until packages
+  // existed there was nothing to fire it from.
+  let recalls = 0;
+  try {
+    if (istNow.getUTCHours() === 5) {                       // 10:30 IST
+      const pkg = require("./package.js");
+      const rows = await pkg.due(cfg, 0);
+      for (const p of rows) {
+        if (!p.phone) continue;
+        // one nudge per package per 6 days, however overdue it gets
+        const nx = await guard.kvCommand(cfg, ["SET", `pkg:ping:${p.id}`, "1", "NX", "EX", "518400"]).catch(() => ({}));
+        if (!nx || !nx.result) continue;
+        const first = String(p.name || "").split(" ")[0] || "friend";
+        const next = p.done + 1;
+        const ok = await notify.sendWa(p.phone,
+          `Hi ${first}! 🙏 Mee *${p.treatment}* lo ${next}/${p.total} sitting ki time ayindi.\n\nEppudu convenient ayithe cheppandi — slot pettestamu.\n\nDermaLuxe by Medicare, Eluru`);
+        if (!ok) await notify.sendWaTemplate(p.phone, "session_reminder", [first, String(p.treatment).slice(0, 60)]).catch(() => {});
+        recalls++;
+      }
+      if (recalls) {
+        try {
+          const push = require("./_push.js");
+          if (push.enabled()) await push.notifyCap(cfg, "appts.view", {
+            title: `🔁 ${recalls} patients ki next sitting due`,
+            body: "Recall messages vellayi — call chesi slot pettandi.",
+            tab: "appts", data: { kind: "recall" },
+          });
+        } catch (e) {}
+      }
+    }
+  } catch (e) { console.error("cron: recalls", e && e.message); }
+
+  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls });
 };
