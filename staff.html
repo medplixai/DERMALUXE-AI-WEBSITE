@@ -383,7 +383,17 @@
       var opt = { method: method || (body ? "POST" : "GET"), headers: {} };
       if (tok) opt.headers.Authorization = "Bearer " + tok;
       if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(API + "?a=" + a, opt).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+      return fetch(API + "?a=" + a, opt).then(function (r) {
+        return r.json().then(function (j) {
+          // the owner signed this device out from the control panel
+          if (r.status === 401 && /logout chesaru/i.test(j.error || "")) {
+            tok = null; try { localStorage.removeItem(TOK); } catch (e) {}
+            clearCache(); location.reload();
+          }
+          if (!r.ok) throw new Error(j.error || ("HTTP " + r.status));
+          return j;
+        });
+      });
     }
     function ago(ts) { var d = Date.now() - ts, m = Math.round(d / 60000); if (m < 1) return "just now"; if (m < 60) return m + " min ago"; var h = Math.round(m / 60); if (h < 24) return h + " h ago"; return Math.round(h / 24) + " d ago"; }
     function fmtAt(ts) { return new Date(ts).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); }
@@ -436,7 +446,7 @@
       if (cached) { state.data = cached; try { render(); } catch (e) {} paintNet(); }
       else $("leadList").innerHTML = '<div class="sk"><div></div><div></div><div></div><div></div></div>';
       flushQueue();
-      load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); initPush(); initLock(); checkPendingCall(); })
+      load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); initPush(); initLock(); initPrivacy(); checkPendingCall(); checkAppVersion(); })
         .catch(function (e) {
           // Offline with a cached dashboard: stay in the app, say so plainly.
           if (state.data && /network|failed|fetch/i.test(e.message || "")) { online = false; paintNet(); initLock(); checkPendingCall(); return; }
@@ -607,6 +617,7 @@
           '<div class="meta">' + (u.lastLogin ? "Last login " + ago(u.lastLogin) : "Inka login avvaledu") +
           (u.off ? ' · <b style="color:var(--bad);font-weight:500">Access OFF</b>' : '') + '</div></div>' +
           '<div class="acts"><select class="sel" data-act="p-role" data-phone="' + esc(u.phone) + '">' + roleOpts(u.role) + '</select>' +
+          '<button class="btn btn--sm" data-act="p-signout" data-phone="' + esc(u.phone) + '" data-name="' + esc(u.name) + '" title="Anni phones nunchi logout">🔒 Sign out</button>' +
           '<button class="btn btn--sm" data-act="p-suspend" data-phone="' + esc(u.phone) + '" data-off="' + (u.off ? "0" : "1") + '">' + (u.off ? "Turn on" : "Turn off") + '</button>' +
           '<button class="btn btn--sm" data-act="p-remove" data-phone="' + esc(u.phone) + '">Remove</button></div></div>' +
           '<div class="meta" style="margin-top:6px">Ippudu cheyagalavi: ' + esc(capWords(u.caps)) + '</div>' +
@@ -1106,6 +1117,32 @@
       });
     }
 
+    // ---- is this APK still current? --------------------------------------
+    function checkAppVersion() {
+      if (!NATIVE) return;
+      var A = plug("App");
+      if (!A || !A.getInfo) return;
+      A.getInfo().then(function (info) {
+        return fetch(ORIGIN + "/api/app-version").then(function (r) { return r.json(); }).then(function (v) {
+          var mine = Number(info.build || 0), newest = Number(v.versionCode || 0);
+          if (!newest || mine >= newest) return;
+          var bar = $("updateBar");
+          bar.querySelector("p").innerHTML = "<b>Kotha version " + esc(v.version) + " vachindi</b>" + esc(v.notes || "");
+          var btn = $("updateNow");
+          btn.textContent = mine < Number(v.minVersionCode || 0) ? "Ventane update" : "Download";
+          btn.onclick = function () { window.open(v.page || v.url, "_blank"); };
+          bar.classList.add("show");
+        });
+      }).catch(function () {});
+    }
+
+    // Patient records on a personal phone: no screenshots, and the app is
+    // blanked in the recent-apps carousel.
+    function initPrivacy() {
+      var P = plug("PrivacyScreen");
+      if (P && P.enable) P.enable().catch(function () {});
+    }
+
     // ---- install & update ----
     if (matchMedia("(display-mode: standalone)").matches || navigator.standalone || NATIVE)
       document.documentElement.classList.add("standalone");
@@ -1248,6 +1285,10 @@
     document.addEventListener("click", function (e) {
       var el = e.target.closest("[data-act]"); if (!el || el.tagName === "SELECT" || el.tagName === "FORM") return;
       if (el.dataset.act === "delete") { if (!confirm("Delete this lead?")) return; api("delete", { key: el.dataset.key }).then(function () { state.data.leads = state.data.leads.filter(function (x) { return x.key !== el.dataset.key; }); state.data.academy.leads = state.data.academy.leads.filter(function (x) { return x.key !== el.dataset.key; }); render(); toast("Deleted"); }).catch(function (x) { toast(x.message); }); }
+      if (el.dataset.act === "p-signout") {
+        if (!confirm(el.dataset.name + " ni anni phones nunchi logout chestara?\n\nPhone poyinappudu idi vaadandi. Vaaru malli login avvali.")) return;
+        api("team-signout", { phone: el.dataset.phone }).then(function () { toast("Anni devices nunchi logout ayyaru"); return loadPanel(); }).catch(function (x) { toast(x.message); });
+      }
       if (el.dataset.act === "p-remove") { if (!confirm("Remove access for " + el.dataset.phone + "?")) return; api("team-remove", { phone: el.dataset.phone }).then(function () { toast("Removed"); return loadPanel(); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "p-suspend") { var off = el.dataset.off === "1"; if (off && !confirm("Ee login ni off chestara?")) return; api("team-suspend", { phone: el.dataset.phone, off: off }).then(function () { toast(off ? "Access off" : "Access on"); return loadPanel(); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "call") {

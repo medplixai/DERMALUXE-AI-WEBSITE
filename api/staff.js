@@ -124,9 +124,22 @@ const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
 const json = (res, code, obj) => { res.setHeader("Cache-Control", "no-store"); return res.status(code).json(obj); };
 
 function sign(payload) { return crypto.createHmac("sha256", secret()).update(payload).digest("hex"); }
-function makeToken(u) {
+// Sessions are stateless, so a stolen phone could keep working for 30 days.
+// Every token carries the epoch its owner was on when it was minted; bumping
+// that number in KV kills every token they hold, everywhere, at once.
+const EPOCH_KEY = "staff:epoch";
+async function epochOf(cfg, phone) {
+  const r = await guard.kvCommand(cfg, ["HGET", EPOCH_KEY, phone]).catch(() => ({}));
+  return Number((r && r.result) || 0);
+}
+async function bumpEpoch(cfg, phone) {
+  const next = (await epochOf(cfg, phone)) + 1;
+  await guard.kvCommand(cfg, ["HSET", EPOCH_KEY, phone, String(next)]).catch(() => {});
+  return next;
+}
+function makeToken(u, epoch) {
   const exp = Date.now() + SESSION_DAYS * 86400000;
-  const payload = Buffer.from(JSON.stringify({ p: u.phone, n: u.name, r: roleOf(u.role), exp })).toString("base64url");
+  const payload = Buffer.from(JSON.stringify({ p: u.phone, n: u.name, r: roleOf(u.role), e: Number(epoch || 0), exp })).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 function readToken(req) {
@@ -138,7 +151,7 @@ function readToken(req) {
   try {
     const u = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
     if (!u.exp || u.exp < Date.now()) return null;
-    return { phone: u.p, name: u.n, role: u.r };
+    return { phone: u.p, name: u.n, role: u.r, epoch: Number(u.e || 0) };
   } catch (e) { return null; }
 }
 
@@ -246,7 +259,7 @@ module.exports = async (req, res) => {
     if (ok === null) return json(res, 501, { error: "Password inka set cheyaledu — OTP tho login cheyandi (owner: WhatsApp lo 'staff password <new password>')" });
     if (!ok) return json(res, 401, { error: "Password tappu" });
     await guard.kvCommand(cfg, ["HSET", "staff:lastlogin", phone, String(Date.now())]).catch(() => {});
-    return json(res, 200, { ok: true, token: makeToken(u), me: u });
+    return json(res, 200, { ok: true, token: makeToken(u, await epochOf(cfg, phone)), me: u });
   }
   if (a === "send") {
     if (req.method !== "POST") return json(res, 405, { error: "POST" });
@@ -289,7 +302,7 @@ module.exports = async (req, res) => {
     if (!u) return json(res, 403, { error: "Not allowed" });
     if (u.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
     await guard.kvCommand(cfg, ["HSET", "staff:lastlogin", phone, String(Date.now())]).catch(() => {});
-    return json(res, 200, { ok: true, token: makeToken(u), me: u });
+    return json(res, 200, { ok: true, token: makeToken(u, await epochOf(cfg, phone)), me: u });
   }
 
   // ---- everything below needs a session ----
@@ -300,6 +313,8 @@ module.exports = async (req, res) => {
   const live = await resolveUser(cfg, me.phone, roles);
   if (!live) return json(res, 403, { error: "Access removed" });
   if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
+  const liveEpoch = await epochOf(cfg, me.phone);
+  if (Number(me.epoch || 0) < liveEpoch) return json(res, 401, { error: "Ee device nunchi logout chesaru. Malli login cheyandi." });
   me.role = live.role; me.name = live.name; me.extra = live.extra; me.revoked = live.revoked;
   // Powers are recomputed here on every request, so a role edit or a revoked
   // capability takes effect immediately — no re-login, no stale token.
@@ -379,7 +394,7 @@ module.exports = async (req, res) => {
 
   if (a === "delete" && !allow("leads.delete")) return json(res, 403, { error: "Owner matrame" });
   if (a === "daily" && !allow("posts.toggle")) return json(res, 403, { error: "Mee role ki idi marche permission ledu" });
-  const PANEL = ["team-add", "team-remove", "team-role", "team-caps", "team-suspend", "role-save", "role-delete"];
+  const PANEL = ["team-add", "team-remove", "team-role", "team-caps", "team-suspend", "team-signout", "role-save", "role-delete"];
   if (PANEL.includes(a) && !allow("team.manage")) return json(res, 403, { error: "Idi control panel access unna vallake" });
   // A non-owner with control-panel access may only pass on powers they hold
   // themselves, and may never edit their own record — otherwise the panel is
@@ -451,6 +466,20 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, team: await users(cfg) });
   }
   // Pause a login without deleting it (keeps the person's history).
+  // Phone lost or stolen: one tap kills every session that person holds.
+  if (a === "team-signout") {
+    const phone = digits10(b.phone);
+    if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid number ivvandi" });
+    if (!isOwner && phone === me.phone) return json(res, 403, { error: "Mee sonta session ni ikkada nunchi aapukolekaru — Logout vaadandi." });
+    const all = await users(cfg);
+    if (!isOwner && all[phone] && all[phone].role === "owner") return json(res, 403, { error: "Owner record ni marchagaligedi owner matrame" });
+    const n = await bumpEpoch(cfg, phone);
+    // their phones should stop getting notifications too
+    try { const push = require("./_push.js"); for (const t of await push.devicesOf(cfg, phone)) await push.dropDevice(cfg, t); } catch (e) {}
+    await audit(cfg, me, `${(all[phone] && all[phone].name) || phone} — anni devices nunchi logout chesaru`);
+    notify.sendWa(phone, "🔒 Mee DermaLuxe app anni phones nunchi logout ayindi. Malli login cheyyalante owner ni adagandi.").catch(() => {});
+    return json(res, 200, { ok: true, epoch: n });
+  }
   if (a === "team-suspend") {
     const phone = digits10(b.phone), off = b.off === true;
     const all = await users(cfg);
@@ -458,6 +487,10 @@ module.exports = async (req, res) => {
     if (!isOwner && all[phone].role === "owner") return json(res, 403, { error: "Owner record ni marchagaligedi owner matrame" });
     all[phone].off = off;
     await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify(all[phone])]);
+    if (off) {
+      await bumpEpoch(cfg, phone);   // switching someone off must log them out now
+      try { const push = require("./_push.js"); for (const t of await push.devicesOf(cfg, phone)) await push.dropDevice(cfg, t); } catch (e) {}
+    }
     await audit(cfg, me, `${all[phone].name} (${phone}) access ${off ? "OFF chesaru" : "malli ON chesaru"}`);
     notify.sendWa(phone, off
       ? "🔒 Mee DermaLuxe dashboard access ippudu off lo undi. Doubt unte owner ni adagandi."
@@ -470,6 +503,8 @@ module.exports = async (req, res) => {
     if (!isOwner && all[phone] && all[phone].role === "owner") return json(res, 403, { error: "Owner record ni teeyagaligedi owner matrame" });
     await guard.kvCommand(cfg, ["HDEL", USERS, phone]);
     await guard.kvCommand(cfg, ["HDEL", "staff:lastlogin", phone]).catch(() => {});
+    await bumpEpoch(cfg, phone);
+    try { const push = require("./_push.js"); for (const t of await push.devicesOf(cfg, phone)) await push.dropDevice(cfg, t); } catch (e) {}
     await audit(cfg, me, `Removed login ${(all[phone] && all[phone].name) || ""} (${phone})`);
     return json(res, 200, { ok: true, team: await users(cfg) });
   }

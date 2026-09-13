@@ -9,7 +9,6 @@ set -euo pipefail
 
 HERE="$(cd "$(dirname "$0")" && pwd)"
 WORK="$HOME/.dermaluxe-staff-app/project"
-NM="$HOME/.dermaluxe-staff-app/node_modules"
 
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Library/Android/sdk}"
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
@@ -19,15 +18,15 @@ node "$HERE/build-shell.js"
 
 echo "→ mirroring the project to $WORK"
 mkdir -p "$WORK"
+# node_modules travels too: the plugins' Android sources are compiled from it,
+# and Gradle needs them on a filesystem that supports hard links.
 rsync -a --delete \
-  --exclude 'node_modules' \
   --exclude 'android/build' \
   --exclude 'android/app/build' \
   --exclude 'android/.gradle' \
   --exclude 'android/capacitor-cordova-android-plugins/build' \
   --exclude 'dist' \
   "$HERE/" "$WORK/"
-ln -sfn "$NM" "$WORK/node_modules"
 echo "sdk.dir=$ANDROID_HOME" > "$WORK/android/local.properties"
 
 echo "→ gradle assembleRelease"
