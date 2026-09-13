@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>DermaLuxe Staff — offline</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#0d0d0f" />
+  <link rel="icon" type="image/png" href="/assets/app/icon-192.png" />
+  <style>
+    :root{--ink:#0d0d0f;--panel:#16161b;--line:rgba(198,162,92,.18);--g1:#f4e2b8;--g3:#c6a25c;--text:#ece9e3;--muted:#a39e95}
+    *{box-sizing:border-box;margin:0;padding:0}
+    body{background:var(--ink);color:var(--text);font-family:"Jost",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+      font-weight:300;min-height:100vh;display:grid;place-items:center;padding:24px;text-align:center}
+    .card{max-width:380px}
+    img{width:76px;height:76px;border-radius:20px;margin-bottom:20px}
+    h1{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:1.9rem;color:var(--g1);line-height:1.15;margin-bottom:10px}
+    p{color:var(--muted);font-size:.95rem;line-height:1.6}
+    p + p{margin-top:10px}
+    button{margin-top:22px;background:linear-gradient(#e9cf8f,#c6a25c);color:#1a1205;border:0;border-radius:100px;
+      padding:11px 26px;font:inherit;font-weight:500;font-size:.92rem;cursor:pointer}
+    .hint{margin-top:16px;font-size:.8rem;color:#7c776e}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <img src="/assets/app/icon-192.png" alt="DermaLuxe" />
+    <h1>Internet ledu</h1>
+    <p>Mee phone network ki connect avvaledu, andhuke kotha data teesukoleka poyam.</p>
+    <p>Clinic wifi leda mobile data on chesi malli try cheyandi.</p>
+    <button onclick="location.href='/staff.html'">Malli try cheyandi</button>
+    <div class="hint">DermaLuxe by Medicare · Staff</div>
+  </div>
+  <script>
+    addEventListener("online", function () { location.href = "/staff.html"; });
+  </script>
+</body>
+</html>

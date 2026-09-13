@@ -1,0 +1,46 @@
+{
+  "id": "/staff.html",
+  "name": "DermaLuxe Staff",
+  "short_name": "DL Staff",
+  "description": "DermaLuxe by Medicare staff dashboard — leads, appointments, academy students and the AI Office.",
+  "start_url": "/staff.html?src=app",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
+  "orientation": "portrait",
+  "background_color": "#0d0d0f",
+  "theme_color": "#0d0d0f",
+  "lang": "en-IN",
+  "dir": "ltr",
+  "categories": ["business", "medical", "productivity"],
+  "prefer_related_applications": false,
+  "icons": [
+    { "src": "/assets/app/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/app/icon-256.png", "sizes": "256x256", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/app/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/assets/app/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Leads",
+      "short_name": "Leads",
+      "description": "Hot leads waiting for a call",
+      "url": "/staff.html?src=app#leads",
+      "icons": [{ "src": "/assets/app/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "Appointments",
+      "short_name": "Appts",
+      "description": "Today and the week ahead",
+      "url": "/staff.html?src=app#appts",
+      "icons": [{ "src": "/assets/app/icon-192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "AI Office",
+      "short_name": "AI Office",
+      "description": "Ask about leads, seats and follow-ups",
+      "url": "/staff.html?src=app#office",
+      "icons": [{ "src": "/assets/app/icon-192.png", "sizes": "192x192" }]
+    }
+  ]
+}

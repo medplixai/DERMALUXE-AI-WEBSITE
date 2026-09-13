@@ -6,8 +6,15 @@
   <title>DermaLuxe Staff</title>
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#0d0d0f" />
-  <link rel="icon" type="image/png" href="assets/favicon.png" />
-  <link rel="apple-touch-icon" href="assets/apple-touch-icon.png" />
+  <link rel="icon" type="image/png" href="assets/app/icon-192.png" />
+  <link rel="apple-touch-icon" href="assets/app/apple-touch-icon-180.png" />
+  <link rel="manifest" href="/manifest.webmanifest" />
+  <meta name="application-name" content="DermaLuxe Staff" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="DL Staff" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="color-scheme" content="dark" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Jost:wght@300;400;500;600&family=Noto+Sans+Telugu:wght@400;500&display=swap" rel="stylesheet" />
@@ -118,6 +125,64 @@
     .rolecard{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
     .rolecard .top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
     .auditrow{font-size:.82rem;color:var(--muted);padding:7px 0;border-bottom:1px solid var(--line)}
+
+    /* ---------- app shell: bottom nav, sheets, banners ---------- */
+    :root{--navh:66px}
+    .appbar{position:fixed;left:0;right:0;bottom:0;z-index:60;display:none;
+      grid-auto-flow:column;grid-auto-columns:1fr;align-items:stretch;
+      background:rgba(18,18,22,.94);backdrop-filter:blur(14px);
+      border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+    .appbar button{background:none;border:0;color:var(--muted2);font:inherit;font-size:.66rem;font-weight:400;
+      letter-spacing:.02em;cursor:pointer;padding:9px 2px 8px;display:grid;justify-items:center;gap:3px;position:relative}
+    .appbar button svg{width:21px;height:21px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+    .appbar button.on{color:var(--g2)}
+    .appbar button.on::before{content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);width:22px;height:2px;background:var(--g3);border-radius:0 0 3px 3px}
+    .appbar i{position:absolute;top:5px;right:calc(50% - 21px);min-width:15px;height:15px;border-radius:100px;
+      background:var(--hot);color:#2a1008;font-size:.62rem;font-style:normal;font-weight:600;display:grid;place-items:center;padding:0 4px}
+    .appbar i:empty,.appbar i[data-n="0"]{display:none}
+
+    .sheet{position:fixed;inset:0;z-index:70;display:none}
+    .sheet.open{display:block}
+    .sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+    .sheet-in{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border:1px solid var(--line);
+      border-bottom:0;border-radius:20px 20px 0 0;padding:8px 14px calc(18px + env(safe-area-inset-bottom));
+      animation:rise .22s cubic-bezier(.22,1,.36,1)}
+    @keyframes rise{from{transform:translateY(100%)}to{transform:translateY(0)}}
+    .sheet-grip{width:38px;height:4px;border-radius:100px;background:var(--line2,rgba(198,162,92,.3));margin:6px auto 14px}
+    .sheet-in h2{font-family:"Cormorant Garamond",serif;font-size:1.3rem;color:var(--g1);margin-bottom:10px;padding:0 4px}
+    .sheet-row{display:flex;align-items:center;gap:12px;width:100%;background:none;border:0;border-top:1px solid var(--line);
+      color:var(--text);font:inherit;font-size:.95rem;padding:13px 4px;cursor:pointer;text-align:left}
+    .sheet-row svg{width:19px;height:19px;stroke:var(--g3);fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+    .banner{position:fixed;left:10px;right:10px;z-index:80;background:var(--panel2);border:1px solid var(--line2,rgba(198,162,92,.32));
+      border-radius:14px;padding:12px 14px;display:none;gap:10px;align-items:center;box-shadow:0 12px 34px rgba(0,0,0,.5)}
+    .banner.show{display:flex}
+    .banner p{flex:1;font-size:.88rem;color:var(--text);margin:0}
+    .banner p b{color:var(--g2);font-weight:500;display:block;font-size:.92rem}
+    .banner button{white-space:nowrap}
+    #updateBar{top:calc(10px + env(safe-area-inset-top))}
+    #installBar{bottom:calc(10px + env(safe-area-inset-bottom))}
+
+    .ptr{position:fixed;top:calc(env(safe-area-inset-top));left:0;right:0;height:0;z-index:55;display:grid;place-items:center;
+      overflow:hidden;pointer-events:none;transition:height .18s ease}
+    .ptr span{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);border-top-color:var(--g3);display:block}
+    .ptr.spin span{animation:sp .7s linear infinite}
+    @keyframes sp{to{transform:rotate(360deg)}}
+
+    .sk{display:grid;gap:9px}
+    .sk div{height:86px;border-radius:var(--r);border:1px solid var(--line);
+      background:linear-gradient(100deg,var(--panel) 30%,var(--panel2) 50%,var(--panel) 70%);
+      background-size:280% 100%;animation:sh 1.3s linear infinite}
+    @keyframes sh{from{background-position:180% 0}to{background-position:-80% 0}}
+
+    @media (max-width:760px){
+      .appbar{display:grid}
+      .tabs{display:none}
+      main.wrap{padding-bottom:calc(var(--navh) + 18px)}
+      .top .wrap{padding-top:env(safe-area-inset-top)}
+    }
+    html.standalone .hide-in-app{display:none!important}
+    @media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important;transition-duration:.01ms!important}}
     .switch{display:inline-flex;align-items:center;gap:8px;cursor:pointer;font-size:.88rem}
     .switch input{appearance:none;width:38px;height:22px;border-radius:100px;background:#333;position:relative;outline:none;cursor:pointer}
     .switch input:checked{background:var(--g3)}
@@ -263,6 +328,23 @@
   </div>
   <div class="toast" id="toast"></div>
 
+  <!-- app shell chrome: bottom nav, More sheet, update / install banners -->
+  <div class="ptr" id="ptr"><span></span></div>
+  <nav class="appbar" id="appbar" aria-label="Main"></nav>
+  <div class="sheet" id="moreSheet" role="dialog" aria-modal="true" aria-label="More">
+    <div class="sheet-bg" data-close="1"></div>
+    <div class="sheet-in"><div class="sheet-grip"></div><h2>Inka</h2><div id="moreRows"></div></div>
+  </div>
+  <div class="banner" id="updateBar">
+    <p><b>Kotha version vachindi</b>Update chesi kotha features teesukondi.</p>
+    <button class="btn btn--gold btn--sm" id="updateNow">Update</button>
+  </div>
+  <div class="banner" id="installBar">
+    <p><b>Phone lo app la pettukondi</b>Home screen nunchi okka tap lo open avutundi.</p>
+    <button class="btn btn--gold btn--sm" id="installNow">Install</button>
+    <button class="btn btn--sm" id="installNo">Vaddu</button>
+  </div>
+
   <script>
   (function () {
     var API = "/api/staff", TOK = "dl_staff_tok";
@@ -314,8 +396,12 @@
     // ---- app ----
     function boot() {
       if (!tok) { $("login").classList.remove("hide"); $("app").classList.add("hide"); return; }
+      // Show the shell with shimmer placeholders while the first fetch runs —
+      // an app that opens instantly beats one that opens to a blank screen.
+      $("login").classList.add("hide"); $("app").classList.remove("hide");
+      $("leadList").innerHTML = '<div class="sk"><div></div><div></div><div></div><div></div></div>';
       load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); })
-        .catch(function (e) { tok = null; try { localStorage.removeItem(TOK); } catch (x) {} $("loginErr").textContent = e.message === "Login required" ? "" : e.message; $("login").classList.remove("hide"); });
+        .catch(function (e) { tok = null; try { localStorage.removeItem(TOK); } catch (x) {} $("leadList").innerHTML = ""; $("app").classList.add("hide"); $("loginErr").textContent = e.message === "Login required" ? "" : e.message; $("login").classList.remove("hide"); });
     }
     function load(quiet) {
       return api("data").then(function (d) { state.data = d; render(); if (quiet) toast("Updated"); });
@@ -347,6 +433,8 @@
       [["seatMinus", "academy.seats"], ["seatPlus", "academy.seats"], ["stAdd", "academy.edit"]].forEach(function (p) {
         var el = $(p[0]); if (el) el.classList.toggle("hide", !allow(p[1]));
       });
+      buildNav();
+      openFromHash();
     }
     function leadCard(l, compact) {
       var heat = l.heat || "", s = src(l);
@@ -527,14 +615,171 @@
         .catch(function (e) { $("roleErr").textContent = e.message; toast(e.message); });
     }
 
+    // ---- app shell ------------------------------------------------------
+    // Bottom navigation, pull-to-refresh, install and update prompts. These
+    // only change how the same dashboard feels on a phone; no data logic here.
+    var ICONS = {
+      leads:'<svg viewBox="0 0 24 24"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M17 11h4M19 9v4"/></svg>',
+      appts:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
+      students:'<svg viewBox="0 0 24 24"><path d="M12 4 3 8.5l9 4.5 9-4.5L12 4Z"/><path d="M6.5 10.8v4.4c0 1.6 2.5 2.9 5.5 2.9s5.5-1.3 5.5-2.9v-4.4M21 8.5v5"/></svg>',
+      academy:'<svg viewBox="0 0 24 24"><path d="M5 20V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"/><path d="M5 20h14M9 8h6M9 12h6M9 16h3"/></svg>',
+      office:'<svg viewBox="0 0 24 24"><path d="M12 3.5 13.7 9l5.3 1.8L13.7 12.6 12 18l-1.7-5.4L5 10.8 10.3 9 12 3.5Z"/><path d="M18.5 16.2l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></svg>',
+      today:'<svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m4.5 17 4.7-4.2a2 2 0 0 1 2.7 0L20 19"/></svg>',
+      reviews:'<svg viewBox="0 0 24 24"><path d="m12 4 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8L12 4Z"/></svg>',
+      team:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'
+    };
+    var NAV_LABEL = { leads:"Leads", appts:"Appts", students:"Students", academy:"Academy", office:"AI Office", today:"Post", reviews:"Reviews", team:"Panel" };
+    var NAV_PREF = ["leads","appts","students","office","academy","today","reviews","team"];
+    var NAV_BADGE = { leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad" };
+
+    function haptic(ms) { try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {} }
+    function visibleTabs() {
+      return NAV_PREF.filter(function (t) {
+        var b = document.querySelector('.tab[data-t="' + t + '"]');
+        return b && !b.classList.contains("hide");
+      });
+    }
+    function navIcon(t) { return ICONS[t] || ICONS.leads; }
+    function buildNav() {
+      var vis = visibleTabs(), bar = $("appbar");
+      if (!vis.length) { bar.innerHTML = ""; return; }
+      var primary = vis.length <= 5 ? vis : vis.slice(0, 4);
+      var rest = vis.length <= 5 ? [] : vis.slice(4);
+      var cur = (document.querySelector(".tab.on") || {}).dataset;
+      cur = cur ? cur.t : vis[0];
+      bar.innerHTML = primary.map(function (t) {
+        var badge = NAV_BADGE[t] ? '<i data-badge="' + NAV_BADGE[t] + '"></i>' : "";
+        return '<button data-nav="' + t + '"' + (t === cur ? ' class="on"' : "") + ' aria-label="' + esc(NAV_LABEL[t]) + '">' +
+          navIcon(t) + badge + "<span>" + esc(NAV_LABEL[t]) + "</span></button>";
+      }).join("") + (rest.length
+        ? '<button data-nav="__more"' + (rest.indexOf(cur) > -1 ? ' class="on"' : "") + ' aria-label="More">' +
+          '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg><span>Inka</span></button>'
+        : "");
+      $("moreRows").innerHTML = rest.map(function (t) {
+        return '<button class="sheet-row" data-nav="' + t + '">' + navIcon(t) + "<span>" + esc(NAV_LABEL[t]) + "</span></button>";
+      }).join("");
+      syncBadges();
+    }
+    function syncBadges() {
+      $("appbar").querySelectorAll("i[data-badge]").forEach(function (el) {
+        var src = $(el.dataset.badge), n = src ? String(src.textContent || "0") : "0";
+        el.textContent = n === "0" ? "" : n;
+        el.setAttribute("data-n", n);
+      });
+    }
+    function closeSheet() { $("moreSheet").classList.remove("open"); }
+    function goTab(t) {
+      var b = document.querySelector('.tab[data-t="' + t + '"]');
+      if (b) b.click();
+    }
+    document.addEventListener("click", function (e) {
+      var nav = e.target.closest("[data-nav]");
+      if (nav) {
+        haptic();
+        if (nav.dataset.nav === "__more") { $("moreSheet").classList.add("open"); return; }
+        closeSheet(); goTab(nav.dataset.nav); return;
+      }
+      if (e.target.closest("[data-close]")) closeSheet();
+    });
+    addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
+
+    // ---- pull to refresh ----
+    (function () {
+      var y0 = null, dist = 0, busy = false, el = $("ptr");
+      var THRESH = 78;
+      addEventListener("touchstart", function (e) {
+        if (busy || window.scrollY > 0 || e.touches.length !== 1) { y0 = null; return; }
+        y0 = e.touches[0].clientY; dist = 0;
+      }, { passive: true });
+      addEventListener("touchmove", function (e) {
+        if (y0 === null) return;
+        dist = e.touches[0].clientY - y0;
+        if (dist <= 0) { el.style.height = "0px"; return; }
+        el.style.height = Math.min(dist * 0.45, 56) + "px";
+      }, { passive: true });
+      addEventListener("touchend", function () {
+        if (y0 === null) return;
+        var go = dist > THRESH; y0 = null;
+        if (!go || !state.data) { el.style.height = "0px"; return; }
+        busy = true; haptic(14); el.classList.add("spin"); el.style.height = "46px";
+        load(true).catch(function () {}).finally(function () {
+          busy = false; el.classList.remove("spin"); el.style.height = "0px";
+        });
+      }, { passive: true });
+    })();
+
+    // ---- install & update ----
+    if (matchMedia("(display-mode: standalone)").matches || navigator.standalone)
+      document.documentElement.classList.add("standalone");
+
+    var deferredInstall = null;
+    addEventListener("beforeinstallprompt", function (e) {
+      e.preventDefault(); deferredInstall = e;
+      var said = null; try { said = localStorage.getItem("dl_install_no"); } catch (x) {}
+      if (!said) setTimeout(function () { $("installBar").classList.add("show"); }, 2500);
+    });
+    $("installNow").onclick = function () {
+      $("installBar").classList.remove("show");
+      if (!deferredInstall) return;
+      deferredInstall.prompt();
+      deferredInstall.userChoice.finally(function () { deferredInstall = null; });
+    };
+    $("installNo").onclick = function () {
+      $("installBar").classList.remove("show");
+      try { localStorage.setItem("dl_install_no", "1"); } catch (x) {}
+    };
+    addEventListener("appinstalled", function () {
+      $("installBar").classList.remove("show"); toast("App install ayindi 🎉");
+    });
+
+    if ("serviceWorker" in navigator) {
+      addEventListener("load", function () {
+        navigator.serviceWorker.register("/sw.js").then(function (reg) {
+          function offerUpdate(w) {
+            if (!w) return;
+            w.addEventListener("statechange", function () {
+              if (w.state === "installed" && navigator.serviceWorker.controller) $("updateBar").classList.add("show");
+            });
+          }
+          if (reg.waiting && navigator.serviceWorker.controller) $("updateBar").classList.add("show");
+          offerUpdate(reg.installing);
+          reg.addEventListener("updatefound", function () { offerUpdate(reg.installing); });
+          $("updateNow").onclick = function () {
+            $("updateBar").classList.remove("show");
+            var w = reg.waiting || reg.installing;
+            if (w) w.postMessage({ type: "SKIP_WAITING" });
+            setTimeout(function () { location.reload(); }, 400);
+          };
+          // a fresh deploy while the app is open
+          setInterval(function () { reg.update().catch(function () {}); }, 30 * 60 * 1000);
+        }).catch(function () {});
+      });
+    }
+
     // ---- events ----
     $("tabs").addEventListener("click", function (e) {
       var b = e.target.closest(".tab"); if (!b) return;
+      var t = b.dataset.t;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === b); });
-      ["leads", "appts", "academy", "students", "office", "today", "reviews", "team"].forEach(function (t) { $("t-" + t).classList.toggle("hide", t !== b.dataset.t); });
-      if (b.dataset.t === "students") loadStudents();
-      if (b.dataset.t === "team") loadPanel();
+      ["leads", "appts", "academy", "students", "office", "today", "reviews", "team"].forEach(function (x) { $("t-" + x).classList.toggle("hide", x !== t); });
+      $("appbar").querySelectorAll("[data-nav]").forEach(function (n) {
+        n.classList.toggle("on", n.dataset.nav === t || (n.dataset.nav === "__more" && !$("appbar").querySelector('[data-nav="' + t + '"]')));
+      });
+      try { history.replaceState(null, "", "#" + t); } catch (x) {}
+      window.scrollTo({ top: 0, behavior: "instant" in document.documentElement.style ? "instant" : "auto" });
+      if (t === "students") loadStudents();
+      if (t === "team") loadPanel();
     });
+    // Deep link from an app shortcut or a shared URL: /staff.html#office
+    var hashDone = false;
+    function openFromHash() {
+      if (hashDone) return;
+      var t = String(location.hash || "").replace("#", "");
+      if (!t) { hashDone = true; return; }
+      var b = document.querySelector('.tab[data-t="' + t + '"]');
+      if (b && !b.classList.contains("hide")) { hashDone = true; b.click(); }
+      else hashDone = true;
+    }
     $("cpnav").addEventListener("click", function (e) {
       var b = e.target.closest("button[data-cp]"); if (!b) return;
       cpTab = b.dataset.cp;
