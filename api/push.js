@@ -17,6 +17,16 @@ module.exports = async (req, res) => {
   const cfg = guard.kvConfig();
   if (!cfg) return json(res, 501, { error: "Storage not configured" });
 
+  // Unauthenticated health flag: says only whether the Firebase key is
+  // readable and which project it names. The project id already ships inside
+  // the APK, so nothing secret is revealed.
+  if (String((req.query || {}).a || "") === "health") {
+    const raw = process.env.FIREBASE_SERVICE_ACCOUNT;
+    let project = null, parsed = false;
+    if (raw) { try { const j = JSON.parse(raw); parsed = !!(j.client_email && j.private_key); project = j.project_id || null; } catch (e) {} }
+    return json(res, 200, { ok: true, present: !!raw, parsed, configured: push.enabled(), project });
+  }
+
   const me0 = staff.tokenUser(req);
   if (!me0) return json(res, 401, { error: "Login required" });
 
