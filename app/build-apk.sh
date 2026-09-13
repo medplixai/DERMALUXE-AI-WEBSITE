@@ -19,6 +19,9 @@ node "$HERE/build-shell.js"
 # cap copy is what actually puts www/ into android/app/src/main/assets/public.
 # Without it Gradle happily packs the PREVIOUS build's HTML under a new version
 # number — a "new release" that is the old app.
+# and clear any that have appeared in the repo since the last build
+find "$HERE" -name '* [0-9].*' -not -path '*/node_modules/*' -delete 2>/dev/null || true
+
 echo "→ cap copy android"
 ( cd "$HERE" && npx cap copy android )
 
@@ -26,7 +29,11 @@ echo "→ mirroring the project to $WORK"
 mkdir -p "$WORK"
 # node_modules travels too: the plugins' Android sources are compiled from it,
 # and Gradle needs them on a filesystem that supports hard links.
+# iCloud Drive makes conflict copies named "config 2.xml". Android rejects any
+# resource filename containing a space, so one of those silently breaks the
+# build — keep them out of the mirror entirely.
 rsync -a --delete \
+  --exclude '* [0-9].*' \
   --exclude 'android/build' \
   --exclude 'android/app/build' \
   --exclude 'android/.gradle' \
