@@ -484,6 +484,7 @@
     // call has to name the real origin. On the website ORIGIN stays "" and the
     // relative paths behave exactly as before.
     var NATIVE = !!(window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform());
+    var PLATFORM = (window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform()) || "web";
     var ORIGIN = NATIVE ? "https://www.dermaluxe.ai" : "";
     var API = ORIGIN + "/api/staff", TOK = "dl_staff_tok";
     var $ = function (id) { return document.getElementById(id); };
@@ -1423,6 +1424,13 @@
     function initPush() {
       var PN = pushPlugin();
       if (!NATIVE || !PN || pushReady) return Promise.resolve(false);
+      // iOS hands back an APNs token, and the server sends through FCM. Until
+      // the Firebase iOS SDK is in the build to exchange one for the other —
+      // which also needs an APNs key from a paid Apple developer account —
+      // registering here would store a device that can never be reached and
+      // show a phone as covered when it is not. Better to be plainly without
+      // notifications than quietly without them.
+      if (PLATFORM === "ios") return Promise.resolve(false);
       pushReady = true;
       // Two channels so an urgent lead can ring through while routine updates
       // stay quiet — Android lets the user tune each one separately.
@@ -1433,7 +1441,7 @@
         PN.createChannel({ id: "dl_quiet", name: "Raatri updates", description: "Raatri vachinavi — udayam chudandi", importance: 2, visibility: 1, vibration: false });
       } catch (e) {}
       PN.addListener("registration", function (t) {
-        papi("register", { token: t.value, platform: "android" }).catch(function () {});
+        papi("register", { token: t.value, platform: PLATFORM }).catch(function () {});
       });
       PN.addListener("registrationError", function (e) { console.error("push register", e); });
       // Tapping a notification should land on the thing it is about.
