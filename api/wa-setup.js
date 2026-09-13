@@ -448,8 +448,21 @@ module.exports = async (req, res) => {
   }
 
   if (String((req.query && req.query.action) || "") === "create") {
+    // Only submit what Meta does not already have — re-POSTing an existing
+    // template just returns "Content in this language already exists" and
+    // buries the real errors of the new ones.
+    const have = new Set();
+    try {
+      const lr = await fetch(`https://graph.facebook.com/v21.0/${WABA}/message_templates?fields=name&limit=200`, { headers: { Authorization: `Bearer ${token}` } });
+      const ld = await lr.json().catch(() => ({}));
+      (ld.data || []).forEach((t) => have.add(String(t.name)));
+    } catch (e) {}
+    // &only=a,b — retry just these (ignores the "already there" skip).
+    const only = String((req.query && req.query.only) || "").split(",").map((x) => x.trim()).filter(Boolean);
     const out = [];
     for (const tpl of TEMPLATES) {
+      if (only.length && only.indexOf(tpl.name) === -1) continue;
+      if (!only.length && have.has(tpl.name)) { out.push({ name: tpl.name, ok: false, skipped: true, resp: "already in Meta" }); continue; }
       try {
         const r = await fetch(`https://graph.facebook.com/v21.0/${WABA}/message_templates`, {
           method: "POST",

@@ -575,7 +575,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• daily post now — AI poster ippude post · daily on/off · daily status · daily topics",
       "• academy status · academy booked <n> · academy notify <msg> — training seats & broadcast",
       "• staff list · staff add <number> <name> [owner] · staff remove <number> · staff password <pwd> — dashboard access",
-      "• templates · templates create — WhatsApp template approval status / submit",
+      "• templates · templates create · templates retry — WhatsApp template status / submit",
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
       "• 📷/🎬 + 'story:' — Instagram Story ga (24h)",
@@ -607,22 +607,30 @@ async function handle(cfg, digits, text, photo, video) {
   // ---- WhatsApp message templates (wa-setup.js) --------------------------
   // templates · templates create · templates academy
   let tm;
-  if ((tm = t.match(/^templates?(?:\s+(create|status|academy|list))?$/i))) {
+  if ((tm = t.match(/^templates?(?:\s+(create|status|academy|list|retry))?$/i))) {
     if (!owner) return "🔒 Owner matrame.";
     const sub = (tm[1] || "list").toLowerCase();
     const u = new URL("https://www.dermaluxe.ai/api/wa-setup");
     u.searchParams.set("key", process.env.ADMIN_KEY || "");
-    if (sub === "create" || sub === "academy") u.searchParams.set("action", "create");
+    if (sub === "create" || sub === "academy" || sub === "retry") u.searchParams.set("action", "create");
+    // "templates retry" — force-resubmit the 8 newest ones even if Meta lists
+    // them, so a rejected/failed template can be pushed again.
+    if (sub === "retry") u.searchParams.set("only", "academy_welcome,academy_daily_material,academy_document,academy_fee_reminder,academy_certificate,academy_batch_update,staff_login_code,verification_code");
     try {
       const r = await fetch(u.toString(), { headers: { "x-admin-key": process.env.ADMIN_KEY || "" } });
       const d = await r.json().catch(() => ({}));
-      if (sub === "create" || sub === "academy") {
+      if (sub === "create" || sub === "academy" || sub === "retry") {
         const rows = (d.created || []).filter((x) => sub !== "academy" || /^academy/.test(x.name));
-        const ok = rows.filter((x) => x.ok), bad = rows.filter((x) => !x.ok);
-        const lines = [`📤 *Templates submit chesanu* — ${ok.length} pampam, ${bad.length} fail/already`];
+        const ok = rows.filter((x) => x.ok);
+        const skipped = rows.filter((x) => !x.ok && x.skipped);
+        const bad = rows.filter((x) => !x.ok && !x.skipped);
+        const lines = [`📤 *Templates submit chesanu* — ${ok.length} pampam · ${bad.length} fail · ${skipped.length} already Meta lo`];
         ok.forEach((x) => lines.push(`✅ ${x.name} — review lo (Meta 1-24 gantalu teesukuntundi)`));
-        bad.slice(0, 8).forEach((x) => lines.push(`⚠️ ${x.name} — ${String(x.resp).slice(0, 90)}`));
-        lines.push("", "Status chudataniki: *templates*");
+        // Failures are the whole point of this reply — show them in full.
+        bad.slice(0, 12).forEach((x) => lines.push(`\n⚠️ *${x.name}*\n${String(x.resp).slice(0, 220)}`));
+        if (bad.length > 12) lines.push(`… inka ${bad.length - 12} fail`);
+        if (skipped.length) lines.push("", `⏭ Already Meta lo: ${skipped.map((x) => x.name).join(", ").slice(0, 300)}`);
+        lines.push("", "Status chudataniki: *templates* · malli try: *templates retry*");
         return lines.join("\n");
       }
       const tpl = d.templates || [];
