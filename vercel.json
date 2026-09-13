@@ -57,6 +57,9 @@
     },
     "api/act.js": {
       "maxDuration": 30
+    },
+    "api/photo.js": {
+      "maxDuration": 30
     }
   },
   "crons": [

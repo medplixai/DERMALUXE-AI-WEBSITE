@@ -11,6 +11,7 @@
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 const staff = require("./staff.js");
+const store = require("./_photo-store.js");
 
 const MAX_BYTES = 900 * 1024;            // after base64 decode
 const KEEP_DAYS = 400;
@@ -52,13 +53,15 @@ module.exports = async (req, res) => {
     const r = await guard.kvCommand(cfg, ["GET", `ph:img:${id}`]).catch(() => ({}));
     if (!r || !r.result) return json(res, 404, { error: "Not found" });
     let rec = null; try { rec = JSON.parse(r.result); } catch (e) {}
-    if (!rec || !rec.b64) return json(res, 404, { error: "Not found" });
+    if (!rec || !(rec.b64 || rec.store)) return json(res, 404, { error: "Not found" });
     // The capability comes from the record, never from the query string —
     // otherwise ?kind=lead would open a student's document to anyone with
     // leads.view, and the other way round.
     const realCap = (KINDS[rec.kind] || "leads") + ".view";
     if (!allow(realCap)) return json(res, 403, { error: "Mee role ki idi chuse permission ledu" });
-    const buf = Buffer.from(rec.b64, "base64");
+    let buf;
+    try { buf = await store.get(cfg, id, rec); }
+    catch (e) { console.error("photo: read", e && e.message); return json(res, 404, { error: "Photo teeyaleka poyam" }); }
     res.setHeader("Content-Type", rec.type || "image/jpeg");
     res.setHeader("Cache-Control", "no-store, private");
     res.setHeader("Content-Length", String(buf.length));
@@ -96,18 +99,23 @@ module.exports = async (req, res) => {
 
     const id = crypto.randomBytes(16).toString("hex");
     const now = Date.now();
-    const rec = {
-      b64, type, kind, ref, ts: now,
+    // The picture itself goes to blob storage, encrypted; Redis keeps this
+    // record, which is a few hundred bytes and says where the bytes are.
+    let where;
+    try { where = await store.put(cfg, id, Buffer.from(b64, "base64"), { ttl: KEEP_DAYS * 86400 }); }
+    catch (e) { console.error("photo: store", e && e.message); return json(res, 500, { error: "Photo save avvaledu — malli try cheyandi" }); }
+    const rec = Object.assign({
+      type, kind, ref, ts: now,
       by: live.name, byPhone: live.phone,
       label: String(b.label || "").slice(0, 60),
       // stamped consent — who confirmed the patient agreed, and when
       consent: { given: true, by: live.name, byPhone: live.phone, ts: now },
-    };
+    }, where);
     await guard.kvCommand(cfg, ["SET", `ph:img:${id}`, JSON.stringify(rec), "EX", String(KEEP_DAYS * 86400)]);
     const meta = JSON.stringify({ id, ts: now, by: live.name, label: rec.label, type });
     await guard.kvCommand(cfg, ["LPUSH", listKey(kind, ref), meta]).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", listKey(kind, ref), "0", "49"]).catch(() => {});
-    console.log("photo saved", kind, ref.slice(0, 13), bytes, "bytes by", live.phone.slice(-4));  // timestamp only — never the patient's number
+    console.log("photo saved", kind, ref.slice(0, 13), bytes, "bytes ->", where.store, "by", live.phone.slice(-4));  // timestamp only — never the patient's number
     return json(res, 200, { ok: true, id, ts: now });
   }
 
@@ -117,6 +125,9 @@ module.exports = async (req, res) => {
     const id = String(b.id || "").replace(/[^a-f0-9]/g, "").slice(0, 32);
     const ref = String(b.ref || "").slice(0, 120);
     if (!id || !ref) return json(res, 400, { error: "id + ref required" });
+    const cur = await guard.kvCommand(cfg, ["GET", `ph:img:${id}`]).catch(() => ({}));
+    let old = null; try { old = JSON.parse((cur && cur.result) || ""); } catch (e) {}
+    if (old) await store.del(cfg, id, old).catch(() => {});
     await guard.kvCommand(cfg, ["DEL", `ph:img:${id}`]).catch(() => {});
     const r = await guard.kvCommand(cfg, ["LRANGE", listKey(kind, ref), "0", "49"]).catch(() => ({}));
     for (const x of (r.result || [])) {

@@ -331,6 +331,7 @@
           <select id="fDays"><option value="7">Last 7 days</option><option value="1">Today</option><option value="30">Last 30 days</option><option value="365" selected>All</option></select>
         </div>
         <div class="list" id="leadList"></div>
+        <div id="leadMore" style="margin-top:10px;text-align:center"></div>
       </section>
       <section id="t-appts" class="hide">
         <div class="daystrip" id="dayStrip"></div>
@@ -439,6 +440,10 @@
             <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><input id="rtName" placeholder="Treatment peru" /><input id="rtPrice" placeholder="₹" inputmode="numeric" style="max-width:110px" /><button class="btn btn--gold btn--sm" id="rtAdd">Add</button></div>
             <div class="err" id="rtErr"></div></div>
           <div class="box"><h2>Auto-post</h2><label class="switch"><input type="checkbox" id="dailyToggle" /> Daily auto-post (Instagram + Facebook, 8:30 AM)</label></div>
+          <div class="box"><h2>Storage <span class="te" style="font-size:.9rem;color:var(--g3)">· ఎంత దాచాం</span></h2>
+            <p>Clinic data enta undo, photos ekkada unnayo. Photos ippudu separate storage lo, encrypt chesi — database lo record matrame.</p>
+            <div id="stoBox" class="meta" style="margin-top:8px">—</div>
+            <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="stoLoad">Chudandi</button></div></div>
           <div class="box"><h2>Owner numbers</h2><p>Ee numbers ki eppudu full access — WhatsApp admin commands kuda. Vercel lo <b style="color:var(--g1);font-weight:500">ADMIN_PHONES</b> / <b style="color:var(--g1);font-weight:500">STAFF_OWNERS</b> lo matrame marchagalam.</p>
             <div id="ownerList" class="meta" style="margin-top:8px"></div></div>
         </div>
@@ -588,8 +593,12 @@
       return api("data").then(function (d) {
         d.cachedAt = Date.now();
         state.data = d; online = true;
+        moreInit(d);
         saveCache(d); render(); paintNet();
         if (quiet) toast("Updated");
+        // Someone who had already asked for the whole book keeps it after a
+        // refresh; they do not have to ask again every time.
+        if (more.wantAll && moreLeft()) { more.wantAll = false; loadRest(); }
       }).catch(function (e) {
         if (e.net) { online = false; paintNet(); }
         throw e;
@@ -651,6 +660,47 @@
         loadPhotos(h.dataset.kind, h.dataset.ref, h);
       });
     }
+    // ---- the rest of the lead book ----------------------------------------
+    // The dashboard opens on the newest 200 leads. Everything older is one
+    // request away and is fetched when someone actually reaches for it —
+    // searching, widening the date filter, or tapping the button under the
+    // list. Nobody waits for five years of enquiries to open today's.
+    var more = { total: 0, loaded: 0, busy: false, wantAll: false };
+    function moreInit(d) {
+      more.total = Number(d.leadsTotal || (d.leads || []).length);
+      more.loaded = (d.leads || []).length;
+    }
+    function moreLeft() { return Math.max(0, more.total - more.loaded); }
+    function loadRest(why) {
+      if (more.busy || !moreLeft()) return Promise.resolve();
+      more.busy = true; more.wantAll = true;
+      paintMore(why || "Migilina leads teppistunna…");
+      var step = function () {
+        if (!moreLeft()) return Promise.resolve();
+        return api("leads&offset=" + more.loaded).then(function (j) {
+          var have = {};
+          state.data.leads.forEach(function (l) { have[l.key] = 1; });
+          (j.leads || []).forEach(function (l) { if (!have[l.key]) state.data.leads.push(l); });
+          more.loaded = Math.max(more.loaded + (j.leads || []).length, state.data.leads.length);
+          more.total = Number(j.leadsTotal || more.total);
+          if (j.more && (j.leads || []).length) return step();
+        });
+      };
+      return step().then(function () {
+        state.data.academy.leads = state.data.leads.filter(function (l) { return /^academy/i.test(String(l.concern || "")); });
+        saveCache(state.data); renderLeads(); renderAcademy(); paintMore();
+      }).catch(function (e) { paintMore(e.message); }).finally(function () { more.busy = false; });
+    }
+    function paintMore(msg) {
+      var el = $("leadMore"); if (!el) return;
+      if (msg) { el.innerHTML = '<div class="empty">' + esc(msg) + "</div>"; return; }
+      var left = moreLeft();
+      el.innerHTML = left
+        ? '<button class="btn btn--sm" id="leadMoreBtn">Inka ' + left + " leads unnayi — load cheyyi</button>"
+        : (more.total > 200 ? '<div class="empty">Anni ' + more.total + " leads load ayyayi.</div>" : "");
+      var b = $("leadMoreBtn"); if (b) b.onclick = function () { loadRest(); };
+    }
+
     function renderLeads() {
       var d = state.data, q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fsrc = $("fSrc").value, days = Number($("fDays").value);
       var since = Date.now() - days * 86400000; if (days === 1) { var t0 = new Date(); t0.setHours(0, 0, 0, 0); since = t0.getTime(); }
@@ -668,6 +718,7 @@
         return b.ts - a.ts;
       });
       $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : '<div class="empty">No leads for this filter.</div>';
+      paintMore();
     }
     // ---- the clinic day --------------------------------------------------
     var schDay = null, schData = null, schWeek = null, schMine = false;
@@ -1170,6 +1221,7 @@
         return '<div class="person' + (u.off ? " off" : "") + '" data-phone="' + esc(u.phone) + '">' +
           '<div class="top"><div><h3>' + esc(u.name) + ' <span class="meta">· ' + esc(u.phone) + '</span></h3>' +
           '<div class="meta">' + (u.lastLogin ? "Last login " + ago(u.lastLogin) : "Inka login avvaledu") +
+          (u.hasPwd ? '' : ' · <span style="color:var(--g3)">password ledu (OTP tho matrame)</span>') +
           (u.off ? ' · <b style="color:var(--bad);font-weight:500">Access OFF</b>' : '') + '</div></div>' +
           '<div class="acts"><select class="sel" data-act="p-role" data-phone="' + esc(u.phone) + '">' + roleOpts(u.role) + '</select>' +
           '<button class="btn btn--sm" data-act="p-signout" data-phone="' + esc(u.phone) + '" data-name="' + esc(u.name) + '" title="Anni phones nunchi logout">🔒 Sign out</button>' +
@@ -1890,6 +1942,10 @@
     };
     if ($("ptQ")) { var ptT; $("ptQ").addEventListener("input", function () { clearTimeout(ptT); ptT = setTimeout(loadPatients, 260); }); }
     ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
+    // Searching, or asking for everything, means the older pages are actually
+    // wanted — fetch them then, and only then.
+    $("q").addEventListener("input", function () { if ($("q").value.trim().length > 1) loadRest("Anni leads lo vetukutunna…"); });
+    $("fDays").addEventListener("change", function () { if (Number($("fDays").value) > 30) loadRest(); });
     document.addEventListener("change", function (e) {
       var el = e.target;
       if (el.dataset.act === "status") {
@@ -2167,6 +2223,37 @@
       if (!confirm("Password teesestara? Appudu OTP login matrame untundi.")) return;
       api("set-password", { off: true }).then(function () { toast("Password removed — OTP only"); return loadPanel(); }).catch(function (x) { $("pwdErr").textContent = x.message; });
     };
+    // ---- storage ----
+    function fmtBytes(n) {
+      n = Number(n) || 0;
+      if (n > 1073741824) return (n / 1073741824).toFixed(1) + " GB";
+      if (n > 1048576) return (n / 1048576).toFixed(0) + " MB";
+      if (n > 1024) return (n / 1024).toFixed(0) + " KB";
+      return n + " B";
+    }
+    if ($("stoLoad")) $("stoLoad").onclick = function () {
+      var el = $("stoBox"); el.textContent = "Chustunna…";
+      $("stoLoad").disabled = true;
+      api("storage").then(function (j) {
+        var p = j.photos || {};
+        var rows = [
+          ["Leads", j.leads],
+          ["Appointments (open)", j.appts],
+          ["Database lo keys", j.keys],
+          ["Photos", (p.photos || 0) + (p.partial ? "+" : "")],
+          ["— separate storage lo", p.inBlob || 0],
+          ["— inka database lo", (p.inKv || 0) + (p.legacy || 0)],
+          ["Photos size", fmtBytes(p.bytes)],
+          ["Encrypt ayyaya", p.encrypted ? "Avunu" : "Ledu"],
+          ["Blob storage", p.blobOn ? "On" : "Inka set cheyaledu"],
+        ];
+        el.innerHTML = rows.map(function (r) {
+          return '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0"><span>' + esc(r[0]) + '</span><b style="color:var(--text);font-weight:500">' + esc(String(r[1])) + "</b></div>";
+        }).join("") + (j.cached ? '<div style="margin-top:6px;opacity:.7">10 nimishala kritam lekka</div>' : "");
+      }).catch(function (e) { el.textContent = e.message; })
+        .finally(function () { $("stoLoad").disabled = false; });
+    };
+
     $("tAdd").onclick = function () {
       var p = $("tPhone").value.replace(/\D/g, ""), n = $("tName").value.trim(); $("teamErr").textContent = "";
       api("team-add", { phone: p, name: n, role: $("tRole").value }).then(function () { $("tPhone").value = ""; $("tName").value = ""; toast(n + " added"); return loadPanel(); }).catch(function (x) { $("teamErr").textContent = x.message; });

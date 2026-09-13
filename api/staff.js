@@ -206,10 +206,60 @@ async function hashAll(cfg, key) {
   return out;
 }
 
+// The dashboard used to pull eight hundred leads, and with them the status
+// and the notes of every lead the clinic has ever had, on every single open —
+// several times a minute across everyone's phones. Now it asks for one page
+// and for the status and notes of exactly the leads on that page. The rest is
+// still there: `a=leads&offset=` fetches the next page, and the app asks for
+// it when someone searches, opens Patients, or picks a wider date filter.
+const LEAD_PAGE = 200;
+
+// HGETALL on the notes hash transfers every note ever written. These two ask
+// for the keys on this page and nothing else. Upstash takes the field list as
+// plain arguments, so the page size is also the argument count — 200 is well
+// inside the limit.
+async function hashSome(cfg, key, fields) {
+  const out = {};
+  if (!fields.length) return out;
+  const r = await guard.kvCommand(cfg, ["HMGET", key].concat(fields)).catch(() => ({}));
+  const a = (r && r.result) || [];
+  fields.forEach((f, i) => { if (a[i] != null) out[f] = a[i]; });
+  return out;
+}
+
+// The full enquiry text and the call prep can each run to a few thousand
+// characters. The card shows 160 of one and the whole of the other; the rest
+// travelled down the wire on every refresh to be thrown away.
+function trimLead(l) {
+  const out = Object.assign({}, l);
+  if (typeof out.message === "string" && out.message.length > 300) out.message = out.message.slice(0, 300) + "…";
+  if (typeof out.call_prep === "string" && out.call_prep.length > 200) out.call_prep = out.call_prep.slice(0, 200) + "…";
+  return out;
+}
+
+// One page of leads, with the status and notes that belong to them.
+async function leadPage(cfg, offset, count) {
+  const from = Math.max(0, Number(offset) || 0);
+  const to = from + (Number(count) || LEAD_PAGE) - 1;
+  const [lr, total] = await Promise.all([
+    guard.kvCommand(cfg, ["LRANGE", LEADS, String(from), String(to)]).catch(() => ({})),
+    guard.kvCommand(cfg, ["LLEN", LEADS]).catch(() => ({})),
+  ]);
+  const raw = (lr.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+  const keys = raw.map(leadKey);
+  const [st, notes] = await Promise.all([hashSome(cfg, STATUS, keys), hashSome(cfg, NOTES, keys)]);
+  const leads = raw.map((l) => {
+    const k = leadKey(l); let n = [];
+    try { n = JSON.parse(notes[k] || "[]"); } catch (e) {}
+    return Object.assign(trimLead(l), { key: k, status: STATUSES.includes(st[k]) ? st[k] : "new", notes: n, phone: digits10(l.phone) });
+  });
+  const leadsTotal = Number((total && total.result) || 0) || (from + leads.length);
+  return { leads, leadsTotal, offset: from, more: from + leads.length < leadsTotal };
+}
+
 async function dataPayload(cfg, me) {
-  const [lr, st, notes, ar, bk, dp, q, rv, en] = await Promise.all([
-    guard.kvCommand(cfg, ["LRANGE", LEADS, "0", "799"]).catch(() => ({})),
-    hashAll(cfg, STATUS), hashAll(cfg, NOTES),
+  const [page, ar, bk, dp, q, rv, en] = await Promise.all([
+    leadPage(cfg, 0, LEAD_PAGE),
     guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({})),
     guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({})),
     guard.kvCommand(cfg, ["GET", "dp:today"]).catch(() => ({})),
@@ -217,11 +267,7 @@ async function dataPayload(cfg, me) {
     guard.kvCommand(cfg, ["LRANGE", "rv:log", "0", "29"]).catch(() => ({})),
     guard.kvCommand(cfg, ["GET", "dp:enabled"]).catch(() => ({})),
   ]);
-  const leads = (lr.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean).map((l) => {
-    const k = leadKey(l); let n = [];
-    try { n = JSON.parse(notes[k] || "[]"); } catch (e) {}
-    return Object.assign({}, l, { key: k, status: STATUSES.includes(st[k]) ? st[k] : "new", notes: n, phone: digits10(l.phone) });
-  });
+  const leads = page.leads;
   const now = Date.now();
   const appts = (ar.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } })
     .filter((a) => a && a.at && a.at > now - 12 * 3600000 && a.at < now + 30 * 86400000)
@@ -234,7 +280,7 @@ async function dataPayload(cfg, me) {
   const roles = await loadRoles(cfg);
   const team = can(me, "team.manage", roles) ? await users(cfg) : null;
   const caps = effCaps(roles, me), allow = (c) => caps.includes("*") || caps.includes(c);
-  if (!allow("leads.view")) leads.length = 0;
+  if (!allow("leads.view")) { leads.length = 0; page.leadsTotal = 0; page.more = false; }
   if (!allow("reviews.view")) reviews.length = 0;
   if (!allow("appts.view")) appts.length = 0;
   // Academy and the post queue used to go out to every logged-in user.
@@ -242,7 +288,7 @@ async function dataPayload(cfg, me) {
   const seePosts = allow("posts.view");
   if (!seePosts) { today = null; queue.length = 0; }
   const rk = roleOf(me.role, roles);
-  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, statuses: STATUSES, appts, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now };
+  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, leadsTotal: page.leadsTotal, leadsMore: page.more, leadPage: LEAD_PAGE, statuses: STATUSES, appts, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now };
 }
 
 module.exports = async (req, res) => {
@@ -336,19 +382,63 @@ module.exports = async (req, res) => {
   if (a === "me") return json(res, 200, { ok: true, me: Object.assign({}, me, { caps: effCaps(roles, me) }) });
   if (a === "data") return json(res, 200, await dataPayload(cfg, me));
 
+  // The rest of the lead book, a page at a time. The app asks for this when
+  // someone searches, opens Patients, or widens the date filter — not on the
+  // way in, which is the whole point.
+  if (a === "leads") {
+    if (!allow("leads.view")) return json(res, 403, { error: "Mee role ki leads chuse permission ledu" });
+    const rl = await guard.rateLimit(cfg, `rl:lp:${me.phone}`, 120, 3600);
+    if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
+    const page = await leadPage(cfg, q.offset, LEAD_PAGE);
+    return json(res, 200, Object.assign({ ok: true }, page));
+  }
+
+  // ---- what the clinic is holding ----
+  // Nobody could answer "how much are the photos costing us" without guessing,
+  // so the guess is replaced with a count. It walks the photo records, which
+  // is not free, so the answer is cached for ten minutes.
+  if (a === "storage") {
+    if (!allow("settings.manage")) return json(res, 403, { error: "Idi owner ki matrame" });
+    const ck = "storage:stats";
+    if (q.fresh !== "1") {
+      const hit = await guard.kvCommand(cfg, ["GET", ck]).catch(() => ({}));
+      if (hit && hit.result) { try { return json(res, 200, Object.assign({ ok: true, cached: true }, JSON.parse(hit.result))); } catch (e) {} }
+    }
+    const dbsize = await guard.kvCommand(cfg, ["DBSIZE"]).catch(() => ({}));
+    let photos = {};
+    try { photos = await require("./_photo-store.js").stats(cfg); }
+    catch (e) { console.error("storage: photos", e && e.message); photos = { error: true }; }
+    const [leadCount, apptCount] = await Promise.all([
+      guard.kvCommand(cfg, ["LLEN", LEADS]).catch(() => ({})),
+      guard.kvCommand(cfg, ["LLEN", "appt:q"]).catch(() => ({})),
+    ]);
+    const out = {
+      keys: Number((dbsize && dbsize.result) || 0),
+      leads: Number((leadCount && leadCount.result) || 0),
+      appts: Number((apptCount && apptCount.result) || 0),
+      photos, at: Date.now(),
+    };
+    await guard.kvCommand(cfg, ["SET", ck, JSON.stringify(out), "EX", "600"]).catch(() => {});
+    return json(res, 200, Object.assign({ ok: true, cached: false }, out));
+  }
+
   // ---- control panel (read) ----
   if (a === "panel") {
     if (!allow("team.manage")) return json(res, 403, { error: "Control panel owner/manager ki matrame" });
-    const [team, last, pwd, log] = await Promise.all([
+    const [team, last, pwd, log, pwdPhones] = await Promise.all([
       users(cfg), hashAll(cfg, "staff:lastlogin").catch(() => ({})),
       guard.kvCommand(cfg, ["HGET", "staff:pwd", me.phone]).catch(() => ({})),
       guard.kvCommand(cfg, ["LRANGE", "staff:audit", "0", "49"]).catch(() => ({})),
+      // Only which numbers have one — never a hash, never a length.
+      guard.kvCommand(cfg, ["HKEYS", "staff:pwd"]).catch(() => ({})),
     ]);
+    const hasPwd = new Set((pwdPhones && pwdPhones.result) || []);
     const people = Object.keys(team).map((ph) => {
       const u = Object.assign({ phone: ph }, team[ph]);
       u.role = roleOf(u.role, roles);
       u.caps = effCaps(roles, u);
       u.lastLogin = Number(last[ph] || 0) || null;
+      u.hasPwd = hasPwd.has(ph);
       return u;
     }).sort((x, y) => (y.lastLogin || 0) - (x.lastLogin || 0));
     const audit = (log.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);

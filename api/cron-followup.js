@@ -297,5 +297,24 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: briefing", e && e.message); }
 
-  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed });
+  // ---- moving old photos out of Redis ------------------------------------
+  // A batch an hour, quietly, until the backlog is gone. It stops scanning
+  // once there is nothing left to move rather than walking the keyspace for
+  // ever, and picks itself back up a month later in case anything reappears.
+  let photosMoved = 0;
+  try {
+    const store = require("./_photo-store.js");
+    if (store.blobOn()) {
+      const done = await guard.kvCommand(cfg, ["GET", "ph:migrate:done"]).catch(() => ({}));
+      if (!done || !done.result) {
+        const r = await store.migrate(cfg, 15);
+        photosMoved = (r && r.moved) || 0;
+        if (r && r.ok && r.done && !r.moved) {
+          await guard.kvCommand(cfg, ["SET", "ph:migrate:done", "1", "EX", String(30 * 86400)]).catch(() => {});
+        }
+      }
+    }
+  } catch (e) { console.error("cron: photo migrate", e && e.message); }
+
+  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, photosMoved });
 };
