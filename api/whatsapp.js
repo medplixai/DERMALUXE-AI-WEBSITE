@@ -970,6 +970,13 @@ module.exports = async (req, res) => {
 
   // Owner/admin commands (ADMIN_PHONES allowlist; explicit commands only —
   // anything else from the admin falls through to the normal agent).
+  // Admin-looking command from a number that is not on the admin allowlist:
+  // tell them, instead of letting the patient agent answer it.
+  const ADMIN_CMD = /^(templates?|staff|academy\s+(booked|status|notify|msg|message)|daily\s+(post|on|off|status|topics)|report|weekly|funnel|reviews|referrals|appointments|checkups|blocks|results|insta\s+report|leads\s+report|ideas|queue|campaigns|marketing\s+report)\b/i;
+  if (isMeta && !admin.isAdmin(digits) && ADMIN_CMD.test(String(text || "").trim())) {
+    return respond(`🔒 Ee command *owner number* nunchi matrame pani chestundi.\n\nMee number: ${digits}\nOwner numbers: ADMIN_PHONES lo unnavi matrame.\n\nMee number ni owner ga add cheyalante, existing owner number nunchi cheppandi.`);
+  }
+
   if (isMeta && admin.isAdmin(digits)) {
     try {
       const adminReply = await admin.handle(cfg, digits, text,
