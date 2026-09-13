@@ -26,6 +26,7 @@ const CAPS = {
   "leads.edit":       "Lead status + call notes",
   "leads.delete":     "Delete a lead",
   "appts.view":       "Appointments",
+  "appts.edit":       "Book, reschedule, cancel",
   "academy.view":     "Academy students & seats",
   "academy.edit":     "Add a student, edit details & notes",
   "academy.seats":    "Change the booked-seat count",
@@ -45,7 +46,7 @@ const CAPS = {
 };
 const CAP_TE = {
   "leads.view": "లీడ్స్ చూడటం", "leads.edit": "లీడ్ స్టేటస్ & నోట్స్", "leads.delete": "లీడ్ తొలగించడం",
-  "appts.view": "అపాయింట్‌మెంట్లు", "academy.view": "అకాడమీ స్టూడెంట్స్", "academy.edit": "స్టూడెంట్ యాడ్ / ఎడిట్",
+  "appts.view": "అపాయింట్‌మెంట్లు", "appts.edit": "బుక్ / రీషెడ్యూల్", "academy.view": "అకాడమీ స్టూడెంట్స్", "academy.edit": "స్టూడెంట్ యాడ్ / ఎడిట్",
   "academy.seats": "సీట్ల లెక్క మార్చడం", "academy.money": "ఫీజు నమోదు", "academy.docs": "డాక్యుమెంట్లు పంపడం",
   "academy.material": "మెటీరియల్ లింక్", "academy.certify": "సర్టిఫికెట్", "academy.delete": "స్టూడెంట్ తొలగింపు",
   "money.view": "కలెక్షన్ & బాకీలు", "money.bill": "బిల్ & పేమెంట్",
@@ -54,7 +55,7 @@ const CAP_TE = {
 };
 const CAP_GROUPS = [
   { key: "leads",   label: "Leads & patients", te: "లీడ్స్",        caps: ["leads.view", "leads.edit", "leads.delete"] },
-  { key: "appts",   label: "Appointments",     te: "అపాయింట్‌మెంట్లు", caps: ["appts.view"] },
+  { key: "appts",   label: "Appointments",     te: "అపాయింట్‌మెంట్లు", caps: ["appts.view", "appts.edit"] },
   { key: "academy", label: "Academy",          te: "అకాడమీ",        caps: ["academy.view", "academy.edit", "academy.seats", "academy.money", "academy.docs", "academy.material", "academy.certify", "academy.delete"] },
   { key: "money",   label: "Money",             te: "డబ్బు",         caps: ["money.view", "money.bill"] },
   { key: "posts",   label: "Marketing & posts", te: "మార్కెటింగ్",   caps: ["posts.view", "posts.toggle"] },
@@ -68,11 +69,11 @@ const BUILTIN_ROLES = {
   owner:     { label: "Owner",     te: "ఓనర్",       note: "Anni powers — ee role marchalemu.",
     caps: ["*"] },
   manager:   { label: "Manager",   te: "మేనేజర్",     note: "Clinic mottam nadipevaru. Delete tappa dadapu anni.",
-    caps: ["leads.view","leads.edit","appts.view","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","posts.view","posts.toggle","reviews.view","ai.use","team.manage"] },
+    caps: ["leads.view","leads.edit","appts.view","appts.edit","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","posts.view","posts.toggle","reviews.view","ai.use","team.manage"] },
   doctor:    { label: "Doctor",    te: "డాక్టర్",     note: "Consultations + academy training. Money/settings ledu.",
-    caps: ["leads.view","leads.edit","appts.view","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use"] },
+    caps: ["leads.view","leads.edit","appts.view","appts.edit","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use"] },
   reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count.",
-    caps: ["leads.view","leads.edit","appts.view","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use"] },
+    caps: ["leads.view","leads.edit","appts.view","appts.edit","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use"] },
   accounts:  { label: "Accounts",  te: "అకౌంట్స్",    note: "Fees, receipts, documents. Leads edit cheyaleru.",
     caps: ["leads.view","appts.view","academy.view","academy.money","academy.docs","money.view","money.bill","reviews.view","ai.use"] },
   therapist: { label: "Therapist", te: "థెరపిస్ట్",   note: "Treatments chese vaaru — chudatam matrame.",

@@ -187,6 +187,19 @@
     .netbar.sync{color:var(--g2);border-color:var(--line2,rgba(198,162,92,.32))}
     .netbar.stale{color:var(--muted)}
     /* patient file */
+    .daystrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
+    .daystrip button{flex:none;background:var(--panel);border:1px solid var(--line);color:var(--muted);
+      border-radius:12px;padding:8px 12px;min-width:62px;text-align:center;cursor:pointer;font:inherit;font-size:.76rem}
+    .daystrip button.on{background:var(--panel2);border-color:var(--line2,rgba(198,162,92,.32));color:var(--g1)}
+    .daystrip button b{display:block;font-family:"Cormorant Garamond",serif;font-size:1.25rem;line-height:1.1;color:inherit}
+    .daystrip button i{font-style:normal;display:block;font-size:.68rem;color:var(--g3)}
+    .slot{display:grid;grid-template-columns:64px 1fr;gap:12px;background:var(--panel);border:1px solid var(--line);
+      border-radius:var(--r);padding:12px 14px;margin-bottom:8px}
+    .slot.arrived{border-left:2px solid var(--warm)}
+    .slot.done{opacity:.6}
+    .slot .when{font-family:"Cormorant Garamond",serif;font-size:1.1rem;color:var(--g2);line-height:1.2}
+    .slot .when span{display:block;font-family:var(--sans);font-size:.68rem;color:var(--muted2)}
+    .slot h3{font-size:1rem;font-weight:500}
     .ptrow{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;cursor:pointer}
     .ptrow .row1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
     .ptrow h3{font-size:1rem;font-weight:500}
@@ -316,7 +329,15 @@
         </div>
         <div class="list" id="leadList"></div>
       </section>
-      <section id="t-appts" class="hide"><div class="list" id="apptList"></div></section>
+      <section id="t-appts" class="hide">
+        <div class="daystrip" id="dayStrip"></div>
+        <div class="countdown" id="schHead"></div>
+        <div class="filters" style="margin-bottom:8px">
+          <label class="switch"><input type="checkbox" id="myDay" /> Naavi matrame</label>
+          <button class="btn btn--sm btn--gold hide" id="schNew">+ Kotha appointment</button>
+        </div>
+        <div id="schList"></div>
+      </section>
       <section id="t-patients" class="hide">
         <div class="filters"><input id="ptQ" placeholder="Peru leda number tho vetakandi" /></div>
         <div class="meta" id="ptStat" style="margin-bottom:8px"></div>
@@ -636,18 +657,86 @@
       });
       $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : '<div class="empty">No leads for this filter.</div>';
     }
-    function renderAppts() {
-      var d = state.data;
-      $("apptList").innerHTML = d.appts.length ? d.appts.map(function (a) {
-        var past = a.at < Date.now();
-        return '<article class="lead' + (past ? '' : ' warm') + '"><div class="row"><div><h3>' + esc(a.name || "Patient") + ' <span class="meta">· ' + esc(a.ph || "") + '</span></h3><div class="meta">📅 ' + fmtAt(a.at) + (past ? ' · past' : '') + '</div></div></div>' +
-          '<div class="concern">' + esc(a.concern || a.treatment || "") + '</div>' +
-          '<div class="acts">' + (a.ph ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(a.ph) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(a.ph) + '">💬 WhatsApp</a>' : '') + '</div></article>';
-      }).join("") : '<div class="empty">No upcoming appointments. Agent books them in WhatsApp — they appear here.</div>';
+    // ---- the clinic day --------------------------------------------------
+    var schDay = null, schData = null, schWeek = null, schMine = false;
+    function schapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/schedule?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; e.clash = j.clash; throw e; } return j; });
+      });
     }
-    // ---- money -----------------------------------------------------------
-    // What came in today and what is still owed. Prices are staff-only and
-    // never leave this screen.
+    function istToday() {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    }
+    function loadSchedule() {
+      schDay = schDay || istToday();
+      return Promise.all([schapi("week"), schapi("day", null, "&day=" + schDay)]).then(function (r) {
+        schWeek = r[0]; schData = r[1];
+        renderSchedule();
+      }).catch(function (e) { $("schList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
+    function renderSchedule() {
+      if (!schData) return;
+      var d = schData;
+      $("dayStrip").innerHTML = (schWeek ? schWeek.days : []).map(function (w) {
+        var dt = new Date(w.day + "T00:00:00+05:30");
+        return '<button data-act="sch-day" data-day="' + esc(w.day) + '"' + (w.day === schDay ? ' class="on"' : "") + ">" +
+          "<b>" + dt.getDate() + "</b>" + dt.toLocaleDateString("en-IN", { weekday: "short" }) +
+          "<i>" + (w.total || "—") + "</i></button>";
+      }).join("");
+      $("schHead").className = "countdown";
+      $("schHead").innerHTML = "<div><b>" + d.counts.total + "</b><span>Ee roju</span></div>" +
+        "<div><b>" + d.counts.unconfirmed + "</b><span>Confirm avvanivi</span></div>";
+      $("schNew").classList.toggle("hide", !state.allow("appts.edit"));
+
+      var rows = schMine ? d.rows.filter(function (r) { return r.staff === state.data.me.phone; }) : d.rows;
+      $("schList").innerHTML = rows.length ? rows.map(function (r) {
+        var canEdit = state.allow("appts.edit");
+        return '<article class="slot ' + esc(r.status) + '">' +
+          '<div class="when">' + esc(r.time) + "<span>" + r.mins + " min</span></div>" +
+          '<div><div class="row1" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
+          "<div><h3 data-act=\"pt-open\" data-phone=\"" + esc(r.ph) + "\" style=\"cursor:pointer\">" + esc(r.name) + ' <span class="meta">· ' + esc(r.ph) + "</span></h3>" +
+          '<div class="meta">' + esc(r.concern || "—") +
+          (r.staffName ? " · 👩‍⚕️ " + esc(r.staffName) : ' · <span style="color:var(--hot)">doctor assign cheyyaledu</span>') +
+          (r.room ? " · " + esc(r.room) : "") + "</div></div>" +
+          "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') +
+          (r.status !== "booked" ? ' <span class="chip">' + esc(r.status) + "</span>" : "") + "</div></div>" +
+          (r.note ? '<div class="meta" style="margin-top:5px">📝 ' + esc(r.note) + "</div>" : "") +
+          '<div class="acts">' +
+          '<a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name) + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞</a>' +
+          '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.ph) + '">💬</a>' +
+          (canEdit && r.status === "booked" ? '<button class="btn btn--sm" data-act="sch-arrived" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Vachharu</button>' : "") +
+          (canEdit && (r.status === "arrived" || r.status === "booked") ? '<button class="btn btn--sm" data-act="sch-done" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">🏁 Ayipoyindi</button>' : "") +
+          (canEdit ? '<button class="btn btn--sm" data-act="sch-assign" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">👩‍⚕️ Assign</button>' +
+            '<button class="btn btn--sm" data-act="sch-move" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🕒 Marchandi</button>' +
+            '<button class="btn btn--sm" data-act="sch-cancel" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">✖</button>' : "") +
+          "</div></div></article>";
+      }).join("") : '<div class="empty">' + (schMine ? "Mee peru meeda ee roju emi ledu." : "Ee roju appointments ledu.") + "</div>";
+    }
+    // "3 PM" typed at the desk, turned into a real moment in IST
+    function askTime(dayISO, label) {
+      var t = prompt(label || "Time? (e.g. 3:30 pm leda 15:30)", "");
+      if (!t) return null;
+      var m = String(t).trim().toLowerCase().match(/^(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?$/);
+      if (!m) { toast("Time sarigga raayandi — 3:30 pm laaga"); return null; }
+      var hh = Number(m[1]), mm = Number(m[2] || 0), ap = m[3];
+      if (ap === "pm" && hh < 12) hh += 12;
+      if (ap === "am" && hh === 12) hh = 0;
+      if (hh > 23 || mm > 59) { toast("Time sarigga ledu"); return null; }
+      return new Date(dayISO + "T" + String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + ":00+05:30").getTime();
+    }
+    function schSend(action, body, okMsg) {
+      return schapi(action, body).then(function () { toast(okMsg); return loadSchedule(); })
+        .catch(function (e) {
+          if (e.status === 409 && confirm(e.message + "\n\nAyina book cheyyala?")) {
+            return schapi(action, Object.assign({ force: true }, body)).then(function () { toast(okMsg); return loadSchedule(); });
+          }
+          toast(e.message);
+        });
+    }
+    function renderAppts() { /* the day view loads on demand */ }
+
     function mnapi(a, body, qs) {
       var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
       if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
@@ -1611,6 +1700,7 @@
       if (t === "academy") loadFunnel();
       if (t === "patients") loadPatients();
       if (t === "money") loadMoney();
+      if (t === "appts") loadSchedule();
     });
     // Deep link from an app shortcut or a shared URL: /staff.html#office
     var hashDone = false;
@@ -1655,6 +1745,17 @@
         .catch(function (x) { $("roleErr").textContent = x.message; });
     };
     if ($("acadRefresh")) $("acadRefresh").onclick = function () { loadFunnel(); };
+    if ($("myDay")) $("myDay").onchange = function () { schMine = this.checked; renderSchedule(); };
+    if ($("schNew")) $("schNew").onclick = function () {
+      var ph2 = (prompt("Patient number (10 digits):", "") || "").replace(/\D/g, "").slice(-10);
+      if (!/^[6-9]\d{9}$/.test(ph2)) { toast("Number sarigga ledu"); return; }
+      var nm5 = prompt("Peru:", "") || "Patient";
+      var cn = prompt("Enduku? (treatment / concern)", "") || "";
+      var at2 = askTime(schDay, "Time? (e.g. 3:30 pm) — " + schDay);
+      if (!at2) return;
+      var mn6 = Number(prompt("Entha sepu? (nimishalu)", "30") || 30);
+      schSend("create", { ph: ph2, name: nm5, concern: cn, at: at2, mins: mn6 }, "Book ayindi, patient ki cheppamu");
+    };
     if ($("ptQ")) { var ptT; $("ptQ").addEventListener("input", function () { clearTimeout(ptT); ptT = setTimeout(loadPatients, 260); }); }
     ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
     document.addEventListener("change", function (e) {
@@ -1722,6 +1823,39 @@
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
       if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "sch-day") { schDay = el.dataset.day; haptic(); loadSchedule(); return; }
+      if (el.dataset.act === "sch-arrived") { schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "arrived" }, "Vachharu ani mark chesamu"); return; }
+      if (el.dataset.act === "sch-done") {
+        var dn = prompt("Em chesaru? (optional note)", "") || "";
+        schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "done", note: dn }, "Ayipoyindi");
+        return;
+      }
+      if (el.dataset.act === "sch-cancel") {
+        if (!confirm((el.dataset.name || "Ee appointment") + " cancel chestara? Patient ki WhatsApp veltundi.")) return;
+        schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "cancelled" }, "Cancel ayindi");
+        return;
+      }
+      if (el.dataset.act === "sch-move") {
+        var nt3 = askTime(schDay, "Kotha time? (ade roju — vere roju kavalante aa roju select chesi malli try cheyandi)");
+        if (!nt3) return;
+        schSend("move", { id: el.dataset.id, ph: el.dataset.ph, oldAt: Number(el.dataset.at), at: nt3 }, "Time marchamu, patient ki cheppamu");
+        return;
+      }
+      if (el.dataset.act === "sch-assign") {
+        var team = (schData && schData.team) || [];
+        if (!team.length) { toast("Staff list khaali — Control panel lo add cheyandi"); return; }
+        var menu = team.map(function (t2, i2) { return (i2 + 1) + ") " + t2.name; }).join("\n");
+        var pick = prompt("Evariki assign cheyyala?\n\n" + menu + "\n\n0 = evvariki vaddu", "1");
+        if (pick === null) return;
+        var idx = parseInt(pick, 10);
+        var who = idx > 0 ? team[idx - 1] : null;
+        var rm = prompt("Room (optional):", "") || "";
+        var mn5 = Number(prompt("Entha sepu? (nimishalu)", "30") || 30);
+        schSend("assign", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at),
+          staff: who ? who.phone : "", staffName: who ? who.name : "", room: rm, mins: mn5 },
+          who ? who.name + " ki assign ayindi" : "Assign teesesamu");
+        return;
+      }
       if (el.dataset.act === "mn-new") { newBill(el.dataset.phone, el.dataset.name); return; }
       if (el.dataset.act === "mn-pay") {
         var bal = Number(el.dataset.bal || 0);
