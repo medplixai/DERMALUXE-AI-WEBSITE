@@ -181,6 +181,11 @@
       main.wrap{padding-bottom:calc(var(--navh) + 18px)}
       .top .wrap{padding-top:env(safe-area-inset-top)}
     }
+    .netbar{font-size:.78rem;color:var(--muted2);text-align:center;padding:0;min-height:0;transition:min-height .15s}
+    .netbar:not(:empty){padding:7px 10px;margin-bottom:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}
+    .netbar.off{color:var(--hot);border-color:rgba(255,122,89,.3)}
+    .netbar.sync{color:var(--g2);border-color:var(--line2,rgba(198,162,92,.32))}
+    .netbar.stale{color:var(--muted)}
     .thumbs{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
     .thumb{width:62px;height:62px;border-radius:10px;overflow:hidden;border:1px solid var(--line);background:var(--ink2);padding:0;cursor:pointer}
     .thumb img{width:100%;height:100%;object-fit:cover;display:block}
@@ -234,6 +239,7 @@
     </div></header>
 
     <main class="wrap">
+      <div class="netbar" id="netBar"></div>
       <div class="stats">
         <div class="stat"><b id="sToday">0</b><span>Leads today</span></div>
         <div class="stat"><b id="sHot">0</b><span>Hot · to call</span></div>
@@ -410,21 +416,46 @@
     $("backBtn").onclick = function () { $("stepOtp").classList.add("hide"); $("stepPhone").classList.remove("hide"); };
     $("otp").addEventListener("keydown", function (e) { if (e.key === "Enter") $("verifyBtn").click(); });
     $("phone").addEventListener("keydown", function (e) { if (e.key === "Enter") $("pwd").focus(); });
-    $("logoutBtn").onclick = function () { tok = null; try { localStorage.removeItem(TOK); } catch (e) {} location.reload(); };
+    $("logoutBtn").onclick = function () {
+      var pending = readQueue().length;
+      if (pending && !confirm(pending + " marpu(lu) inka pampaledu. Logout aithe avi potayi. Sare naa?")) return;
+      tok = null;
+      try { localStorage.removeItem(TOK); } catch (e) {}
+      clearCache();                       // no patient data left on the phone
+      location.reload();
+    };
     $("refreshBtn").onclick = function () { load(true); };
 
     // ---- app ----
     function boot() {
       if (!tok) { $("login").classList.remove("hide"); $("app").classList.add("hide"); return; }
-      // Show the shell with shimmer placeholders while the first fetch runs —
-      // an app that opens instantly beats one that opens to a blank screen.
       $("login").classList.add("hide"); $("app").classList.remove("hide");
-      $("leadList").innerHTML = '<div class="sk"><div></div><div></div><div></div><div></div></div>';
+      // Last good dashboard first, so the app opens on real content even with
+      // no signal; the live fetch then replaces it.
+      var cached = readCache();
+      if (cached) { state.data = cached; try { render(); } catch (e) {} paintNet(); }
+      else $("leadList").innerHTML = '<div class="sk"><div></div><div></div><div></div><div></div></div>';
+      flushQueue();
       load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); initPush(); initLock(); checkPendingCall(); })
-        .catch(function (e) { tok = null; try { localStorage.removeItem(TOK); } catch (x) {} $("leadList").innerHTML = ""; $("app").classList.add("hide"); $("loginErr").textContent = e.message === "Login required" ? "" : e.message; $("login").classList.remove("hide"); });
+        .catch(function (e) {
+          // Offline with a cached dashboard: stay in the app, say so plainly.
+          if (state.data && /network|failed|fetch/i.test(e.message || "")) { online = false; paintNet(); initLock(); checkPendingCall(); return; }
+          tok = null; try { localStorage.removeItem(TOK); } catch (x) {} clearCache();
+          $("leadList").innerHTML = ""; $("app").classList.add("hide");
+          $("loginErr").textContent = e.message === "Login required" ? "" : e.message;
+          $("login").classList.remove("hide");
+        });
     }
     function load(quiet) {
-      return api("data").then(function (d) { state.data = d; render(); if (quiet) toast("Updated"); });
+      return api("data").then(function (d) {
+        d.cachedAt = Date.now();
+        state.data = d; online = true;
+        saveCache(d); render(); paintNet();
+        if (quiet) toast("Updated");
+      }).catch(function (e) {
+        if (/network|failed|fetch/i.test(e.message || "")) { online = false; paintNet(); }
+        throw e;
+      });
     }
     function render() {
       var d = state.data, me = d.me;
@@ -777,6 +808,88 @@
         .catch(function () { return false; });
     }
 
+    // ---- offline ---------------------------------------------------------
+    // Two halves: the last good dashboard is kept on the phone so the app
+    // opens with something real, and changes made with no network wait in a
+    // queue and go up in order once it returns. Nothing is silently lost and
+    // nothing stale is shown as if it were live.
+    var CACHE_K = "dl_cache", QUEUE_K = "dl_queue";
+    var online = navigator.onLine !== false, flushing = false;
+
+    function saveCache(d) {
+      try {
+        // photos and the panel are not cached — they are large or sensitive
+        var slim = { me: d.me, roles: d.roles, capList: d.capList, capTe: d.capTe, capGroups: d.capGroups,
+          leads: (d.leads || []).slice(0, 300), statuses: d.statuses, appts: d.appts, academy: d.academy,
+          today: d.today, queue: d.queue, dailyOn: d.dailyOn, reviews: (d.reviews || []).slice(0, 20),
+          owners: d.owners, ts: d.ts, cachedAt: Date.now() };
+        localStorage.setItem(CACHE_K, JSON.stringify(slim));
+      } catch (e) { /* quota — not worth breaking the app over */ }
+    }
+    function readCache() {
+      try { var v = JSON.parse(localStorage.getItem(CACHE_K) || "null"); return v && v.me ? v : null; } catch (e) { return null; }
+    }
+    function clearCache() { try { localStorage.removeItem(CACHE_K); localStorage.removeItem(QUEUE_K); } catch (e) {} }
+
+    function readQueue() {
+      try { var v = JSON.parse(localStorage.getItem(QUEUE_K) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; }
+    }
+    function writeQueue(q) { try { localStorage.setItem(QUEUE_K, JSON.stringify(q.slice(0, 200))); } catch (e) {} }
+    function enqueue(a, body) {
+      var q = readQueue();
+      q.push({ a: a, body: Object.assign({ at: Date.now() }, body), id: Date.now() + "-" + Math.random().toString(36).slice(2, 7) });
+      writeQueue(q);
+      paintNet();
+    }
+    // Send what is waiting, oldest first, and stop at the first network
+    // failure so order is never broken.
+    function flushQueue() {
+      var q = readQueue();
+      if (flushing || !q.length) return Promise.resolve(0);
+      flushing = true;
+      var done = 0;
+      function step() {
+        var list = readQueue();
+        if (!list.length) return Promise.resolve();
+        var item = list[0];
+        return api(item.a, item.body).then(function () {
+          writeQueue(readQueue().slice(1)); done++; return step();
+        }).catch(function (e) {
+          if (/network|failed|fetch/i.test(e.message || "")) throw e;   // still offline: keep it
+          writeQueue(readQueue().slice(1));                              // server rejected it: drop it
+          console.warn("queue item dropped:", item.a, e.message);
+          return step();
+        });
+      }
+      return step().then(function () { return done; })
+        .catch(function () { return done; })
+        .then(function (n) {
+          flushing = false;
+          if (n) { toast(n + " marpu(lu) sync ayyayi"); load(true).catch(function () {}); }
+          paintNet();
+          return n;
+        });
+    }
+    // One line in the header that never lies about how fresh this is.
+    function paintNet() {
+      var el = $("netBar"); if (!el) return;
+      var q = readQueue().length;
+      var d = state.data;
+      var age = d && d.cachedAt ? d.cachedAt : (d && d.ts) || 0;
+      if (!online) {
+        el.className = "netbar off";
+        el.textContent = "📴 Internet ledu" + (age ? " · " + ago(age) + " data" : "") + (q ? " · " + q + " marpu waiting" : "");
+      } else if (q) {
+        el.className = "netbar sync";
+        el.textContent = "⏳ " + q + " marpu(lu) pampalsi undi…";
+      } else if (d && d.cachedAt && Date.now() - d.cachedAt > 120000) {
+        el.className = "netbar stale";
+        el.textContent = "Updated " + ago(d.cachedAt);
+      } else { el.className = "netbar"; el.textContent = ""; }
+    }
+    addEventListener("online", function () { online = true; paintNet(); flushQueue().then(function () { load(true).catch(function () {}); }); });
+    addEventListener("offline", function () { online = false; paintNet(); });
+
     // ---- clinical photos -------------------------------------------------
     // Patient pictures. Nothing is taken before the consent tick, nothing is
     // written to the phone gallery, and every read carries the session token.
@@ -876,7 +989,7 @@
         var go = dist > THRESH; y0 = null;
         if (!go || !state.data) { el.style.height = "0px"; return; }
         busy = true; haptic(14); el.classList.add("spin"); el.style.height = "46px";
-        load(true).catch(function () {}).finally(function () {
+        flushQueue().then(function () { return load(true); }).catch(function () {}).finally(function () {
           busy = false; el.classList.remove("spin"); el.style.height = "0px";
         });
       }, { passive: true });
@@ -978,7 +1091,7 @@
         if (B && awaySince && Date.now() - awaySince > LOCK_AFTER) showLock();
         awaySince = 0;
         checkPendingCall();
-        if (!locked) load(true).catch(function () {});
+        if (!locked) flushQueue().then(function () { return load(true); }).catch(function () {});
       });
       // Android back button: close a sheet first, never drop out of the app
       A.addListener("backButton", function () {
@@ -1046,6 +1159,8 @@
       });
     }
 
+    setInterval(function () { if (state.data) paintNet(); }, 45000);
+
     // ---- events ----
     $("tabs").addEventListener("click", function (e) {
       var b = e.target.closest(".tab"); if (!b) return;
@@ -1096,7 +1211,20 @@
     document.addEventListener("change", function (e) {
       var el = e.target;
       if (el.dataset.act === "status") {
-        api("status", { key: el.dataset.key, status: el.value }).then(function () { var l = state.data.leads.find(function (x) { return x.key === el.dataset.key; }); if (l) l.status = el.value; el.className = "s-" + el.value; toast("Status: " + el.value); }).catch(function (x) { toast(x.message); });
+        var k = el.dataset.key, v = el.value;
+        var l = state.data.leads.find(function (x) { return x.key === k; });
+        if (l) l.status = v;                        // show it straight away
+        el.className = "s-" + v;
+        saveCache(state.data);
+        api("status", { key: k, status: v, at: Date.now() })
+          .then(function (j) {
+            if (j && j.skipped) { toast("Vere evaro ee lead ni ippude marcharu — vaari marpu nilichindi"); load(true).catch(function () {}); }
+            else toast("Status: " + v);
+          })
+          .catch(function (x) {
+            if (/network|failed|fetch/i.test(x.message || "")) { online = false; enqueue("status", { key: k, status: v }); toast("Offline — network vachaka veltundi"); }
+            else toast(x.message);
+          });
       }
       if (el.dataset.act === "p-role") { api("team-role", { phone: el.dataset.phone, role: el.value }).then(function () { toast("Role updated"); return loadPanel(); }).catch(function (x) { toast(x.message); loadPanel(); }); }
       if (el.dataset.act === "p-cap") { savePersonCaps(el.dataset.phone); }
@@ -1105,7 +1233,17 @@
     document.addEventListener("submit", function (e) {
       var f = e.target; if (f.dataset.act !== "note") return; e.preventDefault();
       var inp = f.querySelector("input"), text = inp.value.trim(); if (!text) return;
-      api("note", { key: f.dataset.key, text: text }).then(function (j) { var l = state.data.leads.find(function (x) { return x.key === f.dataset.key; }); if (l) l.notes = j.notes; inp.value = ""; renderLeads(); renderAcademy(); toast("Note saved"); }).catch(function (x) { toast(x.message); });
+      var nk = f.dataset.key, at = Date.now();
+      var lead = state.data.leads.find(function (x) { return x.key === nk; });
+      if (lead) lead.notes = [{ ts: at, by: state.data.me.name, text: text }].concat(lead.notes || []);
+      inp.value = ""; renderLeads(); renderAcademy(); saveCache(state.data);
+      api("note", { key: nk, text: text, at: at }).then(function (j) {
+        if (lead) lead.notes = j.notes;
+        renderLeads(); renderAcademy(); saveCache(state.data); toast("Note saved");
+      }).catch(function (x) {
+        if (/network|failed|fetch/i.test(x.message || "")) { online = false; enqueue("note", { key: nk, text: text }); toast("Offline — note phone lo aagi undi"); }
+        else toast(x.message);
+      });
     });
     document.addEventListener("click", function (e) {
       var el = e.target.closest("[data-act]"); if (!el || el.tagName === "SELECT" || el.tagName === "FORM") return;

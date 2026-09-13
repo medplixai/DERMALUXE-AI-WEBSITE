@@ -8,6 +8,14 @@ const guard = require("./_guard.js");
 const notify = require("./_notify.js");
 
 const LEADS = "dl_leads", STATUS = "dl_status", NOTES = "dl_notes", USERS = "staff:users";
+const STATUS_TS = "dl_status_ts";           // when each status was last set, for offline writes
+// A client-supplied timestamp, clamped so a wrong phone clock cannot file a
+// note in the future or resurrect a very old one.
+function stamp(v) {
+  const now = Date.now(), n = Number(v);
+  if (!n || !isFinite(n)) return now;
+  return Math.min(now, Math.max(now - 14 * 86400000, n));
+}
 
 // ---- roles & capabilities ---------------------------------------------------
 // One capability = one thing a person can actually do. Every entry below is
@@ -336,8 +344,16 @@ module.exports = async (req, res) => {
     if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
     const s = String(b.status || "").toLowerCase();
     if (!key || !STATUSES.includes(s)) return json(res, 400, { error: "key + valid status required" });
+    // A write made offline carries the moment it was actually made. If someone
+    // in the clinic has changed this lead since, the older write is dropped
+    // rather than allowed to undo the newer one.
+    const at = stamp(b.at);
+    const prev = await guard.kvCommand(cfg, ["HGET", STATUS_TS, key]).catch(() => ({}));
+    const prevAt = Number((prev && prev.result) || 0);
+    if (prevAt && at < prevAt) return json(res, 200, { ok: true, skipped: "newer change already saved", at: prevAt });
     await guard.kvCommand(cfg, ["HSET", STATUS, key, s]);
-    return json(res, 200, { ok: true });
+    await guard.kvCommand(cfg, ["HSET", STATUS_TS, key, String(at)]).catch(() => {});
+    return json(res, 200, { ok: true, at });
   }
   if (a === "note") {
     if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki note add chese permission ledu" });
@@ -345,7 +361,11 @@ module.exports = async (req, res) => {
     if (!key || !text) return json(res, 400, { error: "key + text required" });
     const cur = await guard.kvCommand(cfg, ["HGET", NOTES, key]).catch(() => ({}));
     let list = []; try { list = JSON.parse(cur.result || "[]"); } catch (e) {}
-    list.unshift({ ts: Date.now(), by: me.name, text });
+    // Notes only ever append, so an offline one is simply filed at the time it
+    // was written rather than the time it finally reached us.
+    const nAt = stamp(b.at);
+    list.unshift({ ts: nAt, by: me.name, text });
+    list.sort((x, y) => (y.ts || 0) - (x.ts || 0));
     await guard.kvCommand(cfg, ["HSET", NOTES, key, JSON.stringify(list.slice(0, 30))]);
     return json(res, 200, { ok: true, notes: list.slice(0, 30) });
   }
