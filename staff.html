@@ -313,6 +313,7 @@
         <button class="tab" data-t="academy">Academy<i id="nAcad">0</i></button>
         <button class="tab" data-t="patients">Patients<i id="nPt">0</i></button>
         <button class="tab" data-t="money">Money</button>
+        <button class="tab" data-t="numbers">Numbers</button>
         <button class="tab" data-t="students">Students<i id="nStud">0</i></button>
         <button class="tab" data-t="today">Today's post</button>
         <button class="tab" data-t="reviews">Reviews</button>
@@ -350,6 +351,14 @@
           <div id="mnModes" class="meta"></div>
           <div id="mnList" style="margin-top:10px"></div></div>
         <div class="grp"><div class="grp-h"><h2>Pending dues</h2><i id="mnDueCount"></i></div><div id="mnDues"></div></div>
+      </section>
+      <section id="t-numbers" class="hide">
+        <div class="cpnav" id="insRange">
+          <button data-days="7">7 rojulu</button>
+          <button class="on" data-days="30">30 rojulu</button>
+          <button data-days="90">90 rojulu</button>
+        </div>
+        <div id="insBody"><div class="sk"><div></div><div></div><div></div></div></div>
       </section>
       <section id="t-academy" class="hide">
         <div class="countdown" id="acadCount"></div>
@@ -592,7 +601,7 @@
       $("meRole").textContent = me.roleLabel || me.role;
       if (allow("team.manage")) $("teamTab").classList.remove("hide");
       if (allow("ai.use")) $("officeTab").classList.remove("hide");
-      [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"]].forEach(function (p) {
+      [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"]].forEach(function (p) {
         var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
       });
       var firstTab = document.querySelector(".tab:not(.hide)");
@@ -779,6 +788,74 @@
       }).catch(function (e) { host.innerHTML = '<p class="meta">' + esc(e.message) + "</p>"; });
     }
     function renderAppts() { /* the day view loads on demand */ }
+
+    // ---- numbers ---------------------------------------------------------
+    // Attribution is first touch and the screen says so — a figure nobody
+    // understands is worse than no figure.
+    var insDays = 30;
+    function loadInsights() {
+      $("insBody").innerHTML = '<div class="sk"><div></div><div></div><div></div></div>';
+      var opt = { headers: { Authorization: "Bearer " + tok } };
+      return fetch(ORIGIN + "/api/insights?days=" + insDays, opt)
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
+        .then(renderInsights)
+        .catch(function (e) { $("insBody").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
+    function bar(pct, colour) {
+      return '<div style="height:6px;border-radius:100px;background:var(--ink2);overflow:hidden;margin-top:5px">' +
+        '<div style="height:100%;width:' + Math.max(2, Math.min(100, pct)) + '%;background:' + (colour || "var(--g3)") + '"></div></div>';
+    }
+    function renderInsights(d) {
+      var canMoney = d.money.collected !== null;
+      var f = d.funnel;
+      var maxRev = Math.max.apply(null, d.sources.map(function (s2) { return s2.revenue || 0; }).concat([1]));
+      var maxLead = Math.max.apply(null, d.sources.map(function (s2) { return s2.leads; }).concat([1]));
+      var maxT = Math.max.apply(null, d.treatments.map(function (t) { return t.value || t.count; }).concat([1]));
+      var maxDay = Math.max.apply(null, d.money.spark.map(function (x) { return x.amount; }).concat([1]));
+      var html = "";
+      if (canMoney) {
+        html += '<div class="countdown"><div><b>' + rupee(d.money.collected) + "</b><span>" + d.days + " rojullo vachindi</span></div>" +
+          "<div><b>" + rupee(d.money.outstanding) + "</b><span>Inka raavalsindi</span></div></div>";
+        html += '<div class="box"><h2>Roju roju</h2><div style="display:flex;align-items:flex-end;gap:2px;height:60px;margin-top:8px">' +
+          d.money.spark.map(function (x) {
+            return '<div title="' + esc(x.day) + " " + rupee(x.amount) + '" style="flex:1;background:' + (x.amount ? "var(--g4)" : "var(--line)") +
+              ";height:" + Math.max(2, Math.round((x.amount / maxDay) * 100)) + '%;border-radius:2px 2px 0 0"></div>';
+          }).join("") + "</div>" +
+          '<div class="meta" style="margin-top:8px">Cash ' + rupee(d.money.byMode.cash) + " · UPI " + rupee(d.money.byMode.upi) +
+          " · Card " + rupee(d.money.byMode.card) + " · " + d.money.payers + " mandhi pay chesaru</div></div>";
+      }
+      html += '<div class="box"><h2>Lead nunchi booking varaku</h2>' +
+        '<div class="pt-stats"><div><b>' + f.leads + "</b><span>Leads</span></div>" +
+        "<div><b>" + f.contacted + "</b><span>Contact chesam</span></div>" +
+        "<div><b>" + f.booked + "</b><span>Booked</span></div>" +
+        "<div><b>" + (f.leads ? Math.round((f.booked / f.leads) * 100) : 0) + "%</b><span>Conversion</span></div></div>" +
+        (f.firstReplyMins !== null
+          ? '<div class="meta">Modati reply sagatuna <b style="color:var(--g2);font-weight:500">' + f.firstReplyMins + " nimishalu</b> lo (" + f.firstReplyCount + " leads meeda lekka)</div>"
+          : '<div class="meta">Modati reply time lekkinchadaniki notes saripovu.</div>') + "</div>";
+      html += '<div class="grp"><div class="grp-h"><h2>E channel pani chestondi</h2><i>first touch</i></div>' +
+        d.sources.map(function (s2) {
+          return '<div class="seat"><div class="row1"><div><h3>' + esc(s2.src) + "</h3>" +
+            '<div class="meta">' + s2.leads + " leads · " + s2.booked + " booked" + (s2.bookRate !== null ? " · " + s2.bookRate + "%" : "") + "</div></div>" +
+            (canMoney ? '<b style="color:var(--g2);font-weight:500">' + rupee(s2.revenue) + "</b>" : "") + "</div>" +
+            bar(canMoney ? (s2.revenue / maxRev) * 100 : (s2.leads / maxLead) * 100) + "</div>";
+        }).join("") + "</div>";
+      if (d.treatments.length) {
+        html += '<div class="grp"><div class="grp-h"><h2>Ekkuva ammudu ponavi</h2><i>' + d.days + " rojulu</i></div>" +
+          d.treatments.map(function (t) {
+            return '<div class="seat"><div class="row1"><div><h3>' + esc(t.name) + '</h3><div class="meta">' + t.count + " sarlu</div></div>" +
+              (canMoney ? '<b style="color:var(--g2);font-weight:500">' + rupee(t.value) + "</b>" : "") + "</div>" +
+              bar(((canMoney ? t.value : t.count) / maxT) * 100, "var(--g4)") + "</div>";
+          }).join("") + "</div>";
+      }
+      html += '<div class="box"><h2>Malli vachina vaaru</h2>' +
+        '<div class="pt-stats"><div><b>' + d.patients.total + "</b><span>Patients</span></div>" +
+        "<div><b>" + d.patients.repeats + "</b><span>Malli vachharu</span></div>" +
+        "<div><b>" + d.patients.repeatRate + "%</b><span>Repeat rate</span></div>" +
+        "<div><b>" + (d.money.payers || 0) + "</b><span>Pay chesaru</span></div></div></div>";
+      html += '<div class="note" style="margin-top:14px"><b>Ela lekkinchamu:</b> oka manishi dabbu, vaaru <b>modati sari</b> e channel nunchi vachharo aa channel ki cherutundi. ' +
+        "Sirisha modati sari Instagram nunchi vachi tarvata WhatsApp lo raasina, aa dabbu Instagram ke. Idi simple rule — rendu channels madhya panchamu.</div>";
+      $("insBody").innerHTML = html;
+    }
 
     function mnapi(a, body, qs) {
       var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
@@ -1201,6 +1278,7 @@
       leads:'<svg viewBox="0 0 24 24"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M17 11h4M19 9v4"/></svg>',
       appts:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
       students:'<svg viewBox="0 0 24 24"><path d="M12 4 3 8.5l9 4.5 9-4.5L12 4Z"/><path d="M6.5 10.8v4.4c0 1.6 2.5 2.9 5.5 2.9s5.5-1.3 5.5-2.9v-4.4M21 8.5v5"/></svg>',
+      numbers:'<svg viewBox="0 0 24 24"><path d="M4 19.5V15M9.3 19.5V9M14.7 19.5v-6M20 19.5V5"/></svg>',
       money:'<svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 12h.01M17.5 12h.01"/></svg>',
       patients:'<svg viewBox="0 0 24 24"><path d="M12 20.5s-7-4.3-7-9.3A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 3.2c0 5-7 9.3-7 9.3Z"/><path d="M12 11.2v3.4M10.3 12.9h3.4"/></svg>',
       academy:'<svg viewBox="0 0 24 24"><path d="M5 20V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"/><path d="M5 20h14M9 8h6M9 12h6M9 16h3"/></svg>',
@@ -1209,8 +1287,8 @@
       reviews:'<svg viewBox="0 0 24 24"><path d="m12 4 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8L12 4Z"/></svg>',
       team:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'
     };
-    var NAV_LABEL = { leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", team:"Panel" };
-    var NAV_PREF = ["leads","appts","patients","money","academy","students","office","today","reviews","team"];
+    var NAV_LABEL = { leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", team:"Panel" };
+    var NAV_PREF = ["leads","appts","patients","money","numbers","academy","students","office","today","reviews","team"];
     var NAV_BADGE = { leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad", patients:"nPt" };
 
     function plug(n) { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n]) || null; }
@@ -1734,7 +1812,7 @@
       var b = e.target.closest(".tab"); if (!b) return;
       var t = b.dataset.t;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === b); });
-      ["leads", "appts", "patients", "money", "academy", "students", "office", "today", "reviews", "team"].forEach(function (x) { $("t-" + x).classList.toggle("hide", x !== t); });
+      ["leads", "appts", "patients", "money", "numbers", "academy", "students", "office", "today", "reviews", "team"].forEach(function (x) { $("t-" + x).classList.toggle("hide", x !== t); });
       $("appbar").querySelectorAll("[data-nav]").forEach(function (n) {
         n.classList.toggle("on", n.dataset.nav === t || (n.dataset.nav === "__more" && !$("appbar").querySelector('[data-nav="' + t + '"]')));
       });
@@ -1745,6 +1823,7 @@
       if (t === "academy") loadFunnel();
       if (t === "patients") loadPatients();
       if (t === "money") loadMoney();
+      if (t === "numbers") loadInsights();
       if (t === "appts") loadSchedule();
     });
     // Deep link from an app shortcut or a shared URL: /staff.html#office
@@ -1790,6 +1869,12 @@
         .catch(function (x) { $("roleErr").textContent = x.message; });
     };
     if ($("acadRefresh")) $("acadRefresh").onclick = function () { loadFunnel(); };
+    if ($("insRange")) $("insRange").addEventListener("click", function (e) {
+      var b2 = e.target.closest("button[data-days]"); if (!b2) return;
+      insDays = Number(b2.dataset.days);
+      $("insRange").querySelectorAll("button").forEach(function (x) { x.classList.toggle("on", x === b2); });
+      haptic(); loadInsights();
+    });
     if ($("myDay")) $("myDay").onchange = function () { schMine = this.checked; renderSchedule(); };
     if ($("schNew")) $("schNew").onclick = function () {
       var ph2 = (prompt("Patient number (10 digits):", "") || "").replace(/\D/g, "").slice(-10);
