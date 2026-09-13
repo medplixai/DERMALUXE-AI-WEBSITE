@@ -574,7 +574,7 @@ async function handle(cfg, digits, text, photo, video) {
     const lines = ["🛠 *Admin commands*",
       "• daily post now — AI poster ippude post · daily on/off · daily status · daily topics",
       "• academy status · academy booked <n> · academy notify <msg> — training seats & broadcast",
-      "• staff list · staff add <number> <name> [owner] · staff remove <number> · staff password <pwd> — dashboard access",
+      "• staff list · staff add <number> <name> <role> · staff remove <number> · staff password <pwd> · staff roles",
       "• templates · templates create · templates retry — WhatsApp template status / submit",
       "• 📷 photo / 🎬 video + 'post: <idea>' — AI caption → post (video = Reel)",
       "• 📷/🎬 + 'schedule: tomorrow 6pm | <idea>' — auto-post later",
@@ -664,18 +664,39 @@ async function handle(cfg, digits, text, photo, video) {
     return "✅ Staff dashboard password set ayindi (andariki same password + valla number).\nLogin: www.dermaluxe.ai/staff.html\nTeeseyalante: *staff password off*\n\n🔐 Security: ee message ni chat lo delete cheyandi.";
   }
   let sm;
-  if ((sm = t.match(/^staff(?:\s+(list|add|remove|delete))?(?:\s+(\d{10}))?(?:\s+(.+))?$/i))) {
+  if ((sm = t.match(/^staff(?:\s+(list|add|remove|delete|roles))?(?:\s+(\d{10}))?(?:\s+(.+))?$/i))) {
     if (!cfg) return "Storage ledu.";
     const sub = (sm[1] || "list").toLowerCase(), ph = sm[2] || "", name = (sm[3] || "").trim().slice(0, 60);
     const readAll = async () => { const r = await guard.kvCommand(cfg, ["HGETALL", "staff:users"]).catch(() => ({})); const a = r.result || [], o = {}; if (Array.isArray(a)) { for (let i = 0; i + 1 < a.length; i += 2) { try { o[a[i]] = JSON.parse(a[i + 1]); } catch (e) {} } } return o; };
+    // Roles come from the Control panel (KV) so WhatsApp and the dashboard
+    // always offer the same list, custom roles included.
+    const staffMod = require("./staff.js");
+    const roleBook = await staffMod.loadRoles(cfg).catch(() => staffMod.ROLES);
+    const roleKey = (word) => {
+      const w = String(word || "").toLowerCase().replace(/[^a-z0-9_]/g, "");
+      if (!w) return null;
+      if (roleBook[w]) return w;
+      const hit = Object.keys(roleBook).find((k) => String(roleBook[k].label || "").toLowerCase().replace(/[^a-z0-9_]/g, "") === w);
+      return hit || null;
+    };
+    if (sub === "roles") {
+      return ["🎭 *Roles & powers*"].concat(Object.keys(roleBook).map((k) => {
+        const caps = roleBook[k].caps.includes("*") ? "anni (full access)" : roleBook[k].caps.map((c) => staffMod.CAPS[c] || c).join(", ");
+        return `\n*${roleBook[k].label}* (${k})\n${caps}`;
+      })).concat(["", "Kotha role create cheyyalante dashboard → ⚙ Control panel → Roles & powers."]).join("\n");
+    }
     if (sub === "add") {
       if (!owner) return "🔒 Owner matrame.";
-      if (!/^[6-9]\d{9}$/.test(ph) || !name) return "Format: *staff add 9876543210 Priya*";
-      const asOwner = /\bowner\b/i.test(name);
-      const clean = name.replace(/\bowner\b/ig, "").trim() || "Owner";
-      await guard.kvCommand(cfg, ["HSET", "staff:users", ph, JSON.stringify({ name: clean, role: asOwner ? "owner" : "staff", added: Date.now(), by: digits })]);
-      notify.sendWa(ph, `👋 Hi ${clean}! Meeru DermaLuxe staff dashboard ki add ayyaru.\nLogin: www.dermaluxe.ai/staff.html — mee number ${ph} tho OTP login.`).catch(() => {});
-      return `✅ ${clean} (${ph}) ${asOwner ? "OWNER" : "staff"} ga add ayyaru — dermaluxe.ai/staff.html lo login cheyochu.`;
+      if (!/^[6-9]\d{9}$/.test(ph) || !name) return "Format: *staff add 9876543210 Priya reception*";
+      // last word may be a role; everything before it is the person's name
+      const parts = name.split(/\s+/);
+      let role = parts.length > 1 ? roleKey(parts[parts.length - 1]) : null;
+      const clean = (role ? parts.slice(0, -1).join(" ") : name).trim() || "Staff";
+      if (!role) role = "staff";
+      const caps = roleBook[role].caps.includes("*") ? "anni" : roleBook[role].caps.map((c) => staffMod.CAPS[c] || c).join(", ");
+      await guard.kvCommand(cfg, ["HSET", "staff:users", ph, JSON.stringify({ name: clean, role, extra: [], revoked: [], off: false, added: Date.now(), by: digits })]);
+      notify.sendWa(ph, `👋 Hi ${clean}! Meeru DermaLuxe staff dashboard ki *${roleBook[role].label}* ga add ayyaru.\nLogin: www.dermaluxe.ai/staff.html — mee number ${ph} tho OTP leda password.\n\n📋 Mee access: ${caps}`).catch(() => {});
+      return `✅ ${clean} (${ph}) — *${roleBook[role].label}*\n📋 ${caps}\n\nRole marchalante: dashboard → ⚙ Control panel. Roles list ki: *staff roles*`;
     }
     if (sub === "remove" || sub === "delete") {
       if (!owner) return "🔒 Owner matrame.";
@@ -687,8 +708,11 @@ async function handle(cfg, digits, text, photo, video) {
     const lines = ["👥 *Staff dashboard access* — dermaluxe.ai/staff.html", `Owners: ${guard.ownerPhones().join(", ") || "—"}`];
     const ks = Object.keys(all);
     if (!ks.length) lines.push("Staff: (none) — add: *staff add 9876543210 Name*");
-    else ks.forEach((k) => lines.push(`• ${all[k].name} — ${k}`));
-    lines.push("", "Commands: *staff add <number> <name>* (owner ki chivara *owner* pettandi) · *staff remove <number>* · *staff password <pwd>*");
+    else ks.forEach((k) => {
+      const u = all[k], rk = roleBook[u.role] ? u.role : "staff";
+      lines.push(`• ${u.name} — ${k} · ${roleBook[rk].label}${u.off ? " · 🔒 OFF" : ""}${(u.extra || []).length || (u.revoked || []).length ? " · custom powers" : ""}`);
+    });
+    lines.push("", "Commands: *staff add <number> <name> <role>* · *staff remove <number>* · *staff password <pwd>* · *staff roles*", "Powers ivvadaniki / teeyadaniki: dashboard → ⚙ Control panel.");
     return lines.join("\n");
   }
 
