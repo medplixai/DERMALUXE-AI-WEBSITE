@@ -35,9 +35,14 @@ module.exports = async (req, res) => {
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "list");
-  const kind = String(q.kind || b.kind || "lead") === "student" ? "student" : "lead";
-  const needCap = kind === "student" ? "academy.edit" : "leads.edit";
-  const viewCap = kind === "student" ? "academy.view" : "leads.view";
+  // "patient" files a photo against the person's phone number so a before and
+  // an after taken months apart land on the same timeline. "lead" is kept for
+  // the photos already stored against an enquiry.
+  const KINDS = { lead: "leads", patient: "leads", student: "academy" };
+  const kind = KINDS[String(q.kind || b.kind || "lead")] ? String(q.kind || b.kind || "lead") : "lead";
+  const area = KINDS[kind];
+  const needCap = area + ".edit";
+  const viewCap = area + ".view";
 
   // ---- read one image ----
   if (a === "get") {
@@ -51,7 +56,7 @@ module.exports = async (req, res) => {
     // The capability comes from the record, never from the query string —
     // otherwise ?kind=lead would open a student's document to anyone with
     // leads.view, and the other way round.
-    const realCap = (rec.kind === "student") ? "academy.view" : "leads.view";
+    const realCap = (KINDS[rec.kind] || "leads") + ".view";
     if (!allow(realCap)) return json(res, 403, { error: "Mee role ki idi chuse permission ledu" });
     const buf = Buffer.from(rec.b64, "base64");
     res.setHeader("Content-Type", rec.type || "image/jpeg");

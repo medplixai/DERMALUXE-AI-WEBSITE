@@ -186,6 +186,33 @@
     .netbar.off{color:var(--hot);border-color:rgba(255,122,89,.3)}
     .netbar.sync{color:var(--g2);border-color:var(--line2,rgba(198,162,92,.32))}
     .netbar.stale{color:var(--muted)}
+    /* patient file */
+    .ptrow{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;cursor:pointer}
+    .ptrow .row1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+    .ptrow h3{font-size:1rem;font-weight:500}
+    .ptsheet{position:fixed;inset:0;z-index:85;display:none}
+    .ptsheet.open{display:block}
+    .ptsheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+    .ptsheet-in{position:absolute;left:0;right:0;bottom:0;top:calc(28px + env(safe-area-inset-top));background:var(--ink);
+      border:1px solid var(--line);border-bottom:0;border-radius:20px 20px 0 0;overflow-y:auto;
+      padding:8px 16px calc(24px + env(safe-area-inset-bottom));animation:rise .22s cubic-bezier(.22,1,.36,1)}
+    .pt-head{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:6px 0 12px;border-bottom:1px solid var(--line)}
+    .pt-head h2{font-family:"Cormorant Garamond",serif;font-size:1.7rem;color:var(--g1);line-height:1.1}
+    .pt-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;background:var(--line);border:1px solid var(--line);
+      border-radius:12px;overflow:hidden;margin:12px 0}
+    .pt-stats div{background:var(--panel);padding:9px 6px;text-align:center}
+    .pt-stats b{display:block;font-family:"Cormorant Garamond",serif;font-size:1.3rem;color:var(--g2);line-height:1.1}
+    .pt-stats span{font-size:.66rem;letter-spacing:.05em;text-transform:uppercase;color:var(--muted2)}
+    .pt-sec{margin-top:18px}
+    .pt-sec h3{font-family:"Cormorant Garamond",serif;font-size:1.25rem;color:var(--g1);margin-bottom:8px}
+    .tl{display:flex;gap:10px;overflow-x:auto;padding-bottom:6px}
+    .tl figure{flex:none;width:112px}
+    .tl img{width:112px;height:112px;object-fit:cover;border-radius:10px;border:1px solid var(--line);display:block;background:var(--ink2)}
+    .tl figcaption{font-size:.72rem;color:var(--muted2);margin-top:4px;text-align:center}
+    .vrow{border-left:1px solid var(--line);padding:0 0 12px 14px;position:relative;margin-left:4px}
+    .vrow::before{content:"";position:absolute;left:-4px;top:6px;width:7px;height:7px;border-radius:50%;background:var(--g3)}
+    .vrow b{font-weight:500;font-size:.94rem}
+    .vrow .meta{font-size:.78rem}
     .countdown{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--line);border:1px solid var(--line);
       border-radius:var(--r);overflow:hidden;margin-bottom:10px}
     .countdown div{background:var(--panel);padding:11px 14px;text-align:center}
@@ -271,6 +298,7 @@
         <button class="tab on" data-t="leads">Leads<i id="nLeads">0</i></button>
         <button class="tab" data-t="appts">Appointments<i id="nAppts">0</i></button>
         <button class="tab" data-t="academy">Academy<i id="nAcad">0</i></button>
+        <button class="tab" data-t="patients">Patients<i id="nPt">0</i></button>
         <button class="tab" data-t="students">Students<i id="nStud">0</i></button>
         <button class="tab" data-t="today">Today's post</button>
         <button class="tab" data-t="reviews">Reviews</button>
@@ -288,6 +316,11 @@
         <div class="list" id="leadList"></div>
       </section>
       <section id="t-appts" class="hide"><div class="list" id="apptList"></div></section>
+      <section id="t-patients" class="hide">
+        <div class="filters"><input id="ptQ" placeholder="Peru leda number tho vetakandi" /></div>
+        <div class="meta" id="ptStat" style="margin-bottom:8px"></div>
+        <div id="ptList"></div>
+      </section>
       <section id="t-academy" class="hide">
         <div class="countdown" id="acadCount"></div>
         <div class="box">
@@ -379,6 +412,10 @@
   <div class="sheet" id="moreSheet" role="dialog" aria-modal="true" aria-label="More">
     <div class="sheet-bg" data-close="1"></div>
     <div class="sheet-in"><div class="sheet-grip"></div><h2>Inka</h2><div id="moreRows"></div></div>
+  </div>
+  <div class="ptsheet" id="ptSheet" role="dialog" aria-modal="true" aria-label="Patient">
+    <div class="ptsheet-bg" data-close="1"></div>
+    <div class="ptsheet-in" id="ptBody"></div>
   </div>
   <div class="banner" id="updateBar">
     <p><b>Kotha version vachindi</b>Update chesi kotha features teesukondi.</p>
@@ -520,7 +557,7 @@
       $("meRole").textContent = me.roleLabel || me.role;
       if (allow("team.manage")) $("teamTab").classList.remove("hide");
       if (allow("ai.use")) $("officeTab").classList.remove("hide");
-      [["leads", "leads.view"], ["appts", "appts.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"]].forEach(function (p) {
+      [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"]].forEach(function (p) {
         var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
       });
       var firstTab = document.querySelector(".tab:not(.hide)");
@@ -546,7 +583,7 @@
       var heat = l.heat || "", s = src(l);
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
-        '<div class="row"><div><h3>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + '</div></div>' +
+        '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + '</div></div>' +
         '<div>' + (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '') + '<span class="badge src">' + s + '</span></div></div>' +
         '<div class="concern">' + esc(l.concern || l.message || "") + '</div>' +
         (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
@@ -595,6 +632,94 @@
           '<div class="acts">' + (a.ph ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(a.ph) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(a.ph) + '">💬 WhatsApp</a>' : '') + '</div></article>';
       }).join("") : '<div class="empty">No upcoming appointments. Agent books them in WhatsApp — they appear here.</div>';
     }
+    // ---- patient file ----------------------------------------------------
+    // The same person across every enquiry: their history, their notes, and
+    // their photos on one timeline, oldest first, so a before and an after
+    // taken months apart sit next to each other.
+    function ptapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/patient?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    var ptRows = [], ptOpen = null;
+    function loadPatients() {
+      var q = ($("ptQ").value || "").trim();
+      return ptapi("list", null, q ? "&q=" + encodeURIComponent(q) : "").then(function (j) {
+        ptRows = j.rows || [];
+        $("nPt").textContent = j.total || 0;
+        $("ptStat").textContent = j.total + " patients · " + j.repeats + " malli vachina vaaru";
+        $("ptList").innerHTML = ptRows.length ? ptRows.map(function (r) {
+          return '<article class="ptrow" data-act="pt-open" data-phone="' + esc(r.phone) + '">' +
+            '<div class="row1"><h3>' + esc(r.name) + ' <span class="meta">· ' + esc(r.phone) + "</span></h3>" +
+            "<div>" + (r.repeat ? '<span class="chip">' + r.visits + " sarlu</span> " : "") +
+            (r.everBooked ? '<span class="chip ok">visited</span>' : "") + "</div></div>" +
+            '<div class="meta">' + esc(String(r.concern || "").slice(0, 70)) + " · chivari sari " + ago(r.last) + "</div></article>";
+        }).join("") : '<div class="empty">Evaru dorakaledu.</div>';
+        syncBadges();
+      }).catch(function (e) { $("ptList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
+    function openPatient(phone) {
+      $("ptSheet").classList.add("open");
+      $("ptBody").innerHTML = '<div class="sk" style="margin-top:20px"><div></div><div></div><div></div></div>';
+      ptapi("get", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
+        ptOpen = j.patient; renderPatient();
+      }).catch(function (e) { $("ptBody").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
+    function closePatient() { $("ptSheet").classList.remove("open"); ptOpen = null; }
+    function renderPatient() {
+      var p = ptOpen; if (!p) return;
+      var money = "";
+      var tl = p.photos.length
+        ? '<div class="tl">' + p.photos.map(function (ph) {
+            return '<figure><img data-pid="' + esc(ph.id) + '" data-act="photo-open" alt="" /><figcaption>' + fmtDay(ph.ts) + "</figcaption></figure>";
+          }).join("") + "</div>"
+        : '<p class="meta">Inka photos ledu. Kinda 📷 nokki modati photo teeyandi — taruvata ikkade before/after pakka pakkana kanipistayi.</p>';
+
+      var visits = p.visits.length ? p.visits.map(function (v) {
+        return '<div class="vrow"><b>' + esc(v.concern || "Enquiry") + "</b>" +
+          '<div class="meta">' + fmtDay(v.ts) + " · " + esc(v.src) + " · " + esc(v.status) +
+          (v.slot ? " · 📅 " + esc(v.slot) : "") + "</div></div>";
+      }).join("") : '<p class="meta">Enquiries emi ledu.</p>';
+
+      var notes = p.notes.length ? p.notes.slice(0, 25).map(function (n) {
+        return '<div class="note"><b>' + esc(n.by || "") + "</b> · " + ago(n.ts) + " — " + esc(n.text) + "</div>";
+      }).join("") : '<p class="meta">Notes emi ledu.</p>';
+
+      var upcoming = p.appts.filter(function (a) { return a.at > Date.now(); });
+      $("ptBody").innerHTML =
+        '<div class="sheet-grip"></div>' +
+        '<div class="pt-head"><div><h2>' + esc(p.name) + "</h2>" +
+        '<div class="meta">' + esc(p.phone) + " · modati sari " + fmtDay(p.since) + "</div>" +
+        (p.allergies ? '<div class="meta" style="color:var(--hot);margin-top:4px">⚠️ ' + esc(p.allergies) + "</div>" : "") +
+        "</div><button class=\"btn btn--sm\" data-act=\"pt-close\">Close</button></div>" +
+
+        '<div class="pt-stats"><div><b>' + p.counts.visits + "</b><span>Enquiries</span></div>" +
+        "<div><b>" + p.counts.booked + "</b><span>Booked</span></div>" +
+        "<div><b>" + p.counts.photos + "</b><span>Photos</span></div>" +
+        "<div><b>" + p.counts.upcoming + "</b><span>Upcoming</span></div></div>" +
+
+        '<div class="acts">' +
+        '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc((p.visits[0] || {}).key || "") + '" data-name="' + esc(p.name) + '" data-phone="' + esc(p.phone) + '" href="tel:+91' + esc(p.phone) + '">📞 Call</a>' +
+        '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(p.phone) + '">💬 WhatsApp</a>' +
+        (NATIVE && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="patient" data-ref="' + esc(p.phone) + '" data-who="' + esc(p.name) + '">📷 Photo</button>' : "") +
+        (state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="pt-note" data-phone="' + esc(p.phone) + '" data-name="' + esc(p.name) + '">📝 Note</button>' +
+          '<button class="btn btn--sm" data-act="pt-edit" data-phone="' + esc(p.phone) + '">✎ Details</button>' : "") +
+        "</div>" +
+
+        '<div class="pt-sec"><h3>Before / after <span class="te" style="font-size:.85rem">· ఫోటోలు</span></h3>' + tl + "</div>" +
+        (upcoming.length ? '<div class="pt-sec"><h3>Upcoming</h3>' + upcoming.map(function (a) {
+          return '<div class="vrow"><b>' + fmtAt(a.at) + "</b><div class=\"meta\">" + esc(a.concern || "") + "</div></div>";
+        }).join("") + "</div>" : "") +
+        '<div class="pt-sec"><h3>Anni enquiries</h3>' + visits + "</div>" +
+        '<div class="pt-sec"><h3>Notes</h3>' + notes + "</div>";
+      paintThumbs($("ptBody"));
+    }
+    function fmtDay(ts) {
+      return new Date(ts).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "2-digit" });
+    }
+
     // ---- Batch 1 seat board ---------------------------------------------
     // One screen for the 10 seats: who has paid, who enquired and went quiet,
     // and who to call today. Enquiries and student records are merged on the
@@ -822,15 +947,16 @@
       leads:'<svg viewBox="0 0 24 24"><path d="M16 19v-1.5a3.5 3.5 0 0 0-3.5-3.5h-5A3.5 3.5 0 0 0 4 17.5V19"/><circle cx="10" cy="8" r="3.2"/><path d="M17 11h4M19 9v4"/></svg>',
       appts:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
       students:'<svg viewBox="0 0 24 24"><path d="M12 4 3 8.5l9 4.5 9-4.5L12 4Z"/><path d="M6.5 10.8v4.4c0 1.6 2.5 2.9 5.5 2.9s5.5-1.3 5.5-2.9v-4.4M21 8.5v5"/></svg>',
+      patients:'<svg viewBox="0 0 24 24"><path d="M12 20.5s-7-4.3-7-9.3A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 3.2c0 5-7 9.3-7 9.3Z"/><path d="M12 11.2v3.4M10.3 12.9h3.4"/></svg>',
       academy:'<svg viewBox="0 0 24 24"><path d="M5 20V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"/><path d="M5 20h14M9 8h6M9 12h6M9 16h3"/></svg>',
       office:'<svg viewBox="0 0 24 24"><path d="M12 3.5 13.7 9l5.3 1.8L13.7 12.6 12 18l-1.7-5.4L5 10.8 10.3 9 12 3.5Z"/><path d="M18.5 16.2l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></svg>',
       today:'<svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m4.5 17 4.7-4.2a2 2 0 0 1 2.7 0L20 19"/></svg>',
       reviews:'<svg viewBox="0 0 24 24"><path d="m12 4 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8L12 4Z"/></svg>',
       team:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'
     };
-    var NAV_LABEL = { leads:"Leads", appts:"Appts", students:"Students", academy:"Academy", office:"AI Office", today:"Post", reviews:"Reviews", team:"Panel" };
-    var NAV_PREF = ["leads","appts","students","office","academy","today","reviews","team"];
-    var NAV_BADGE = { leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad" };
+    var NAV_LABEL = { leads:"Leads", appts:"Appts", patients:"Patients", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", team:"Panel" };
+    var NAV_PREF = ["leads","appts","patients","academy","students","office","today","reviews","team"];
+    var NAV_BADGE = { leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad", patients:"nPt" };
 
     function plug(n) { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n]) || null; }
     function haptic(ms) {
@@ -891,9 +1017,9 @@
         if (nav.dataset.nav === "__more") { $("moreSheet").classList.add("open"); return; }
         closeSheet(); goTab(nav.dataset.nav); return;
       }
-      if (e.target.closest("[data-close]")) closeSheet();
+      if (e.target.closest("[data-close]")) { closeSheet(); closePatient(); }
     });
-    addEventListener("keydown", function (e) { if (e.key === "Escape") closeSheet(); });
+    addEventListener("keydown", function (e) { if (e.key === "Escape") { closeSheet(); closePatient(); } });
 
     // ---- push notifications (native app only) ---------------------------
     function papi(a, body) {
@@ -1259,6 +1385,7 @@
         }
         var viewer = document.querySelector(".viewer");
         if (viewer) { viewer.remove(); return; }
+        if ($("ptSheet").classList.contains("open")) { closePatient(); return; }
         var first = document.querySelector(".tab:not(.hide)");
         var cur = document.querySelector(".tab.on");
         if (first && cur && first !== cur) { first.click(); return; }
@@ -1352,7 +1479,7 @@
       var b = e.target.closest(".tab"); if (!b) return;
       var t = b.dataset.t;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === b); });
-      ["leads", "appts", "academy", "students", "office", "today", "reviews", "team"].forEach(function (x) { $("t-" + x).classList.toggle("hide", x !== t); });
+      ["leads", "appts", "patients", "academy", "students", "office", "today", "reviews", "team"].forEach(function (x) { $("t-" + x).classList.toggle("hide", x !== t); });
       $("appbar").querySelectorAll("[data-nav]").forEach(function (n) {
         n.classList.toggle("on", n.dataset.nav === t || (n.dataset.nav === "__more" && !$("appbar").querySelector('[data-nav="' + t + '"]')));
       });
@@ -1361,6 +1488,7 @@
       if (t === "students") loadStudents();
       if (t === "team") loadPanel();
       if (t === "academy") loadFunnel();
+      if (t === "patients") loadPatients();
     });
     // Deep link from an app shortcut or a shared URL: /staff.html#office
     var hashDone = false;
@@ -1395,6 +1523,7 @@
         .catch(function (x) { $("roleErr").textContent = x.message; });
     };
     if ($("acadRefresh")) $("acadRefresh").onclick = function () { loadFunnel(); };
+    if ($("ptQ")) { var ptT; $("ptQ").addEventListener("input", function () { clearTimeout(ptT); ptT = setTimeout(loadPatients, 260); }); }
     ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
     document.addEventListener("change", function (e) {
       var el = e.target;
@@ -1460,6 +1589,27 @@
         return;
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
+      if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "pt-close") { closePatient(); return; }
+      if (el.dataset.act === "pt-note") {
+        var nt2 = prompt((el.dataset.name || "Ee patient") + " gurinchi note:", "");
+        if (!nt2 || !nt2.trim()) return;
+        ptapi("note", { phone: el.dataset.phone, text: nt2.trim() })
+          .then(function (j) { ptOpen = j.patient; renderPatient(); toast("Note save ayindi"); })
+          .catch(function (x) { toast(x.message); });
+        return;
+      }
+      if (el.dataset.act === "pt-edit") {
+        var p0 = ptOpen || {};
+        var nm2 = prompt("Peru:", p0.name || "") ;
+        if (nm2 === null) return;
+        var al = prompt("Allergies leda jagratta vishayalu (khaali unte vadileyandi):", p0.allergies || "");
+        if (al === null) return;
+        ptapi("save", { phone: el.dataset.phone, name: nm2, allergies: al })
+          .then(function (j) { ptOpen = j.patient; renderPatient(); loadPatients(); toast("Save ayindi"); })
+          .catch(function (x) { toast(x.message); });
+        return;
+      }
       if (el.dataset.act === "seat-reserve") {
         var nm = el.dataset.name || prompt("Peru?") || "";
         if (!nm.trim()) { toast("Peru kavali"); return; }
