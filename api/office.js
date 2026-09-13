@@ -106,11 +106,13 @@ module.exports = async (req, res) => {
   const cfg = guard.kvConfig();
   if (!cfg) return json(res, 501, { error: "Storage not configured" });
   // Live powers from the Control panel, not the ones baked into the token.
-  const live = await staff.liveUser(cfg, me.phone);
+  const roleBook = await staff.loadRoles(cfg);
+  const live = await staff.liveUser(cfg, me.phone, roleBook);
   if (!live) return json(res, 403, { error: "Access removed" });
   if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
   me.role = live.role; me.name = live.name;
-  me.caps = await staff.capsFor(cfg, live);
+  me.caps = staff.effCaps(roleBook, live);
+  me.roleLabel = (roleBook[live.role] || {}).label || live.role;
   if (!has(me, "ai.use")) return json(res, 403, { error: "Mee role ki AI Office access ledu" });
   if (!process.env.ANTHROPIC_API_KEY) return json(res, 501, { error: "AI key configure cheyaledu" });
 
@@ -128,7 +130,7 @@ module.exports = async (req, res) => {
   const caps = (me && me.caps) || staff.capsOf(me.role);
   const system = `You are "DermaLuxe AI Office" — the internal assistant inside the clinic's staff dashboard. You are talking to a colleague, not a patient.
 
-WHO YOU ARE TALKING TO: ${me.name}, role "${(staff.ROLES[me.role] || {}).label || me.role}". They can access: ${caps.includes("*") ? "everything" : caps.join(", ")}. Never reveal data outside that list; if they ask for it, say their role doesn't have access and suggest asking the owner.
+WHO YOU ARE TALKING TO: ${me.name}, role "${me.roleLabel || me.role}". They can access: ${caps.includes("*") ? "everything" : caps.join(", ")}. Never reveal data outside that list; if they ask for it, say their role doesn't have access and suggest asking the owner.
 
 CLINIC
 ${CLINIC}

@@ -70,8 +70,23 @@ module.exports = async (req, res) => {
   const [id, sig] = t.split(".");
   let who = null;
 
+  // A staff token alone is not enough: the person must still exist, still be
+  // active, and still hold academy.material. A 30-day token from someone who
+  // has since been suspended or removed used to open the whole library.
   const staff = staffUser(req);
-  if (staff) who = { kind: "staff", name: staff.n };
+  if (staff && cfg) {
+    try {
+      const staffMod = require("./staff.js");
+      const roles = await staffMod.loadRoles(cfg);
+      const live = await staffMod.liveUser(cfg, digits10(staff.p), roles);
+      if (live && !live.off) {
+        const caps = staffMod.effCaps(roles, live);
+        const has = (c) => caps.includes("*") || caps.includes(c);
+        if (has("academy.material")) who = { kind: "staff", name: live.name, full: has("academy.certify") || has("*") };
+      }
+    } catch (e) { console.error("material: staff check failed", e && e.message); }
+    if (!who) return deny(res, "Mee login ki course material access ledu. Owner ni adagandi.");
+  }
   else if (id && sig && guard.safeEqual(sig, sign("acad:" + id).slice(0, 24))) {
     if (id[0] === "t") {                                   // trainer token  t<phone>.<sig>
       const ph = digits10(id.slice(1));
@@ -93,6 +108,8 @@ module.exports = async (req, res) => {
   if (book) {
     if (who.kind === "student")
       return deny(res, "The complete book is for trainers. Your day-by-day material is sent to you on WhatsApp every training morning.");
+    if (who.kind === "staff" && !who.full)
+      return deny(res, "Trainer manual trainers ki matrame. Mee login ki roju-vaari material link matrame undi.");
     if (book === "full") { file = "full-30-day-study-material.pdf"; nice = "DermaLuxe-Academy-30-Day-Study-Material-Skin-and-Hair.pdf"; }
     else if (book === "skin" || book === "hair") { file = `${book}-trainer-manual.pdf`; nice = `DermaLuxe-Academy-${book === "skin" ? "Skin" : "Hair"}-30-Day-Manual.pdf`; }
   } else {

@@ -157,15 +157,32 @@ module.exports = async (req, res) => {
   // Live powers, not the ones frozen into the login token: a role edit or a
   // revoked capability in the Control panel applies here on the next request.
   const staffMod = require("./staff.js");
-  const liveMe = await staffMod.liveUser(cfg, me.phone);
+  const roleBook = await staffMod.loadRoles(cfg);
+  const liveMe = await staffMod.liveUser(cfg, me.phone, roleBook);
   if (!liveMe) return json(res, 403, { error: "Access removed" });
   if (liveMe.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
-  const caps = await staffMod.capsFor(cfg, liveMe);
+  me.role = liveMe.role; me.name = liveMe.name;
+  const caps = staffMod.effCaps(roleBook, liveMe);
   const can = (c) => caps.includes("*") || caps.includes(c);
   if (!can("academy.view")) return json(res, 403, { error: "Mee role ki academy access ledu" });
-  if (["create", "pay", "send", "status", "note", "link", "material", "reopen"].includes(a) && !can("academy.edit"))
-    return json(res, 403, { error: "Mee role ki academy lo marpulu chese permission ledu" });
-  if (a === "certify" && !can("academy.certify")) return json(res, 403, { error: "Certificate ivvagaligedi owner/manager matrame" });
+  // One capability per action, so the owner can hand out fee entry without
+  // handing out certificates (and so on) from the Control panel.
+  const NEED = {
+    create: "academy.edit", status: "academy.edit", note: "academy.edit", reopen: "academy.edit", link: "academy.edit",
+    pay: "academy.money", send: "academy.docs", material: "academy.material",
+    certify: "academy.certify", delete: "academy.delete",
+  };
+  if (NEED[a] && !can(NEED[a])) {
+    const why = {
+      "academy.edit": "academy lo marpulu chese",
+      "academy.money": "fee payment record chese",
+      "academy.docs": "documents pampe",
+      "academy.material": "material link ichche",
+      "academy.certify": "certificate ichche",
+      "academy.delete": "student ni teesese",
+    }[NEED[a]];
+    return json(res, 403, { error: `Mee role ki ${why} permission ledu` });
+  }
   if (a === "list") {
     const rl0 = await guard.rateLimit(cfg, `rl:acl:${me.phone}`, 120, 3600);
     if (!rl0.allowed) return json(res, 429, { error: "Too many requests" });
@@ -243,6 +260,9 @@ module.exports = async (req, res) => {
     const raw = Array.isArray(b.which) ? b.which : [b.which || "admission"];
     const which = raw.map((x) => String(x)).filter((x) => ALLOW.includes(x));
     if (!which.length) return json(res, 400, { error: "which must be one of " + ALLOW.join(", ") });
+    // a certificate is a certificate however it is requested
+    if (which.includes("certificate") && !can("academy.certify"))
+      return json(res, 403, { error: "Certificate ivvagaligedi academy.certify power unna vallake" });
     let f;
     try { f = await buildDocs(cfg, s, which); }
     catch (e) { console.error("academy: send", e && e.message); return json(res, 200, { ok: false, warn: "Documents generate avvaledu — konchem sepu tarvata malli try cheyandi." }); }
@@ -294,7 +314,7 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, url: `${BASE}/academy-join.html?t=${linkToken(s.id)}` });
   }
   if (a === "delete") {
-    if (me.role !== "owner") return json(res, 403, { error: "Owner matrame" });
+    // capability, not a hardcoded role — see NEED above
     await guard.kvCommand(cfg, ["LREM", LIST, "1", s.id]).catch(() => {});
     await guard.kvCommand(cfg, ["DEL", `acad:st:${s.id}`]).catch(() => {});
     return json(res, 200, { ok: true });

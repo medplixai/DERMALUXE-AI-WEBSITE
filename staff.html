@@ -106,7 +106,10 @@
     .person h3{font-size:.98rem;font-weight:500}
     .person .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
     .sel{background:var(--ink2);border:1px solid var(--line);color:inherit;border-radius:100px;padding:6px 10px;font-size:.82rem}
-    .powers{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+    .powers{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+    .pwgrp{margin-bottom:8px}
+    .pwgrp-h{font-size:.74rem;letter-spacing:.08em;text-transform:uppercase;color:var(--g3);margin-bottom:5px}
+    .pwrow{display:flex;flex-wrap:wrap;gap:6px}
     .pw{display:inline-flex;align-items:center;gap:5px;background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:5px 10px;font-size:.78rem;cursor:pointer;color:var(--muted)}
     .pw input{appearance:none;width:13px;height:13px;border-radius:4px;border:1px solid var(--g3);cursor:pointer}
     .pw input:checked{background:var(--g3)}
@@ -236,7 +239,7 @@
         <div id="cp-roles" class="hide">
           <div class="box"><h2>Kotha role create cheyandi <span class="te" style="font-size:.9rem;color:var(--g3)">· కొత్త రోల్</span></h2>
             <p>Role peru pettandi, taruvata aa role ki e powers kavalo tick cheyandi. Ready unna role ni kuda marchochu.</p>
-            <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><input id="rKey" placeholder="key (english, e.g. front_desk)" style="max-width:190px" /><input id="rLabel" placeholder="Peru (e.g. Front desk)" style="min-width:150px" /><button class="btn btn--gold btn--sm" id="rAdd">Create</button></div>
+            <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><input id="rKey" placeholder="key (english, e.g. front_desk)" style="max-width:190px" /><input id="rLabel" placeholder="Peru (e.g. Front desk)" style="min-width:150px" /><input id="rTe" placeholder="తెలుగు పేరు" style="max-width:140px" /><button class="btn btn--gold btn--sm" id="rAdd">Create</button></div>
             <div class="err" id="roleErr"></div></div>
           <div id="roleList"></div>
         </div>
@@ -264,7 +267,7 @@
   (function () {
     var API = "/api/staff", TOK = "dl_staff_tok";
     var $ = function (id) { return document.getElementById(id); };
-    var state = { data: null, tab: "leads" };
+    var state = { data: null, tab: "leads", allow: function () { return false; } };
     var tok = null; try { tok = localStorage.getItem(TOK); } catch (e) {}
     function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
     function toast(m) { var t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 2200); }
@@ -340,6 +343,10 @@
       $("nAcad").textContent = d.academy.leads.length;
       renderLeads(); renderAppts(); renderAcademy(); renderToday(); renderReviews();
       if ($("dailyToggle")) $("dailyToggle").checked = !!d.dailyOn;
+      // buttons follow the powers, so nobody clicks something that will 403
+      [["seatMinus", "academy.seats"], ["seatPlus", "academy.seats"], ["stAdd", "academy.edit"]].forEach(function (p) {
+        var el = $(p[0]); if (el) el.classList.toggle("hide", !allow(p[1]));
+      });
     }
     function leadCard(l, compact) {
       var heat = l.heat || "", s = src(l);
@@ -409,14 +416,26 @@
       return api("panel").then(function (j) { panel = j; renderPanel(); })
         .catch(function (e) { toast(e.message); });
     }
-    function capChips(caps, roleCaps, checked, attrs) {
-      var all = panel.capList || {};
-      return Object.keys(all).map(function (c) {
-        var fromRole = roleCaps.indexOf("*") > -1 || roleCaps.indexOf(c) > -1;
-        var on = checked.indexOf("*") > -1 || checked.indexOf(c) > -1;
-        return '<label class="pw' + (on && fromRole ? " role" : "") + '"><input type="checkbox" ' + attrs +
-          ' data-cap="' + c + '"' + (on ? " checked" : "") + " />" + esc(all[c]) + "</label>";
+    // Powers, grouped by area so a long list stays readable.
+    function capChips(roleCaps, checked, attrs) {
+      var all = panel.capList || {}, te = panel.capTe || {};
+      var groups = panel.capGroups || [{ key: "all", label: "Powers", te: "", caps: Object.keys(all) }];
+      return groups.map(function (g) {
+        var chips = g.caps.filter(function (c) { return all[c]; }).map(function (c) {
+          var fromRole = roleCaps.indexOf("*") > -1 || roleCaps.indexOf(c) > -1;
+          var on = checked.indexOf("*") > -1 || checked.indexOf(c) > -1;
+          return '<label class="pw' + (on && fromRole ? " role" : "") + '" title="' + esc(te[c] || "") + '"><input type="checkbox" ' + attrs +
+            ' data-cap="' + c + '"' + (on ? " checked" : "") + " />" + esc(all[c]) + "</label>";
+        }).join("");
+        return '<div class="pwgrp"><div class="pwgrp-h">' + esc(g.label) + (g.te ? ' <span class="te">' + esc(g.te) + '</span>' : '') + '</div><div class="pwrow">' + chips + '</div></div>';
       }).join("");
+    }
+    // Plain-language summary of what one person can actually do.
+    function capWords(caps) {
+      var all = panel.capList || {};
+      if (caps.indexOf("*") > -1) return "Anni — full access";
+      var names = caps.filter(function (c) { return all[c]; }).map(function (c) { return all[c]; });
+      return names.length ? names.join(" · ") : "Em cheyaleru — kaneesam oka power ivvandi";
     }
     function renderPanel() {
       if (!panel) return;
@@ -442,8 +461,9 @@
           '<div class="acts"><select class="sel" data-act="p-role" data-phone="' + esc(u.phone) + '">' + roleOpts(u.role) + '</select>' +
           '<button class="btn btn--sm" data-act="p-suspend" data-phone="' + esc(u.phone) + '" data-off="' + (u.off ? "0" : "1") + '">' + (u.off ? "Turn on" : "Turn off") + '</button>' +
           '<button class="btn btn--sm" data-act="p-remove" data-phone="' + esc(u.phone) + '">Remove</button></div></div>' +
-          '<div class="powers">' + capChips(null, rc, u.caps, 'data-act="p-cap" data-phone="' + esc(u.phone) + '"') + '</div>' +
-          '<div class="meta" style="margin-top:6px;font-size:.76rem">Grey tick = role nunchi vachina power. Gold tick = ee okka manishiki matrame ichinadi.</div>' +
+          '<div class="meta" style="margin-top:6px">Ippudu cheyagalavi: ' + esc(capWords(u.caps)) + '</div>' +
+          '<div class="powers">' + capChips(rc, u.caps, 'data-act="p-cap" data-phone="' + esc(u.phone) + '"') + '</div>' +
+          '<div class="meta" style="margin-top:8px;font-size:.76rem">Grey tick = role nunchi vachina power. Gold tick = ee okka manishiki matrame ichinadi. Role ichina power ni untick cheste vaariki matrame aagipotundi.</div>' +
           '</div>';
       }).join("");
       $("peopleList").innerHTML = owners + (people || '<div class="box"><p>Inka evaru staff ledu — paina number petti add cheyandi.</p></div>');
@@ -453,15 +473,20 @@
         var r = R[k];
         if (k === "owner") {
           return '<div class="rolecard"><div class="top"><div><h3 style="font-size:1rem;font-weight:500">' + esc(r.label) + ' <span class="te" style="color:var(--g3)">' + esc(r.te || "") + '</span></h3>' +
-            '<div class="meta">Anni powers. Idi marchalemu.</div></div><span class="badge warm">Locked</span></div></div>';
+            '<div class="meta">' + ((panel.owners || []).length) + ' mandhi · anni powers. Idi marchalemu.</div></div><span class="badge warm">Locked</span></div></div>';
         }
         var used = (panel.people || []).filter(function (u) { return u.role === k; }).length;
         return '<div class="rolecard" data-role="' + esc(k) + '"><div class="top"><div><h3 style="font-size:1rem;font-weight:500">' + esc(r.label) +
-          ' <span class="te" style="color:var(--g3)">' + esc(r.te || "") + '</span></h3><div class="meta">' + esc(k) + ' · ' + used + ' mandhi' +
-          (r.builtin ? (r.edited ? " · edited" : " · default") : " · custom") + '</div></div>' +
+          ' <span class="te" style="color:var(--g3)">' + esc(r.te || "") + '</span></h3><div class="meta">' + esc(k) + ' · ' + used + ' mandhi · ' +
+          r.caps.length + ' powers' + (r.builtin ? (r.edited ? " · edited" : " · default") : " · custom") + '</div></div>' +
           '<div class="acts"><button class="btn btn--gold btn--sm" data-act="r-save" data-role="' + esc(k) + '">Save</button>' +
+          '<button class="btn btn--sm" data-act="r-copy" data-role="' + esc(k) + '">Copy</button>' +
           (r.edited || !r.builtin ? '<button class="btn btn--sm" data-act="r-del" data-role="' + esc(k) + '" data-builtin="' + (r.builtin ? "1" : "0") + '">' + (r.builtin ? "Reset" : "Delete") + '</button>' : '') +
-          '</div></div><div class="powers">' + capChips(null, [], r.caps, 'data-act="r-cap" data-role="' + esc(k) + '"') + '</div></div>';
+          '</div></div>' +
+          '<div class="noteform" style="margin:8px 0;flex-wrap:wrap"><input data-f="label" value="' + esc(r.label) + '" placeholder="Role peru" style="max-width:170px" />' +
+          '<input data-f="te" value="' + esc(r.te || "") + '" placeholder="తెలుగు పేరు" style="max-width:150px" />' +
+          '<input data-f="note" value="' + esc(r.note || "") + '" placeholder="Ee role evariki? (note)" /></div>' +
+          '<div class="powers">' + capChips([], r.caps, 'data-act="r-cap" data-role="' + esc(k) + '"') + '</div></div>';
       }).join("");
 
       // --- controls
@@ -496,7 +521,8 @@
       var caps = [];
       card.querySelectorAll('input[data-act="r-cap"]').forEach(function (el) { if (el.checked) caps.push(el.dataset.cap); });
       var r = panel.roles[key] || {};
-      api("role-save", { key: key, label: r.label || key, te: r.te || "", caps: caps })
+      var f = function (n) { var el = card.querySelector('input[data-f="' + n + '"]'); return el ? el.value.trim() : ""; };
+      api("role-save", { key: key, label: f("label") || r.label || key, te: f("te"), note: f("note"), caps: caps })
         .then(function () { toast("Role saved"); return loadPanel(); })
         .catch(function (e) { $("roleErr").textContent = e.message; toast(e.message); });
     }
@@ -521,8 +547,8 @@
       if (key.length < 2) { $("roleErr").textContent = "Role key kaneesam 2 english letters undali (e.g. front_desk)"; return; }
       if (!label) { $("roleErr").textContent = "Role peru ivvandi"; return; }
       // A new role starts with the safest useful power; tick the rest and Save.
-      api("role-save", { key: key, label: label, te: "", caps: ["leads.view"] })
-        .then(function () { $("rKey").value = ""; $("rLabel").value = ""; toast(label + " role created — ippudu powers tick cheyandi"); return loadPanel(); })
+      api("role-save", { key: key, label: label, te: $("rTe").value.trim(), caps: ["leads.view"] })
+        .then(function () { $("rKey").value = ""; $("rLabel").value = ""; $("rTe").value = ""; toast(label + " role created — ippudu powers tick cheyandi"); return loadPanel(); })
         .catch(function (x) { $("roleErr").textContent = x.message; });
     };
     ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
@@ -546,6 +572,16 @@
       if (el.dataset.act === "p-remove") { if (!confirm("Remove access for " + el.dataset.phone + "?")) return; api("team-remove", { phone: el.dataset.phone }).then(function () { toast("Removed"); return loadPanel(); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "p-suspend") { var off = el.dataset.off === "1"; if (off && !confirm("Ee login ni off chestara?")) return; api("team-suspend", { phone: el.dataset.phone, off: off }).then(function () { toast(off ? "Access off" : "Access on"); return loadPanel(); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "r-save") { saveRole(el.dataset.role); }
+      if (el.dataset.act === "r-copy") {
+        var src = panel.roles[el.dataset.role] || {};
+        var nk = prompt("Kotha role key (english, e.g. front_desk):", el.dataset.role + "_2");
+        if (!nk) return;
+        nk = nk.trim().toLowerCase().replace(/[^a-z0-9_]/g, "");
+        if (nk.length < 2) { toast("Key kaneesam 2 english letters undali"); return; }
+        api("role-save", { key: nk, label: (src.label || nk) + " copy", te: src.te || "", note: src.note || "", caps: src.caps.slice() })
+          .then(function () { toast("Copy ayindi — ippudu peru & powers marchandi"); return loadPanel(); })
+          .catch(function (x) { toast(x.message); });
+      }
       if (el.dataset.act === "r-del") {
         var builtin = el.dataset.builtin === "1";
         if (!confirm(builtin ? "Ee role ni default ki reset chestara?" : "Ee role ni teesestara? Ee role lo unna vallu Staff ki veltaru.")) return;
@@ -572,11 +608,11 @@
           '<div class="concern">Fee ' + money(s.fee) + ' · Paid <b style="color:var(--ok)">' + money(s.paid) + '</b> · Balance <b style="color:' + (bal ? "var(--hot)" : "var(--ok)") + '">' + money(bal) + '</b>' + (s.certNo ? ' · Cert ' + esc(s.certNo) : "") + '</div>' +
           '<div class="acts">' +
           '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(s.phone) + '">💬 WhatsApp</a>' +
-          '<button class="btn btn--sm" data-sact="link" data-id="' + esc(s.id) + '">🔗 Form link</button>' +
-          '<button class="btn btn--sm" data-sact="pay" data-id="' + esc(s.id) + '">💰 Record payment</button>' +
-          '<button class="btn btn--sm" data-sact="send" data-id="' + esc(s.id) + '">📄 Resend docs</button>' +
-          '<button class="btn btn--sm" data-sact="material" data-id="' + esc(s.id) + '">📚 Material link</button>' +
-          (state.data.me.role === "owner" ? '<button class="btn btn--sm btn--gold" data-sact="certify" data-id="' + esc(s.id) + '">🎓 Certificate</button>' : "") +
+          (state.allow("academy.edit") ? '<button class="btn btn--sm" data-sact="link" data-id="' + esc(s.id) + '">🔗 Form link</button>' : "") +
+          (state.allow("academy.money") ? '<button class="btn btn--sm" data-sact="pay" data-id="' + esc(s.id) + '">💰 Record payment</button>' : "") +
+          (state.allow("academy.docs") ? '<button class="btn btn--sm" data-sact="send" data-id="' + esc(s.id) + '">📄 Resend docs</button>' : "") +
+          (state.allow("academy.material") ? '<button class="btn btn--sm" data-sact="material" data-id="' + esc(s.id) + '">📚 Material link</button>' : "") +
+          (state.allow("academy.certify") ? '<button class="btn btn--sm btn--gold" data-sact="certify" data-id="' + esc(s.id) + '">🎓 Certificate</button>' : "") +
           '</div><div class="notes">' + notes + '<form class="noteform" data-sact="note" data-id="' + esc(s.id) + '"><input placeholder="Note…" maxlength="300" /><button class="btn btn--sm" type="submit">Add</button></form></div></article>';
       }).join("") : '<div class="empty">No students yet. Advance pay chesina vaarini paina add cheyandi.</div>';
     }

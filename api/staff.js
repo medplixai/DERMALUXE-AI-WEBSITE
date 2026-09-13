@@ -10,37 +10,81 @@ const notify = require("./_notify.js");
 const LEADS = "dl_leads", STATUS = "dl_status", NOTES = "dl_notes", USERS = "staff:users";
 
 // ---- roles & capabilities ---------------------------------------------------
+// One capability = one thing a person can actually do. Every entry below is
+// enforced somewhere real; nothing here is decorative. `te` is the Telugu
+// label shown beside it, `area` groups them in the Control panel.
 const CAPS = {
-  "leads.view": "Leads & contact details", "leads.edit": "Lead status + call notes", "leads.delete": "Delete leads",
-  "appts.view": "Appointments", "academy.view": "Academy students & seats", "academy.edit": "Add students, payments, documents",
-  "academy.certify": "Issue certificates", "posts.view": "Today's post & queue", "posts.toggle": "Daily auto-post on/off",
-  "reviews.view": "Patient ratings", "team.manage": "Staff logins & password", "ai.use": "AI Office assistant",
+  "leads.view":       "Leads & contact details",
+  "leads.edit":       "Lead status + call notes",
+  "leads.delete":     "Delete a lead",
+  "appts.view":       "Appointments",
+  "academy.view":     "Academy students & seats",
+  "academy.edit":     "Add a student, edit details & notes",
+  "academy.seats":    "Change the booked-seat count",
+  "academy.money":    "Record fee payments",
+  "academy.docs":     "Send receipt / admission / ID card",
+  "academy.material": "Send course material links",
+  "academy.certify":  "Issue certificates",
+  "academy.delete":   "Remove a student",
+  "posts.view":       "Today's post & queue",
+  "posts.toggle":     "Daily auto-post on/off",
+  "reviews.view":     "Patient ratings",
+  "ai.use":           "AI Office assistant",
+  "team.manage":      "Control panel — logins & roles",
+  "settings.manage":  "Dashboard password & switches",
 };
+const CAP_TE = {
+  "leads.view": "లీడ్స్ చూడటం", "leads.edit": "లీడ్ స్టేటస్ & నోట్స్", "leads.delete": "లీడ్ తొలగించడం",
+  "appts.view": "అపాయింట్‌మెంట్లు", "academy.view": "అకాడమీ స్టూడెంట్స్", "academy.edit": "స్టూడెంట్ యాడ్ / ఎడిట్",
+  "academy.seats": "సీట్ల లెక్క మార్చడం", "academy.money": "ఫీజు నమోదు", "academy.docs": "డాక్యుమెంట్లు పంపడం",
+  "academy.material": "మెటీరియల్ లింక్", "academy.certify": "సర్టిఫికెట్", "academy.delete": "స్టూడెంట్ తొలగింపు",
+  "posts.view": "ఈరోజు పోస్ట్", "posts.toggle": "ఆటో-పోస్ట్ ఆన్/ఆఫ్", "reviews.view": "పేషెంట్ రేటింగ్స్",
+  "ai.use": "AI ఆఫీస్", "team.manage": "కంట్రోల్ ప్యానెల్", "settings.manage": "సెట్టింగ్స్",
+};
+const CAP_GROUPS = [
+  { key: "leads",   label: "Leads & patients", te: "లీడ్స్",        caps: ["leads.view", "leads.edit", "leads.delete"] },
+  { key: "appts",   label: "Appointments",     te: "అపాయింట్‌మెంట్లు", caps: ["appts.view"] },
+  { key: "academy", label: "Academy",          te: "అకాడమీ",        caps: ["academy.view", "academy.edit", "academy.seats", "academy.money", "academy.docs", "academy.material", "academy.certify", "academy.delete"] },
+  { key: "posts",   label: "Marketing & posts", te: "మార్కెటింగ్",   caps: ["posts.view", "posts.toggle"] },
+  { key: "reviews", label: "Reviews",          te: "రివ్యూలు",      caps: ["reviews.view"] },
+  { key: "admin",   label: "Admin",            te: "అడ్మిన్",       caps: ["ai.use", "team.manage", "settings.manage"] },
+];
 // Shipped defaults. The owner can retune any of these, or invent new roles,
 // from the Control panel — the edits live in KV hash `staff:roles` and are
 // merged over these on every request. `owner` is deliberately not editable.
 const BUILTIN_ROLES = {
-  owner:     { label: "Owner",     te: "ఓనర్",       caps: ["*"] },
-  manager:   { label: "Manager",   te: "మేనేజర్",     caps: ["leads.view","leads.edit","appts.view","academy.view","academy.edit","academy.certify","posts.view","posts.toggle","reviews.view","ai.use"] },
-  reception: { label: "Reception", te: "రిసెప్షన్",   caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
-  therapist: { label: "Therapist", te: "థెరపిస్ట్",   caps: ["leads.view","appts.view","posts.view","ai.use"] },
-  trainer:   { label: "Trainer",   te: "ట్రైనర్",     caps: ["academy.view","academy.edit","appts.view","ai.use"] },
-  marketing: { label: "Marketing", te: "మార్కెటింగ్", caps: ["leads.view","posts.view","posts.toggle","reviews.view","ai.use"] },
-  staff:     { label: "Staff",     te: "స్టాఫ్",      caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
+  owner:     { label: "Owner",     te: "ఓనర్",       note: "Anni powers — ee role marchalemu.",
+    caps: ["*"] },
+  manager:   { label: "Manager",   te: "మేనేజర్",     note: "Clinic mottam nadipevaru. Delete tappa dadapu anni.",
+    caps: ["leads.view","leads.edit","appts.view","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","posts.view","posts.toggle","reviews.view","ai.use","team.manage"] },
+  doctor:    { label: "Doctor",    te: "డాక్టర్",     note: "Consultations + academy training. Money/settings ledu.",
+    caps: ["leads.view","leads.edit","appts.view","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use"] },
+  reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count.",
+    caps: ["leads.view","leads.edit","appts.view","academy.view","academy.seats","posts.view","ai.use"] },
+  accounts:  { label: "Accounts",  te: "అకౌంట్స్",    note: "Fees, receipts, documents. Leads edit cheyaleru.",
+    caps: ["leads.view","appts.view","academy.view","academy.money","academy.docs","reviews.view","ai.use"] },
+  therapist: { label: "Therapist", te: "థెరపిస్ట్",   note: "Treatments chese vaaru — chudatam matrame.",
+    caps: ["leads.view","appts.view","posts.view","ai.use"] },
+  trainer:   { label: "Trainer",   te: "ట్రైనర్",     note: "Academy batch nadipevaru.",
+    caps: ["academy.view","academy.edit","academy.material","academy.docs","appts.view","ai.use"] },
+  marketing: { label: "Marketing", te: "మార్కెటింగ్", note: "Posts, campaigns, ratings.",
+    caps: ["leads.view","posts.view","posts.toggle","reviews.view","ai.use"] },
+  staff:     { label: "Staff",     te: "స్టాఫ్",      note: "Default role — basic access.",
+    caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
 };
 const ROLES_KEY = "staff:roles";
 const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
 // Merged role book: defaults, then the owner's saved edits and custom roles.
 async function loadRoles(cfg) {
   const out = {};
-  for (const k of Object.keys(BUILTIN_ROLES)) out[k] = { label: BUILTIN_ROLES[k].label, te: BUILTIN_ROLES[k].te, caps: BUILTIN_ROLES[k].caps.slice(), builtin: true, edited: false };
+  for (const k of Object.keys(BUILTIN_ROLES)) out[k] = { label: BUILTIN_ROLES[k].label, te: BUILTIN_ROLES[k].te, note: BUILTIN_ROLES[k].note || "", caps: BUILTIN_ROLES[k].caps.slice(), builtin: true, edited: false };
   const saved = await hashAll(cfg, ROLES_KEY).catch(() => ({}));
   for (const k of Object.keys(saved)) {
     if (k === "owner") continue; // owner is always full access
     let v = null; try { v = JSON.parse(saved[k]); } catch (e) { continue; }
     if (!v || typeof v !== "object") continue;
     const caps = Array.isArray(v.caps) ? v.caps.filter((c) => CAPS[c]) : [];
-    out[k] = { label: clean(v.label, 40) || k, te: clean(v.te, 40), caps, builtin: !!BUILTIN_ROLES[k], edited: true };
+    out[k] = { label: clean(v.label, 40) || k, te: clean(v.te, 40), note: clean(v.note, 120), caps, builtin: !!BUILTIN_ROLES[k], edited: true };
   }
   return out;
 }
@@ -154,7 +198,7 @@ async function dataPayload(cfg, me) {
   const booked = Math.max(0, Math.min(10, Number(bk.result || 0)));
   const academy = leads.filter((l) => /^academy/i.test(String(l.concern || "")));
   let today = null; try { today = dp.result ? JSON.parse(dp.result) : null; } catch (e) {}
-  const queue = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
+  let queue = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const reviews = (rv.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const roles = await loadRoles(cfg);
   const team = can(me, "team.manage", roles) ? await users(cfg) : null;
@@ -162,8 +206,12 @@ async function dataPayload(cfg, me) {
   if (!allow("leads.view")) leads.length = 0;
   if (!allow("reviews.view")) reviews.length = 0;
   if (!allow("appts.view")) appts.length = 0;
+  // Academy and the post queue used to go out to every logged-in user.
+  if (!allow("academy.view")) academy.length = 0;
+  const seePosts = allow("posts.view");
+  if (!seePosts) { today = null; queue.length = 0; }
   const rk = roleOf(me.role, roles);
-  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, leads, statuses: STATUSES, appts, academy: { booked, left: 10 - booked, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now };
+  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, statuses: STATUSES, appts, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now };
 }
 
 module.exports = async (req, res) => {
@@ -231,6 +279,7 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["DEL", `staff:otp:${phone}`]);
     const u = await resolveUser(cfg, phone);
     if (!u) return json(res, 403, { error: "Not allowed" });
+    if (u.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
     await guard.kvCommand(cfg, ["HSET", "staff:lastlogin", phone, String(Date.now())]).catch(() => {});
     return json(res, 200, { ok: true, token: makeToken(u), me: u });
   }
@@ -247,6 +296,9 @@ module.exports = async (req, res) => {
   // Powers are recomputed here on every request, so a role edit or a revoked
   // capability takes effect immediately — no re-login, no stale token.
   const allow = (c) => can(me, c, roles);
+
+  const rlRead = await guard.rateLimit(cfg, `rl:str:${me.phone}`, 900, 3600);
+  if (!rlRead.allowed) return json(res, 429, { error: "Too many requests" });
 
   if (a === "me") return json(res, 200, { ok: true, me: Object.assign({}, me, { caps: effCaps(roles, me) }) });
   if (a === "data") return json(res, 200, await dataPayload(cfg, me));
@@ -268,7 +320,7 @@ module.exports = async (req, res) => {
     }).sort((x, y) => (y.lastLogin || 0) - (x.lastLogin || 0));
     const audit = (log.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
     return json(res, 200, {
-      ok: true, roles, capList: CAPS, people,
+      ok: true, roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, people,
       owners: ownerPhones().map((ph) => ({ phone: ph, lastLogin: Number(last[ph] || 0) || null })),
       passwordSet: !!(pwd && pwd.result) || !!process.env.STAFF_PASSWORD,
       audit, me: Object.assign({}, me, { caps: effCaps(roles, me) }),
@@ -298,7 +350,7 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, notes: list.slice(0, 30) });
   }
   if (a === "academy") {
-    if (!allow("academy.edit")) return json(res, 403, { error: "Mee role ki academy seats marche permission ledu" });
+    if (!allow("academy.seats")) return json(res, 403, { error: "Mee role ki academy seats marche permission ledu" });
     const n = Math.max(0, Math.min(10, Number(b.booked)));
     if (Number.isNaN(n)) return json(res, 400, { error: "booked 0-10" });
     await guard.kvCommand(cfg, ["SET", "acad:booked", String(n)]);
@@ -307,8 +359,29 @@ module.exports = async (req, res) => {
 
   if (a === "delete" && !allow("leads.delete")) return json(res, 403, { error: "Owner matrame" });
   if (a === "daily" && !allow("posts.toggle")) return json(res, 403, { error: "Mee role ki idi marche permission ledu" });
-  const PANEL = ["team-add", "team-remove", "team-role", "team-caps", "team-suspend", "set-password", "role-save", "role-delete"];
+  const PANEL = ["team-add", "team-remove", "team-role", "team-caps", "team-suspend", "role-save", "role-delete"];
   if (PANEL.includes(a) && !allow("team.manage")) return json(res, 403, { error: "Idi control panel access unna vallake" });
+  // A non-owner with control-panel access may only pass on powers they hold
+  // themselves, and may never edit their own record — otherwise the panel is
+  // a one-click route to full access.
+  const isOwner = me.role === "owner";
+  const myCaps = effCaps(roles, me);
+  const cannotGrant = (list) => (list || []).filter((c) => !myCaps.includes("*") && !myCaps.includes(c));
+  if (!isOwner && ["team-role", "team-caps", "team-suspend", "team-remove"].includes(a) && digits10(b.phone) === me.phone)
+    return json(res, 403, { error: "Mee sonta access ni meere marchukolekaru. Owner ni adagandi." });
+  if (!isOwner && ["team-add", "team-role"].includes(a)) {
+    const short = cannotGrant(capsOf(roleOf(b.role, roles), roles));
+    if (short.length) return json(res, 403, { error: `Meeku leni powers ivvalemu: ${short.map((c) => CAPS[c] || c).join(", ")}` });
+  }
+  if (!isOwner && a === "team-caps") {
+    const short = cannotGrant(Array.isArray(b.extra) ? b.extra : []);
+    if (short.length) return json(res, 403, { error: `Meeku leni powers ivvalemu: ${short.map((c) => CAPS[c] || c).join(", ")}` });
+  }
+  if (!isOwner && a === "role-save") {
+    const short = cannotGrant(Array.isArray(b.caps) ? b.caps : []);
+    if (short.length) return json(res, 403, { error: `Meeku leni powers role ki pettalemu: ${short.map((c) => CAPS[c] || c).join(", ")}` });
+  }
+  if (a === "set-password" && !allow("settings.manage")) return json(res, 403, { error: "Password marchagaligedi settings access unna vallake" });
   if (a === "team-add") {
     const phone = digits10(b.phone), name = clean(b.name, 60);
     const role = roleOf(b.role, roles);
@@ -362,6 +435,7 @@ module.exports = async (req, res) => {
     const phone = digits10(b.phone), off = b.off === true;
     const all = await users(cfg);
     if (!all[phone]) return json(res, 404, { error: "Staff member not found" });
+    if (!isOwner && all[phone].role === "owner") return json(res, 403, { error: "Owner record ni marchagaligedi owner matrame" });
     all[phone].off = off;
     await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify(all[phone])]);
     await audit(cfg, me, `${all[phone].name} (${phone}) access ${off ? "OFF chesaru" : "malli ON chesaru"}`);
@@ -373,6 +447,7 @@ module.exports = async (req, res) => {
   if (a === "team-remove") {
     const phone = digits10(b.phone);
     const all = await users(cfg);
+    if (!isOwner && all[phone] && all[phone].role === "owner") return json(res, 403, { error: "Owner record ni teeyagaligedi owner matrame" });
     await guard.kvCommand(cfg, ["HDEL", USERS, phone]);
     await guard.kvCommand(cfg, ["HDEL", "staff:lastlogin", phone]).catch(() => {});
     await audit(cfg, me, `Removed login ${(all[phone] && all[phone].name) || ""} (${phone})`);
@@ -387,7 +462,7 @@ module.exports = async (req, res) => {
     if (!caps.length) return json(res, 400, { error: "Kaneesam oka power select cheyandi" });
     if (caps.includes("team.manage") && me.role !== "owner") return json(res, 403, { error: "Control panel power ivvagaligedi owner matrame" });
     const label = clean(b.label, 40) || key;
-    await guard.kvCommand(cfg, ["HSET", ROLES_KEY, key, JSON.stringify({ label, te: clean(b.te, 40), caps })]);
+    await guard.kvCommand(cfg, ["HSET", ROLES_KEY, key, JSON.stringify({ label, te: clean(b.te, 40), note: clean(b.note, 120), caps })]);
     await audit(cfg, me, `Role ${label} (${key}) — ${caps.map((c) => CAPS[c] || c).join(", ")}`);
     return json(res, 200, { ok: true, roles: await loadRoles(cfg) });
   }
@@ -424,6 +499,7 @@ module.exports = async (req, res) => {
 };
 module.exports.ROLES = BUILTIN_ROLES;
 module.exports.CAPS = CAPS;
+module.exports.CAP_GROUPS = CAP_GROUPS;
 module.exports.capsOf = capsOf;
 module.exports.can = can;
 module.exports.loadRoles = loadRoles;
