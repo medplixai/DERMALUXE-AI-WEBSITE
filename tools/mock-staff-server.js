@@ -60,6 +60,7 @@ function data() {
   };
 }
 
+let mockMoved = 0;
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json", ".json": "application/json" };
 
 http.createServer((req, res) => {
@@ -90,6 +91,12 @@ http.createServer((req, res) => {
       me: { phone: "9010427777", name: "Owner (mock)", role: "owner", caps: ["*"] },
     });
     if (a === "login" || a === "verify") return send(200, { ok: true, token: "mock.token" });
+    return send(200, { ok: true });
+  }
+  if (u.pathname === "/api/kvmove") {
+    const a = u.searchParams.get("a") || "status";
+    if (a === "status") return send(200, { ok: true, from: 4180, to: mockMoved, cursor: "0", live: "redis (america)" });
+    if (a === "copy") { mockMoved = Math.min(4180, mockMoved + 200); return send(200, { ok: true, moved: 200, skipped: 0, done: mockMoved >= 4180 }); }
     return send(200, { ok: true });
   }
   if (u.pathname.startsWith("/api/")) return send(200, { ok: true, rows: [], photos: [], days: [], team: [] });
