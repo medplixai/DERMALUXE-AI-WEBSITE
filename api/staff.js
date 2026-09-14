@@ -283,7 +283,11 @@ async function leadPage(cfg, offset, count) {
 }
 
 async function dataPayload(cfg, me, knownRoles) {
-  const [page, ar, bk, dp, q, rv, en] = await Promise.all([
+  const roles = knownRoles || await loadRoles(cfg);
+  const caps0 = effCaps(roles, me), may = (c) => caps0.includes("*") || caps0.includes(c);
+  // The team list used to be fetched after everything else, one more wait for
+  // something nothing else depended on. It goes with the rest.
+  const [page, ar, bk, dp, q, rv, en, teamRaw] = await Promise.all([
     leadPage(cfg, 0, LEAD_PAGE),
     guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({})),
     guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({})),
@@ -291,6 +295,7 @@ async function dataPayload(cfg, me, knownRoles) {
     guard.kvCommand(cfg, ["LRANGE", "adm:queue", "0", "19"]).catch(() => ({})),
     guard.kvCommand(cfg, ["LRANGE", "rv:log", "0", "29"]).catch(() => ({})),
     guard.kvCommand(cfg, ["GET", "dp:enabled"]).catch(() => ({})),
+    may("team.manage") ? users(cfg).catch(() => ({})) : Promise.resolve(null),
   ]);
   const leads = page.leads;
   const now = Date.now();
@@ -302,9 +307,8 @@ async function dataPayload(cfg, me, knownRoles) {
   let today = null; try { today = dp.result ? JSON.parse(dp.result) : null; } catch (e) {}
   let queue = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const reviews = (rv.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
-  const roles = knownRoles || await loadRoles(cfg);
-  const team = can(me, "team.manage", roles) ? await users(cfg) : null;
-  const caps = effCaps(roles, me), allow = (c) => caps.includes("*") || caps.includes(c);
+  const team = teamRaw;
+  const caps = caps0, allow = may;
   if (!allow("leads.view")) { leads.length = 0; page.leadsTotal = 0; page.more = false; }
   if (!allow("reviews.view")) reviews.length = 0;
   if (!allow("appts.view")) appts.length = 0;
@@ -393,14 +397,20 @@ module.exports = async (req, res) => {
   // Re-check the allowlist so removed staff lose access immediately — the
   // role book, the person and their session epoch, asked for together
   // because none of them depends on the others.
-  let rolesRaw = {}, userRaw = null, epochRaw = 0;
+  // The rate limiter rides along: counting this request does not depend on
+  // who is making it, so it costs nothing extra here and saves a whole trip.
+  const rlKey = `rl:str:${me.phone}`;
+  let rolesRaw = {}, userRaw = null, epochRaw = 0, rlCount = 0, rlTtl = -1;
   try {
-    const [rr, ur, er] = await guard.kvPipeline(cfg, [
+    const [rr, ur, er, n, ttl] = await guard.kvPipeline(cfg, [
       ["HGETALL", ROLES_KEY],
       ["HGET", USERS, me.phone],
       ["HGET", EPOCH_KEY, me.phone],
+      ["INCR", rlKey],
+      ["TTL", rlKey],
     ]);
     rolesRaw = hashOf(rr); userRaw = ur; epochRaw = er;
+    rlCount = Number(n || 0); rlTtl = Number(ttl);
   } catch (err) {
     console.error("staff: batched read", err && err.message);
     rolesRaw = await hashAll(cfg, ROLES_KEY).catch(() => ({}));
@@ -417,8 +427,13 @@ module.exports = async (req, res) => {
   // capability takes effect immediately — no re-login, no stale token.
   const allow = (c) => can(me, c, roles);
 
-  const rlRead = await guard.rateLimit(cfg, `rl:str:${me.phone}`, 900, 3600);
-  if (!rlRead.allowed) return json(res, 429, { error: "Too many requests" });
+  if (rlCount > 900) return json(res, 429, { error: "Too many requests" });
+  // Only the first request of an hour needs a second trip to set the window.
+  if (rlCount > 0 && rlTtl < 0) guard.kvCommand(cfg, ["EXPIRE", rlKey, "3600"]).catch(() => {});
+  if (!rlCount) {                                   // the batched read fell back
+    const rlRead = await guard.rateLimit(cfg, rlKey, 900, 3600);
+    if (!rlRead.allowed) return json(res, 429, { error: "Too many requests" });
+  }
 
   if (a === "me") return json(res, 200, { ok: true, me: Object.assign({}, me, { caps: effCaps(roles, me) }) });
   if (a === "data") return json(res, 200, await dataPayload(cfg, me, roles));
