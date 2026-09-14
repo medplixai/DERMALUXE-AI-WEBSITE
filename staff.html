@@ -573,7 +573,14 @@
       if (cached) { state.data = cached; try { render(); } catch (e) {} paintNet(); }
       else $("leadList").innerHTML = '<div class="sk"><div></div><div></div><div></div><div></div></div>';
       flushQueue();
-      load().then(function () { $("login").classList.add("hide"); $("app").classList.remove("hide"); initPush(); initLock(); initPrivacy(); checkPendingCall(); checkAppVersion(); })
+      load().then(function () {
+        $("login").classList.add("hide"); $("app").classList.remove("hide");
+        initPush(); initLock(); initPrivacy(); checkPendingCall(); checkAppVersion();
+        // The day is what almost everyone opens next. Fetch it now, while they
+        // are still reading the leads, so the tab is already filled in when
+        // they get there instead of starting a round trip to America.
+        if (state.allow("appts.view")) setTimeout(function () { loadSchedule().catch(function () {}); }, 400);
+      })
         .catch(function (e) {
           // Offline, or the server hiccuped, with a cached dashboard: stay in
           // the app. Only a real authentication failure ends the session, and
@@ -734,11 +741,20 @@
     function istToday() {
       return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     }
-    function loadSchedule() {
+    // Every request from Eluru travels to the server in the United States and
+    // back — about a third of a second before a single byte of the answer
+    // starts. So the three things this screen needs go at once, not the
+    // schedule first and the recall list after it: same work, one wait.
+    var schAt = 0;
+    function loadSchedule(force) {
+      // Opening the tab right after the prefetch should not repeat the trip.
+      if (!force && schData && Date.now() - schAt < 60000) { renderSchedule(); return Promise.resolve(); }
       schDay = schDay || istToday();
+      var due = loadDue();
       return Promise.all([schapi("week"), schapi("day", null, "&day=" + schDay)]).then(function (r) {
-        schWeek = r[0]; schData = r[1];
-        renderSchedule(); loadDue();
+        schWeek = r[0]; schData = r[1]; schAt = Date.now();
+        renderSchedule();
+        return due;
       }).catch(function (e) { $("schList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
     function renderSchedule() {
@@ -792,10 +808,10 @@
       return new Date(dayISO + "T" + String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + ":00+05:30").getTime();
     }
     function schSend(action, body, okMsg) {
-      return schapi(action, body).then(function () { toast(okMsg); return loadSchedule(); })
+      return schapi(action, body).then(function () { toast(okMsg); return loadSchedule(true); })
         .catch(function (e) {
           if (e.status === 409 && confirm(e.message + "\n\nAyina book cheyyala?")) {
-            return schapi(action, Object.assign({ force: true }, body)).then(function () { toast(okMsg); return loadSchedule(); });
+            return schapi(action, Object.assign({ force: true }, body)).then(function () { toast(okMsg); return loadSchedule(true); });
           }
           toast(e.message);
         });
@@ -2039,7 +2055,7 @@
           .catch(function (x) { toast(x.message); });
         return;
       }
-      if (el.dataset.act === "sch-day") { schDay = el.dataset.day; haptic(); loadSchedule(); return; }
+      if (el.dataset.act === "sch-day") { schDay = el.dataset.day; haptic(); loadSchedule(true); return; }
       if (el.dataset.act === "sch-arrived") { schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "arrived" }, "Vachharu ani mark chesamu"); return; }
       if (el.dataset.act === "sch-done") {
         var dn = prompt("Em chesaru? (optional note)", "") || "";
