@@ -150,13 +150,21 @@ module.exports = async (req, res) => {
 
   // How far along it is: how many keys each side holds.
   if (a === "status") {
-    const [n1, n2, cur] = await Promise.all([
+    // A store that cannot be reached and a store that is simply empty both
+    // hold no keys, and reporting them the same way would hide a wrong
+    // password behind a plausible zero. They are reported separately.
+    let toCount = null, toError = null;
+    try { toCount = Number(await one(d, ["DBSIZE"])); }
+    catch (e) { toError = String((e && e.message) || e).slice(0, 200); }
+    const [n1, cur] = await Promise.all([
       one(s, ["DBSIZE"]).catch(() => null),
-      one(d, ["DBSIZE"]).catch((e) => ({ error: e.message })),
       one(s, ["GET", CURSOR]).catch(() => null),
     ]);
     return json(res, 200, {
-      ok: true, from: Number(n1) || 0, to: typeof n2 === "number" ? n2 : 0,
+      ok: true,
+      from: Number(n1) || 0,
+      to: toError ? null : (toCount || 0),
+      toError,
       cursor: String(cur || "0"),
       live: process.env.KV_PRIMARY === "supabase" ? "supabase (mumbai)" : "redis (america)",
     });

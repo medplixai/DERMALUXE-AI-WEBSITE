@@ -2260,7 +2260,8 @@
     function mvPaint(j) {
       $("mvBox").innerHTML =
         '<div style="display:flex;justify-content:space-between"><span>America (ippudu vaadutunnadi)</span><b style="color:var(--text);font-weight:500">' + j.from + ' keys</b></div>' +
-        '<div style="display:flex;justify-content:space-between"><span>Mumbai (Supabase)</span><b style="color:var(--text);font-weight:500">' + j.to + ' keys</b></div>' +
+        '<div style="display:flex;justify-content:space-between"><span>Mumbai (Supabase)</span><b style="color:' + (j.toError ? "var(--bad)" : "var(--text)") + ';font-weight:500">' + (j.toError ? "andaledu" : j.to + " keys") + "</b></div>" +
+        (j.toError ? '<div style="color:var(--bad);margin-top:4px">' + esc(j.toError) + "</div>" : "") +
         '<div style="display:flex;justify-content:space-between"><span>Ippudu live</span><b style="color:var(--text);font-weight:500">' + esc(j.live) + "</b></div>";
       $("mvGo").classList.remove("hide");
     }
