@@ -128,13 +128,18 @@ function originAllowed(req) {
 // Sliding-window-ish counter: INCR + EXPIRE on first hit.
 // Fails OPEN if storage is unavailable (site keeps working), but origin
 // checks still apply.
+// Counting a request and giving the counter a lifetime were two trips on
+// every single request. Asking for the count and the remaining lifetime
+// together costs one, and the expiry only has to be set on the first request
+// of a window — so the window still runs from when it opened, exactly as
+// before, and the extra trip happens once an hour instead of every time.
 async function rateLimit(cfg, key, limit, windowSec) {
   if (!cfg) return { allowed: true, count: 0 };
   try {
-    const r = await kvCommand(cfg, ["INCR", key]);
-    const n = Number(r.result || 0);
-    if (n === 1) await kvCommand(cfg, ["EXPIRE", key, String(windowSec)]);
-    return { allowed: n <= limit, count: n };
+    const [n, ttl] = await kvPipeline(cfg, [["INCR", key], ["TTL", key]]);
+    const count = Number(n || 0);
+    if (Number(ttl) < 0) await kvCommand(cfg, ["EXPIRE", key, String(windowSec)]);
+    return { allowed: count <= limit, count };
   } catch (e) {
     return { allowed: true, count: 0 };
   }

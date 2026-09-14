@@ -91,11 +91,12 @@ const BUILTIN_ROLES = {
 const ROLES_KEY = "staff:roles";
 const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
 // Merged role book: defaults, then the owner's saved edits and custom roles.
-async function loadRoles(cfg) {
+// Split so the same work can be done from a value already in hand, which is
+// what lets one database trip answer three questions instead of three trips.
+function mergeRoles(saved) {
   const out = {};
   for (const k of Object.keys(BUILTIN_ROLES)) out[k] = { label: BUILTIN_ROLES[k].label, te: BUILTIN_ROLES[k].te, note: BUILTIN_ROLES[k].note || "", caps: BUILTIN_ROLES[k].caps.slice(), builtin: true, edited: false };
-  const saved = await hashAll(cfg, ROLES_KEY).catch(() => ({}));
-  for (const k of Object.keys(saved)) {
+  for (const k of Object.keys(saved || {})) {
     if (k === "owner") continue; // owner is always full access
     let v = null; try { v = JSON.parse(saved[k]); } catch (e) { continue; }
     if (!v || typeof v !== "object") continue;
@@ -103,6 +104,17 @@ async function loadRoles(cfg) {
     out[k] = { label: clean(v.label, 40) || k, te: clean(v.te, 40), note: clean(v.note, 120), caps, builtin: !!BUILTIN_ROLES[k], edited: true };
   }
   return out;
+}
+async function loadRoles(cfg) {
+  return mergeRoles(await hashAll(cfg, ROLES_KEY).catch(() => ({})));
+}
+
+// The same, from a raw staff:users entry rather than a fresh read.
+function shapeUser(phone, raw, roles) {
+  if (ownerPhones().includes(phone)) return { phone, name: "Owner", role: "owner" };
+  let u = null; try { u = raw ? JSON.parse(raw) : null; } catch (e) { u = null; }
+  if (!u) return null;
+  return { phone, name: u.name || "Staff", role: roleOf(u.role, roles), extra: u.extra || [], revoked: u.revoked || [], off: !!u.off };
 }
 const roleOf = (r, roles) => ((roles || BUILTIN_ROLES)[String(r || "staff")] ? String(r) : "staff");
 const capsOf = (r, roles) => ((roles || BUILTIN_ROLES)[roleOf(r, roles)] || BUILTIN_ROLES.staff).caps;
@@ -198,6 +210,14 @@ async function resolveUser(cfg, phone, roles) {
 }
 
 const leadKey = (l) => `${l.ts}|${digits10(l.phone) || l.src_id || ""}`;
+// Upstash answers HGETALL with a flat array, Postgres with an object.
+function hashOf(v) {
+  const out = {};
+  if (Array.isArray(v)) { for (let i = 0; i + 1 < v.length; i += 2) out[v[i]] = v[i + 1]; }
+  else if (v && typeof v === "object") Object.assign(out, v);
+  return out;
+}
+
 async function hashAll(cfg, key) {
   const r = await guard.kvCommand(cfg, ["HGETALL", key]).catch(() => ({}));
   const a = r.result || [], out = {};
@@ -257,7 +277,7 @@ async function leadPage(cfg, offset, count) {
   return { leads, leadsTotal, offset: from, more: from + leads.length < leadsTotal };
 }
 
-async function dataPayload(cfg, me) {
+async function dataPayload(cfg, me, knownRoles) {
   const [page, ar, bk, dp, q, rv, en] = await Promise.all([
     leadPage(cfg, 0, LEAD_PAGE),
     guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({})),
@@ -277,7 +297,7 @@ async function dataPayload(cfg, me) {
   let today = null; try { today = dp.result ? JSON.parse(dp.result) : null; } catch (e) {}
   let queue = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
   const reviews = (rv.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
-  const roles = await loadRoles(cfg);
+  const roles = knownRoles || await loadRoles(cfg);
   const team = can(me, "team.manage", roles) ? await users(cfg) : null;
   const caps = effCaps(roles, me), allow = (c) => caps.includes("*") || caps.includes(c);
   if (!allow("leads.view")) { leads.length = 0; page.leadsTotal = 0; page.more = false; }
@@ -364,13 +384,28 @@ module.exports = async (req, res) => {
   // ---- everything below needs a session ----
   const me = readToken(req);
   if (!me) return json(res, 401, { error: "Login required" });
-  // re-check the allowlist so removed staff lose access immediately
-  const roles = await loadRoles(cfg);
-  const live = await resolveUser(cfg, me.phone, roles);
+  // Re-check the allowlist so removed staff lose access immediately — the
+  // role book, the person and their session epoch, asked for together
+  // because none of them depends on the others.
+  let rolesRaw = {}, userRaw = null, epochRaw = 0;
+  try {
+    const [rr, ur, er] = await guard.kvPipeline(cfg, [
+      ["HGETALL", ROLES_KEY],
+      ["HGET", USERS, me.phone],
+      ["HGET", EPOCH_KEY, me.phone],
+    ]);
+    rolesRaw = hashOf(rr); userRaw = ur; epochRaw = er;
+  } catch (err) {
+    console.error("staff: batched read", err && err.message);
+    rolesRaw = await hashAll(cfg, ROLES_KEY).catch(() => ({}));
+    userRaw = (await guard.kvCommand(cfg, ["HGET", USERS, me.phone]).catch(() => ({}))).result;
+    epochRaw = (await guard.kvCommand(cfg, ["HGET", EPOCH_KEY, me.phone]).catch(() => ({}))).result;
+  }
+  const roles = mergeRoles(rolesRaw);
+  const live = shapeUser(me.phone, userRaw, roles);
   if (!live) return json(res, 403, { error: "Access removed" });
   if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
-  const liveEpoch = await epochOf(cfg, me.phone);
-  if (Number(me.epoch || 0) < liveEpoch) return json(res, 401, { error: "Ee device nunchi logout chesaru. Malli login cheyandi." });
+  if (Number(me.epoch || 0) < Number(epochRaw || 0)) return json(res, 401, { error: "Ee device nunchi logout chesaru. Malli login cheyandi." });
   me.role = live.role; me.name = live.name; me.extra = live.extra; me.revoked = live.revoked;
   // Powers are recomputed here on every request, so a role edit or a revoked
   // capability takes effect immediately — no re-login, no stale token.
@@ -380,7 +415,7 @@ module.exports = async (req, res) => {
   if (!rlRead.allowed) return json(res, 429, { error: "Too many requests" });
 
   if (a === "me") return json(res, 200, { ok: true, me: Object.assign({}, me, { caps: effCaps(roles, me) }) });
-  if (a === "data") return json(res, 200, await dataPayload(cfg, me));
+  if (a === "data") return json(res, 200, await dataPayload(cfg, me, roles));
 
   // The rest of the lead book, a page at a time. The app asks for this when
   // someone searches, opens Patients, or widens the date filter — not on the
@@ -689,15 +724,34 @@ module.exports.tokenUser = (req) => readToken(req);
 // Returns { ok:false, code, error } or { ok:true, me, caps, roles, allow }.
 // Every rule lives here — signature, expiry, still-employed, not suspended,
 // and the session epoch that "sign out from all phones" bumps.
+// Every authenticated request starts here, so what it costs, everything
+// costs. It needs three things — the role book, the person, and the session
+// epoch — and none of them depends on the others, so they are asked for
+// together. Three trips to the database became one, on every single request.
 module.exports.requireStaff = async function (cfg, req) {
   const tok = readToken(req);
   if (!tok) return { ok: false, code: 401, error: "Login required" };
-  const roles = await loadRoles(cfg);
-  const live = await resolveUser(cfg, tok.phone, roles);
+  let rolesRaw = {}, userRaw = null, epochRaw = 0;
+  try {
+    const [r, u, e] = await guard.kvPipeline(cfg, [
+      ["HGETALL", ROLES_KEY],
+      ["HGET", USERS, tok.phone],
+      ["HGET", EPOCH_KEY, tok.phone],
+    ]);
+    rolesRaw = hashOf(r); userRaw = u; epochRaw = e;
+  } catch (err) {
+    // One batched read failing should not lock the clinic out; fall back to
+    // asking separately, which is slower but no less correct.
+    console.error("requireStaff: batched read", err && err.message);
+    rolesRaw = await hashAll(cfg, ROLES_KEY).catch(() => ({}));
+    userRaw = (await guard.kvCommand(cfg, ["HGET", USERS, tok.phone]).catch(() => ({}))).result;
+    epochRaw = (await guard.kvCommand(cfg, ["HGET", EPOCH_KEY, tok.phone]).catch(() => ({}))).result;
+  }
+  const roles = mergeRoles(rolesRaw);
+  const live = shapeUser(tok.phone, userRaw, roles);
   if (!live) return { ok: false, code: 403, error: "Access removed" };
   if (live.off) return { ok: false, code: 403, error: "Mee access ippudu off lo undi. Owner ni adagandi." };
-  const liveEpoch = await epochOf(cfg, tok.phone);
-  if (Number(tok.epoch || 0) < liveEpoch) return { ok: false, code: 401, error: "Ee device nunchi logout chesaru. Malli login cheyandi." };
+  if (Number(tok.epoch || 0) < Number(epochRaw || 0)) return { ok: false, code: 401, error: "Ee device nunchi logout chesaru. Malli login cheyandi." };
   const caps = effCaps(roles, live);
   return { ok: true, me: live, caps, roles, allow: (c) => caps.includes("*") || caps.includes(c) };
 };
