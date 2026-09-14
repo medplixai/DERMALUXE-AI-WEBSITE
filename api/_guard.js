@@ -10,35 +10,90 @@ function safeEqual(a, b) {
   return crypto.timingSafeEqual(A, B);
 }
 
+// Where the clinic's data lives, and how to talk to it.
+//
+// Two stores are understood. The original is Upstash Redis, reached over its
+// REST endpoint. The other is Postgres — the clinic's own schema inside the
+// group's Supabase project in Mumbai — which answers the same Redis commands
+// through one database function. The application above this line cannot tell
+// them apart: it sends ["LRANGE","dl_leads","0","199"] to either and gets the
+// same answer back.
+//
+// KV_PRIMARY decides. Until it says "supabase", nothing reads or writes the
+// Postgres copy except the migration endpoint, which names both explicitly.
+// Flipping it is the cutover; flipping it back is the way out.
 function kvConfig() {
   const env = process.env;
-  // While the database is being moved to Mumbai both are attached: the
-  // original under KV_*, the new one under BOM_KV_*. This one variable says
-  // which is live. Flipping it is the cutover; flipping it back is the way
-  // out. Until it says "bom", nothing reads or writes the Mumbai copy except
-  // /api/kvmove, which names both databases explicitly.
-  if (env.KV_PRIMARY === "bom" && env.BOM_KV_REST_API_URL && env.BOM_KV_REST_API_TOKEN) {
-    return { url: env.BOM_KV_REST_API_URL, token: env.BOM_KV_REST_API_TOKEN };
+  if (env.KV_PRIMARY === "supabase") {
+    const url = String(env.SUPABASE_URL || "").replace(/\/+$/, "");
+    const key = env.SUPABASE_SERVICE_KEY || env.SUPABASE_SERVICE_ROLE_KEY;
+    if (url && key) return { kind: "pg", url, key };
+    console.error("kv: KV_PRIMARY=supabase but SUPABASE_URL / SUPABASE_SERVICE_KEY are missing — staying on Redis");
   }
   let url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   let token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) {
     for (const k of Object.keys(env)) {
-      if (k.startsWith("BOM_")) continue;          // never the standby, by accident
       if (!url && (k.endsWith("KV_REST_API_URL") || k.endsWith("UPSTASH_REDIS_REST_URL"))) url = env[k];
       if (!token && !k.includes("READ_ONLY") && (k.endsWith("KV_REST_API_TOKEN") || k.endsWith("UPSTASH_REDIS_REST_TOKEN"))) token = env[k];
     }
   }
-  return url && token ? { url, token } : null;
+  return url && token ? { kind: "redis", url, token } : null;
+}
+
+// The Postgres side of the house. One function call carries one command, or a
+// whole batch of them, and hands back exactly what Redis would have said.
+async function pgCall(cfg, fn, body) {
+  const r = await fetch(`${cfg.url}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: {
+      apikey: cfg.key,
+      Authorization: `Bearer ${cfg.key}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => "");
+    throw new Error(`db ${r.status} ${t.slice(0, 200)}`);
+  }
+  return r.json();
 }
 
 async function kvCommand(cfg, cmd) {
+  if (cfg && cfg.kind === "pg") {
+    try {
+      return { result: await pgCall(cfg, "dl_kv", { cmd }) };
+    } catch (e) {
+      console.error("kv:", cmd && cmd[0], e && e.message);
+      return { error: String((e && e.message) || e) };
+    }
+  }
   const resp = await fetch(cfg.url, {
     method: "POST",
     headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
     body: JSON.stringify(cmd),
   });
   return resp.json();
+}
+
+// Several commands, one trip. Worth reaching for wherever a screen needs a
+// handful of unrelated things at once.
+async function kvPipeline(cfg, cmds) {
+  if (!cmds.length) return [];
+  if (cfg && cfg.kind === "pg") {
+    const out = await pgCall(cfg, "dl_kv_pipe", { cmds });
+    return Array.isArray(out) ? out : [];
+  }
+  const r = await fetch(cfg.url + "/pipeline", {
+    method: "POST",
+    headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
+    body: JSON.stringify(cmds),
+  });
+  if (!r.ok) throw new Error("pipeline " + r.status + " " + (await r.text().catch(() => "")).slice(0, 160));
+  const j = await r.json();
+  if (!Array.isArray(j)) throw new Error("pipeline returned " + JSON.stringify(j).slice(0, 160));
+  return j.map((x) => (x && Object.prototype.hasOwnProperty.call(x, "result") ? x.result : null));
 }
 
 function getIp(req) {
@@ -104,4 +159,4 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { kvConfig, kvCommand, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };
+module.exports = { kvConfig, kvCommand, kvPipeline, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };

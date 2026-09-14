@@ -1,25 +1,27 @@
-// /api/kvmove — copy the clinic's database from one Redis to another.
+// /api/kvmove — move the clinic's data out of Redis and into Postgres.
 //
 // Everything the clinic runs on has been living in Washington: the functions
 // and the database both. From Eluru that is about 450ms of ocean before the
 // first byte of any answer comes back — measured, and confirmed to be the
 // network rather than the database, since a request that makes four database
-// calls returns in the same time as one that makes none. Moving both to
-// Mumbai takes that to well under a tenth of a second.
+// calls returns in the same time as one that makes none.
 //
-// The functions move with a line of configuration. The database has to be
-// copied, and this is what copies it.
+// The new home is the clinic's own schema inside the group's Supabase project
+// in Mumbai, which answers the same Redis commands through one database
+// function. The functions follow with a line of configuration. This is what
+// carries the data across.
 //
 // It runs inside the deployment, where both sets of credentials already live,
-// so neither database's password is ever pulled onto anybody's laptop. It
-// works in batches with a cursor so it can be called until it says it is
-// done, and it copies each key with its own type and its own remaining
-// lifetime, so an OTP that had forty seconds left still has forty seconds
-// left afterwards.
+// so neither store's password is ever pulled onto anybody's laptop. It works
+// in batches with a cursor, so it can be called until it says it is done, and
+// it copies each key with its own type and its own remaining lifetime — an
+// OTP with forty seconds left still has forty seconds left afterwards.
 //
-// It is deliberately one-directional and explicit: the source is always the
-// original KV_* database and the destination is always the BOM_KV_* one. It
-// refuses to run if those turn out to be the same database.
+// Nothing is inferred: the source is always the original Redis and the
+// destination is always Supabase, and it refuses to run if those somehow
+// resolve to the same place. Sorted sets are read but cannot be written,
+// because nothing in the clinic uses one; if one ever appears the copy stops
+// loudly rather than leaving it behind quietly.
 const guard = require("./_guard.js");
 const staff = require("./staff.js");
 
@@ -29,29 +31,19 @@ const json = (res, code, body) => {
   return res.status(code).json(body);
 };
 
+// Always named outright, never inferred: the source is the Redis the clinic
+// has been running on, the destination is its new home in Postgres.
 const src = () => {
   const u = process.env.KV_REST_API_URL, t = process.env.KV_REST_API_TOKEN;
-  return u && t ? { url: u, token: t } : null;
+  return u && t ? { kind: "redis", url: u, token: t } : null;
 };
 const dst = () => {
-  const u = process.env.BOM_KV_REST_API_URL, t = process.env.BOM_KV_REST_API_TOKEN;
-  return u && t ? { url: u, token: t } : null;
+  const u = String(process.env.SUPABASE_URL || "").replace(/\/+$/, "");
+  const k = process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return u && k ? { kind: "pg", url: u, key: k } : null;
 };
 
-// Upstash takes a whole batch of commands in one request. Copying key by key
-// over single calls would be thousands of round trips; this is tens.
-async function pipe(cfg, cmds) {
-  if (!cmds.length) return [];
-  const r = await fetch(cfg.url + "/pipeline", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${cfg.token}`, "Content-Type": "application/json" },
-    body: JSON.stringify(cmds),
-  });
-  if (!r.ok) throw new Error("pipeline " + r.status + " " + (await r.text().catch(() => "")).slice(0, 160));
-  const j = await r.json();
-  if (!Array.isArray(j)) throw new Error("pipeline returned " + JSON.stringify(j).slice(0, 160));
-  return j.map((x) => (x && Object.prototype.hasOwnProperty.call(x, "result") ? x.result : null));
-}
+const pipe = (cfg, cmds) => guard.kvPipeline(cfg, cmds);
 
 const one = async (cfg, cmd) => (await pipe(cfg, [cmd]))[0];
 
@@ -150,8 +142,8 @@ module.exports = async (req, res) => {
 
   const s = src(), d = dst();
   if (!s) return json(res, 501, { error: "Original database kanipinchatledu" });
-  if (!d) return json(res, 501, { error: "Mumbai database inka set cheyaledu" });
-  if (s.url === d.url) return json(res, 400, { error: "Rendu okate database — aagipoyam" });
+  if (!d) return json(res, 501, { error: "Supabase key inka set cheyaledu" });
+  if (s.kind === d.kind && s.url === d.url) return json(res, 400, { error: "Rendu okate database — aagipoyam" });
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "status");
@@ -166,7 +158,7 @@ module.exports = async (req, res) => {
     return json(res, 200, {
       ok: true, from: Number(n1) || 0, to: typeof n2 === "number" ? n2 : 0,
       cursor: String(cur || "0"),
-      live: process.env.KV_PRIMARY === "bom" ? "mumbai" : "america",
+      live: process.env.KV_PRIMARY === "supabase" ? "supabase (mumbai)" : "redis (america)",
     });
   }
 

@@ -316,5 +316,23 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: photo migrate", e && e.message); }
 
-  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, photosMoved });
+  // ---- sweep keys whose time has passed --------------------------------
+  // Redis forgets an expired key by itself. Postgres does not, so once an
+  // hour the ones that have died are cleared out. Reads already ignore them;
+  // this is only so they stop taking up room.
+  let swept = 0;
+  try {
+    const cfg2 = guard.kvConfig();
+    if (cfg2 && cfg2.kind === "pg") {
+      const r = await fetch(`${cfg2.url}/rest/v1/rpc/dl_kv_reap`, {
+        method: "POST",
+        headers: { apikey: cfg2.key, Authorization: `Bearer ${cfg2.key}`, "Content-Type": "application/json" },
+        body: "{}",
+      });
+      if (r.ok) swept = Number(await r.json()) || 0;
+      else console.error("cron: reap", r.status);
+    }
+  } catch (e) { console.error("cron: reap", e && e.message); }
+
+  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, photosMoved, swept });
 };
