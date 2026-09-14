@@ -108,6 +108,16 @@ http.createServer((req, res) => {
     if (a === "copy") { mockMoved = Math.min(4180, mockMoved + 200); return send(200, { ok: true, moved: 200, skipped: 0, done: mockMoved >= 4180 }); }
     return send(200, { ok: true });
   }
+  if (u.pathname === "/api/academy") {  // acad:st-mock
+    const a = u.searchParams.get("a") || "list";
+    const st = [
+      { id: "DLA001", name: "Keerthi", phone: "9876500021", course: "skin", duration: "1 month", fee: 49999, paid: 49999, status: "enrolled", onboarded: 1, notes: [] },
+      { id: "DLA002", name: "Harika", phone: "9876500022", course: "both", duration: "2 months", fee: 99999, paid: 9999, status: "enrolled", onboarded: 0, notes: [] },
+    ];
+    if (a === "students" || a === "list") return send(200, { ok: true, students: st });
+    if (a === "reopen") return send(200, { ok: true, url: "https://www.dermaluxe.ai/academy-join.html?t=xyz" });
+    return send(200, { ok: true, students: st, student: st[0] });
+  }
   if (u.pathname === "/api/patient") {  // pt-msg-mock
     const a = u.searchParams.get("a") || "list";
     const p = { phone: "9876543210", name: "Sita Rani", since: Date.now() - 86400000 * 40, allergies: "",
@@ -120,6 +130,13 @@ http.createServer((req, res) => {
   let f = u.pathname === "/" ? "/staff.html" : u.pathname;
   const file = path.join(ROOT, f.replace(/^\/+/, ""));
   if (!file.startsWith(ROOT) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) { res.writeHead(404); return res.end("not found"); }
+  // ?fastlock=1 shortens the idle lock so it can be watched instead of waited
+  // out. Development only; the real file is never changed.
+  if (u.searchParams.get("fastlock") === "1" && file.endsWith(".html")) {
+    const html = fs.readFileSync(file, "utf8").replace("var WEB_LOCK_AFTER = 10 * 60 * 1000;", "var WEB_LOCK_AFTER = 3000;");
+    res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+    return res.end(html);
+  }
   res.writeHead(200, { "Content-Type": TYPES[path.extname(file)] || "application/octet-stream" });
   fs.createReadStream(file).pipe(res);
 }).listen(PORT, () => console.log("mock staff dashboard on http://localhost:" + PORT + " (" + TOTAL + " leads)"));

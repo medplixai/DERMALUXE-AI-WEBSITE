@@ -789,7 +789,10 @@
     var schAt = 0;
     function loadSchedule(force) {
       // Opening the tab right after the prefetch should not repeat the trip.
-      if (!force && schData && Date.now() - schAt < 60000) { renderSchedule(); return Promise.resolve(); }
+      if (!force && schData && Date.now() - schAt < 60000) {
+        try { renderSchedule(); } catch (e) { console.error("schedule", e); schData = null; }
+        if (schData) return Promise.resolve();       // painted; otherwise fall through and refetch
+      }
       schDay = schDay || istToday();
       var due = loadDue();
       return Promise.all([schapi("week"), schapi("day", null, "&day=" + schDay)]).then(function (r) {
@@ -800,7 +803,13 @@
     }
     function renderSchedule() {
       if (!schData) return;
-      var d = schData;
+      // A reply that arrives without the shape we expect — a server hiccup, an
+      // error body — used to throw here. That was survivable while this only
+      // ran inside a promise, but the day view is now painted straight from a
+      // tap when the data is still fresh, and an exception there escapes.
+      var d = Object.assign({ rows: [], counts: {}, team: [] }, schData);
+      d.counts = Object.assign({ total: 0, booked: 0, arrived: 0, done: 0, unconfirmed: 0 }, d.counts || {});
+      if (!Array.isArray(d.rows)) d.rows = [];
       $("dayStrip").innerHTML = (schWeek ? schWeek.days : []).map(function (w) {
         var dt = new Date(w.day + "T00:00:00+05:30");
         return '<button data-act="sch-day" data-day="' + esc(w.day) + '"' + (w.day === schDay ? ' class="on"' : "") + ">" +
@@ -1504,6 +1513,17 @@
       b.classList.toggle("hide", !backTarget());
     }
     if ($("navBack")) $("navBack").onclick = function () { haptic(); goBack(); };
+    // The phone's own back key and the button in the corner do the same thing,
+    // because they mean the same thing. This is navigation, not security, so
+    // it is wired at startup rather than buried in the lock — which only runs
+    // once somebody has signed in.
+    (function () {
+      var A = plug("App");
+      if (!A) return;
+      A.addListener("backButton", function () {
+        if (!goBack()) A.minimizeApp();      // never drop out of the app
+      });
+    })();
     // Anything that opens or closes a layer changes the answer, and a click is
     // the only way any of them move.
     document.addEventListener("click", function () { setTimeout(paintBack, 60); }, true);
@@ -1717,6 +1737,50 @@
         wrap.querySelector(".sheet-bg").onclick = function () { done(false); };
       });
     }
+    // The upload used to be the end of it: if it failed — no signal in the
+    // back room, a server hiccup — the toast said so and the photograph was
+    // gone. The patient is standing right there and the shot has to be taken
+    // again. So a failed upload keeps the picture and offers it back.
+    var pendingPhoto = null;
+    function paintPendingPhoto() {
+      var bar = $("phRetry");
+      if (!bar) {
+        bar = document.createElement("div");
+        bar.id = "phRetry";
+        bar.className = "banner";
+        document.body.appendChild(bar);
+      }
+      if (!pendingPhoto) { bar.classList.remove("show"); bar.innerHTML = ""; return; }
+      bar.innerHTML = '<p><b>Photo pampaledu</b>' + esc(pendingPhoto.who || "") + " — inka ee phone lone undi.</p>" +
+        '<button class="btn btn--gold btn--sm" id="phGo">Malli pampu</button>' +
+        '<button class="btn btn--sm" id="phDrop">Vaddu</button>';
+      bar.classList.add("show");
+      $("phGo").onclick = function () {
+        var p = pendingPhoto;
+        $("phGo").disabled = true;
+        sendPhoto(p.kind, p.ref, p.dataUrl, p.host, p.who);
+      };
+      $("phDrop").onclick = function () {
+        if (!confirm("Ee photo ni vadileyyanaa? Malli teeyalsi vastundi.")) return;
+        pendingPhoto = null; paintPendingPhoto();
+      };
+    }
+    function sendPhoto(kind, ref, dataUrl, host, who) {
+      toast("Upload avutondi…");
+      return phapi("put", { kind: kind, ref: ref, dataUrl: dataUrl, consent: true })
+        .then(function () {
+          pendingPhoto = null; paintPendingPhoto();
+          toast("Photo save ayindi");
+          if (host) loadPhotos(kind, ref, host);
+          if (ptOpen && ptOpen.phone === ref) { ptapi("get", { phone: ref }).then(function (j) { ptOpen = j.patient; renderPatient(); }).catch(function () {}); }
+        })
+        .catch(function (e) {
+          pendingPhoto = { kind: kind, ref: ref, dataUrl: dataUrl, host: host, who: who || (pendingPhoto && pendingPhoto.who) || "" };
+          paintPendingPhoto();
+          toast(e.message + " — photo ee phone lo undi, malli pampandi");
+        });
+    }
+
     function takePhoto(kind, ref, who, host) {
       var C = plug("Camera");
       if (!C) { toast("Camera app lo matrame pani chestundi"); return; }
@@ -1729,9 +1793,7 @@
           saveToGallery: false, correctOrientation: true,
         }).then(function (img) {
           if (!img || !img.dataUrl) return;
-          toast("Upload avutondi…");
-          return phapi("put", { kind: kind, ref: ref, dataUrl: img.dataUrl, consent: true })
-            .then(function () { toast("Photo save ayindi"); if (host) loadPhotos(kind, ref, host); });
+          return sendPhoto(kind, ref, img.dataUrl, host, who);
         });
       }).catch(function (e) { if (e && e.message && !/cancel/i.test(e.message)) toast(e.message); });
     }
@@ -1892,6 +1954,9 @@
       if (locked) return;
       locked = true;
       var me = (state.data && state.data.me) || {};
+      // Without a loaded session there is nothing to check a password against,
+      // and a lock nobody can open is just a broken app. Sign out instead.
+      if (!me.phone) { locked = false; $("logoutBtn").click(); return; }
       var el = document.createElement("div");
       el.className = "lock";
       el.innerHTML = '<div><img src="assets/app/icon-192.png" alt="" /><h2>Locked</h2>' +
@@ -1969,11 +2034,6 @@
         awaySince = 0;
         checkPendingCall();
         if (!locked) flushQueue().then(function () { return load(true); }).catch(function () {});
-      });
-      // The phone's own back key and the button in the corner do the same
-      // thing, because they mean the same thing.
-      A.addListener("backButton", function () {
-        if (!goBack()) A.minimizeApp();
       });
     }
 
@@ -2708,6 +2768,17 @@
     $("officeChips").innerHTML = CHIPS.map(function (c) { return '<button class="btn btn--sm" data-chip="' + esc(c) + '">' + esc(c) + "</button>"; }).join("");
     $("officeChips").addEventListener("click", function (e) { var b = e.target.closest("[data-chip]"); if (b) askOffice(b.dataset.chip); });
 
+    // A refresh re-renders every list, which would throw away a half-typed
+    // note and close whatever somebody is reading. This was called but never
+    // written, so the call threw and the background refresh never ran at all:
+    // new leads only appeared when somebody pulled to refresh.
+    function busyTyping() {
+      var el = document.activeElement;
+      if (el && /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)) return true;
+      if (document.querySelector(".sheet.open") || document.querySelector(".viewer")) return true;
+      if ($("ptSheet") && $("ptSheet").classList.contains("open")) return true;
+      return false;
+    }
     setInterval(function () {
       if (!tok || document.hidden || locked || busyTyping()) return;
       load().catch(function () {});
