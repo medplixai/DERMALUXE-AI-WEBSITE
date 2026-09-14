@@ -342,7 +342,28 @@ module.exports = async (req, res) => {
     if (u.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
     const ok = await checkPassword(cfg, phone, pwd);
     if (ok === null) return json(res, 501, { error: "Ee number ki password set cheyaledu — OTP tho login cheyandi." });
-    if (!ok) return json(res, 401, { error: "Password tappu" });
+    if (!ok) {
+      // Wrong passwords were counted, to slow someone down, and then
+      // forgotten. Nobody was ever told that somebody was trying. The rate
+      // limit still holds the door; this says who is knocking.
+      try {
+        const missKey = `rl:miss:${phone}`;
+        const [n] = await guard.kvPipeline(cfg, [["INCR", missKey], ["EXPIRE", missKey, "3600"]]);
+        const misses = Number(n || 0);
+        if (misses === 5) {
+          const told = await guard.kvCommand(cfg, ["SET", `rl:miss:told:${phone}`, "1", "NX", "EX", "3600"]).catch(() => ({}));
+          if (told && told.result) {
+            for (const ownerPh of ownerPhones()) {
+              await notify.sendWa(ownerPh,
+                `\u26a0\ufe0f *DermaLuxe* — ${u.name} (${phone}) account ki 5 saarlu tappu password try chesaru (last 1 hour).\n\nVaalle ayithe parledu. Kaakapothe Control panel lo aa login ni off cheyyandi.`
+              ).catch(() => {});
+            }
+          }
+        }
+      } catch (e) { console.error("login: miss counter", e && e.message); }
+      return json(res, 401, { error: "Password tappu" });
+    }
+    await guard.kvCommand(cfg, ["DEL", `rl:miss:${phone}`]).catch(() => {});
     await guard.kvCommand(cfg, ["HSET", "staff:lastlogin", phone, String(Date.now())]).catch(() => {});
     // A password somebody else chose is a password to be replaced.
     return json(res, 200, { ok: true, token: makeToken(u, await epochOf(cfg, phone)), me: u, mustChange: !!ok.temp });

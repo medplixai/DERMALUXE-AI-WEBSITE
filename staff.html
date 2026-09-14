@@ -293,6 +293,7 @@
   <!-- APP -->
   <div id="app" class="hide">
     <header class="top"><div class="wrap">
+      <button class="btn btn--sm hide" id="navBack" title="Venakki" aria-label="Venakki">‹ Venakki</button>
       <a href="index.html" class="homelink"><img src="assets/logo.webp" alt="DermaLuxe" /></a>
       <div style="display:flex;align-items:center;gap:10px">
         <div class="who"><b id="meName">—</b><span id="meRole"></span></div>
@@ -668,7 +669,14 @@
       $("nAppts").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("nAcad").textContent = d.academy.leads.length;
       renderLeads(); renderAppts(); renderAcademy(); renderToday(); renderReviews(); fillThumbs();
-      if ($("dailyToggle")) $("dailyToggle").checked = !!d.dailyOn;
+      if ($("dailyToggle")) {
+        $("dailyToggle").checked = !!d.dailyOn;
+        // This capability existed and was never checked — anyone who could
+        // open the control panel could switch off the clinic's daily post.
+        $("dailyToggle").disabled = !allow("posts.toggle");
+        var dl = $("dailyToggle").closest(".box");
+        if (dl) dl.classList.toggle("hide", !allow("posts.view"));
+      }
       // buttons follow the powers, so nobody clicks something that will 403
       [["stAdd", "academy.edit"]].forEach(function (p) {
         var el = $(p[0]); if (el) el.classList.toggle("hide", !allow(p[1]));
@@ -885,7 +893,13 @@
         host.innerHTML = (j.rows.length ? j.rows.map(function (p) {
           return '<div class="vrow"><b>' + pkgLine(p) + "</b>" +
             '<div class="meta">' + (p.sessions || []).slice(-3).map(function (x) { return "#" + x.n + " " + fmtDay(x.at); }).join(" · ") + "</div>" +
-            (p.left > 0 && state.allow("pkg.log") ? '<button class="btn btn--sm" style="margin-top:6px" data-act="pkg-log" data-id="' + esc(p.id) + '" data-n="' + (p.done + 1) + '" data-t="' + esc(p.treatment) + '">✅ Sitting ' + (p.done + 1) + " chesamu</button>" : "") +
+            (p.left > 0 && state.allow("pkg.log")
+              ? '<div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap">' +
+                '<button class="btn btn--sm" data-act="pkg-log" data-id="' + esc(p.id) + '" data-n="' + (p.done + 1) + '" data-t="' + esc(p.treatment) + '">✅ Sitting ' + (p.done + 1) + " chesamu</button>" +
+                // A patient who stops halfway had no way to be marked as
+                // stopped — so the recall kept chasing them for ever.
+                '<button class="btn btn--sm" data-act="pkg-drop" data-id="' + esc(p.id) + '" data-t="' + esc(p.treatment) + '" data-left="' + p.left + '">⏹ Aapesaru</button></div>'
+              : (p.status === "dropped" ? '<div class="meta" style="color:var(--g3);margin-top:6px">Aapesaru — recall pampamu</div>' : "")) +
             "</div>";
         }).join("") : '<p class="meta">Packages emi ledu.</p>') +
           (state.allow("pkg.log") ? '<button class="btn btn--sm" style="margin-top:8px" data-act="pkg-new" data-phone="' + esc(phone) + '" data-name="' + esc((ptOpen || {}).name || "") + '">+ Package</button>' : "");
@@ -1117,6 +1131,7 @@
         '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc((p.visits[0] || {}).key || "") + '" data-name="' + esc(p.name) + '" data-phone="' + esc(p.phone) + '" href="tel:+91' + esc(p.phone) + '">📞 Call</a>' +
         '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(p.phone) + '">💬 WhatsApp</a>' +
         (NATIVE && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="patient" data-ref="' + esc(p.phone) + '" data-who="' + esc(p.name) + '">📷 Photo</button>' : "") +
+        (state.allow("msg.send") ? '<button class="btn btn--sm" data-act="pt-msg" data-phone="' + esc(p.phone) + '" data-name="' + esc(p.name) + '">📤 Message</button>' : "") +
         (state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="pt-note" data-phone="' + esc(p.phone) + '" data-name="' + esc(p.name) + '">📝 Note</button>' +
           '<button class="btn btn--sm" data-act="pt-edit" data-phone="' + esc(p.phone) + '">✎ Details</button>' : "") +
         "</div>" +
@@ -1447,6 +1462,52 @@
       });
     }
     function closeSheet() { $("moreSheet").classList.remove("open"); }
+    // What "back" means here, in one place.
+    //
+    // A browser has no back key and the app's one is invisible, so people had
+    // no way out of a patient's file except the small Close in its corner, and
+    // no way back to Leads except finding the tab again. This is the way out,
+    // and the corner button and the phone's key both use it.
+    function backTarget() {
+      if (document.querySelector(".sheet.open")) return "sheet";
+      if (document.querySelector(".viewer")) return "viewer";
+      if ($("ptSheet") && $("ptSheet").classList.contains("open")) return "patient";
+      var first = document.querySelector(".tab:not(.hide)");
+      var cur = document.querySelector(".tab.on");
+      if (first && cur && first !== cur) return "tab";
+      return null;
+    }
+    function goBack() {
+      var what = backTarget();
+      if (!what) return false;
+      if (what === "sheet") {
+        var sheet = document.querySelector(".sheet.open");
+        if (sheet.id === "moreSheet") closeSheet();
+        else {
+          // a sheet dismissed with Back must settle like any other dismiss,
+          // or it comes back on every app resume for the next 45 minutes
+          var bg = sheet.querySelector(".sheet-bg");
+          if (bg && bg.onclick) bg.onclick(); else sheet.remove();
+        }
+      } else if (what === "viewer") {
+        document.querySelector(".viewer").remove();
+      } else if (what === "patient") {
+        closePatient();
+      } else {
+        document.querySelector(".tab:not(.hide)").click();
+      }
+      paintBack();
+      return true;
+    }
+    function paintBack() {
+      var b = $("navBack"); if (!b) return;
+      b.classList.toggle("hide", !backTarget());
+    }
+    if ($("navBack")) $("navBack").onclick = function () { haptic(); goBack(); };
+    // Anything that opens or closes a layer changes the answer, and a click is
+    // the only way any of them move.
+    document.addEventListener("click", function () { setTimeout(paintBack, 60); }, true);
+
     function goTab(t) {
       var b = document.querySelector('.tab[data-t="' + t + '"]');
       if (b) b.click();
@@ -1678,8 +1739,32 @@
       photoSrc(id).then(function (u) {
         var v = document.createElement("div");
         v.className = "viewer";
-        v.innerHTML = '<img src="' + u + '" alt="" /><button class="btn btn--sm" style="position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px">Close</button>';
-        v.onclick = function () { v.remove(); };
+        // A photo of the wrong person, or one a patient later asks to be rid
+        // of, had no way out of the app at all. It does now — with the same
+        // permission that took it, and only after saying so out loud.
+        var canDel = state.allow && state.allow("leads.edit");
+        v.innerHTML = '<img src="' + u + '" alt="" />' +
+          '<div style="position:absolute;top:calc(14px + env(safe-area-inset-top));right:14px;display:flex;gap:8px">' +
+          (canDel ? '<button class="btn btn--sm" data-vdel="1" style="color:var(--bad)">Teesey</button>' : "") +
+          '<button class="btn btn--sm" data-vclose="1">Close</button></div>';
+        v.onclick = function (ev) {
+          var d = ev.target.closest("[data-vdel]");
+          if (d) {
+            ev.stopPropagation();
+            if (!confirm("Ee photo ni permanent ga teesesaalaa?\n\nIdi venakki teesukoleru.")) return;
+            d.disabled = true;
+            phapi("del", { id: id })
+              .then(function () {
+                v.remove();
+                toast("Photo teesesam");
+                if (ptOpen && ptOpen.phone) { ptapi("get", { phone: ptOpen.phone }).then(function (j) { ptOpen = j.patient; renderPatient(); }).catch(function () {}); }
+                else { document.querySelectorAll("[data-loaded]").forEach(function (h) { h.removeAttribute("data-loaded"); }); fillThumbs(); }
+              })
+              .catch(function (x) { toast(x.message); d.disabled = false; });
+            return;
+          }
+          v.remove();
+        };
         document.body.appendChild(v);
       }).catch(function () { toast("Photo teeyaleka poyam"); });
     }
@@ -1776,6 +1861,8 @@
 
     // ---- lock the app when it has been away ------------------------------
     var LOCK_AFTER = 5 * 60 * 1000, awaySince = 0, locked = false;
+    // A shared desk needs longer than a pocketed phone, but not much longer.
+    var WEB_LOCK_AFTER = 10 * 60 * 1000;
     function bio() { return plug("BiometricAuth"); }
     function showLock() {
       if (locked) return;
@@ -1796,6 +1883,52 @@
       el.querySelector("#lkGo").onclick = go;
       go();
     }
+    // On a phone the lock is a fingerprint. In a browser there is no
+    // fingerprint to ask for, and the browser is where this matters most: the
+    // clinic's computer sits at a desk in a room patients walk through, and
+    // until now it never locked at all. So the browser asks for the password
+    // again — the person's own, checked by the server, never stored here.
+    function showWebLock() {
+      if (locked) return;
+      locked = true;
+      var me = (state.data && state.data.me) || {};
+      var el = document.createElement("div");
+      el.className = "lock";
+      el.innerHTML = '<div><img src="assets/app/icon-192.png" alt="" /><h2>Locked</h2>' +
+        '<p>Patient vivaralu unnayi. ' + esc(me.name || "") + ' — mee password ivvandi.</p>' +
+        '<input id="lkPwd" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;max-width:260px;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin:6px 0 10px" />' +
+        '<div style="display:flex;gap:8px;justify-content:center"><button class="btn btn--gold btn--sm" id="lkGo">Unlock</button>' +
+        '<button class="btn btn--sm" id="lkOut">Logout</button></div>' +
+        '<div class="err" id="lkErr" style="margin-top:8px"></div></div>';
+      document.body.appendChild(el);
+      var go = function () {
+        var pwd = el.querySelector("#lkPwd").value;
+        if (!pwd) return;
+        el.querySelector("#lkGo").disabled = true;
+        el.querySelector("#lkErr").textContent = "";
+        // the same login the server already knows how to check
+        api("login", { phone: me.phone, password: pwd })
+          .then(function () {
+            el.remove(); locked = false;
+            try { localStorage.setItem("dl_unlocked", String(Date.now())); } catch (e) {}
+          })
+          .catch(function (x) {
+            // Somebody who only ever signs in by OTP has no password to give
+            // here. Say so plainly and point at the way out, rather than
+            // leaving them tapping at a box that can never open.
+            var noPwd = /password set cheyaledu/i.test(x.message || "");
+            el.querySelector("#lkErr").innerHTML = esc(x.message) +
+              (noPwd ? '<br><b style="color:var(--g2);font-weight:500">Logout kotti, OTP tho malli login avvandi.</b>' : "");
+            el.querySelector("#lkGo").disabled = false;
+            el.querySelector("#lkPwd").value = "";
+          });
+      };
+      el.querySelector("#lkGo").onclick = go;
+      el.querySelector("#lkOut").onclick = function () { $("logoutBtn").click(); };
+      el.querySelector("#lkPwd").addEventListener("keydown", function (e) { if (e.key === "Enter") go(); });
+      el.querySelector("#lkPwd").focus();
+    }
+
     var lockInit = false;
     function initLock() {
       if (lockInit) return;
@@ -1808,7 +1941,27 @@
         try { last = Number(localStorage.getItem("dl_unlocked") || 0); } catch (e) {}
         if (!last || Date.now() - last > LOCK_AFTER) showLock();
       }
-      if (!A) return;
+      if (!A) {
+        // A browser: lock when the tab has been left alone, and when it has
+        // been hidden long enough that somebody else may be looking at it.
+        if (!NATIVE) {
+          var idle = 0;
+          var touch = function () { idle = Date.now(); };
+          ["mousemove", "keydown", "click", "scroll", "touchstart"].forEach(function (ev) {
+            addEventListener(ev, touch, { passive: true });
+          });
+          touch();
+          setInterval(function () {
+            if (!locked && tok && idle && Date.now() - idle > WEB_LOCK_AFTER) showWebLock();
+          }, 20000);
+          addEventListener("visibilitychange", function () {
+            if (document.hidden) { awaySince = Date.now(); return; }
+            if (awaySince && Date.now() - awaySince > WEB_LOCK_AFTER) showWebLock();
+            awaySince = 0;
+          });
+        }
+        return;
+      }
       A.addListener("appStateChange", function (st) {
         if (!st.isActive) { awaySince = Date.now(); try { localStorage.setItem("dl_unlocked", String(Date.now())); } catch (e) {} return; }
         // back in the foreground
@@ -1817,27 +1970,10 @@
         checkPendingCall();
         if (!locked) flushQueue().then(function () { return load(true); }).catch(function () {});
       });
-      // Android back button: close a sheet first, never drop out of the app
+      // The phone's own back key and the button in the corner do the same
+      // thing, because they mean the same thing.
       A.addListener("backButton", function () {
-        var sheet = document.querySelector(".sheet.open");
-        if (sheet) {
-          if (sheet.id === "moreSheet") closeSheet();
-          else {
-            // a sheet dismissed with Back must settle like any other dismiss,
-            // or it comes back on every app resume for the next 45 minutes
-            var bg = sheet.querySelector(".sheet-bg");
-            if (bg && bg.onclick) bg.onclick();
-            else sheet.remove();
-          }
-          return;
-        }
-        var viewer = document.querySelector(".viewer");
-        if (viewer) { viewer.remove(); return; }
-        if ($("ptSheet").classList.contains("open")) { closePatient(); return; }
-        var first = document.querySelector(".tab:not(.hide)");
-        var cur = document.querySelector(".tab.on");
-        if (first && cur && first !== cur) { first.click(); return; }
-        A.minimizeApp();
+        if (!goBack()) A.minimizeApp();
       });
     }
 
@@ -2081,6 +2217,14 @@
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
       if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "pkg-drop") {
+        if (!confirm(el.dataset.t + " package ni aapeyyanaa?\n\n" + el.dataset.left + " sittings migili unnayi. Aapesaka recall messages pampamu. Malli modalu pettalante kotha package pettandi.")) return;
+        el.disabled = true;
+        pkapi("drop", { id: el.dataset.id })
+          .then(function () { toast("Aapesam"); if (ptOpen) loadPatientPkgs(ptOpen.phone); loadDue(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "pkg-log") {
         var nt6 = prompt("Sitting " + el.dataset.n + " — " + el.dataset.t + "\nNote (optional):", "");
         if (nt6 === null) return;
@@ -2150,6 +2294,19 @@
         return;
       }
       if (el.dataset.act === "pt-close") { closePatient(); return; }
+      // Sending a message used to mean leaving for WhatsApp, finding them,
+      // typing, and coming back. It goes from here now, and lands in their file.
+      if (el.dataset.act === "pt-msg") {
+        var who = el.dataset.name || el.dataset.phone;
+        var txt = prompt(who + " ki em pampalo raayandi:\n\n(24 gantalalo vaallu message pampi unte direct ga veltundi. Lekapothe approved template tho veltundi.)");
+        if (!txt || txt.trim().length < 5) return;
+        el.disabled = true;
+        ptapi("message", { phone: el.dataset.phone, text: txt.trim(), name: who })
+          .then(function (j) { ptOpen = j.patient; renderPatient(); toast(j.via === "template" ? "Template tho pampam" : "Pampam"); })
+          .catch(function (x) { toast(x.message); })
+          .finally(function () { el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "pt-note") {
         var nt2 = prompt((el.dataset.name || "Ee patient") + " gurinchi note:", "");
         if (!nt2 || !nt2.trim()) return;
@@ -2258,6 +2415,11 @@
           (state.allow("academy.material") ? '<button class="btn btn--sm" data-sact="material" data-id="' + esc(s.id) + '">📚 Material link</button>' : "") +
           (state.allow("academy.certify") ? '<button class="btn btn--sm btn--gold" data-sact="certify" data-id="' + esc(s.id) + '">🎓 Certificate</button>' : "") +
           (NATIVE && state.allow("academy.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="student" data-ref="' + esc(s.id) + '" data-who="' + esc(s.name) + '">📷 Document</button>' : "") +
+          // A form filled wrong could not be filled again, and a student
+          // entered by mistake could not be removed. Both existed on the
+          // server and neither had a button.
+          (s.onboarded && state.allow("academy.edit") ? '<button class="btn btn--sm" data-sact="reopen" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '">↩ Form malli</button>' : "") +
+          (state.allow("academy.delete") ? '<button class="btn btn--sm" data-sact="delete" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '" style="color:var(--bad)">Teesey</button>' : "") +
           '</div><div class="notes">' + notes + '<form class="noteform" data-sact="note" data-id="' + esc(s.id) + '"><input placeholder="Note…" maxlength="300" /><button class="btn btn--sm" type="submit">Add</button></form></div></article>';
       }).join("") : '<div class="empty">No students yet. Advance pay chesina vaarini paina add cheyandi.</div>';
     }
@@ -2276,6 +2438,24 @@
       if (act === "material") { return sapi("material", { id: id }).then(function (j) { if (!j.paid) { toast("Payment record ledu — material lock lo undi"); return; } navigator.clipboard && navigator.clipboard.writeText(j.day1); prompt("Student's Day 1 material link (copied). Roju material automatic ga veltundi.", j.day1); }).catch(function (x) { toast(x.message); }); }
       if (act === "send") { return sapi("send", { id: id, which: ["admission", "idcard"] }).then(function () { toast("Documents sent on WhatsApp"); }).catch(function (x) { toast(x.message); }); }
       if (act === "certify") { var g = prompt("Grade (A/B/C):", "A"); if (!g) return; if (!confirm("Generate and send the certificate?")) return; return sapi("certify", { id: id, grade: g }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Certificate sent 🎓"); }).catch(function (x) { toast(x.message); }); }
+      if (act === "reopen") {
+        if (!confirm(el.dataset.name + " ki form malli terichi kotha link ivvanaa?\n\nVaallu mundu nimpinadi marchagalaru.")) return;
+        return sapi("reopen", { id: id }).then(function (j) {
+          students = students.map(function (x) { return x.id === id ? Object.assign({}, x, { onboarded: 0 }) : x; });
+          renderStudents();
+          if (navigator.clipboard) navigator.clipboard.writeText(j.url);
+          prompt("Kotha form link (copy ayindi) — WhatsApp lo pampandi:", j.url);
+        }).catch(function (x) { toast(x.message); });
+      }
+      if (act === "delete") {
+        var nm = el.dataset.name || id;
+        if (!confirm(nm + " ni student list nunchi teeseyyanaa?\n\nFees, notes, documents anni poyipotayi. Idi venakki teesukoleru.")) return;
+        if (prompt("Confirm cheyyadaniki student ID type cheyyandi: " + id) !== id) { toast("ID saripoledu — aapesam"); return; }
+        return sapi("delete", { id: id }).then(function () {
+          students = students.filter(function (x) { return x.id !== id; });
+          renderStudents(); toast(nm + " teesesam");
+        }).catch(function (x) { toast(x.message); });
+      }
     });
     document.addEventListener("submit", function (e) {
       var f = e.target; if (f.dataset.sact !== "note") return; e.preventDefault();

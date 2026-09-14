@@ -108,6 +108,13 @@ http.createServer((req, res) => {
     if (a === "copy") { mockMoved = Math.min(4180, mockMoved + 200); return send(200, { ok: true, moved: 200, skipped: 0, done: mockMoved >= 4180 }); }
     return send(200, { ok: true });
   }
+  if (u.pathname === "/api/patient") {  // pt-msg-mock
+    const a = u.searchParams.get("a") || "list";
+    const p = { phone: "9876543210", name: "Sita Rani", since: Date.now() - 86400000 * 40, allergies: "",
+      counts: { visits: 3, booked: 1, photos: 0, upcoming: 0 }, photos: [], visits: [], notes: [], appts: [] };
+    if (a === "list") return send(200, { ok: true, rows: [p] });
+    return send(200, { ok: true, patient: p, via: "message" });
+  }
   if (u.pathname.startsWith("/api/")) return send(200, { ok: true, rows: [], photos: [], days: [], team: [] });
 
   let f = u.pathname === "/" ? "/staff.html" : u.pathname;

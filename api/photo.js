@@ -120,20 +120,32 @@ module.exports = async (req, res) => {
   }
 
   // ---- delete ----
+  // Which record this is, and therefore who may remove it, comes from the
+  // record — never from the request. Otherwise ?kind=lead would let somebody
+  // with leads.edit delete a student's document, and the other way round.
   if (a === "del") {
-    if (!allow(needCap)) return json(res, 403, { error: "Mee role ki idi teesese permission ledu" });
     const id = String(b.id || "").replace(/[^a-f0-9]/g, "").slice(0, 32);
-    const ref = String(b.ref || "").slice(0, 120);
-    if (!id || !ref) return json(res, 400, { error: "id + ref required" });
-    const cur = await guard.kvCommand(cfg, ["GET", `ph:img:${id}`]).catch(() => ({}));
-    let old = null; try { old = JSON.parse((cur && cur.result) || ""); } catch (e) {}
-    if (old) await store.del(cfg, id, old).catch(() => {});
+    if (!id) return json(res, 400, { error: "id required" });
+    const got = await guard.kvCommand(cfg, ["GET", `ph:img:${id}`]).catch(() => ({}));
+    let rec = null; try { rec = JSON.parse((got && got.result) || ""); } catch (e) {}
+    if (!rec) return json(res, 404, { error: "Photo dorakaledu" });
+    const realCap = (KINDS[rec.kind] || "leads") + ".edit";
+    if (!allow(realCap)) return json(res, 403, { error: "Mee role ki idi teesese permission ledu" });
+
+    await store.del(cfg, id, rec).catch(() => {});
     await guard.kvCommand(cfg, ["DEL", `ph:img:${id}`]).catch(() => {});
-    const r = await guard.kvCommand(cfg, ["LRANGE", listKey(kind, ref), "0", "49"]).catch(() => ({}));
+    const listK = listKey(rec.kind, rec.ref);
+    const r = await guard.kvCommand(cfg, ["LRANGE", listK, "0", "49"]).catch(() => ({}));
     for (const x of (r.result || [])) {
       let v = null; try { v = JSON.parse(x); } catch (e) {}
-      if (v && v.id === id) { await guard.kvCommand(cfg, ["LREM", listKey(kind, ref), "1", x]).catch(() => {}); break; }
+      if (v && v.id === id) { await guard.kvCommand(cfg, ["LREM", listK, "1", x]).catch(() => {}); break; }
     }
+    // A clinical photograph disappearing is worth a line in the log.
+    await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({
+      ts: Date.now(), by: live.name, phone: live.phone,
+      what: `Deleted a ${rec.kind} photo taken ${new Date(rec.ts).toISOString().slice(0, 10)} by ${rec.by || "?"}`,
+    })]).catch(() => {});
+    await guard.kvCommand(cfg, ["LTRIM", "staff:audit", "0", "199"]).catch(() => {});
     return json(res, 200, { ok: true });
   }
 

@@ -15,6 +15,7 @@
 // person rather than about one enquiry.
 const guard = require("./_guard.js");
 const staff = require("./staff.js");
+const notify = require("./_notify.js");
 
 const json = (res, code, body) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -211,6 +212,30 @@ module.exports = async (req, res) => {
     notes.unshift({ ts: Date.now(), by: me.name, text });
     await guard.kvCommand(cfg, ["SET", `pt:${phone}`, JSON.stringify(Object.assign({}, cur, { notes }))]);
     return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true }) });
+  }
+
+  // Send this person a message, from here, without leaving for WhatsApp and
+  // coming back. The clinic could already do this — but only if the AI Office
+  // suggested it first, which is a strange way round. Same permission, same
+  // record in the patient's file, same fallback when the 24-hour window has
+  // closed.
+  if (a === "message") {
+    if (!allow("msg.send")) return json(res, 403, { error: "Mee role ki message pampe permission ledu" });
+    const text = clean(b.text, 900);
+    if (text.length < 5) return json(res, 400, { error: "Message chala chinnaga undi" });
+    let via = "message";
+    let sent = await notify.sendWa(phone, text).catch(() => false);
+    if (!sent) {
+      const first = String(cur.name || b.name || "").trim().split(" ")[0] || "Hi";
+      const t = await notify.sendWaTemplate(phone, "clinic_update", [first, text.slice(0, 250)]).catch(() => ({ ok: false }));
+      sent = !!(t && t.ok); via = "template";
+    }
+    if (!sent) return json(res, 502, { error: "Pampaleka poyam — WhatsApp lo direct ga pampandi" });
+    // it goes in the file, so the next person knows what was said
+    const notes = (cur.notes || []).slice(0, 119);
+    notes.unshift({ ts: Date.now(), by: me.name, text: "📤 " + text.slice(0, 300) });
+    await guard.kvCommand(cfg, ["SET", `pt:${phone}`, JSON.stringify(Object.assign({}, cur, { notes }))]).catch(() => {});
+    return json(res, 200, { ok: true, via, patient: await build(cfg, phone, { allowEmpty: true }) });
   }
 
   return json(res, 400, { error: "Unknown action" });

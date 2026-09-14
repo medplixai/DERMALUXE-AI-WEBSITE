@@ -2,6 +2,10 @@
 User-agent: *
 Allow: /
 Disallow: /leads.html
+Disallow: /staff.html
+Disallow: /staff-app.html
+Disallow: /marketing.html
+Disallow: /academy-join.html
 Disallow: /api/
 
 # AI / answer-engine crawlers (GEO) — explicitly welcome
