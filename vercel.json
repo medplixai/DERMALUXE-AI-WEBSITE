@@ -60,6 +60,9 @@
     },
     "api/photo.js": {
       "maxDuration": 30
+    },
+    "api/kvmove.js": {
+      "maxDuration": 60
     }
   },
   "crons": [

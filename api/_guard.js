@@ -12,10 +12,19 @@ function safeEqual(a, b) {
 
 function kvConfig() {
   const env = process.env;
+  // While the database is being moved to Mumbai both are attached: the
+  // original under KV_*, the new one under BOM_KV_*. This one variable says
+  // which is live. Flipping it is the cutover; flipping it back is the way
+  // out. Until it says "bom", nothing reads or writes the Mumbai copy except
+  // /api/kvmove, which names both databases explicitly.
+  if (env.KV_PRIMARY === "bom" && env.BOM_KV_REST_API_URL && env.BOM_KV_REST_API_TOKEN) {
+    return { url: env.BOM_KV_REST_API_URL, token: env.BOM_KV_REST_API_TOKEN };
+  }
   let url = env.KV_REST_API_URL || env.UPSTASH_REDIS_REST_URL;
   let token = env.KV_REST_API_TOKEN || env.UPSTASH_REDIS_REST_TOKEN;
   if (!url || !token) {
     for (const k of Object.keys(env)) {
+      if (k.startsWith("BOM_")) continue;          // never the standby, by accident
       if (!url && (k.endsWith("KV_REST_API_URL") || k.endsWith("UPSTASH_REDIS_REST_URL"))) url = env[k];
       if (!token && !k.includes("READ_ONLY") && (k.endsWith("KV_REST_API_TOKEN") || k.endsWith("UPSTASH_REDIS_REST_TOKEN"))) token = env[k];
     }
