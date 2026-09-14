@@ -81,6 +81,19 @@ function clash(rows, next, skipId) {
   return null;
 }
 
+// Somebody who did not turn up is not a lost cause, they are a person whose
+// morning went wrong. Ask them back rather than filing them away.
+async function tellRebook(ph, first) {
+  if (!ph) return false;
+  try {
+    const ok = await notify.sendWa(ph,
+      `Hi ${first}! 🙏 Ivala mee DermaLuxe appointment miss ayinattu undi — parledu!\n\nMalli convenient time book chesukovalante ee message ki reply cheyandi 😊 Ee week slots available unnayi.`);
+    if (ok) return true;
+    const t = await notify.sendWaTemplate(ph, "clinic_update", [first, "Mee appointment miss ayindi — malli book chesukovalante reply cheyandi. Ee week slots unnayi."]);
+    return !!(t && t.ok);
+  } catch (e) { console.error("schedule: rebook", e && e.message); return false; }
+}
+
 async function tellPatient(ph, text) {
   if (!ph) return;
   try {
@@ -226,10 +239,19 @@ module.exports = async (req, res) => {
       return json(res, 200, { ok: true, cancelled: true });
     }
     if (st === "done" || st === "noshow") {
+      // Marking a no-show over WhatsApp has always invited the patient to
+      // rebook. Marking the same thing here did not — it just filed them away
+      // and they were never heard from again. Same state, same message.
+      let invited = false;
+      if (st === "noshow" && !cur.ns) {
+        next.ns = 1;
+        const first = String(cur.name || "").trim().split(" ")[0] || "andi";
+        invited = await tellRebook(cur.ph, first);
+      }
       await guard.kvCommand(cfg, ["LREM", Q, "1", found.raw]).catch(() => {});
       await guard.kvCommand(cfg, ["LPUSH", DONE, JSON.stringify(next)]).catch(() => {});
       await guard.kvCommand(cfg, ["LTRIM", DONE, "0", "499"]).catch(() => {});
-      return json(res, 200, { ok: true, appt: shape(next), moved: "done" });
+      return json(res, 200, { ok: true, appt: shape(next), moved: "done", invited });
     }
     await replace(cfg, found.raw, next);
     return json(res, 200, { ok: true, appt: shape(next) });

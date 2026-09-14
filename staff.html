@@ -839,6 +839,10 @@
           '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.ph) + '">💬</a>' +
           (canEdit && r.status === "booked" ? '<button class="btn btn--sm" data-act="sch-arrived" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Vachharu</button>' : "") +
           (canEdit && (r.status === "arrived" || r.status === "booked") ? '<button class="btn btn--sm" data-act="sch-done" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">🏁 Ayipoyindi</button>' : "") +
+          // Somebody who did not turn up could only be recorded by texting the
+          // WhatsApp admin command, so in practice they were left sitting in
+          // the day for ever and never asked back.
+          (canEdit && r.status === "booked" && r.at < Date.now() ? '<button class="btn btn--sm" data-act="sch-noshow" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🚫 Raaledu</button>' : "") +
           (canEdit ? '<button class="btn btn--sm" data-act="sch-assign" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">👩‍⚕️ Assign</button>' +
             '<button class="btn btn--sm" data-act="sch-move" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🕒 Marchandi</button>' +
             '<button class="btn btn--sm" data-act="sch-cancel" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">✖</button>' : "") +
@@ -2309,6 +2313,11 @@
       if (el.dataset.act === "sch-done") {
         var dn = prompt("Em chesaru? (optional note)", "") || "";
         schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "done", note: dn }, "Ayipoyindi");
+        return;
+      }
+      if (el.dataset.act === "sch-noshow") {
+        if (!confirm(el.dataset.name + " raaledu ani mark cheyyanaa?\n\nVaallaki 'malli book chesukondi' ani message veltundi.")) return;
+        schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "noshow" }, "Raaledu ani mark chesam — rebook message pampam");
         return;
       }
       if (el.dataset.act === "sch-cancel") {
