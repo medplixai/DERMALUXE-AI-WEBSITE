@@ -293,7 +293,7 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
   if (sync.attempted) lead.synced = sync.synced;
   if (cfg) {
     try {
-      await guard.kvCommand(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)]);
+      await guard.kvWrite(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)], "new lead");
       await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
     } catch (e) {}
   }

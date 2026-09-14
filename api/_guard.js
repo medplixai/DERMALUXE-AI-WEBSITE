@@ -96,6 +96,34 @@ async function kvPipeline(cfg, cmds) {
   return j.map((x) => (x && Object.prototype.hasOwnProperty.call(x, "result") ? x.result : null));
 }
 
+// A write the clinic cannot afford to lose quietly.
+//
+// Saving a lead sat inside an empty catch: if the database refused, the
+// enquiry vanished and nothing anywhere said so. The WhatsApp alert to the
+// care team still goes out, so a person hears about it — but it would never
+// reach the dashboard, and nobody would know why. This says so in the logs
+// and reports back, so callers can react instead of assuming.
+async function kvWrite(cfg, cmd, what) {
+  try {
+    const r = await kvCommand(cfg, cmd);
+    if (r && r.error) throw new Error(String(r.error).slice(0, 200));
+    return true;
+  } catch (e) {
+    console.error("DATABASE WRITE FAILED —", what || cmd[0], "—", (e && e.message) || e);
+    return false;
+  }
+}
+
+// A hash comes back as a flat array from Redis and as an object from
+// Postgres. Everywhere that reads one has to cope with both, so it is said
+// once here rather than remembered at each call site.
+function hashOf(v) {
+  const out = {};
+  if (Array.isArray(v)) { for (let i = 0; i + 1 < v.length; i += 2) out[v[i]] = v[i + 1]; }
+  else if (v && typeof v === "object") Object.assign(out, v);
+  return out;
+}
+
 function getIp(req) {
   const xf = req.headers["x-forwarded-for"];
   const first = (Array.isArray(xf) ? xf[0] : String(xf || "")).split(",")[0].trim();
@@ -164,4 +192,4 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { kvConfig, kvCommand, kvPipeline, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };
+module.exports = { kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };

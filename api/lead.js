@@ -55,7 +55,7 @@ module.exports = async (req, res) => {
   if (!cfg) return res.status(200).json({ ok: true, stored: false, synced: sync.synced, reason: "storage not configured" });
 
   try {
-    await guard.kvCommand(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)]);
+    await guard.kvWrite(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)], "new lead");
     await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
     await notify.leadAlert(cfg, lead);
     return res.status(200).json({ ok: true, stored: true, synced: sync.synced });

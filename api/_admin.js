@@ -670,7 +670,15 @@ async function handle(cfg, digits, text, photo, video) {
   if ((sm = t.match(/^staff(?:\s+(list|add|remove|delete|roles))?(?:\s+(\d{10}))?(?:\s+(.+))?$/i))) {
     if (!cfg) return "Storage ledu.";
     const sub = (sm[1] || "list").toLowerCase(), ph = sm[2] || "", name = (sm[3] || "").trim().slice(0, 60);
-    const readAll = async () => { const r = await guard.kvCommand(cfg, ["HGETALL", "staff:users"]).catch(() => ({})); const a = r.result || [], o = {}; if (Array.isArray(a)) { for (let i = 0; i + 1 < a.length; i += 2) { try { o[a[i]] = JSON.parse(a[i + 1]); } catch (e) {} } } return o; };
+    // This read only understood the flat-array shape Redis replies with, so
+    // against Postgres — which replies with an object — every WhatsApp staff
+    // command would have found an empty staff list and said so confidently.
+    const readAll = async () => {
+      const r = await guard.kvCommand(cfg, ["HGETALL", "staff:users"]).catch(() => ({}));
+      const o = {};
+      for (const [k, v] of Object.entries(guard.hashOf(r.result))) { try { o[k] = JSON.parse(v); } catch (e) {} }
+      return o;
+    };
     // Roles come from the Control panel (KV) so WhatsApp and the dashboard
     // always offer the same list, custom roles included.
     const staffMod = require("./staff.js");

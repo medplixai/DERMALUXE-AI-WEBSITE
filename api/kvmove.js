@@ -172,6 +172,15 @@ module.exports = async (req, res) => {
 
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
 
+  // Once the switch has been thrown, this tool points the wrong way: the
+  // source is the store the clinic has stopped using, and copying it now
+  // would write stale data — including the test leads that were cleared —
+  // over everything that has happened since. Reading the status stays
+  // allowed; copying does not.
+  if (process.env.KV_PRIMARY === "supabase") {
+    return json(res, 409, { error: "Move ayipoyindi. Ippudu copy cheste kotha data meeda paatha data padutundi — anduke aapesam." });
+  }
+
   // Start again from the beginning — used for the last pass before the switch.
   if (a === "reset") {
     await one(s, ["SET", CURSOR, "0"]);

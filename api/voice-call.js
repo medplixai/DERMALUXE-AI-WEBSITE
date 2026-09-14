@@ -117,7 +117,7 @@ async function storeCallLead(cfg, info, from, said) {
   if (sync.attempted) lead.synced = sync.synced;
   if (cfg) {
     try {
-      await guard.kvCommand(cfg, ["LPUSH", "dl_leads", JSON.stringify(lead)]);
+      await guard.kvWrite(cfg, ["LPUSH", "dl_leads", JSON.stringify(lead)], "new lead");
       await guard.kvCommand(cfg, ["LTRIM", "dl_leads", "0", "4999"]);
     } catch (e) {}
   }
