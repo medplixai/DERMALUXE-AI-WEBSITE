@@ -93,6 +93,15 @@ http.createServer((req, res) => {
     if (a === "login" || a === "verify") return send(200, { ok: true, token: "mock.token" });
     return send(200, { ok: true });
   }
+  if (u.pathname === "/api/kvrestore") {
+    const a = u.searchParams.get("a") || "list";
+    if (a === "list") return send(200, { ok: true, last: { day: "2026-09-14", keys: 154, bytes: 81000 },
+      backups: ["2026-09-14","2026-09-13","2026-09-12"].map((d) => ({ day: d, bytes: 81000, at: new Date().toISOString() })) });
+    if (a === "run") return send(200, { ok: true, day: "2026-09-14", keys: 154, bytes: 81000 });
+    if (a === "peek") return send(200, { ok: true, day: "2026-09-14", keys: 154, leads: 0, byType: { string: 140, list: 6, hash: 5, set: 3 } });
+    if (a === "restore") return send(200, { ok: true, day: "2026-09-14", keys: 154 });
+    return send(200, { ok: true });
+  }
   if (u.pathname === "/api/kvmove") {
     const a = u.searchParams.get("a") || "status";
     if (a === "status") return send(200, { ok: true, from: 4180, to: mockMoved, cursor: "0", live: "redis (america)" });

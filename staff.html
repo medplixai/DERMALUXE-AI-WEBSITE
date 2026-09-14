@@ -445,6 +445,11 @@
             <div id="stoBox" class="meta" style="margin-top:8px">—</div>
             <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="stoLoad">Chudandi</button><button class="btn btn--sm hide" id="stoMove">Ippude move cheyyi</button></div>
             <div class="meta" id="stoMoveMsg" style="margin-top:6px"></div></div>
+          <div class="box"><h2>Backup <span class="te" style="font-size:.9rem;color:var(--g3)">· బ్యాకప్</span></h2>
+            <p>Prati raatri 1:50 ki clinic data mottam separate ga copy ayi, encrypt chesi daachipettabadutundi. 14 rojula vi untayi. Database ki emaina ayithe deenilo nunchi venakki tecchukovachu.</p>
+            <div id="bkBox" class="meta" style="margin-top:8px">—</div>
+            <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="bkCheck">Chudandi</button><button class="btn btn--sm" id="bkNow">Ippude teeyi</button></div>
+            <div class="meta" id="bkMsg" style="margin-top:6px"></div></div>
           <div class="box"><h2>Database move <span class="te" style="font-size:.9rem;color:var(--g3)">· డేటాబేస్ మార్పు</span></h2>
             <p>Clinic data America nunchi Mumbai ki. Copy ayyaka matrame switch chestam — appati varaku antha mundu laage nadustundi.</p>
             <div id="mvBox" class="meta" style="margin-top:8px">—</div>
@@ -2253,6 +2258,54 @@
       if (!confirm("Password teesestara? Appudu OTP login matrame untundi.")) return;
       api("set-password", { off: true }).then(function () { toast("Password removed — OTP only"); return loadPanel(); }).catch(function (x) { $("pwdErr").textContent = x.message; });
     };
+    // ---- backups ----
+    function bkapi(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/kvrestore?a=" + a, opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    function bkPaint(j) {
+      var rows = j.backups || [];
+      var last = j.last;
+      $("bkBox").innerHTML =
+        '<div style="display:flex;justify-content:space-between"><span>Chivari backup</span><b style="color:' + (last ? "var(--text)" : "var(--bad)") + ';font-weight:500">' +
+          (last ? esc(last.day) + " · " + last.keys + " keys" : "inka okkati kuda ledu") + "</b></div>" +
+        '<div style="display:flex;justify-content:space-between"><span>Enni unnayi</span><b style="color:var(--text);font-weight:500">' + rows.length + "</b></div>" +
+        (rows.length ? '<div style="margin-top:6px;opacity:.8">' + rows.slice(0, 14).map(function (r) { return esc(r.day); }).join(" · ") + "</div>" : "") +
+        (rows.length ? '<div style="margin-top:8px"><button class="btn btn--sm" id="bkRestore">Venakki teesuko…</button></div>' : "");
+      var rb = $("bkRestore");
+      if (rb) rb.onclick = function () {
+        var day = prompt("E roju backup nunchi venakki teesukovali?\n\nUnnavi: " + rows.slice(0, 14).map(function (r) { return r.day; }).join(", "));
+        if (!day) return;
+        $("bkMsg").textContent = "Chustunna…";
+        bkapi("peek", { day: day.trim() }).then(function (p) {
+          var ok = confirm("Aa backup lo:\n\n" + p.keys + " keys, " + p.leads + " leads\n\nVenakki pettalante, confirm cheyyadaniki date ni malli type cheyyandi.");
+          if (!ok) { $("bkMsg").textContent = ""; return; }
+          var c = prompt("Date ni malli type cheyyandi: " + p.day);
+          if (!c) { $("bkMsg").textContent = ""; return; }
+          $("bkMsg").textContent = "Venakki pedutunna…";
+          return bkapi("restore", { day: p.day, confirm: c.trim() }).then(function (r) {
+            $("bkMsg").textContent = r.keys + " keys venakki vachayi. App refresh cheyyandi.";
+          });
+        }).catch(function (e) { $("bkMsg").textContent = e.message; });
+      };
+    }
+    if ($("bkCheck")) $("bkCheck").onclick = function () {
+      $("bkBox").textContent = "Chustunna…"; $("bkCheck").disabled = true;
+      bkapi("list").then(bkPaint).catch(function (e) { $("bkBox").textContent = e.message; })
+        .finally(function () { $("bkCheck").disabled = false; });
+    };
+    if ($("bkNow")) $("bkNow").onclick = function () {
+      $("bkMsg").textContent = "Backup teestunna…"; $("bkNow").disabled = true;
+      bkapi("run", {}).then(function (j) {
+        $("bkMsg").textContent = "Ayindi — " + j.keys + " keys, " + Math.round(j.bytes / 1024) + " KB.";
+        $("bkCheck").click();
+      }).catch(function (e) { $("bkMsg").textContent = e.message; })
+        .finally(function () { $("bkNow").disabled = false; });
+    };
+
     // ---- moving the database ----
     // Copying runs a batch at a time so no single request has to survive the
     // whole job; the button keeps asking until the server says it is done,

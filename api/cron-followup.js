@@ -16,6 +16,31 @@ module.exports = async (req, res) => {
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: true, note: "kv not configured" });
 
+  // ---- is the database actually answering? ------------------------------
+  // Everything else in this job, and everything the clinic does all day,
+  // assumes it is. If it stops, leads stop being saved and nobody finds out
+  // until somebody happens to look. So: write something, read it back, throw
+  // it away. If that does not work, say so on WhatsApp — which does not need
+  // the database to work, unlike the push notifications.
+  let health = "ok";
+  try {
+    const nonce = String(Date.now());
+    const [, got] = await guard.kvPipeline(cfg, [
+      ["SET", "health:ping", nonce, "EX", "300"],
+      ["GET", "health:ping"],
+    ]);
+    if (String(got) !== nonce) throw new Error("wrote " + nonce + ", read back " + JSON.stringify(got));
+    await guard.kvCommand(cfg, ["SET", "health:last", String(Date.now())]).catch(() => {});
+  } catch (e) {
+    health = String((e && e.message) || e).slice(0, 200);
+    console.error("DATABASE HEALTH CHECK FAILED —", health);
+    for (const ph of guard.ownerPhones()) {
+      await notify.sendWa(ph,
+        `\u26a0\ufe0f *DermaLuxe — database andatledu*\n\n${health}\n\nIppudu kotha leads save avvakapovachu. WhatsApp agent reply istune untundi, kaani dashboard lo kanipinchakapovachu.`
+      ).catch(() => {});
+    }
+  }
+
   const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "99"]);
   const now = Date.now();
   // The hour of the day in Eluru, worked out once. Every timed block below
@@ -334,5 +359,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, photosMoved, swept });
 };

@@ -64,6 +64,12 @@
     },
     "api/kvmove.js": {
       "maxDuration": 60
+    },
+    "api/cron-backup.js": {
+      "maxDuration": 300
+    },
+    "api/kvrestore.js": {
+      "maxDuration": 300
     }
   },
   "crons": [
@@ -86,6 +92,10 @@
     {
       "path": "/api/cron-academy",
       "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/cron-backup",
+      "schedule": "20 20 * * *"
     }
   ],
   "rewrites": [
