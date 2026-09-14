@@ -443,7 +443,8 @@
           <div class="box"><h2>Storage <span class="te" style="font-size:.9rem;color:var(--g3)">· ఎంత దాచాం</span></h2>
             <p>Clinic data enta undo, photos ekkada unnayo. Photos ippudu separate storage lo, encrypt chesi — database lo record matrame.</p>
             <div id="stoBox" class="meta" style="margin-top:8px">—</div>
-            <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="stoLoad">Chudandi</button></div></div>
+            <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="stoLoad">Chudandi</button><button class="btn btn--sm hide" id="stoMove">Ippude move cheyyi</button></div>
+            <div class="meta" id="stoMoveMsg" style="margin-top:6px"></div></div>
           <div class="box"><h2>Owner numbers</h2><p>Ee numbers ki eppudu full access — WhatsApp admin commands kuda. Vercel lo <b style="color:var(--g1);font-weight:500">ADMIN_PHONES</b> / <b style="color:var(--g1);font-weight:500">STAFF_OWNERS</b> lo matrame marchagalam.</p>
             <div id="ownerList" class="meta" style="margin-top:8px"></div></div>
         </div>
@@ -2258,8 +2259,27 @@
         el.innerHTML = rows.map(function (r) {
           return '<div style="display:flex;justify-content:space-between;gap:12px;padding:3px 0"><span>' + esc(r[0]) + '</span><b style="color:var(--text);font-weight:500">' + esc(String(r[1])) + "</b></div>";
         }).join("") + (j.cached ? '<div style="margin-top:6px;opacity:.7">10 nimishala kritam lekka</div>' : "");
+        // anything still sitting in the database can be moved now instead of
+        // waiting for the hourly job
+        var left = (p.inKv || 0) + (p.legacy || 0);
+        $("stoMove").classList.toggle("hide", !(p.blobOn && left));
       }).catch(function (e) { el.textContent = e.message; })
         .finally(function () { $("stoLoad").disabled = false; });
+    };
+    if ($("stoMove")) $("stoMove").onclick = function () {
+      var msg = $("stoMoveMsg");
+      $("stoMove").disabled = true;
+      var run = function (done) {
+        msg.textContent = "Move chestunna… " + done + " ayyayi";
+        return api("storage-move", {}).then(function (j) {
+          done += (j.moved || 0);
+          if (j.moved && !j.done) return run(done);
+          msg.textContent = done ? done + " photos move ayyayi." + (j.failed ? " " + j.failed + " kaledu." : "") : "Move cheyyalsinavi emi ledu.";
+          $("stoLoad").click();
+        });
+      };
+      run(0).catch(function (e) { msg.textContent = e.message; })
+        .finally(function () { $("stoMove").disabled = false; });
     };
 
     $("tAdd").onclick = function () {

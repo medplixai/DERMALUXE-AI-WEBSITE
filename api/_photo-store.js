@@ -8,31 +8,34 @@
 // through a serverless function.
 //
 // So the bytes go to blob storage and Redis keeps only the small record that
-// describes them. Two things make that safe to do with patient photographs:
+// describes them. Three things stand between a patient's photograph and
+// anyone who should not see it:
 //
-//   * They are encrypted before they leave this process, AES-256-GCM, a fresh
-//     random IV each time. Blob URLs are unguessable but they are not access
-//     controlled, so the bytes sitting there must be worthless on their own.
-//     The key is derived with HKDF from whichever secret signs staff sessions
-//     — STAFF_SECRET, or ADMIN_KEY when that is what the deployment uses —
-//     and is never written down anywhere.
+//   * The store is PRIVATE. There is no public URL. Reading a blob requires
+//     the store's own credential, which lives in the server's environment and
+//     is never sent to a browser.
+//   * The bytes are encrypted before they leave this process, AES-256-GCM,
+//     a fresh random IV each time, so the file is worthless even to someone
+//     who somehow reached the store. The key is derived with HKDF from
+//     whichever secret signs staff sessions — STAFF_SECRET, or ADMIN_KEY when
+//     that is what the deployment uses — and is never written down anywhere.
 //     *** Changing that secret logs everyone out, which is recoverable, AND
 //     makes every photo stored before the change unreadable, which is not.
 //     Nothing else in the system carries that second cost; this does. ***
-//   * The URL is never given to the browser. /api/photo still checks the
-//     session and the capability on the record and then streams the bytes, as
-//     it always has. Nothing about who may see a photo changes here.
+//   * /api/photo still checks the session and the capability recorded on the
+//     photo before it streams a single byte, exactly as it always has.
 //
-// If blob storage is not configured, photos are stored in Redis exactly as
-// before — encrypted now — so this file is safe to deploy before the store
-// exists, and photos written either way keep working afterwards.
+// If blob storage is not configured, photos are stored in Redis as before —
+// encrypted now — so this file works before the store exists, and photos
+// written either way keep working afterwards.
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 
-const BLOB_API = "https://blob.vercel-storage.com";
-const API_VERSION = "7";
 const token = () => process.env.BLOB_READ_WRITE_TOKEN || "";
 const blobOn = () => !!token();
+// Required only when a store is configured, so a deployment without one never
+// pays for loading it.
+const sdk = () => require("@vercel/blob");
 
 // One key for photos, derived from a secret the deployment already has, so
 // there is no new credential for anyone to handle, paste or lose. It must be
@@ -65,40 +68,31 @@ function decrypt(buf, rec) {
 }
 
 async function blobPut(id, buf) {
-  const r = await fetch(`${BLOB_API}/ph/${id}.bin`, {
-    method: "PUT",
-    headers: {
-      authorization: `Bearer ${token()}`,
-      "x-api-version": API_VERSION,
-      "x-content-type": "application/octet-stream",
-      "x-add-random-suffix": "1",          // the path must not be guessable from the id
-      "x-cache-control-max-age": "0",
-      "content-type": "application/octet-stream",
-    },
-    body: buf,
+  // A random suffix on top of a random id: the pathname is not derivable from
+  // anything the clinic stores, even before the store's own access control.
+  const r = await sdk().put(`ph/${id}.bin`, buf, {
+    access: "private",
+    addRandomSuffix: true,
+    contentType: "application/octet-stream",
+    cacheControlMaxAge: 0,
+    token: token(),
   });
-  if (!r.ok) {
-    const t = await r.text().catch(() => "");
-    throw new Error(`blob put ${r.status} ${t.slice(0, 160)}`);
-  }
-  const j = await r.json();
-  if (!j || !j.url) throw new Error("blob put returned no url");
-  return j.url;
+  if (!r || !r.pathname) throw new Error("blob put returned no pathname");
+  return { url: r.url, path: r.pathname };
 }
 
-async function blobGet(url) {
-  const r = await fetch(url, { headers: { authorization: `Bearer ${token()}` } });
-  if (!r.ok) throw new Error(`blob get ${r.status}`);
-  return Buffer.from(await r.arrayBuffer());
+async function blobGet(rec) {
+  const where = rec.path || rec.url;
+  const r = await sdk().get(where, { access: "private", token: token(), useCache: false });
+  if (!r || r.statusCode !== 200 || !r.stream) throw new Error("blob get " + ((r && r.statusCode) || "no body"));
+  const parts = [];
+  for await (const chunk of r.stream) parts.push(Buffer.from(chunk));
+  return Buffer.concat(parts);
 }
 
-async function blobDel(url) {
-  const r = await fetch(`${BLOB_API}/delete`, {
-    method: "POST",
-    headers: { authorization: `Bearer ${token()}`, "x-api-version": API_VERSION, "content-type": "application/json" },
-    body: JSON.stringify({ urls: [url] }),
-  });
-  return r.ok;
+async function blobDel(rec) {
+  await sdk().del(rec.path || rec.url, { token: token() });
+  return true;
 }
 
 // Store the bytes and hand back the part of the record that says where they
@@ -106,11 +100,17 @@ async function blobDel(url) {
 // Redis and says so, and the storage panel shows how many landed which way.
 async function put(cfg, id, buf, meta) {
   const e = encrypt(buf);
+  // In practice unreachable: the same secret signs staff sessions, so without
+  // it nobody can log in far enough to take a photo. Said out loud anyway,
+  // because quietly storing a patient's photograph in the clear after
+  // promising otherwise is not a thing to find out later. The storage panel
+  // shows the same fact as "Encrypt ayyaya: Ledu".
+  if (!e.enc) console.error("photo: NO ENCRYPTION KEY — storing in the clear");
   const base = { enc: e.enc, iv: e.iv, tag: e.tag, bytes: buf.length };
   if (blobOn()) {
     try {
-      const url = await blobPut(id, e.buf);
-      return Object.assign({ store: "blob", url }, base);
+      const at = await blobPut(id, e.buf);
+      return Object.assign({ store: "blob" }, at, base);
     } catch (err) {
       console.error("photo: blob put failed, keeping it in kv —", err && err.message);
     }
@@ -122,7 +122,7 @@ async function put(cfg, id, buf, meta) {
 // Read the bytes back, whichever of the three shapes the record is in: blob,
 // the new Redis form, or the original record that carried its own base64.
 async function get(cfg, id, rec) {
-  if (rec.store === "blob" && rec.url) return decrypt(await blobGet(rec.url), rec);
+  if (rec.store === "blob" && (rec.path || rec.url)) return decrypt(await blobGet(rec), rec);
   if (rec.store === "kv") {
     const r = await guard.kvCommand(cfg, ["GET", `ph:b:${id}`]).catch(() => ({}));
     if (!r || !r.result) throw new Error("photo bytes missing");
@@ -133,7 +133,7 @@ async function get(cfg, id, rec) {
 }
 
 async function del(cfg, id, rec) {
-  if (rec && rec.store === "blob" && rec.url) await blobDel(rec.url).catch(() => {});
+  if (rec && rec.store === "blob" && (rec.path || rec.url)) await blobDel(rec).catch(() => {});
   await guard.kvCommand(cfg, ["DEL", `ph:b:${id}`]).catch(() => {});
 }
 

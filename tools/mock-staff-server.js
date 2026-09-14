@@ -75,6 +75,7 @@ http.createServer((req, res) => {
       photos: { photos: 412, inBlob: 380, inKv: 0, legacy: 32, bytes: 104857600, blobOn: true, encrypted: true, partial: false },
       at: Date.now(),
     });
+    if (a === "storage-move") return send(200, { ok: true, moved: 12, skipped: 0, failed: 0, freedBytes: 3145728, done: true });
     if (a === "panel") return send(200, {
       ok: true,
       roles: { owner: { label: "Owner", te: "ఓనర్", caps: ["*"], builtin: true }, reception: { label: "Reception", te: "రిసెప్షన్", caps: ["leads.view", "leads.edit", "appts.view", "appts.edit", "msg.send"], builtin: true } },

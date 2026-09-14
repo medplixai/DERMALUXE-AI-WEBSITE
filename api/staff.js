@@ -422,6 +422,20 @@ module.exports = async (req, res) => {
     return json(res, 200, Object.assign({ ok: true, cached: false }, out));
   }
 
+  // Move a batch of photos out of Redis now, rather than waiting for the
+  // hourly job. Same code, same read-back check; this only sets the pace.
+  if (a === "storage-move") {
+    if (!allow("settings.manage")) return json(res, 403, { error: "Idi owner ki matrame" });
+    if (req.method !== "POST") return json(res, 405, { error: "POST" });
+    const rl = await guard.rateLimit(cfg, `rl:mv:${me.phone}`, 60, 3600);
+    if (!rl.allowed) return json(res, 429, { error: "Konchem aagandi" });
+    let out;
+    try { out = await require("./_photo-store.js").migrate(cfg, 20); }
+    catch (e) { console.error("storage-move", e && e.message); return json(res, 500, { error: "Move avvaledu — malli try cheyandi" }); }
+    await guard.kvCommand(cfg, ["DEL", "storage:stats"]).catch(() => {});   // the panel figure is now stale
+    return json(res, 200, Object.assign({ ok: true }, out));
+  }
+
   // ---- control panel (read) ----
   if (a === "panel") {
     if (!allow("team.manage")) return json(res, 403, { error: "Control panel owner/manager ki matrame" });
