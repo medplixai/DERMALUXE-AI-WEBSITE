@@ -540,7 +540,14 @@
       if (!/^[6-9]\d{9}$/.test(p)) { $("loginErr").textContent = "Valid 10-digit number ivvandi"; return; }
       if (!pw) { $("loginErr").textContent = "Password ivvandi (leda OTP vadandi)"; return; }
       $("loginBtn").disabled = true;
-      api("login", { phone: p, password: pw }).then(function (j) { tok = j.token; try { localStorage.setItem(TOK, tok); } catch (e) {} $("pwd").value = ""; boot(); })
+      api("login", { phone: p, password: pw }).then(function (j) {
+        tok = j.token; try { localStorage.setItem(TOK, tok); } catch (e) {}
+        $("pwd").value = "";
+        // They logged in with the password the owner sent. It has been seen by
+        // WhatsApp and by whoever pressed the button; it should not stay.
+        mustChange = !!j.mustChange;
+        boot();
+      })
         .catch(function (e) { $("loginErr").textContent = e.message; }).finally(function () { $("loginBtn").disabled = false; });
     };
     $("pwd").addEventListener("keydown", function (e) { if (e.key === "Enter") $("loginBtn").click(); });
@@ -574,6 +581,21 @@
     $("refreshBtn").onclick = function () { flushQueue().then(function () { return load(true); }).catch(function (e) { toast(e.message); }); };
 
     // ---- app ----
+    var mustChange = false;
+    function askForOwnPassword() {
+      if (!mustChange) return;
+      mustChange = false;
+      goTab("team");
+      setTimeout(function () {
+        var b = document.querySelector('[data-cp="controls"]'); if (b) b.click();
+        var el = $("pwdState");
+        if (el) {
+          el.innerHTML = '<b style="color:var(--g2);font-weight:500">Idi manam pampina password. Mee sonta password ippude pettukondi.</b>';
+          el.scrollIntoView({ block: "center" });
+        }
+        var inp = $("newPwd"); if (inp) inp.focus();
+      }, 400);
+    }
     function boot() {
       if (!tok) { $("login").classList.remove("hide"); $("app").classList.add("hide"); return; }
       $("login").classList.add("hide"); $("app").classList.remove("hide");
@@ -586,6 +608,7 @@
       load().then(function () {
         $("login").classList.add("hide"); $("app").classList.remove("hide");
         initPush(); initLock(); initPrivacy(); checkPendingCall(); checkAppVersion();
+        askForOwnPassword();
         // The day is what almost everyone opens next. Fetch it now, while they
         // are still reading the leads, so the tab is already filled in when
         // they get there instead of starting a round trip to America.
@@ -1249,9 +1272,12 @@
         return '<div class="person' + (u.off ? " off" : "") + '" data-phone="' + esc(u.phone) + '">' +
           '<div class="top"><div><h3>' + esc(u.name) + ' <span class="meta">· ' + esc(u.phone) + '</span></h3>' +
           '<div class="meta">' + (u.lastLogin ? "Last login " + ago(u.lastLogin) : "Inka login avvaledu") +
-          (u.hasPwd ? '' : ' · <span style="color:var(--g3)">password ledu (OTP tho matrame)</span>') +
+          (u.hasPwd
+            ? (u.tempPwd ? ' · <span style="color:var(--g3)">manam pampina password ne vadutunnaru</span>' : ' · <span style="color:var(--muted2)">sonta password undi</span>')
+            : ' · <span style="color:var(--g3)">password ledu (OTP tho matrame)</span>') +
           (u.off ? ' · <b style="color:var(--bad);font-weight:500">Access OFF</b>' : '') + '</div></div>' +
           '<div class="acts"><select class="sel" data-act="p-role" data-phone="' + esc(u.phone) + '">' + roleOpts(u.role) + '</select>' +
+          '<button class="btn btn--sm" data-act="p-pwd" data-phone="' + esc(u.phone) + '" data-name="' + esc(u.name) + '">🔑 ' + (u.hasPwd ? "Kotha password pampu" : "Password pampu") + "</button>" +
           '<button class="btn btn--sm" data-act="p-signout" data-phone="' + esc(u.phone) + '" data-name="' + esc(u.name) + '" title="Anni phones nunchi logout">🔒 Sign out</button>' +
           '<button class="btn btn--sm" data-act="p-suspend" data-phone="' + esc(u.phone) + '" data-off="' + (u.off ? "0" : "1") + '">' + (u.off ? "Turn on" : "Turn off") + '</button>' +
           '<button class="btn btn--sm" data-act="p-remove" data-phone="' + esc(u.phone) + '">Remove</button></div></div>' +
@@ -2027,6 +2053,15 @@
     document.addEventListener("click", function (e) {
       var el = e.target.closest("[data-act]"); if (!el || el.tagName === "SELECT" || el.tagName === "FORM") return;
       if (el.dataset.act === "delete") { if (!confirm("Delete this lead?")) return; api("delete", { key: el.dataset.key }).then(function () { state.data.leads = state.data.leads.filter(function (x) { return x.key !== el.dataset.key; }); state.data.academy.leads = state.data.academy.leads.filter(function (x) { return x.key !== el.dataset.key; }); render(); toast("Deleted"); }).catch(function (x) { toast(x.message); }); }
+      if (el.dataset.act === "p-pwd") {
+        var who = el.dataset.name || el.dataset.phone;
+        if (!confirm(who + " ki kotha password pampanaa?\n\nAdi vaalla WhatsApp ki direct ga veltundi. Meeku kaani, naaku kaani adi kanipinchadu.")) return;
+        el.disabled = true;
+        api("team-password", { phone: el.dataset.phone })
+          .then(function (j) { toast(j.sent ? who + " ki WhatsApp lo pampam" : "Password set ayindi — WhatsApp pampaleka poyam"); return loadPanel(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "p-signout") {
         if (!confirm(el.dataset.name + " ni anni phones nunchi logout chestara?\n\nPhone poyinappudu idi vaadandi. Vaaru malli login avvali.")) return;
         api("team-signout", { phone: el.dataset.phone }).then(function () { toast("Anni devices nunchi logout ayyaru"); return loadPanel(); }).catch(function (x) { toast(x.message); });

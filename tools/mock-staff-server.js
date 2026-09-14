@@ -82,8 +82,8 @@ http.createServer((req, res) => {
       roles: { owner: { label: "Owner", te: "ఓనర్", caps: ["*"], builtin: true }, reception: { label: "Reception", te: "రిసెప్షన్", caps: ["leads.view", "leads.edit", "appts.view", "appts.edit", "msg.send"], builtin: true } },
       capList: CAPS, capTe: {}, capGroups: [{ key: "leads", label: "Leads", caps: ["leads.view", "leads.edit"] }],
       people: [
-        { phone: "9876500001", name: "Sowmya", role: "reception", caps: ["leads.view", "leads.edit"], lastLogin: Date.now() - 3600000, hasPwd: true },
-        { phone: "9876500002", name: "Latha", role: "reception", caps: ["leads.view"], lastLogin: Date.now() - 86400000 * 3, hasPwd: false },
+        { phone: "9876500001", name: "Sowmya", role: "reception", caps: ["leads.view", "leads.edit"], lastLogin: Date.now() - 3600000, hasPwd: true, tempPwd: false },
+        { phone: "9876500002", name: "Latha", role: "reception", caps: ["leads.view"], lastLogin: Date.now() - 86400000 * 3, hasPwd: true, tempPwd: true },
         { phone: "9876500003", name: "Kiran", role: "reception", caps: [], lastLogin: null, hasPwd: false, off: true },
       ],
       owners: [{ phone: "9010427777", lastLogin: Date.now() - 600000 }],

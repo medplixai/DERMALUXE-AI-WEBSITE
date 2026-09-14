@@ -192,13 +192,18 @@ function scrypt(pwd, salt) { return crypto.scryptSync(String(pwd), String(salt),
 // A password belongs to ONE person. A single clinic-wide password would let
 // anyone who knows it log in as the owner simply by typing the owner's number,
 // so the hash is stored per phone.
+// null = this person has no password yet · false = wrong · otherwise the
+// stored record, which says whether it is the temporary one the owner sent.
 async function checkPassword(cfg, phone, pwd) {
   if (!pwd || !phone) return false;
   const r = await guard.kvCommand(cfg, ["HGET", "staff:pwd", phone]).catch(() => ({}));
   if (r && r.result) {
-    try { const rec = JSON.parse(r.result); return guard.safeEqual(scrypt(pwd, rec.salt), rec.hash); } catch (e) { return false; }
+    try {
+      const rec = JSON.parse(r.result);
+      return guard.safeEqual(scrypt(pwd, rec.salt), rec.hash) ? { temp: !!rec.temp } : false;
+    } catch (e) { return false; }
   }
-  return null;                              // null = this person has no password yet
+  return null;
 }
 
 async function resolveUser(cfg, phone, roles) {
@@ -335,7 +340,8 @@ module.exports = async (req, res) => {
     if (ok === null) return json(res, 501, { error: "Ee number ki password set cheyaledu — OTP tho login cheyandi." });
     if (!ok) return json(res, 401, { error: "Password tappu" });
     await guard.kvCommand(cfg, ["HSET", "staff:lastlogin", phone, String(Date.now())]).catch(() => {});
-    return json(res, 200, { ok: true, token: makeToken(u, await epochOf(cfg, phone)), me: u });
+    // A password somebody else chose is a password to be replaced.
+    return json(res, 200, { ok: true, token: makeToken(u, await epochOf(cfg, phone)), me: u, mustChange: !!ok.temp });
   }
   if (a === "send") {
     if (req.method !== "POST") return json(res, 405, { error: "POST" });
@@ -482,12 +488,21 @@ module.exports = async (req, res) => {
       guard.kvCommand(cfg, ["HKEYS", "staff:pwd"]).catch(() => ({})),
     ]);
     const hasPwd = new Set((pwdPhones && pwdPhones.result) || []);
+    // Who is still using the one the owner sent them, rather than their own.
+    const tempPwd = new Set();
+    try {
+      const all = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "staff:pwd"]).catch(() => ({}))).result);
+      for (const [ph, raw] of Object.entries(all)) {
+        try { if (JSON.parse(raw).temp) tempPwd.add(ph); } catch (e) {}
+      }
+    } catch (e) {}
     const people = Object.keys(team).map((ph) => {
       const u = Object.assign({ phone: ph }, team[ph]);
       u.role = roleOf(u.role, roles);
       u.caps = effCaps(roles, u);
       u.lastLogin = Number(last[ph] || 0) || null;
       u.hasPwd = hasPwd.has(ph);
+      u.tempPwd = tempPwd.has(ph);
       return u;
     }).sort((x, y) => (y.lastLogin || 0) - (x.lastLogin || 0));
     const audit = (log.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
@@ -583,6 +598,43 @@ module.exports = async (req, res) => {
   }
   // Your own password, nobody else's. An owner cannot set a password for a
   // staff member — that person sets their own, or logs in with an OTP.
+  // Give somebody a working login.
+  //
+  // Adding a person only told them the dashboard exists; they still had to
+  // arrive by OTP before they could set a password, which is a poor way to
+  // hand a new receptionist their access on their first morning. Now the
+  // owner presses a button, the server invents a password, stores only its
+  // hash, and sends it to that person's own WhatsApp. The owner never sees
+  // it and neither does anything else — and because it is marked temporary,
+  // they are asked to replace it with one of their own the moment they use it.
+  if (a === "team-password") {
+    if (!allow("team.manage")) return json(res, 403, { error: "Idi owner/manager ki matrame" });
+    const phone = digits10(b.phone);
+    const team = await users(cfg);
+    const person = team[phone];
+    if (!person) return json(res, 404, { error: "Ee number staff list lo ledu" });
+    if (ownerPhones().includes(phone)) return json(res, 400, { error: "Owner numbers ki password ikkada ivvalemu" });
+    if (roleOf(person.role, roles) === "owner" && me.role !== "owner") {
+      return json(res, 403, { error: "Owner ki password owner matrame ivvagalaru" });
+    }
+    const rl = await guard.rateLimit(cfg, `rl:pw:${me.phone}`, 20, 3600);
+    if (!rl.allowed) return json(res, 429, { error: "Konchem aagandi" });
+
+    // No 0/O or 1/l/I — this gets read off a phone screen and typed on another.
+    const ALPHA = "abcdefghjkmnpqrstuvwxyz23456789";
+    let pwd = "";
+    for (const n of crypto.randomBytes(10)) pwd += ALPHA[n % ALPHA.length];
+    const salt = crypto.randomBytes(16).toString("hex");
+    await guard.kvCommand(cfg, ["HSET", "staff:pwd", phone, JSON.stringify({ salt, hash: scrypt(pwd, salt), ts: Date.now(), temp: true, by: me.phone })]);
+
+    const sent = await notify.sendWa(phone,
+      `🔐 *DermaLuxe staff login*\n\n${person.name} garu, mee login ready.\n\n🔗 www.dermaluxe.ai/staff.html\n📱 Number: ${phone}\n🔑 Password: *${pwd}*\n\nLogin ayyaka ⚙ Control panel lo mee sonta password pettukondi — idi taatkalikam.`
+    ).catch(() => false);
+    await audit(cfg, me, `Sent a new login password to ${person.name} (${phone})`);
+    // The password is never returned to the browser — not even to the owner's.
+    return json(res, 200, { ok: true, sent: !!sent, phone });
+  }
+
   if (a === "set-password") {
     const pwd = String(b.password || "");
     if (b.off === true) {
@@ -593,7 +645,7 @@ module.exports = async (req, res) => {
     if (pwd.length < 8) return json(res, 400, { error: "Password kaneesam 8 characters undali" });
     const salt = crypto.randomBytes(16).toString("hex");
     await guard.kvCommand(cfg, ["HSET", "staff:pwd", me.phone, JSON.stringify({ salt, hash: scrypt(pwd, salt), ts: Date.now() })]);
-    await audit(cfg, me, "Sonta password set chesukunnaru");
+    await audit(cfg, me, "Sonta password set chesukunnaru");   // no longer temporary
     return json(res, 200, { ok: true });
   }
   if (a === "team-role") {
