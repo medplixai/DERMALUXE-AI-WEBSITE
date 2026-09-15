@@ -355,6 +355,23 @@
           <div id="mnModes" class="meta"></div>
           <div id="mnList" style="margin-top:10px"></div></div>
         <div class="grp"><div class="grp-h"><h2>Pending dues</h2><i id="mnDueCount"></i></div><div id="mnDues"></div></div>
+
+        <div id="expWrap" class="hide">
+          <div class="countdown" id="expHead"></div>
+          <div class="box"><h2>Kharchu raayandi <span class="te" style="font-size:.85rem;color:var(--g3)">· ఖర్చు</span></h2>
+            <p>Consumables, jeethalu, rent, ads — pettina prati kharchu ikkada. Idi <b style="color:var(--g2);font-weight:500">staff ki matrame</b>.</p>
+            <div class="noteform" style="margin-top:10px;flex-wrap:wrap">
+              <input id="expAmt" placeholder="₹" inputmode="numeric" style="max-width:110px" />
+              <select id="expCat" class="sel"></select>
+              <input id="expNote" placeholder="Enduku? (optional)" style="min-width:150px" />
+              <select id="expMode" class="sel"><option value="cash">Cash</option><option value="upi">UPI</option><option value="card">Card</option><option value="bank">Bank</option><option value="other">Other</option></select>
+              <button class="btn btn--gold btn--sm" id="expAdd">Add</button>
+            </div>
+            <div class="err" id="expErr"></div>
+            <div id="expList" style="margin-top:10px"></div></div>
+          <div class="box"><h2>Ee nela <span class="te" style="font-size:.85rem;color:var(--g3)">· ఈ నెల</span></h2>
+            <div id="expMonth" class="meta"></div></div>
+        </div>
       </section>
       <section id="t-numbers" class="hide">
         <div class="cpnav" id="insRange">
@@ -997,6 +1014,58 @@
     }
     var rateCard = null;
     function rupee(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
+    // ---- what went out, and what is left ----------------------------------
+    // Money counted only what came in, so the question the owner actually has
+    // — after everything, what is left — had no answer anywhere.
+    var expCats = [];
+    function expapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/expense?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    function loadExpenses() {
+      if (!state.allow("money.expense")) return Promise.resolve();
+      $("expWrap").classList.remove("hide");
+      return expapi("summary").then(function (j) {
+        expCats = j.cats || [];
+        if ($("expCat").options.length !== expCats.length) {
+          $("expCat").innerHTML = expCats.map(function (c) { return '<option value="' + esc(c) + '">' + esc(c) + "</option>"; }).join("");
+        }
+        var d = j.day, m = j.monthly;
+        $("expHead").className = "countdown";
+        $("expHead").innerHTML =
+          "<div><b>" + rupee(d.spent) + "</b><span>Ee roju kharchu</span></div>" +
+          '<div><b style="color:' + (d.left < 0 ? "var(--bad)" : "var(--ok)") + '">' + rupee(d.left) + "</b><span>Ee roju migilindi</span></div>" +
+          "<div><b>" + rupee(m.spent) + "</b><span>Nela kharchu</span></div>" +
+          '<div><b style="color:' + (m.left < 0 ? "var(--bad)" : "var(--ok)") + '">' + rupee(m.left) + "</b><span>Nela migilindi</span></div>";
+        $("expList").innerHTML = d.rows.length ? d.rows.map(function (x) {
+          return '<div class="vrow"><b>' + rupee(x.amount) + " · " + esc(x.category) + "</b>" +
+            '<div class="meta">' + (x.note ? esc(x.note) + " · " : "") + esc(x.mode) + " · " + esc(x.by || "") + " · " + ago(x.ts) +
+            ' <button class="btn btn--sm" data-act="exp-del" data-id="' + esc(x.id) + '" data-what="' + esc(x.category + " " + rupee(x.amount)) + '" style="margin-left:6px">Teesey</button></div></div>';
+        }).join("") : '<p class="meta">Ee roju inka kharchu raayaledu.</p>';
+        $("expMonth").innerHTML =
+          '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>Vachindi</span><b style="color:var(--text);font-weight:500">' + rupee(m.collected) + "</b></div>" +
+          '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>Poyindi</span><b style="color:var(--text);font-weight:500">' + rupee(m.spent) + "</b></div>" +
+          '<div style="display:flex;justify-content:space-between;padding:3px 0;border-top:1px solid var(--line);margin-top:4px"><span>Migilindi</span><b style="color:' + (m.left < 0 ? "var(--bad)" : "var(--ok)") + ';font-weight:500">' + rupee(m.left) + "</b></div>" +
+          (m.byCategory.length ? '<div style="margin-top:8px">' + m.byCategory.map(function (c) {
+            return '<div style="display:flex;justify-content:space-between;padding:2px 0;opacity:.85"><span>' + esc(c.name) + "</span><span>" + rupee(c.amount) + "</span></div>";
+          }).join("") + "</div>" : "") +
+          '<div style="margin-top:8px;opacity:.7;font-size:.8rem">"Migilindi" ante ee nela vachina dabbu minus pettina kharchu. Idi accounting labham kaadu — tax, depreciation ivi andulo levu.</div>';
+      }).catch(function (e) { $("expErr").textContent = e.message; });
+    }
+    if ($("expAdd")) $("expAdd").onclick = function () {
+      $("expErr").textContent = "";
+      var amt = Number($("expAmt").value);
+      if (!(amt > 0)) { $("expErr").textContent = "Amount ivvandi"; return; }
+      $("expAdd").disabled = true;
+      expapi("add", { amount: amt, category: $("expCat").value, note: $("expNote").value.trim(), mode: $("expMode").value })
+        .then(function () { $("expAmt").value = ""; $("expNote").value = ""; toast("Raasam"); return loadExpenses(); })
+        .catch(function (x) { $("expErr").textContent = x.message; })
+        .finally(function () { $("expAdd").disabled = false; });
+    };
+
     function loadMoney() {
       return Promise.all([mnapi("day"), mnapi("dues")]).then(function (r) {
         var day = r[0], dues = r[1];
@@ -1019,7 +1088,9 @@
             '<span class="chip hot">' + rupee(d2.balance) + " due</span></div>" +
             '<div class="acts">' +
             '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(d2.phone) + '">💬 WhatsApp</a>' +
-            (state.allow("money.bill") ? '<button class="btn btn--sm btn--gold" data-act="mn-pay" data-id="' + esc(d2.id) + '" data-bal="' + d2.balance + '" data-name="' + esc(d2.name) + '">💰 Payment vachindi</button>' : "") +
+            (state.allow("money.bill") ? '<button class="btn btn--sm btn--gold" data-act="mn-pay" data-id="' + esc(d2.id) + '" data-bal="' + d2.balance + '" data-name="' + esc(d2.name) + '">💰 Payment vachindi</button>' +
+              '<button class="btn btn--sm" data-act="mn-remind" data-id="' + esc(d2.id) + '" data-name="' + esc(d2.name) + '" data-bal="' + d2.balance + '">🔔 Gurthu cheyyi</button>' : "") +
+            (d2.reminded ? '<span class="meta" style="align-self:center">chivari gurthu ' + ago(d2.reminded) + "</span>" : "") +
             "</div></article>";
         }).join("") : '<p class="meta">Evaru bakee ledu 👍</p>';
       }).catch(function (e) { $("mnList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
@@ -2137,7 +2208,7 @@
       if (t === "team") loadPanel();
       if (t === "academy") loadFunnel();
       if (t === "patients") loadPatients();
-      if (t === "money") loadMoney();
+      if (t === "money") { loadMoney(); loadExpenses(); }
       if (t === "numbers") loadInsights();
       if (t === "appts") loadSchedule();
     });
@@ -2347,6 +2418,22 @@
         return;
       }
       if (el.dataset.act === "mn-new") { newBill(el.dataset.phone, el.dataset.name); return; }
+      if (el.dataset.act === "exp-del") {
+        if (!confirm(el.dataset.what + " ane kharchu ni teeseyyanaa?")) return;
+        el.disabled = true;
+        expapi("delete", { id: el.dataset.id })
+          .then(function () { toast("Teesesam"); return loadExpenses(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "mn-remind") {
+        if (!confirm(el.dataset.name + " ki ₹" + Number(el.dataset.bal).toLocaleString("en-IN") + " baaki undi ani WhatsApp lo gurthu cheyyanaa?")) return;
+        el.disabled = true;
+        mnapi("remind", { id: el.dataset.id })
+          .then(function () { toast("Gurthu chesam"); return loadMoney(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "mn-pay") {
         var bal = Number(el.dataset.bal || 0);
         var amt2 = Number(prompt((el.dataset.name || "") + " — bakee " + rupee(bal) + ".\nEnta vachindi?", String(bal)) || 0);

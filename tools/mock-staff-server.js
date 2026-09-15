@@ -108,6 +108,30 @@ http.createServer((req, res) => {
     if (a === "copy") { mockMoved = Math.min(4180, mockMoved + 200); return send(200, { ok: true, moved: 200, skipped: 0, done: mockMoved >= 4180 }); }
     return send(200, { ok: true });
   }
+  if (u.pathname === "/api/expense") {  // expense-mock
+    const a = u.searchParams.get("a") || "summary";
+    const rows = [
+      { id: "E10011", amount: 1200, category: "Consumables", note: "PRP kits", mode: "cash", by: "Reception", ts: Date.now() - 3600000 },
+      { id: "E10012", amount: 800, category: "Electricity & water", mode: "upi", by: "Owner", ts: Date.now() - 7200000 },
+    ];
+    if (a === "summary") return send(200, { ok: true, today: "2026-09-15", month: "2026-09",
+      day: { collected: 12500, spent: 2000, left: 10500, rows },
+      monthly: { collected: 186000, spent: 74300, left: 111700, count: 31,
+        byCategory: [{ name: "Salaries", amount: 45000 }, { name: "Consumables", amount: 14300 }, { name: "Rent", amount: 15000 }] },
+      cats: ["Consumables", "Medicines & products", "Salaries", "Rent", "Electricity & water", "Marketing & ads", "Other"],
+      canEdit: true });
+    return send(200, { ok: true });
+  }
+  if (u.pathname === "/api/money") {
+    const a = u.searchParams.get("a") || "day";
+    if (a === "day") return send(200, { ok: true, day: "2026-09-15", collected: 12500, billed: 15000,
+      byMode: { cash: 5000, upi: 7500, card: 0, other: 0 }, count: 3,
+      payments: [{ billId: "B1007", phone: "9876500041", name: "Latha Devi", amount: 5000, mode: "cash", by: "Reception", ts: Date.now() - 5400000 }] });
+    if (a === "dues") return send(200, { ok: true, due: 8500,
+      rows: [{ id: "B1001", phone: "9876500041", name: "Latha Devi", ts: Date.now() - 7 * 86400000, total: 5000, paid: 2000, balance: 3000, reminded: 0 },
+             { id: "B1004", phone: "9876500045", name: "Ravi Kumar", ts: Date.now() - 12 * 86400000, total: 8000, paid: 2500, balance: 5500, reminded: Date.now() - 2 * 86400000 }] });
+    return send(200, { ok: true });
+  }
   if (u.pathname === "/api/academy") {  // acad:st-mock
     const a = u.searchParams.get("a") || "list";
     const st = [

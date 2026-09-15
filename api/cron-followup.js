@@ -322,6 +322,37 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: briefing", e && e.message); }
 
+  // ---- money already earned, quietly waiting ------------------------------
+  // The balances sat on a screen nobody outside the clinic could see. Once a
+  // day, at a civil hour, the people who owe something are reminded — nothing
+  // newer than a few days, nothing more than once a week, and a handful at a
+  // time so it never reads as chasing.
+  let reminded = 0;
+  try {
+    if (istHour === 11) {                                  // 11:45 AM IST
+      const money = require("./money.js");
+      const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
+      const optSet = new Set(opt.result || []);
+      const rows = await money.dueForReminder(cfg, { minAgeDays: 3, everyDays: 7 });
+      for (const row of rows) {
+        if (reminded >= 6) break;
+        if (optSet.has(String(row.bill.phone))) continue;
+        const out = await money.remindOne(cfg, row.bill, row.t, "auto").catch(() => ({ sent: false }));
+        if (out.sent) reminded++;
+      }
+      if (reminded) {
+        try {
+          const push = require("./_push.js");
+          if (push.enabled()) await push.notifyCap(cfg, "money.view", {
+            title: `💰 ${reminded} mandiki baaki gurthu chesam`,
+            body: "Evaraina reply iste Money tab lo payment record cheyandi.",
+            tab: "money", data: { kind: "dues" },
+          });
+        } catch (e) {}
+      }
+    }
+  } catch (e) { console.error("cron: dues", e && e.message); }
+
   // ---- moving old photos out of Redis ------------------------------------
   // A batch an hour, quietly, until the backlog is gone. It stops scanning
   // once there is nothing left to move rather than walking the keyspace for
@@ -359,5 +390,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, photosMoved, swept });
 };

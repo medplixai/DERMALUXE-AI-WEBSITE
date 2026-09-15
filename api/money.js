@@ -14,6 +14,7 @@
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 const staff = require("./staff.js");
+const notify = require("./_notify.js");
 
 const json = (res, code, body) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -131,7 +132,8 @@ module.exports = async (req, res) => {
       if (!bill) continue;
       const t = totals(bill);
       if (t.balance <= 0) { await guard.kvCommand(cfg, ["LREM", "bill:open", "1", id]).catch(() => {}); continue; }
-      rows.push({ id: bill.id, phone: bill.phone, name: bill.name, ts: bill.ts, total: t.total, paid: t.paid, balance: t.balance });
+      const lastRem = (bill.reminders || []).slice(-1)[0];
+      rows.push({ id: bill.id, phone: bill.phone, name: bill.name, ts: bill.ts, total: t.total, paid: t.paid, balance: t.balance, reminded: lastRem ? lastRem.ts : 0 });
     }
     rows.sort((x, y) => y.balance - x.balance);
     return json(res, 200, { ok: true, rows, due: rows.reduce((n, x) => n + x.balance, 0) });
@@ -216,7 +218,67 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, bill: Object.assign({}, bill, t) });
   }
 
+  // Ask for money that is already owed.
+  //
+  // The balance sat on this screen and the patient was never told. Not a
+  // demand — a line saying what is left, and that they can pay at the desk or
+  // by UPI. Whoever sends it is recorded on the bill, so two people do not
+  // send it twice in an afternoon.
+  if (a === "remind") {
+    if (!allow("money.bill")) return json(res, 403, { error: "Mee role ki idi chese permission ledu" });
+    const id = clean(b.id, 12);
+    const bill = await getBill(cfg, id);
+    if (!bill) return json(res, 404, { error: "Bill dorakaledu" });
+    const t = totals(bill);
+    if (t.balance <= 0) return json(res, 400, { error: "Ee bill ki baaki emi ledu" });
+    const out = await remindOne(cfg, bill, t, me.name);
+    if (!out.sent) return json(res, 502, { error: "Pampaleka poyam — WhatsApp lo direct ga cheppandi" });
+    return json(res, 200, { ok: true, via: out.via, bill: Object.assign({}, out.bill, totals(out.bill)) });
+  }
+
   return json(res, 400, { error: "Unknown action" });
 };
+
+// One reminder, and the note on the bill that says it went.
+async function remindOne(cfg, bill, t, byName) {
+  const first = String(bill.name || "").trim().split(" ")[0] || "andi";
+  const text = `Namaste ${first} garu 🙏\n\nDermaLuxe lo mee bill ${bill.id} — mottam ₹${t.total.toLocaleString("en-IN")}, ippati varaku ₹${t.paid.toLocaleString("en-IN")} chellinchaaru.\n\n*Migilinadi ₹${t.balance.toLocaleString("en-IN")}.*\n\nMeeru clinic ki vachinappudu ivvochu, leda UPI lo kuda pampochu. Emaina doubt unte ee message ki reply cheyandi 😊\n\nDermaLuxe by Medicare, Eluru`;
+  let via = "message";
+  let sent = await notify.sendWa(bill.phone, text).catch(() => false);
+  if (!sent) {
+    const r = await notify.sendWaTemplate(bill.phone, "clinic_update", [first,
+      `Mee bill ${bill.id} lo ₹${t.balance.toLocaleString("en-IN")} migilindi. Clinic lo leda UPI lo ivvochu.`]).catch(() => ({ ok: false }));
+    sent = !!(r && r.ok); via = "template";
+  }
+  if (!sent) return { sent: false };
+  bill.reminders = (bill.reminders || []).concat([{ ts: Date.now(), by: byName || "auto", via }]).slice(-10);
+  await putBill(cfg, bill).catch(() => {});
+  return { sent: true, via, bill };
+}
+
+// Everyone who still owes something and has not been asked lately.
+// Deliberately gentle: nothing under a few days old, nothing more than once a
+// week, and only a handful a day so it never looks like a debt collector.
+async function dueForReminder(cfg, opts) {
+  const minAgeDays = Number((opts && opts.minAgeDays) != null ? opts.minAgeDays : 3);
+  const everyDays = Number((opts && opts.everyDays) || 7);
+  const now = Date.now();
+  const r = await guard.kvCommand(cfg, ["LRANGE", "bill:open", "0", "299"]).catch(() => ({}));
+  const rows = [];
+  for (const id of (r.result || [])) {
+    const bill = await getBill(cfg, id);
+    if (!bill || !bill.phone) continue;
+    const t = totals(bill);
+    if (t.balance <= 0) continue;
+    if (now - (bill.ts || 0) < minAgeDays * 86400000) continue;
+    const last = (bill.reminders || []).slice(-1)[0];
+    if (last && now - last.ts < everyDays * 86400000) continue;
+    rows.push({ bill, t });
+  }
+  rows.sort((x, y) => y.t.balance - x.t.balance);
+  return rows;
+}
+module.exports.remindOne = remindOne;
+module.exports.dueForReminder = dueForReminder;
 module.exports.istDay = istDay;
 module.exports.totals = totals;
