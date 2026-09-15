@@ -44,6 +44,10 @@ const progressOf = (() => {
   const m = src.match(/function progressOf\(s\) \{[\s\S]*?\n\}/);
   return eval("(" + m[0] + ")");
 })();
+const mockRef = { code: "DL5310", count: 2, unrewarded: 1, cameFrom: "", rows: [
+  { phone: "9876500061", name: "Sita Rani", ts: Date.now() - 4 * 86400000, rewarded: null },
+  { phone: "9876500062", name: "Ravi Kumar", ts: Date.now() - 20 * 86400000, rewarded: { ts: Date.now() - 19 * 86400000, by: "Sowmya", what: "20% off" } },
+] };
 const mockCns = [];
 const mockStage = { stage: "", stageAt: 0, stageBy: "", stageNote: "", stageLog: [] };
 // Pretend the hospital bridge is configured and two leads did not get through.
@@ -145,6 +149,30 @@ http.createServer((req, res) => {
     let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => {
       if (a === "test") { mockHms.last = { at: Date.now(), ms: 212, ok: true, by: "Owner" }; return send(200, { ok: true, ms: 212 }); }
       if (a === "retry") { const n = mockHms.waiting; mockHms.waiting = 0; mockHms.sample = []; return send(200, { ok: true, sent: n, failed: 0, waiting: 0 }); }
+      return send(400, { error: "Unknown action" });
+    });
+  }
+  if (u.pathname === "/api/insights") {  // insights-mock
+    return send(200, { ok: true, days: 30, since: Date.now() - 30 * 86400000,
+      money: { collected: 284000, billed: 341000, outstanding: 57000, openCount: 9, byMode: { cash: 96000, upi: 171000, card: 17000, other: 0 }, spark: [], payers: 63 },
+      funnel: { leads: 212, contacted: 168, booked: 74, firstReplyMins: 9, firstReplyCount: 168 },
+      sources: [{ name: "whatsapp", leads: 96, booked: 41, revenue: 148000 }, { name: "instagram", leads: 71, booked: 22, revenue: 86000 }, { name: "web", leads: 45, booked: 11, revenue: 50000 }],
+      treatments: [{ name: "Laser — full face", count: 31, value: 118000 }, { name: "PRP hair therapy", count: 22, value: 84000 }],
+      patients: { total: 148, repeats: 52, repeatRate: 35 } });
+  }
+  if (u.pathname === "/api/referral") {  // referral-mock
+    const a = u.searchParams.get("a") || "of";
+    if (a === "of") return send(200, Object.assign({ ok: true, canSend: true, canEdit: true, offer: "20% off next sitting" }, mockRef));
+    if (a === "board") return send(200, { ok: true, offer: "20% off next sitting", total: 5, owed: 2, rows: [
+      { phone: "9876543210", code: "DL5310", n: 3, owed: 2, last: { ts: Date.now() - 86400000 }, names: ["Sita Rani", "Ravi Kumar"] },
+      { phone: "9876500045", code: "DL2277", n: 2, owed: 0, last: { ts: Date.now() - 5 * 86400000 }, names: ["Padma"] },
+    ] });
+    let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => {
+      const b2 = (() => { try { return JSON.parse(body || "{}"); } catch (e) { return {}; } })();
+      if (a === "send") return send(200, { ok: true, code: mockRef.code, via: "message" });
+      if (a === "reward") { const r = mockRef.rows.find((x) => x.phone === b2.brought); if (r) r.rewarded = { ts: Date.now(), by: "Owner (mock)", what: b2.what }; mockRef.unrewarded = mockRef.rows.filter((x) => !x.rewarded).length; return send(200, { ok: true }); }
+      if (a === "unreward") { const r = mockRef.rows.find((x) => x.phone === b2.brought); if (r) r.rewarded = null; mockRef.unrewarded = mockRef.rows.filter((x) => !x.rewarded).length; return send(200, { ok: true }); }
+      if (a === "redeem") { if (!/^DL\d{4}$/.test(String(b2.code || "").toUpperCase())) return send(400, { error: "Aa code dorakaledu — malli chudandi" }); return send(200, { ok: true, owner: "9876500045", code: String(b2.code).toUpperCase() }); }
       return send(400, { error: "Unknown action" });
     });
   }

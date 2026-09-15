@@ -386,6 +386,7 @@
           <button data-days="90">90 rojulu</button>
         </div>
         <div id="insBody"><div class="sk"><div></div><div></div><div></div></div></div>
+        <div id="refBoard" style="margin-top:14px"></div>
       </section>
       <section id="t-academy" class="hide">
         <div class="countdown" id="acadCount"></div>
@@ -1117,6 +1118,7 @@
         "</div>" +
         '<select id="nlSrc" class="sel" style="width:100%;margin-bottom:8px">' +
           opts.map(function (o) { return '<option value="' + o[0] + '"' + (p0.src === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>" +
+        '<input id="nlRefCode" class="inp hide" placeholder="Evari code? (DL1234) — telisthe" maxlength="8" style="width:100%;margin-bottom:8px;text-transform:uppercase" />' +
         '<input id="nlConcern" class="inp" list="nlTreat" placeholder="Em problem / e treatment?" style="width:100%;margin-bottom:8px" />' +
         '<datalist id="nlTreat"></datalist>' +
         '<textarea id="nlNote" class="inp" rows="2" placeholder="Note (optional) — em maatladaru" style="width:100%;margin-bottom:8px"></textarea>' +
@@ -1142,6 +1144,12 @@
 
       var bk = wrap.querySelector("#nlBook");
       if (bk) bk.onchange = function () { wrap.querySelector("#nlBookRow").classList.toggle("hide", !bk.checked); };
+
+      // "Somebody told them about us" is the moment to ask whose code it was —
+      // it is the only moment anybody will remember to.
+      var srcSel = wrap.querySelector("#nlSrc"), refBox = wrap.querySelector("#nlRefCode");
+      var srcChanged = function () { refBox.classList.toggle("hide", srcSel.value !== "referral"); };
+      srcSel.onchange = srcChanged; srcChanged();
 
       // Treatment names come from the rate card, so the same treatment is not
       // written five different ways across five leads.
@@ -1201,7 +1209,14 @@
                   toast("Lead padindi, kaani appointment kaledu — " + e.message);
                 })
             : Promise.resolve();
-          return next.then(function () { return load(true); }).then(function () { afterLead(name, phone); });
+          var rcode = (wrap.querySelector("#nlRefCode").value || "").trim().toUpperCase();
+          var ref = rcode
+            ? refapi("redeem", { phone: phone, name: name, code: rcode })
+                .then(function (j) { toast("Referral: " + j.code + " — vaariki cheppamu"); })
+                .catch(function (e) { toast("Lead padindi · code: " + e.message); })
+            : Promise.resolve();
+          return next.then(function () { return ref; }).then(function () { return load(true); })
+            .then(function () { afterLead(name, phone); });
         }).catch(function (x) {
           btn.disabled = false;
           // The front desk is exactly where the internet drops. A lead must
@@ -1253,6 +1268,41 @@
       waOpen(phone, first + " garu, DermaLuxe by Medicare nunchi 🙏\nMee enquiry ki dhanyavadalu. Emaina doubts unte ee number ki reply cheyandi.\n📍 Kasturi Vari Street, Eluru · Mon-Sat 9 AM - 9 PM");
     }
 
+    function refapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/referral?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    // Their code, who they have sent us, and whether we have thanked them —
+    // that last one is the bit that decides whether they do it again.
+    function loadPatientRef(phone) {
+      var host = $("ptRef"); if (!host) return;
+      refapi("of", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
+        var name = (ptOpen || {}).name || "";
+        var head = '<div class="meta">Vaari code <b style="color:var(--g2);font-weight:600;letter-spacing:.06em">' + esc(j.code) + "</b>" +
+          (j.count ? " · " + j.count + " mandini techcharu" : " · inka evarini techaledu") +
+          (j.unrewarded ? ' · <b style="color:var(--hot);font-weight:500">' + j.unrewarded + " ki thank-you ivvaledu</b>" : "") +
+          (j.cameFrom ? '<br><span style="opacity:.8">Veeru ' + esc(j.cameFrom) + " code tho vachcharu</span>" : "") + "</div>";
+        var rows = j.rows.map(function (r) {
+          return '<div class="vrow"><b>' + esc(r.name || r.phone) + '</b> <span class="meta">· ' + esc(r.phone) + " · " + fmtDay(r.ts) + "</span>" +
+            (r.rewarded
+              ? '<div class="meta" style="color:var(--ok)">✓ ' + esc(r.rewarded.what) + " — " + esc(r.rewarded.by) + "</div>"
+              : (j.canEdit
+                  ? '<div class="acts" style="margin-top:6px"><button class="btn btn--sm btn--gold" data-act="ref-rew" data-owner="' + esc(phone) + '" data-brought="' + esc(r.phone) + '" data-n="' + esc(r.name || r.phone) + '">Thank-you ichcham</button></div>'
+                  : '<div class="meta" style="color:var(--hot)">Thank-you ivvaledu</div>')) +
+            "</div>";
+        }).join("");
+        host.innerHTML = head + (rows || "") +
+          '<div class="acts" style="margin-top:8px">' +
+          (j.canSend ? '<button class="btn btn--sm btn--gold" data-act="ref-send" data-phone="' + esc(phone) + '" data-name="' + esc(name) + '">📤 Code pampu</button>' : "") +
+          (j.canEdit ? '<button class="btn btn--sm" data-act="ref-used" data-phone="' + esc(phone) + '" data-name="' + esc(name) + '">Veeru evari code tho vachcharu?</button>' : "") +
+          "</div>" +
+          (j.offer ? '' : '<p class="meta" style="margin-top:8px;color:var(--g3)">Offer inka set cheyyaledu — REFERRAL_OFFER pettandi, appudu messages lo adi cheputundi.</p>');
+      }).catch(function (e) { host.innerHTML = '<p class="meta">' + esc(e.message) + "</p>"; });
+    }
+
     function loadPatientPkgs(phone) {
       var host = $("ptPkgs"); if (!host) return;
       pkapi("of", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
@@ -1277,13 +1327,42 @@
     // Attribution is first touch and the screen says so — a figure nobody
     // understands is worse than no figure.
     var insDays = 30;
+    // Who is actually bringing people in. A local clinic grows on this more
+    // than on anything else, and until now it was only visible to somebody who
+    // knew a WhatsApp admin command.
+    function loadRefBoard() {
+      var host = $("refBoard"); if (!host) return;
+      var since = Date.now() - insDays * 86400000;
+      refapi("board", null, "&since=" + since).then(function (j) {
+        if (!j.rows.length) {
+          host.innerHTML = '<div class="box"><h2>Evaru techcharu <span class="te" style="font-size:.9rem;color:var(--g3)">· రెఫరల్</span></h2>' +
+            '<p class="meta">Ee ' + insDays + ' rojullo evaru evarini techaledu.</p>' +
+            '<p class="meta" style="margin-top:6px">Patient file lo <b>Code pampu</b> kottandi — vaariki vaari code WhatsApp lo veltundi.</p>' +
+            (j.offer ? "" : '<p class="meta" style="margin-top:6px;color:var(--g3)">Offer inka set cheyyaledu — REFERRAL_OFFER pettandi.</p>') + "</div>";
+          return;
+        }
+        host.innerHTML = '<div class="box"><h2>Evaru techcharu <span class="te" style="font-size:.9rem;color:var(--g3)">· రెఫరల్</span></h2>' +
+          '<p class="meta">Ee ' + insDays + ' rojullo <b style="color:var(--text);font-weight:500">' + j.total + " mandi</b> referral tho vachcharu" +
+          (j.owed ? ' · <b style="color:var(--hot);font-weight:500">' + j.owed + " ki thank-you ivvaledu</b>" : "") + "</p>" +
+          '<div style="margin-top:8px">' + j.rows.slice(0, 12).map(function (r) {
+            return '<div class="vrow" data-act="pt-open" data-phone="' + esc(r.phone) + '" style="cursor:pointer">' +
+              '<b>' + esc((r.names.filter(Boolean)[0] ? "" : "") + r.phone) + '</b> <span class="meta">· ' + esc(r.code) + "</span>" +
+              '<div class="meta">' + r.n + " mandini techaru" + (r.owed ? ' · <span style="color:var(--hot)">' + r.owed + " pending</span>" : "") +
+              (r.names.filter(Boolean).length ? " · " + esc(r.names.filter(Boolean).join(", ")) : "") + "</div></div>";
+          }).join("") + "</div></div>";
+      }).catch(function () { host.innerHTML = ""; });
+    }
+
     function loadInsights() {
       $("insBody").innerHTML = '<div class="sk"><div></div><div></div><div></div></div>';
       var opt = { headers: { Authorization: "Bearer " + tok } };
       return fetch(ORIGIN + "/api/insights?days=" + insDays, opt)
         .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
         .then(renderInsights)
-        .catch(function (e) { $("insBody").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+        .catch(function (e) { $("insBody").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; })
+        // Its own request, not chained behind the numbers: one of them failing
+        // must not quietly take the other off the screen.
+        .then(loadRefBoard);
     }
     function bar(pct, colour) {
       return '<div style="height:6px;border-radius:100px;background:var(--ink2);overflow:hidden;margin-top:5px">' +
@@ -1717,6 +1796,7 @@
 
         stageStrip(p) +
         '<div class="pt-sec"><h3>Consent <span class="te" style="font-size:.85rem">· అంగీకారం</span></h3><div id="ptCns"><p class="meta">Loading…</p></div></div>' +
+        '<div class="pt-sec"><h3>Evarini techcharu <span class="te" style="font-size:.85rem">· రెఫరల్</span></h3><div id="ptRef"><p class="meta">Loading…</p></div></div>' +
         '<div class="pt-sec"><h3>Packages <span class="te" style="font-size:.85rem">· సిట్టింగ్‌లు</span></h3><div id="ptPkgs"><p class="meta">Loading…</p></div></div>' +
         (state.allow("money.view") ? '<div class="pt-sec"><h3>Bills <span class="te" style="font-size:.85rem">· బిల్లులు</span></h3><div id="ptMoney"><p class="meta">Loading…</p></div></div>' : "") +
         '<div class="pt-sec"><h3>Before / after <span class="te" style="font-size:.85rem">· ఫోటోలు</span></h3>' + tl + "</div>" +
@@ -1728,6 +1808,7 @@
       paintThumbs($("ptBody"));
       loadPatientPkgs(p.phone);
       loadPatientConsents(p.phone);
+      loadPatientRef(p.phone);
       if (state.allow("money.view")) loadPatientMoney(p.phone);
     }
     function fmtDay(ts) {
@@ -3085,6 +3166,30 @@
           .then(function (j) { ptOpen = j.patient; renderPatient(); toast(j.warn || (j.via === "template" ? "Template tho pampam" : "Pampam")); })
           .catch(function (x) { toast(x.message); })
           .finally(function () { el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ref-send") {
+        el.disabled = true;
+        refapi("send", { phone: el.dataset.phone, name: el.dataset.name })
+          .then(function (j) { toast("Code " + j.code + " pampam"); loadPatientRef(el.dataset.phone); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ref-rew") {
+        var what = prompt(el.dataset.n + " ki em ichcharu?", "Discount");
+        if (what === null) return;
+        el.disabled = true;
+        refapi("reward", { owner: el.dataset.owner, brought: el.dataset.brought, what: what })
+          .then(function () { toast("Raasukunnam"); loadPatientRef(el.dataset.owner); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ref-used") {
+        var c = prompt("Evari code tho vachcharu? (DL1234 laaga)", "");
+        if (!c || !c.trim()) return;
+        refapi("redeem", { phone: el.dataset.phone, name: el.dataset.name, code: c.trim() })
+          .then(function (j) { toast(j.code + " — aa manishiki cheppamu"); loadPatientRef(el.dataset.phone); })
+          .catch(function (x) { toast(x.message); });
         return;
       }
       if (el.dataset.act === "pt-stage") {

@@ -80,6 +80,9 @@
     "api/hms.js": {
       "maxDuration": 30
     },
+    "api/referral.js": {
+      "maxDuration": 30
+    },
     "api/cron-backup.js": {
       "maxDuration": 300
     },
