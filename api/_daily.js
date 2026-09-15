@@ -217,25 +217,92 @@ async function writeCaption(topic) {
 }
 
 // ---- 3. Background image (Gemini) ---------------------------------------
+// The poster lays its logo over the top of the photo and its words over the
+// bottom, so the photo has to leave those bands empty. Asking is not enough –
+// the model often puts a face right under the logo – so every image is
+// measured by a vision check and redrawn once when a face lands where text goes.
+const COMPOSITION = " Composition (important): one continuous photograph edge to edge – no borders, bands, bars, frames or split panels. Give the subject generous dark headroom: nothing but softly lit background above the top of the head, and the face in the middle third of the frame, never near the top edge. The lower part of the picture falls gently into deep shadow.";
+const IMAGE_MODELS = [process.env.DAILY_IMAGE_MODEL, "gemini-3-pro-image", "gemini-2.5-flash-image"].filter((m, i, a) => m && a.indexOf(m) === i);
+
+async function gemini(model, body, key) {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
+    method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body),
+  });
+  if (!r.ok) { const err = new Error(`gemini ${model} HTTP ${r.status}: ${(await r.text()).slice(0, 160)}`); err.status = r.status; throw err; }
+  return r.json();
+}
+
+async function drawImage(topic, key) {
+  const prompt = STYLE + " Subject: " + topic.img + COMPOSITION;
+  for (const model of IMAGE_MODELS) {
+    const imageConfig = Object.assign({ aspectRatio: "4:5" }, /pro/.test(model) ? { imageSize: "2K" } : {});
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        const d = await gemini(model, { contents: [{ parts: [{ text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig } }, key);
+        const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
+        const p = parts.find((x) => x.inlineData);
+        if (p) return { b64: p.inlineData.data, mime: p.inlineData.mimeType || "image/png", model };
+        break;
+      } catch (e) {
+        console.error("daily:", e && e.message);
+        if (e && (e.status === 429 || e.status >= 500)) { await new Promise((z) => setTimeout(z, 4000)); continue; }
+        break; // model not available on this key → next model
+      }
+    }
+  }
+  return null;
+}
+
+// Where the face is, as fractions of the image height, and whether the model painted any text.
+async function measureImage(img, key) {
+  try {
+    const d = await gemini(process.env.DAILY_CHECK_MODEL || "gemini-3.5-flash", {
+      contents: [{ parts: [
+        { inlineData: { mimeType: img.mime, data: img.b64 } },
+        { text: 'Look at this portrait-format image. Reply ONLY JSON: {"face":true|false,"faceTop":0-1,"faceBottom":0-1,"text":true|false,"band":true|false}. faceTop/faceBottom = top and bottom edge of the main human face (forehead to chin) as a fraction of image height, 0 = top. text = any letters, words, logos or watermarks visible. band = a hard-edged horizontal strip, letterbox bar, border or split panel (a sharp straight line where the background changes).' },
+      ] }],
+      generationConfig: { responseMimeType: "application/json", temperature: 0 },
+    }, key);
+    const t = ((((d.candidates || [])[0] || {}).content || {}).parts || []).map((p) => p.text || "").join("");
+    const j = JSON.parse((t.match(/\{[\s\S]*\}/) || [t])[0]);
+    return { face: !!j.face, top: Number(j.faceTop) || 0, bottom: Number(j.faceBottom) || 0, text: !!j.text, band: !!j.band };
+  } catch (e) { console.error("daily: measure", e && e.message); return null; }
+}
+
+// Close-ups often put the chin where the headline goes. Instead of redrawing, lift the
+// photo: scale it up from its top edge and slide it up, so the face ends above the
+// headline while the logo band stays clear. k = scale, lift = fraction of the height.
+function framing(m) {
+  if (!m || !m.face || m.bottom <= 0.56) return { k: 1, lift: 0 };
+  const k = Math.min(1.32, Math.max(1, 0.44 / Math.max(0.01, 1 - m.bottom)));
+  const lift = Math.max(0, Math.min(k - 1, m.bottom * k - 0.56, m.top * k - 0.17));
+  return { k, lift };
+}
+
+// 0 = perfect. A face under the logo (top 17%) or under the headline (below 58%) costs the most.
+function layoutPenalty(m) {
+  if (!m) return 1;
+  let p = (m.text ? 5 : 0) + (m.band ? 3 : 0);
+  if (m.face) {
+    const { k, lift } = framing(m);
+    p += Math.max(0, 0.17 - (m.top * k - lift)) * 20 + Math.max(0, m.bottom * k - lift - 0.58) * 20;
+  }
+  return p;
+}
+
 async function genImage(topic) {
   const key = process.env.DAILY_GEMINI_KEY || process.env.GEMINI_API_KEY;
   if (!key) return null;
-  const model = process.env.DAILY_IMAGE_MODEL || "gemini-2.5-flash-image";
-  const body = { contents: [{ parts: [{ text: STYLE + " Subject: " + topic.img }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "4:5" } } };
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
-        method: "POST", headers: { "Content-Type": "application/json", "x-goog-api-key": key }, body: JSON.stringify(body),
-      });
-      if (!r.ok) { console.error("daily: gemini HTTP", r.status, (await r.text()).slice(0, 200)); if (r.status === 429 || r.status >= 500) { await new Promise((z) => setTimeout(z, 4000)); continue; } return null; }
-      const d = await r.json();
-      const parts = (((d.candidates || [])[0] || {}).content || {}).parts || [];
-      const p = parts.find((x) => x.inlineData);
-      if (p) return { b64: p.inlineData.data, mime: p.inlineData.mimeType || "image/png" };
-      return null;
-    } catch (e) { console.error("daily: gemini", e && e.message); }
+  let best = null;
+  for (let round = 0; round < 3; round++) {
+    const img = await drawImage(topic, key);
+    if (!img) break;
+    img.measure = await measureImage(img, key);
+    img.penalty = layoutPenalty(img.measure);
+    if (!best || img.penalty < best.penalty) best = img;
+    if (img.penalty < 0.6) break;
   }
-  return null;
+  return best;
 }
 
 // ---- 4. Poster HTML ---------------------------------------------------------
@@ -247,39 +314,76 @@ function logoB64() {
 }
 const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 
+// Layout, top to bottom: logo + ఏలూరు (top ~16%) · the photo's face (18–56%) ·
+// headline block · footer (clinic name EN + TE, address, WhatsApp pill).
+// __fit() sits the headline block just above the footer and shrinks the type
+// until the block starts below the face band, so long copy never climbs onto it.
 function posterHtml(topic, img) {
-  const bg = img ? `url("data:${img.mime};base64,${img.b64}") center top/cover no-repeat` : "radial-gradient(60% 40% at 50% 22%,rgba(198,162,92,.30),transparent 70%)";
-  const h1size = topic.h1.length <= 26 ? 80 : 68;
+  const photo = img ? `url("data:${img.mime};base64,${img.b64}") center top/cover no-repeat` : "radial-gradient(70% 45% at 50% 32%,rgba(198,162,92,.30),transparent 70%)";
+  const frame = img ? framing(img.measure) : { k: 1, lift: 0 };
+  const h1size = topic.h1.length <= 22 ? 92 : topic.h1.length <= 30 ? 82 : 74;
+  const tesize = topic.te.length <= 22 ? 46 : 40;
   return `<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600&family=Jost:wght@300;400;500&family=Noto+Sans+Telugu:wght@400;500&display=swap" rel="stylesheet">
 <style>
-html,body{margin:0;width:1080px;height:1350px;overflow:hidden}
-body{background:#0b0b0e ${bg};color:#ece9e3;font-family:Jost,sans-serif;position:relative}
-.shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(11,11,14,.55) 0%,rgba(11,11,14,0) 22%,rgba(11,11,14,0) 42%,rgba(11,11,14,.85) 64%,#0b0b0e 100%)}
-.frame{position:absolute;inset:34px;border:1px solid rgba(233,207,143,.45)}
-.logo{position:absolute;top:70px;left:0;right:0;margin:auto;width:300px;filter:drop-shadow(0 2px 10px rgba(0,0,0,.6))}
-.city{position:absolute;top:212px;left:0;right:0;text-align:center;font-family:"Noto Sans Telugu",sans-serif;font-size:30px;color:#e9cf8f;letter-spacing:.08em;text-shadow:0 2px 12px rgba(0,0,0,.8)}
-.txt{position:absolute;left:90px;right:90px;bottom:212px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:18px}
-.eyebrow{font-size:21px;letter-spacing:.32em;text-transform:uppercase;color:#e9cf8f;font-weight:500}
-h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;line-height:1.06;margin:0;color:#f6f1e6;text-wrap:balance;text-shadow:0 2px 18px rgba(0,0,0,.7)}
-.te{font-family:"Noto Sans Telugu",sans-serif;font-size:42px;line-height:1.5;color:#e9cf8f;text-shadow:0 2px 14px rgba(0,0,0,.8)}
-.rule{width:110px;height:1px;background:linear-gradient(90deg,transparent,#e9cf8f,transparent)}
-.sub{font-size:26px;font-weight:300;color:#cfc9bd;line-height:1.5;max-width:820px}
-.foot{position:absolute;left:0;right:0;bottom:44px;text-align:center}
-.site{font-size:34px;letter-spacing:.12em;color:#e9cf8f;font-weight:500;display:flex;align-items:center;justify-content:center;gap:12px}
-.wa{width:34px;height:34px}
-.name{font-size:24px;color:#f6f1e6;letter-spacing:.04em;margin-top:8px;font-weight:400}
-.namete{font-family:"Noto Sans Telugu",sans-serif;font-size:19px;color:#cfc9bd;margin-top:2px}
-.addr{font-size:17px;color:#a39e95;letter-spacing:.04em;margin-top:6px}
-</style></head><body><div class="shade"></div><div class="frame"></div>
-<img class="logo" src="data:image/png;base64,${logoB64()}" alt="">
-<div class="city">ఏలూరు</div>
-<div class="txt"><div class="eyebrow">Eluru · MD Dermatologists</div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="rule"></div><div class="sub">${esc(topic.sub)}</div></div>
-<div class="foot"><div class="site"><svg class="wa" viewBox="0 0 448 512" aria-hidden="true"><path fill="#e9cf8f" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg>WhatsApp &nbsp;99591 34666</div><div class="name">DermaLuxe by Medicare Skin And Hair Clinics</div><div class="namete">డెర్మాలక్స్ బై మెడికేర్ స్కిన్ అండ్ హెయిర్ క్లినిక్స్</div><div class="addr">Free AI skin &amp; hair analysis · dermaluxe.ai · Opposite Happy Mobiles, R.R. Peta, Eluru</div></div>
+:root{--gold:#e6c98a;--ink:#f7f2e8;--mute:#d2cbbd;--bg:#0a0a0c}
+*{box-sizing:border-box}
+html,body{margin:0;width:1080px;height:1350px;overflow:hidden;background:var(--bg)}
+body{color:var(--ink);font-family:Jost,sans-serif;position:relative}
+/* a literal colour: a var() in the same declaration drops the huge data-URL background */
+.photo{position:absolute;inset:0;background:#0a0a0c ${photo};transform-origin:50% 0;transform:translateY(${-(frame.lift * 1350).toFixed(1)}px) scale(${frame.k.toFixed(3)})}
+.shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,12,.86) 0%,rgba(10,10,12,.45) 11%,rgba(10,10,12,0) 22%,rgba(10,10,12,0) 44%,rgba(10,10,12,.62) 58%,rgba(10,10,12,.95) 72%,#0a0a0c 100%)}
+.vign{position:absolute;inset:0;background:radial-gradient(130% 95% at 50% 38%,transparent 58%,rgba(0,0,0,.55) 100%)}
+.frame{position:absolute;inset:30px;border:1px solid rgba(230,201,138,.32)}
+.cn{position:absolute;width:44px;height:44px;border:0 solid var(--gold)}
+.c1{top:22px;left:22px;border-width:2px 0 0 2px}.c2{top:22px;right:22px;border-width:2px 2px 0 0}.c3{bottom:22px;left:22px;border-width:0 0 2px 2px}.c4{bottom:22px;right:22px;border-width:0 2px 2px 0}
+.head{position:absolute;top:60px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.logo{width:268px;filter:drop-shadow(0 3px 14px rgba(0,0,0,.75))}
+.city{font-family:"Noto Sans Telugu",sans-serif;font-size:25px;font-weight:500;color:var(--gold);text-shadow:0 2px 10px rgba(0,0,0,.9)}
+.txt{position:absolute;left:80px;right:80px;bottom:300px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.eyebrow{display:flex;align-items:center;gap:18px;font-size:19px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);font-weight:500}
+.eyebrow i{display:block;width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
+.eyebrow i.r{background:linear-gradient(270deg,transparent,var(--gold))}
+h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;line-height:1.02;margin:0;color:var(--ink);text-wrap:balance;text-shadow:0 2px 22px rgba(0,0,0,.8)}
+.te{font-family:"Noto Sans Telugu",sans-serif;font-weight:500;font-size:${tesize}px;line-height:1.45;color:var(--gold);text-shadow:0 2px 14px rgba(0,0,0,.85)}
+.sub{font-size:25px;font-weight:300;color:var(--mute);line-height:1.45;max-width:880px;text-wrap:balance}
+.foot{position:absolute;left:66px;right:66px;bottom:60px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:24px;border-top:1px solid rgba(230,201,138,.38)}
+.brand{min-width:0}
+.brand .n{font-size:25px;color:var(--ink);letter-spacing:.02em;white-space:nowrap}
+.brand .nt{font-family:"Noto Sans Telugu",sans-serif;font-size:19px;color:var(--mute);margin-top:1px;white-space:nowrap}
+.brand .a{font-size:17px;color:#aaa396;margin-top:5px;letter-spacing:.03em;white-space:nowrap}
+.wa{flex:none;display:flex;align-items:center;gap:13px;padding:13px 26px 13px 20px;border-radius:999px;background:linear-gradient(135deg,#f3dea9,#c39a56);color:#15120d;box-shadow:0 6px 24px rgba(0,0,0,.45)}
+.wa svg{width:38px;height:38px}
+.wa .l{font-size:13px;letter-spacing:.24em;text-transform:uppercase;font-weight:500;line-height:1.1}
+.wa .num{font-size:31px;font-weight:500;letter-spacing:.03em;line-height:1.1;white-space:nowrap}
+</style></head><body><div class="photo"></div><div class="shade"></div><div class="vign"></div><div class="frame"></div><div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div>
+<div class="head"><img class="logo" src="data:image/png;base64,${logoB64()}" alt=""><div class="city">ఏలూరు</div></div>
+<div class="txt"><div class="eyebrow"><i></i>Eluru · MD Dermatologists<i class="r"></i></div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="sub">${esc(topic.sub)}</div></div>
+<div class="foot"><div class="brand"><div class="n">DermaLuxe by Medicare Skin And Hair Clinics</div><div class="nt">డెర్మాలక్స్ బై మెడికేర్ స్కిన్ అండ్ హెయిర్ క్లినిక్స్</div><div class="a">Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div></div>
+<div class="wa"><svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#15120d" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg><div><div class="l">WhatsApp</div><div class="num">99591 34666</div></div></div></div>
+<script>
+window.__fit = function () {
+  var txt = document.querySelector(".txt"), foot = document.querySelector(".foot"), h1 = document.querySelector("h1"), te = document.querySelector(".te"), sub = document.querySelector(".sub");
+  var brand = document.querySelector(".brand");
+  // footer: keep the name on one line next to the pill
+  var n = parseFloat(getComputedStyle(brand.querySelector(".n")).fontSize);
+  while (brand.scrollWidth > brand.clientWidth + 1 && n > 18) { n -= 1; brand.querySelector(".n").style.fontSize = n + "px"; brand.querySelector(".nt").style.fontSize = (n * 0.76) + "px"; brand.querySelector(".a").style.fontSize = (n * 0.68) + "px"; }
+  txt.style.bottom = (1350 - foot.offsetTop + 46) + "px";
+  var floor = 1350 * 0.555, h = parseFloat(getComputedStyle(h1).fontSize), t = parseFloat(getComputedStyle(te).fontSize), s = 25;
+  for (var i = 0; i < 30 && txt.offsetTop < floor; i++) {
+    if (h > 62) { h -= 3; h1.style.fontSize = h + "px"; }
+    if (t > 34) { t -= 1; te.style.fontSize = t + "px"; }
+    if (s > 21 && i % 3 === 2) { s -= 1; sub.style.fontSize = s + "px"; }
+  }
+  return { top: txt.offsetTop, h1: h };
+};
+</script>
 </body></html>`;
 }
 
 // ---- 5. Render (headless Chromium) ---------------------------------------
+// Rendered at 4/3 scale: 1440 × 1800 is Instagram's full 4:5 size, so the gold
+// hairlines and the Telugu glyphs stay crisp instead of being upscaled by the app.
 async function renderPoster(html) {
   // puppeteer-core 25 / @sparticuz/chromium 152 ship as ES modules — load
   // them with import() so this CommonJS file works on Vercel's Node 24.
@@ -293,13 +397,14 @@ async function renderPoster(html) {
     const chromium = cmod.default || cmod;
     launch = { args: chromium.args, executablePath: await chromium.executablePath(), headless: true };
   }
-  const browser = await puppeteer.launch(Object.assign({ defaultViewport: { width: 1080, height: 1350, deviceScaleFactor: 1 } }, launch));
+  const browser = await puppeteer.launch(Object.assign({ defaultViewport: { width: 1080, height: 1350, deviceScaleFactor: 4 / 3 } }, launch));
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0", timeout: 25000 });
     try { await page.evaluate(() => document.fonts.ready); } catch (e) {}
-    await new Promise((z) => setTimeout(z, 400));
-    const buf = await page.screenshot({ type: "jpeg", quality: 88, clip: { x: 0, y: 0, width: 1080, height: 1350 } });
+    try { await page.evaluate(() => window.__fit && window.__fit()); } catch (e) {}
+    await new Promise((z) => setTimeout(z, 300));
+    const buf = await page.screenshot({ type: "jpeg", quality: 90, clip: { x: 0, y: 0, width: 1080, height: 1350 } });
     return Buffer.from(buf).toString("base64");
   } finally { await browser.close().catch(() => {}); }
 }
