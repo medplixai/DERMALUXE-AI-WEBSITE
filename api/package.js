@@ -163,6 +163,9 @@ module.exports = async (req, res) => {
   if (a === "log") {
     const s0 = shape(p);
     if (s0.left === 0) return json(res, 400, { error: "Ee package already ayipoyindi" });
+    // Stopping a package means stopping it. Counting a sitting against one
+    // that was cancelled makes the patient's file say something untrue.
+    if (p.status === "dropped") return json(res, 400, { error: "Ee package aapesaru — malli modalu pettalante kotha package pettandi" });
     p.sessions = (p.sessions || []).concat([{
       n: s0.done + 1, at: Date.now(), by: me.name, note: clean(b.note, 200),
     }]);

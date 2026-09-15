@@ -5,11 +5,15 @@
 // writes one night's copy back into the live store.
 //
 // Restoring is not a thing to do by accident, so it needs the owner, the
-// exact date, and that date typed again as confirmation. It puts back what
-// the backup held and does not remove anything added since — so recovering
-// from "the leads are gone" cannot itself destroy this morning's work. A
-// truly exact restore is a rarer and more deliberate act than a web request
-// should be.
+// exact date, and that date typed again as confirmation.
+//
+// What it does, exactly, because the difference matters: a key the backup
+// does not mention is left alone — a bill raised this morning survives. But a
+// key the backup DOES hold is replaced whole, and the leads live in one key.
+// So restoring last night's copy gives back last night's leads and drops any
+// that arrived since. That is the right trade when the list is gone and the
+// wrong one when it is merely wrong, so the screen says it in those words
+// before the owner types the date a second time.
 const guard = require("./_guard.js");
 const staff = require("./staff.js");
 const store = require("./_photo-store.js");
@@ -96,9 +100,11 @@ module.exports = async (req, res) => {
     const counts = {};
     for (const row of doc.keys) counts[row.t] = (counts[row.t] || 0) + 1;
     const leads = (doc.keys.find((x) => x.k === "dl_leads") || {}).v;
+    const live = await guard.kvCommand(cfg, ["LLEN", "dl_leads"]).catch(() => ({}));
     return json(res, 200, {
       ok: true, day, made: doc.made, keys: doc.count, byType: counts,
       leads: Array.isArray(leads) ? leads.length : 0,
+      leadsNow: Number((live && live.result) || 0),
     });
   }
 
@@ -129,6 +135,9 @@ module.exports = async (req, res) => {
 
     const cmds = [];
     for (const row of doc.keys) cmds.push(...writeCmds(row));
+    // What the owner is about to lose, counted before it goes.
+    const nowLeads = await guard.kvCommand(cfg, ["LLEN", "dl_leads"]).catch(() => ({}));
+    const thenLeads = (doc.keys.find((x) => x.k === "dl_leads") || {}).v;
     let done = 0;
     for (let i = 0; i < cmds.length; i += 200) {
       await guard.kvPipeline(cfg, cmds.slice(i, i + 200));
@@ -139,7 +148,8 @@ module.exports = async (req, res) => {
       what: `RESTORED the database from the ${day} backup (${doc.count} keys)`,
     })]).catch(() => {});
     console.log("RESTORE from", day, doc.count, "keys by", auth.me.phone.slice(-4));
-    return json(res, 200, { ok: true, day, keys: doc.count, commands: done });
+    const lost = Math.max(0, Number((nowLeads && nowLeads.result) || 0) - (Array.isArray(thenLeads) ? thenLeads.length : 0));
+    return json(res, 200, { ok: true, day, keys: doc.count, commands: done, leadsLost: lost });
   }
 
   return json(res, 400, { error: "Unknown action" });

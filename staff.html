@@ -1403,7 +1403,8 @@
       var host = $("ptMoney"); if (!host) return;
       mnapi("of", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
         host.innerHTML =
-          '<div class="meta" style="margin-bottom:8px">' + (j.due ? 'Bakee <b style="color:var(--hot);font-weight:500">' + rupee(j.due) + "</b>" : "Bakee ledu 👍") + "</div>" +
+          '<div class="meta" style="margin-bottom:8px">' + (j.due ? 'Bakee <b style="color:var(--hot);font-weight:500">' + rupee(j.due) + "</b>" : "Bakee ledu 👍") +
+            (j.advance ? ' · Advance <b style="color:var(--gold);font-weight:500">' + rupee(j.advance) + "</b>" : "") + "</div>" +
           (state.allow("money.bill") ? '<button class="btn btn--sm btn--gold" data-act="mn-new" data-phone="' + esc(phone) + '" data-name="' + esc((ptOpen || {}).name || "") + '">🧾 Kotha bill</button> ' : "") +
           j.bills.map(function (bl) {
             return '<div class="vrow"><b>' + esc(bl.id) + " · " + rupee(bl.total) + "</b>" +
@@ -2836,11 +2837,14 @@
         var bal = Number(el.dataset.bal || 0);
         var amt2 = Number(prompt((el.dataset.name || "") + " — bakee " + rupee(bal) + ".\nEnta vachindi?", String(bal)) || 0);
         if (!(amt2 > 0)) return;
+        // An extra zero is the commonest slip at a busy desk, so say the
+        // number back before it becomes an advance nobody meant to take.
+        if (amt2 > bal && !confirm("Bakee " + rupee(bal) + " matrame.\n" + rupee(amt2) + " teesukuntunnara?\n\nMigilina " + rupee(amt2 - bal) + " advance ga untundi.")) return;
         var md = (prompt("Ela vachindi? cash / upi / card", "upi") || "cash").toLowerCase().trim();
         var rf = prompt("UPI / reference (optional)", "") || "";
         mnapi("pay", { id: el.dataset.id, amount: amt2, mode: md, ref: rf })
           .then(function (j) {
-            toast("Save ayindi · balance " + rupee(j.bill.balance));
+            toast(j.warn || ("Save ayindi · balance " + rupee(j.bill.balance)));
             if (ptOpen) loadPatientMoney(ptOpen.phone);
             if (!$("t-money").classList.contains("hide")) loadMoney();
           })
@@ -3073,13 +3077,19 @@
         if (!day) return;
         $("bkMsg").textContent = "Chustunna…";
         bkapi("peek", { day: day.trim() }).then(function (p) {
-          var ok = confirm("Aa backup lo:\n\n" + p.keys + " keys, " + p.leads + " leads\n\nVenakki pettalante, confirm cheyyadaniki date ni malli type cheyyandi.");
+          var losing = Math.max(0, (p.leadsNow || 0) - (p.leads || 0));
+          var ok = confirm("Aa backup lo: " + p.keys + " keys, " + p.leads + " leads.\n" +
+            "Ippudu unnavi: " + (p.leadsNow || 0) + " leads.\n\n" +
+            (losing
+              ? "⚠️ Aa taruvata vachchina " + losing + " leads POTAYI — leads anni oke chota untayi, adi mottam marchi raastundi.\n\n"
+              : "") +
+            "Bills, packages, consent — backup lo lenivi alaage untayi.\n\nVenakki pettalante date ni malli type cheyyandi.");
           if (!ok) { $("bkMsg").textContent = ""; return; }
           var c = prompt("Date ni malli type cheyyandi: " + p.day);
           if (!c) { $("bkMsg").textContent = ""; return; }
           $("bkMsg").textContent = "Venakki pedutunna…";
           return bkapi("restore", { day: p.day, confirm: c.trim() }).then(function (r) {
-            $("bkMsg").textContent = r.keys + " keys venakki vachayi. App refresh cheyyandi.";
+            $("bkMsg").textContent = r.keys + " keys venakki vachayi" + (r.leadsLost ? " · " + r.leadsLost + " kotha leads poyayi" : "") + ". App refresh cheyyandi.";
           });
         }).catch(function (e) { $("bkMsg").textContent = e.message; });
       };

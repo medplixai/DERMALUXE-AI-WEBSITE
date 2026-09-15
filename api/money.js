@@ -61,7 +61,10 @@ async function putBill(cfg, b) {
 function totals(b) {
   const total = (b.items || []).reduce((n, i) => n + money(i.price) * Math.max(1, Number(i.qty || 1)), 0);
   const paid = (b.payments || []).reduce((n, p) => n + money(p.amount), 0);
-  return { total, paid, balance: Math.max(0, total - paid) };
+  // Somebody who pays more than the bill has given an advance — or somebody
+  // typed an extra zero. Either way it must be visible: clamping the balance
+  // at zero and saying nothing loses the money from every screen.
+  return { total, paid, balance: Math.max(0, total - paid), advance: Math.max(0, paid - total) };
 }
 
 module.exports = async (req, res) => {
@@ -94,7 +97,8 @@ module.exports = async (req, res) => {
       if (bill) bills.push(Object.assign({}, bill, totals(bill)));
     }
     const due = bills.reduce((n, x) => n + x.balance, 0);
-    return json(res, 200, { ok: true, bills, due });
+    const advance = bills.reduce((n, x) => n + (x.advance || 0), 0);
+    return json(res, 200, { ok: true, bills, due, advance });
   }
 
   // The evening number: what came in today, split by how it was paid.
@@ -215,7 +219,8 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["EXPIRE", `bill:day:${day}`, String(400 * 86400)]).catch(() => {});
     const t = totals(bill);
     if (t.balance <= 0) await guard.kvCommand(cfg, ["LREM", "bill:open", "1", id]).catch(() => {});
-    return json(res, 200, { ok: true, bill: Object.assign({}, bill, t) });
+    return json(res, 200, { ok: true, bill: Object.assign({}, bill, t),
+      warn: t.advance > 0 ? `₹${t.advance.toLocaleString("en-IN")} baaki kanna ekkuva teesukunnaru — advance ga undi` : undefined });
   }
 
   // Ask for money that is already owed.
