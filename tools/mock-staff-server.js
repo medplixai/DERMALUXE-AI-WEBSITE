@@ -39,6 +39,10 @@ const trim = (l) => Object.assign({}, l, {
 
 const mockTpl = require("../api/consent.js").DRAFTS.map((t) => Object.assign({}, t, { version: 1, approved: null }));
 const mockCns = [];
+// Pretend the hospital bridge is configured and two leads did not get through.
+const mockHms = { ok: true, connected: true, host: "clinic.medicare-hms.in", tenant: "dlx-eluru", hasKey: true,
+  portalUrl: "", bookingUrl: "", missing: [], waiting: 2, oldest: Date.now() - 5 * 3600000,
+  sample: [{ name: "Ravi Kumar", phone: "0045", ts: Date.now() - 5 * 3600000 }, { name: "Sita", phone: "0061", ts: Date.now() - 2 * 3600000 }], last: null };
 const CAPS = ["leads.view", "leads.edit", "appts.view", "appts.edit", "academy.view", "academy.edit",
   "posts.view", "reviews.view", "reports.view", "money.view", "money.bill", "money.expense", "stock.view", "stock.edit", "attend.manage", "consent.take", "pkg.log", "ai.use", "msg.send", "team.manage", "settings.manage"];
 
@@ -93,6 +97,23 @@ http.createServer((req, res) => {
       me: { phone: "9010427777", name: "Owner (mock)", role: "owner", caps: ["*"] },
     });
     if (a === "login" || a === "verify") return send(200, { ok: true, token: "mock.token" });
+    if (a === "lead-add") {
+      let body = ""; req.on("data", (c) => (body += c));
+      return req.on("end", () => {
+        const b2 = (() => { try { return JSON.parse(body || "{}"); } catch (e) { return {}; } })();
+        const ph = String(b2.phone || "").replace(/\D/g, "").slice(-10);
+        // one number is already in the list, so the duplicate path can be seen
+        if (ph === "9876543210" && !b2.anyway) {
+          return send(409, { error: "Ee number 6 Aug na already vachindi (Sita Rani). Malli add cheyyala?" });
+        }
+        const lead = { ts: Date.now(), name: b2.name, phone: ph, src: b2.src, type: b2.src,
+          concern: b2.concern || "", message: b2.message || "", heat: b2.heat || "warm",
+          status: b2.status || "new", notes: b2.message ? [{ ts: Date.now(), by: "Owner", text: b2.message }] : [],
+          call_prep: "", key: Date.now() + "|" + ph };
+        leads.unshift(lead);
+        return send(200, { ok: true, lead, key: lead.key, synced: true });
+      });
+    }
     return send(200, { ok: true });
   }
   if (u.pathname === "/api/kvrestore") {
@@ -109,6 +130,15 @@ http.createServer((req, res) => {
     if (a === "status") return send(200, { ok: true, from: 4180, to: mockMoved, cursor: "0", live: "redis (america)" });
     if (a === "copy") { mockMoved = Math.min(4180, mockMoved + 200); return send(200, { ok: true, moved: 200, skipped: 0, done: mockMoved >= 4180 }); }
     return send(200, { ok: true });
+  }
+  if (u.pathname === "/api/hms") {  // hms-mock
+    const a = u.searchParams.get("a") || "status";
+    if (a === "status") return send(200, mockHms);
+    let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => {
+      if (a === "test") { mockHms.last = { at: Date.now(), ms: 212, ok: true, by: "Owner" }; return send(200, { ok: true, ms: 212 }); }
+      if (a === "retry") { const n = mockHms.waiting; mockHms.waiting = 0; mockHms.sample = []; return send(200, { ok: true, sent: n, failed: 0, waiting: 0 }); }
+      return send(400, { error: "Unknown action" });
+    });
   }
   if (u.pathname === "/api/consent") {  // consent-mock
     const a = u.searchParams.get("a") || "templates";

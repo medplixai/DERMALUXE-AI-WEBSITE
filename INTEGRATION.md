@@ -5,16 +5,26 @@ billing / doctor Rx / pharmacy — multi-tenant). The website is already wired;
 connecting the DermaLuxe tenant is **configuration only** — no code changes.
 
 ```
-dermaluxe.ai (website)                    Medicare platform (multi-tenant)
-┌───────────────────────┐                 ┌────────────────────────────────┐
-│ Booking form          │──┐              │                                │
-│ Teleconsult form      │──┼─ /api/lead ─▶│  CLINIC_SYNC_URL (webhook/API) │
-│ AI Analysis leads     │──┘   +KV store  │  → tenant: DermaLuxe Eluru     │
-│                       │                 │                                │
-│ portal.html ──────────┼── link ────────▶│  CLINIC_PORTAL_URL (patient    │
-│ (Patient Portal page) │                 │   login: Rx/medicines/bills)   │
-└───────────────────────┘                 └────────────────────────────────┘
+DermaLuxe                                 Medicare platform (multi-tenant)
+┌───────────────────────────┐             ┌────────────────────────────────┐
+│ Website booking / tele-   │──┐          │                                │
+│   consult / AI analysis   │  │          │                                │
+│ WhatsApp agent            │  │          │                                │
+│ Instagram DMs             │  ├─ POST ──▶│  CLINIC_SYNC_URL (webhook/API) │
+│ Messenger                 │  │  +KV     │  → tenant: DermaLuxe Eluru     │
+│ Missed / IVR calls        │  │          │                                │
+│ Staff dashboard (walk-in, │──┘          │                                │
+│   phone, referral…)       │             │                                │
+│                           │             │                                │
+│ portal.html ──────────────┼── link ────▶│  CLINIC_PORTAL_URL (patient    │
+│ (Patient Portal page)     │             │   login: Rx/medicines/bills)   │
+└───────────────────────────┘             └────────────────────────────────┘
 ```
+
+**Every** lead the clinic receives goes down this pipe — not only the website
+ones. Anything the platform refuses is parked in a queue and retried, and the
+owner can see the queue, test the connection and flush it by hand from the
+staff dashboard: **Control panel → Controls → Hospital system**.
 
 ## 1. Environment variables (set in Vercel → Project → Settings → Environment Variables)
 

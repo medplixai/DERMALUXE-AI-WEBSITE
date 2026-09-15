@@ -333,8 +333,9 @@
         <div class="filters">
           <input id="q" placeholder="Search name / phone / concern" />
           <select id="fStatus"><option value="">All status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="booked">Booked</option><option value="visited">Visited</option><option value="closed">Closed</option></select>
-          <select id="fSrc"><option value="">All sources</option><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="web">Website</option></select>
+          <select id="fSrc"><option value="">All sources</option><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="web">Website</option><option value="walkin">Walk-in / call</option></select>
           <select id="fDays"><option value="7">Last 7 days</option><option value="1">Today</option><option value="30">Last 30 days</option><option value="365" selected>All</option></select>
+          <button class="btn btn--sm btn--gold hide" id="leadAdd">+ Kotha lead</button>
         </div>
         <div class="list" id="leadList"></div>
         <div id="leadMore" style="margin-top:10px;text-align:center"></div>
@@ -500,6 +501,11 @@
             <div id="cnsTpl" style="margin-top:10px">—</div>
             <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="cnsLoad">Chudandi</button></div>
             <div class="meta" id="cnsTplMsg" style="margin-top:6px"></div></div>
+          <div class="box"><h2>Hospital system <span class="te" style="font-size:.9rem;color:var(--g3)">· హాస్పిటల్ సిస్టమ్</span></h2>
+            <p>Clinic ki vachche prati lead — website, WhatsApp, Instagram, call, and desk lo type chesindi — Medicare hospital system ki kuda velthundi. Akkada cheranivi ikkade aagi untayi, matladaka poవు.</p>
+            <div id="hmsBox" class="meta" style="margin-top:8px">—</div>
+            <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="hmsCheck">Chudandi</button><button class="btn btn--sm hide" id="hmsTest">Test cheyyi</button><button class="btn btn--gold btn--sm hide" id="hmsRetry">Aagipoyinavi pampu</button></div>
+            <div class="meta" id="hmsMsg" style="margin-top:6px"></div></div>
           <div class="box"><h2>Backup <span class="te" style="font-size:.9rem;color:var(--g3)">· బ్యాకప్</span></h2>
             <p>Prati raatri 1:50 ki clinic data mottam separate ga copy ayi, encrypt chesi daachipettabadutundi. 14 rojula vi untayi. Database ki emaina ayithe deenilo nunchi venakki tecchukovachu.</p>
             <div id="bkBox" class="meta" style="margin-top:8px">—</div>
@@ -586,7 +592,19 @@
     }
     function ago(ts) { var d = Date.now() - ts, m = Math.round(d / 60000); if (m < 1) return "just now"; if (m < 60) return m + " min ago"; var h = Math.round(m / 60); if (h < 24) return h + " h ago"; return Math.round(h / 24) + " d ago"; }
     function fmtAt(ts) { return new Date(ts).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); }
-    function src(l) { var t = String(l.type || l.page || "").toLowerCase(); if (t.indexOf("insta") > -1) return "instagram"; if (t.indexOf("face") > -1 || t.indexOf("messenger") > -1) return "facebook"; if (t.indexOf("whatsapp") > -1) return "whatsapp"; return "web"; }
+    var DESK_SRC = { walkin: "Walk-in", phone: "Phone call", referral: "Referral", poster: "Poster", camp: "Camp", other: "Other" };
+    function src(l) {
+      // A lead the desk typed in says so itself; the rest are worked out from
+      // whichever channel wrote them.
+      if (l.src && DESK_SRC[l.src]) return "walkin";
+      var t = String(l.type || l.page || "").toLowerCase();
+      if (DESK_SRC[t]) return "walkin";
+      if (t.indexOf("insta") > -1) return "instagram";
+      if (t.indexOf("face") > -1 || t.indexOf("messenger") > -1) return "facebook";
+      if (t.indexOf("whatsapp") > -1) return "whatsapp";
+      return "web";
+    }
+    function srcLabel(l) { return DESK_SRC[l.src] || DESK_SRC[String(l.type || "").toLowerCase()] || src(l); }
     var heatRank = { hot: 0, warm: 1, "": 2, cold: 3 };
 
     // ---- login ----
@@ -710,6 +728,7 @@
       if (allow("team.manage")) $("teamTab").classList.remove("hide");
       if (allow("ai.use")) $("officeTab").classList.remove("hide");
       if (allow("stock.view")) $("stockTab").classList.remove("hide");
+      if (allow("leads.edit")) $("leadAdd").classList.remove("hide");
       [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"], ["stock", "stock.view"]].forEach(function (p) {
         var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
       });
@@ -740,7 +759,7 @@
       openFromHash();
     }
     function leadCard(l, compact) {
-      var heat = l.heat || "", s = src(l);
+      var heat = l.heat || "", s = srcLabel(l);
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + '</div></div>' +
@@ -1071,6 +1090,66 @@
         };
         paintBack();
       }).catch(function (e) { toast(e.message); });
+    }
+
+    // Somebody walked in, or rang, or a friend sent them. Until now the desk
+    // had to wait for the patient to message before they existed anywhere.
+    function newLeadSheet() {
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      var opts = [["walkin", "Walk-in"], ["phone", "Phone call"], ["referral", "Evaro cheppi vachcharu"], ["poster", "Poster / pamphlet"], ["camp", "Camp"], ["other", "Other"]];
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
+        "<h2>Kotha lead</h2>" +
+        '<p class="meta" style="margin-bottom:12px">Clinic ki vachina leda call chesina vaallani ikkada add cheyyandi.</p>' +
+        '<input id="nlName" class="inp" placeholder="Peru *" style="width:100%;margin-bottom:8px" />' +
+        '<input id="nlPhone" class="inp" placeholder="10-digit mobile *" inputmode="numeric" maxlength="10" style="width:100%;margin-bottom:8px" />' +
+        '<select id="nlSrc" class="sel" style="width:100%;margin-bottom:8px">' +
+          opts.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + "</option>"; }).join("") + "</select>" +
+        '<input id="nlConcern" class="inp" placeholder="Em problem? (acne, hair fall…)" style="width:100%;margin-bottom:8px" />' +
+        '<textarea id="nlNote" class="inp" rows="2" placeholder="Note (optional) — em maatladaru" style="width:100%;margin-bottom:8px"></textarea>' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+          '<select id="nlHeat" class="sel" style="flex:1"><option value="hot">🔥 Hot</option><option value="warm" selected>Warm</option><option value="cold">Cold</option></select>' +
+          '<select id="nlStatus" class="sel" style="flex:1"><option value="new">New</option><option value="contacted" selected>Maatladanu</option><option value="booked">Book chesaru</option><option value="visited">Vachcharu</option></select>' +
+        "</div>" +
+        '<div class="err" id="nlErr"></div>' +
+        '<button class="btn btn--gold btn--sm" id="nlSave" style="width:100%">Save cheyyandi</button>' +
+        '<button class="btn btn--sm" id="nlClose" style="margin-top:8px;width:100%">Close</button></div>';
+      document.body.appendChild(wrap);
+      var close = function () { wrap.remove(); paintBack(); };
+      wrap.querySelector(".sheet-bg").onclick = close;
+      wrap.querySelector("#nlClose").onclick = close;
+      setTimeout(function () { var n = wrap.querySelector("#nlName"); if (n) n.focus(); }, 60);
+
+      var send = function (anyway) {
+        var err = wrap.querySelector("#nlErr");
+        var v = function (id) { return (wrap.querySelector("#" + id).value || "").trim(); };
+        var name = v("nlName"), phone = v("nlPhone").replace(/\D/g, "").slice(-10);
+        err.textContent = "";
+        if (!name) { err.textContent = "Peru ivvandi"; return; }
+        if (!/^[6-9]\d{9}$/.test(phone)) { err.textContent = "Sarpaina 10-digit number ivvandi"; return; }
+        var btn = wrap.querySelector("#nlSave"); btn.disabled = true;
+        api("lead-add", {
+          name: name, phone: phone, src: wrap.querySelector("#nlSrc").value,
+          concern: v("nlConcern"), message: v("nlNote"),
+          heat: wrap.querySelector("#nlHeat").value, status: wrap.querySelector("#nlStatus").value,
+          anyway: !!anyway,
+        }).then(function (j) {
+          close();
+          toast(j.synced === false ? "Save ayindi · hospital ki cheraledu, taruvata velthundi" : "Lead add ayindi");
+          return load(true);
+        }).catch(function (x) {
+          btn.disabled = false;
+          // A number seen this week is nearly always the same person twice.
+          if (x.status === 409 && !anyway) {
+            if (confirm(x.message + "\n\nOK kotte kotha card padutundi.")) send(true);
+            else err.textContent = "";
+            return;
+          }
+          err.textContent = x.message;
+        });
+      };
+      wrap.querySelector("#nlSave").onclick = function () { send(false); };
+      paintBack();
     }
 
     function loadPatientPkgs(phone) {
@@ -3094,6 +3173,64 @@
         }).catch(function (e) { $("bkMsg").textContent = e.message; });
       };
     }
+    function hmsapi(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/hms?a=" + a, opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    function hmsPaint(j) {
+      var lines = [];
+      if (!j.connected) {
+        lines.push('<b style="color:var(--bad);font-weight:500">Inka connect cheyyaledu</b>');
+        lines.push("Vercel lo ee settings pettandi: <b>" + esc(j.missing.join(", ") || "CLINIC_SYNC_URL") + "</b>" +
+          (j.hasKey ? "" : ", and key unte <b>CLINIC_API_KEY</b>") + ".");
+        lines.push("Appati varaku leads manaki matrame untayi — emi podu.");
+      } else {
+        lines.push('<b style="color:var(--ok,var(--g2));font-weight:500">Connect ayindi</b> · ' + esc(j.host) + (j.tenant ? " · tenant " + esc(j.tenant) : ""));
+        if (!j.hasKey) lines.push("Key ledu — URL lone undi anukuntunna.");
+      }
+      if (j.waiting) {
+        lines.push('<b style="color:var(--hot);font-weight:500">' + j.waiting + " lead(s) cheraledu</b>, ikkade aagi unnayi" +
+          (j.oldest ? " — chala puraanadi " + ago(j.oldest) : "") + ".");
+        if (j.sample && j.sample.length) {
+          lines.push('<span style="opacity:.8">' + j.sample.map(function (x) { return esc(x.name || "?") + " ·••••" + esc(x.phone); }).join(" · ") + "</span>");
+        }
+      } else if (j.connected) {
+        lines.push("Aagipoyinavi emi ledu 👍");
+      }
+      if (j.last) {
+        lines.push('<span style="opacity:.8">Chivari test — ' + (j.last.ok ? "cherindi" : "cheraledu") + " · " + j.last.ms + "ms · " + fmtDay(j.last.at) + "</span>");
+      }
+      $("hmsBox").innerHTML = lines.join("<br>");
+      $("hmsTest").classList.toggle("hide", !j.connected);
+      $("hmsRetry").classList.toggle("hide", !j.waiting);
+    }
+    if ($("leadAdd")) $("leadAdd").onclick = function () { newLeadSheet(); };
+    if ($("hmsCheck")) $("hmsCheck").onclick = function () {
+      $("hmsBox").textContent = "Chustunna…"; $("hmsMsg").textContent = ""; $("hmsCheck").disabled = true;
+      hmsapi("status").then(hmsPaint).catch(function (e) { $("hmsBox").textContent = e.message; })
+        .finally(function () { $("hmsCheck").disabled = false; });
+    };
+    if ($("hmsTest")) $("hmsTest").onclick = function () {
+      // A test lead is obviously not a patient, and says so on the other side.
+      $("hmsMsg").textContent = "Pampi chustunna…"; this.disabled = true;
+      var btn = this;
+      hmsapi("test", {}).then(function (r) { $("hmsMsg").textContent = "Cherindi ✓ (" + r.ms + "ms)"; return hmsapi("status").then(hmsPaint); })
+        .catch(function (e) { $("hmsMsg").textContent = e.message; })
+        .finally(function () { btn.disabled = false; });
+    };
+    if ($("hmsRetry")) $("hmsRetry").onclick = function () {
+      $("hmsMsg").textContent = "Pamputunna…"; this.disabled = true;
+      var btn = this;
+      hmsapi("retry", {}).then(function (r) {
+        $("hmsMsg").textContent = r.sent + " vellayi" + (r.failed ? ", " + r.failed + " inka cheraledu" : "");
+        return hmsapi("status").then(hmsPaint);
+      }).catch(function (e) { $("hmsMsg").textContent = e.message; })
+        .finally(function () { btn.disabled = false; });
+    };
+
     if ($("bkCheck")) $("bkCheck").onclick = function () {
       $("bkBox").textContent = "Chustunna…"; $("bkCheck").disabled = true;
       bkapi("list").then(bkPaint).catch(function (e) { $("bkBox").textContent = e.message; })

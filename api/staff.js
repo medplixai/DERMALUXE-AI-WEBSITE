@@ -5,6 +5,7 @@
 // Session: HMAC-signed bearer token (30 days). Roles: owner | staff.
 const crypto = require("crypto");
 const guard = require("./_guard.js");
+const clinic = require("./_clinic.js");
 const notify = require("./_notify.js");
 
 const LEADS = "dl_leads", STATUS = "dl_status", NOTES = "dl_notes", USERS = "staff:users";
@@ -590,6 +591,72 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["HSET", NOTES, key, JSON.stringify(list.slice(0, 30))]);
     return json(res, 200, { ok: true, notes: list.slice(0, 30) });
   }
+  // A lead that walked in, or rang the clinic, or came from a friend. Every
+  // other source writes into dl_leads and forwards to the clinic platform;
+  // this is the one that was missing, so the desk had to wait for a patient
+  // to message before they existed anywhere.
+  if (a === "lead-add") {
+    if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki lead add chese permission ledu" });
+    const phone = digits10(b.phone);
+    if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit number ivvandi" });
+    const name = String(b.name || "").trim().slice(0, 60);
+    if (!name) return json(res, 400, { error: "Peru ivvandi" });
+    const rlAdd = await guard.rateLimit(cfg, `rl:ladd:${me.phone}`, 200, 3600);
+    if (!rlAdd.allowed) return json(res, 429, { error: "Konchem aagandi" });
+
+    const SRC = ["walkin", "phone", "referral", "poster", "camp", "other"];
+    const src = SRC.includes(String(b.src)) ? String(b.src) : "walkin";
+    const at = stamp(b.at);
+    const lead = {
+      ts: at, type: src, src,
+      name, phone,
+      age: String(b.age || "").slice(0, 8),
+      gender: String(b.gender || "").slice(0, 12),
+      concern: String(b.concern || "").trim().slice(0, 120),
+      message: String(b.message || "").trim().slice(0, 400),
+      heat: ["hot", "warm", "cold"].includes(String(b.heat)) ? String(b.heat) : "warm",
+      by: me.name, byPhone: me.phone, manual: true,
+    };
+
+    // The same number twice in a week is nearly always the desk entering
+    // somebody who already rang. Say so rather than quietly making a second
+    // card for one person.
+    const recent = await guard.kvCommand(cfg, ["LRANGE", LEADS, "0", "199"]).catch(() => ({}));
+    let dupe = null;
+    for (const raw of (recent.result || [])) {
+      try {
+        const l = JSON.parse(raw);
+        if (digits10(l.phone) === phone && at - Number(l.ts || 0) < 7 * 86400000) { dupe = l; break; }
+      } catch (e) {}
+    }
+    if (dupe && !b.anyway) {
+      return json(res, 409, {
+        error: `Ee number ${new Date(Number(dupe.ts)).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })} na already vachindi (${String(dupe.name || "")}). Malli add cheyyala?`,
+        duplicate: { name: dupe.name || "", ts: dupe.ts, key: leadKey(dupe) },
+      });
+    }
+
+    // Same order as every other source: the platform first, so the stored
+    // copy carries whether it got there.
+    const sync = await clinic.forwardLead(cfg, lead);
+    if (sync.attempted) lead.synced = sync.synced;
+
+    const ok = await guard.kvWrite(cfg, ["LPUSH", LEADS, JSON.stringify(lead)], "manual lead");
+    if (!ok) return json(res, 500, { error: "Save avvaledu — malli try cheyandi" });
+    await guard.kvCommand(cfg, ["LTRIM", LEADS, "0", "4999"]).catch(() => {});
+
+    const key = leadKey(lead);
+    if (b.status && ["new", "contacted", "booked", "visited", "closed"].includes(String(b.status))) {
+      await guard.kvCommand(cfg, ["HSET", STATUS, key, String(b.status)]).catch(() => {});
+      await guard.kvCommand(cfg, ["HSET", STATUS_TS, key, String(at)]).catch(() => {});
+    }
+    if (lead.message) {
+      await guard.kvCommand(cfg, ["HSET", NOTES, key, JSON.stringify([{ ts: at, by: me.name, text: lead.message }])]).catch(() => {});
+    }
+    console.log("manual lead", src, "by", me.phone.slice(-4), sync.attempted ? (sync.synced ? "· synced" : "· sync failed, parked") : "");
+    return json(res, 200, { ok: true, lead, key, synced: sync.attempted ? sync.synced : null });
+  }
+
   if (a === "academy") {
     if (!allow("academy.seats")) return json(res, 403, { error: "Mee role ki academy seats marche permission ledu" });
     const n = Math.max(0, Math.min(10, Number(b.booked)));
