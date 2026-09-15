@@ -1094,23 +1094,43 @@
 
     // Somebody walked in, or rang, or a friend sent them. Until now the desk
     // had to wait for the patient to message before they existed anywhere.
-    function newLeadSheet() {
+    //
+    // This is the whole job in one sheet, because at a busy front desk it is
+    // one job: write the person down, book them if they are standing there,
+    // and message them. Splitting it across three screens is how half of it
+    // stops happening.
+    var rateNames = null;
+    function newLeadSheet(preset) {
+      var p0 = preset || {};
       var wrap = document.createElement("div");
       wrap.className = "sheet open";
       var opts = [["walkin", "Walk-in"], ["phone", "Phone call"], ["referral", "Evaro cheppi vachcharu"], ["poster", "Poster / pamphlet"], ["camp", "Camp"], ["other", "Other"]];
+      var today = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
       wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
         "<h2>Kotha lead</h2>" +
         '<p class="meta" style="margin-bottom:12px">Clinic ki vachina leda call chesina vaallani ikkada add cheyyandi.</p>' +
-        '<input id="nlName" class="inp" placeholder="Peru *" style="width:100%;margin-bottom:8px" />' +
-        '<input id="nlPhone" class="inp" placeholder="10-digit mobile *" inputmode="numeric" maxlength="10" style="width:100%;margin-bottom:8px" />' +
+        '<input id="nlName" class="inp" placeholder="Peru *" style="width:100%;margin-bottom:8px" value="' + esc(p0.name || "") + '" />' +
+        '<input id="nlPhone" class="inp" placeholder="10-digit mobile *" inputmode="numeric" maxlength="10" style="width:100%;margin-bottom:8px" value="' + esc(p0.phone || "") + '" />' +
+        '<div style="display:flex;gap:8px;margin-bottom:8px">' +
+          '<input id="nlAge" class="inp" placeholder="Vayasu" inputmode="numeric" maxlength="3" style="flex:1" />' +
+          '<select id="nlGender" class="sel" style="flex:1.4"><option value="">Gender</option><option value="female">Aamma / Female</option><option value="male">Ayana / Male</option><option value="other">Other</option></select>' +
+        "</div>" +
         '<select id="nlSrc" class="sel" style="width:100%;margin-bottom:8px">' +
-          opts.map(function (o) { return '<option value="' + o[0] + '">' + o[1] + "</option>"; }).join("") + "</select>" +
-        '<input id="nlConcern" class="inp" placeholder="Em problem? (acne, hair fall…)" style="width:100%;margin-bottom:8px" />' +
+          opts.map(function (o) { return '<option value="' + o[0] + '"' + (p0.src === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>" +
+        '<input id="nlConcern" class="inp" list="nlTreat" placeholder="Em problem / e treatment?" style="width:100%;margin-bottom:8px" />' +
+        '<datalist id="nlTreat"></datalist>' +
         '<textarea id="nlNote" class="inp" rows="2" placeholder="Note (optional) — em maatladaru" style="width:100%;margin-bottom:8px"></textarea>' +
         '<div style="display:flex;gap:8px;margin-bottom:10px">' +
           '<select id="nlHeat" class="sel" style="flex:1"><option value="hot">🔥 Hot</option><option value="warm" selected>Warm</option><option value="cold">Cold</option></select>' +
           '<select id="nlStatus" class="sel" style="flex:1"><option value="new">New</option><option value="contacted" selected>Maatladanu</option><option value="booked">Book chesaru</option><option value="visited">Vachcharu</option></select>' +
         "</div>" +
+        (state.allow("appts.edit")
+          ? '<label class="switch" style="margin-bottom:8px"><input type="checkbox" id="nlBook" /> Ippude appointment kuda pettandi</label>' +
+            '<div id="nlBookRow" class="hide" style="display:flex;gap:8px;margin-bottom:10px">' +
+              '<input id="nlDay" class="inp" type="date" value="' + today + '" style="flex:1.2" />' +
+              '<input id="nlTime" class="inp" placeholder="3:30 pm" style="flex:1" />' +
+            "</div>"
+          : "") +
         '<div class="err" id="nlErr"></div>' +
         '<button class="btn btn--gold btn--sm" id="nlSave" style="width:100%">Save cheyyandi</button>' +
         '<button class="btn btn--sm" id="nlClose" style="margin-top:8px;width:100%">Close</button></div>';
@@ -1118,31 +1138,85 @@
       var close = function () { wrap.remove(); paintBack(); };
       wrap.querySelector(".sheet-bg").onclick = close;
       wrap.querySelector("#nlClose").onclick = close;
-      setTimeout(function () { var n = wrap.querySelector("#nlName"); if (n) n.focus(); }, 60);
+      setTimeout(function () { var n = wrap.querySelector("#nlName"); if (n && !p0.name) n.focus(); }, 60);
+
+      var bk = wrap.querySelector("#nlBook");
+      if (bk) bk.onchange = function () { wrap.querySelector("#nlBookRow").classList.toggle("hide", !bk.checked); };
+
+      // Treatment names come from the rate card, so the same treatment is not
+      // written five different ways across five leads.
+      var fillTreat = function (names) {
+        var dl = wrap.querySelector("#nlTreat");
+        if (dl && names && names.length) dl.innerHTML = names.map(function (n) { return '<option value="' + esc(n) + '"></option>'; }).join("");
+      };
+      if (rateNames) fillTreat(rateNames);
+      else mnapi("rates").then(function (j) {
+        rateNames = (j.rates || []).map(function (r) { return r.name; }).filter(Boolean);
+        fillTreat(rateNames);
+      }).catch(function () {});
 
       var send = function (anyway) {
         var err = wrap.querySelector("#nlErr");
-        var v = function (id) { return (wrap.querySelector("#" + id).value || "").trim(); };
+        var v = function (id) { var e = wrap.querySelector("#" + id); return e ? (e.value || "").trim() : ""; };
         var name = v("nlName"), phone = v("nlPhone").replace(/\D/g, "").slice(-10);
         err.textContent = "";
         if (!name) { err.textContent = "Peru ivvandi"; return; }
         if (!/^[6-9]\d{9}$/.test(phone)) { err.textContent = "Sarpaina 10-digit number ivvandi"; return; }
-        var btn = wrap.querySelector("#nlSave"); btn.disabled = true;
-        api("lead-add", {
+
+        var wantBook = bk && bk.checked;
+        var at = 0;
+        if (wantBook) {
+          var day = v("nlDay") || today, tm = v("nlTime");
+          if (!tm) { err.textContent = "Appointment time raayandi (3:30 pm laaga)"; return; }
+          var m = tm.toLowerCase().match(/^(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?$/);
+          if (!m) { err.textContent = "Time sarigga raayandi — 3:30 pm laaga"; return; }
+          var hh = Number(m[1]), mm = Number(m[2] || 0), ap = m[3];
+          if (ap === "pm" && hh < 12) hh += 12;
+          if (ap === "am" && hh === 12) hh = 0;
+          if (hh > 23 || mm > 59) { err.textContent = "Time sarigga ledu"; return; }
+          at = new Date(day + "T" + String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + ":00+05:30").getTime();
+        }
+
+        var body = {
           name: name, phone: phone, src: wrap.querySelector("#nlSrc").value,
+          age: v("nlAge"), gender: wrap.querySelector("#nlGender").value,
           concern: v("nlConcern"), message: v("nlNote"),
           heat: wrap.querySelector("#nlHeat").value, status: wrap.querySelector("#nlStatus").value,
           anyway: !!anyway,
-        }).then(function (j) {
+        };
+        var btn = wrap.querySelector("#nlSave"); btn.disabled = true;
+
+        api("lead-add", body).then(function (j) {
           close();
           toast(j.synced === false ? "Save ayindi · hospital ki cheraledu, taruvata velthundi" : "Lead add ayindi");
-          return load(true);
+          // Booked in the same breath, because that is what the desk is doing.
+          var next = wantBook
+            ? schapi("create", { ph: phone, name: name, concern: body.concern, at: at, mins: 30 })
+                .then(function () { toast("Appointment kuda book ayindi"); })
+                .catch(function (e) {
+                  if (e.status === 409 && confirm(e.message + "\n\nAyina book cheyyala?")) {
+                    return schapi("create", { ph: phone, name: name, concern: body.concern, at: at, mins: 30, force: true })
+                      .then(function () { toast("Book chesamu"); });
+                  }
+                  toast("Lead padindi, kaani appointment kaledu — " + e.message);
+                })
+            : Promise.resolve();
+          return next.then(function () { return load(true); }).then(function () { afterLead(name, phone); });
         }).catch(function (x) {
           btn.disabled = false;
-          // A number seen this week is nearly always the same person twice.
+          // The front desk is exactly where the internet drops. A lead must
+          // never be lost to that — park it and send it when we are back.
+          if (x.net) {
+            // Replayed later, a duplicate check would answer 409 — which the
+            // queue treats as "still broken" and would stop everything behind
+            // it. The desk has already decided; send it as decided.
+            enqueue("lead-add", Object.assign({}, body, { anyway: true }));
+            close();
+            toast(wantBook ? "Offline — lead phone lo aagi undi. Appointment malli pettandi." : "Offline — lead phone lo aagi undi, internet vachchaka veltundi");
+            return;
+          }
           if (x.status === 409 && !anyway) {
-            if (confirm(x.message + "\n\nOK kotte kotha card padutundi.")) send(true);
-            else err.textContent = "";
+            askDupe(x, phone, function () { send(true); }, close);
             return;
           }
           err.textContent = x.message;
@@ -1150,6 +1224,33 @@
       };
       wrap.querySelector("#nlSave").onclick = function () { send(false); };
       paintBack();
+    }
+
+    // The same number in the same week is one person, nearly always. Offer the
+    // file that already exists before offering to make a second one.
+    function askDupe(x, phone, again, close) {
+      var d = (x && x.duplicate) || {};
+      var msg = x.message + "\n\nOK = aa manishi file terusthanu.\nCancel = ayina kotha lead pettandi.";
+      if (confirm(msg)) { close(); openPatient(phone); }
+      else again();
+    }
+
+    // Open WhatsApp with the message already typed. The staff member presses
+    // send — we never send on their behalf. A plain anchor, because that is
+    // what the app knows how to hand to the WhatsApp app.
+    function waOpen(phone, text) {
+      var a = document.createElement("a");
+      a.href = "https://wa.me/91" + String(phone).replace(/\D/g, "").slice(-10) + "?text=" + encodeURIComponent(text);
+      a.target = "_blank"; a.rel = "noopener";
+      document.body.appendChild(a); a.click(); a.remove();
+    }
+
+    // Written down — now the part that actually gets them through the door.
+    function afterLead(name, phone) {
+      if (!state.allow("msg.send")) return;
+      var first = String(name).trim().split(" ")[0] || "Andi";
+      if (!confirm(first + " garu ki WhatsApp lo welcome message pampala?\n\nWhatsApp terusthundi — meeru send kottali.")) return;
+      waOpen(phone, first + " garu, DermaLuxe by Medicare nunchi 🙏\nMee enquiry ki dhanyavadalu. Emaina doubts unte ee number ki reply cheyandi.\n📍 Kasturi Vari Street, Eluru · Mon-Sat 9 AM - 9 PM");
     }
 
     function loadPatientPkgs(phone) {

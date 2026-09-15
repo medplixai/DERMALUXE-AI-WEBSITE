@@ -107,6 +107,7 @@ http.createServer((req, res) => {
           return send(409, { error: "Ee number 6 Aug na already vachindi (Sita Rani). Malli add cheyyala?" });
         }
         const lead = { ts: Date.now(), name: b2.name, phone: ph, src: b2.src, type: b2.src,
+          age: b2.age || "", gender: b2.gender || "",
           concern: b2.concern || "", message: b2.message || "", heat: b2.heat || "warm",
           status: b2.status || "new", notes: b2.message ? [{ ts: Date.now(), by: "Owner", text: b2.message }] : [],
           call_prep: "", key: Date.now() + "|" + ph };
@@ -220,6 +221,11 @@ http.createServer((req, res) => {
     if (a === "of") return send(200, { ok: true, due: 3000, bills: [{ id: "B1001", phone: "9876543210", name: "Sita Rani",
       ts: Date.now() - 7 * 86400000, total: 5000, paid: 2000, balance: 3000, items: [{ name: "Laser — face", amount: 5000 }],
       payments: [{ amount: 2000, mode: "upi", by: "Reception", ts: Date.now() - 7 * 86400000 }] }] });
+    if (a === "rates") return send(200, { ok: true, canEdit: true, rates: [
+      { id: "laser-face", name: "Laser — full face", price: 5000 },
+      { id: "prp", name: "PRP hair therapy", price: 4000 },
+      { id: "peel", name: "Chemical peel", price: 2500 },
+      { id: "hydra", name: "Hydrafacial", price: 3500 }] });
     if (a === "dues") return send(200, { ok: true, due: 8500,
       rows: [{ id: "B1001", phone: "9876500041", name: "Latha Devi", ts: Date.now() - 7 * 86400000, total: 5000, paid: 2000, balance: 3000, reminded: 0 },
              { id: "B1004", phone: "9876500045", name: "Ravi Kumar", ts: Date.now() - 12 * 86400000, total: 8000, paid: 2500, balance: 5500, reminded: Date.now() - 2 * 86400000 }] });

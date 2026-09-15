@@ -34,6 +34,7 @@ const OWNER = mk({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: Date.now(
   is(r.body.lead.manual, true, "and it is marked as typed in, not scraped from a channel");
   is(r.body.lead.by, "Owner", "with who entered it");
 
+
   const raw = h.run(["LRANGE", "dl_leads", "0", "9"]).map((x) => JSON.parse(x));
   is(raw.length, 1, "it is in the same list every other lead lives in");
   is(raw[0].phone, "9876500201", "with the number");
@@ -52,6 +53,16 @@ const OWNER = mk({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: Date.now(
   // an unknown source cannot be invented
   const odd = await add({ name: "Y", phone: "9876500202", src: "magic" });
   is(odd.body.lead.src, "walkin", "an unknown source falls back to walk-in");
+
+  // The hospital system wants a patient, not just a name and a number.
+  const full = await add({ name: "Lakshmi Devi", phone: "9876500210", src: "walkin",
+    age: "34", gender: "female", concern: "Hydrafacial" });
+  is(full.body.lead.age, "34", "age is kept");
+  is(full.body.lead.gender, "female", "and gender");
+  const payload = require(require("path").join(process.env.DL_API, "_clinic.js")).toClinicPayload(full.body.lead);
+  is(payload.patient.age, "34", "and both reach the hospital payload");
+  is(payload.patient.gender, "female", "so the record there is not half empty");
+  is(payload.patient.phone, "+919876500210", "with the number in the shape they expect");
 
   // permissions
   h.run(["HSET", "staff:users", "9876500051", JSON.stringify({ name: "Sowmya", role: "reception" })]);
