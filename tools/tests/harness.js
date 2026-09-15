@@ -74,12 +74,24 @@ const stub = (n, e) => { const p = path.join(API, n); require.cache[p] = { id: p
 const sent = [];
 stub("_guard.js", Object.assign(Object.create(Object.getPrototypeOf(real)), real, {
   kvConfig: () => ({ kind: "pg" }),
+  // The real algorithm, over this store. Inheriting the real rateLimit does
+  // not work: it calls _guard's own internal kvPipeline, which tries a
+  // database that is not there, fails, and returns "allowed" — so every limit
+  // in the app silently passed in every test.
+  rateLimit: async (cfg, key, limit, windowSec) => {
+    const n = Number(run(["INCR", key]) || 0);
+    if (Number(run(["TTL", key])) < 0) run(["EXPIRE", key, String(windowSec)]);
+    return { allowed: n <= limit, count: n };
+  },
   kvCommand: async (cfg, c) => ({ result: run(c) }),
   kvPipeline: async (cfg, cs) => cs.map(run),
   kvWrite: async (cfg, c) => { run(c); return true; },
 }));
 stub("_notify.js", {
   sendWa: async (...a) => { sent.push(["wa", ...a]); return { ok: true }; },
+  sendWaAuthCode: async (...a) => { sent.push(["otp", ...a]); return { ok: true }; },
+  sendWaDocLink: async (...a) => { sent.push(["doc", ...a]); return { ok: true }; },
+  leadAlert: async (...a) => { sent.push(["lead", ...a]); return true; },
   sendWaTemplate: async (...a) => { sent.push(["tpl", ...a]); return { ok: true }; },
   notifyOwner: async (...a) => { sent.push(["owner", ...a]); return { ok: true }; },
   waOwner: async (...a) => { sent.push(["owner", ...a]); return { ok: true }; },

@@ -379,8 +379,23 @@ module.exports = async (req, res) => {
     if (req.method !== "POST") return json(res, 405, { error: "POST" });
     const phone = digits10(b.phone);
     if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit mobile number ivvandi" });
-    const rl = await guard.rateLimit(cfg, `rl:stf:${ip}`, 12, 3600);
-    if (!rl.allowed) return json(res, 429, { error: "Too many attempts — try later" });
+    // Two different worries, so two different limits.
+    //
+    // The clinic is behind one broadband connection, so everybody logging in
+    // shares an address — twelve an hour was tight enough to block the fifth
+    // person on a morning when new logins are handed out.
+    //
+    // The one that actually matters is per number, and it was missing: verify
+    // stops after five wrong codes, but asking for a NEW code resets that
+    // counter, so without this an attacker had unlimited rounds of five — and
+    // could bury a staff member's WhatsApp in OTPs from any number of
+    // addresses.
+    const rlIp = await guard.rateLimit(cfg, `rl:stf:${ip}`, 30, 3600);
+    const rlPh = await guard.rateLimit(cfg, `rl:stf:p:${phone}`, 5, 3600);
+    const rlDay = await guard.rateLimit(cfg, `rl:stf:d:${phone}`, 15, 86400);
+    if (!rlIp.allowed || !rlPh.allowed || !rlDay.allowed) {
+      return json(res, 429, { error: "Chala sarlu OTP adigaru — konchem sepu aagandi (password unte daantho login cheyandi)" });
+    }
     const u = await resolveUser(cfg, phone);
     if (!u) return json(res, 403, { error: "Ee number staff list lo ledu. Owner ni adagandi (WhatsApp admin: staff add <number> <name>)." });
     if (u.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
