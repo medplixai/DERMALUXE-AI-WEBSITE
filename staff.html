@@ -143,7 +143,10 @@
       background:var(--hot);color:#2a1008;font-size:.62rem;font-style:normal;font-weight:600;display:grid;place-items:center;padding:0 4px}
     .appbar i:empty,.appbar i[data-n="0"]{display:none}
 
-    .sheet{position:fixed;inset:0;z-index:70;display:none}
+    /* Above .ptsheet (85): a sheet raised from inside the patient file —
+       consent, the camera's consent gate — must sit on top of it, not
+       behind it where nothing appears to happen. */
+    .sheet{position:fixed;inset:0;z-index:90;display:none}
     .sheet.open{display:block}
     .sheet-bg{position:absolute;inset:0;background:rgba(0,0,0,.55)}
     .sheet-in{position:absolute;left:0;right:0;bottom:0;background:var(--panel);border:1px solid var(--line);
@@ -492,6 +495,11 @@
             <div id="stoBox" class="meta" style="margin-top:8px">—</div>
             <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="stoLoad">Chudandi</button><button class="btn btn--sm hide" id="stoMove">Ippude move cheyyi</button></div>
             <div class="meta" id="stoMoveMsg" style="margin-top:6px"></div></div>
+          <div class="box"><h2>Consent maatalu <span class="te" style="font-size:.9rem;color:var(--g3)">· అంగీకార పత్రం</span></h2>
+            <p>Ivi <b style="color:var(--g2);font-weight:500">doctor chadivi approve cheyyalsina</b> maatalu — legal document. Approve ayye varaku e consent kuda teesukolemu. Maatalu marchithe approval malli kavali.</p>
+            <div id="cnsTpl" style="margin-top:10px">—</div>
+            <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="cnsLoad">Chudandi</button></div>
+            <div class="meta" id="cnsTplMsg" style="margin-top:6px"></div></div>
           <div class="box"><h2>Backup <span class="te" style="font-size:.9rem;color:var(--g3)">· బ్యాకప్</span></h2>
             <p>Prati raatri 1:50 ki clinic data mottam separate ga copy ayi, encrypt chesi daachipettabadutundi. 14 rojula vi untayi. Database ki emaina ayithe deenilo nunchi venakki tecchukovachu.</p>
             <div id="bkBox" class="meta" style="margin-top:8px">—</div>
@@ -947,6 +955,124 @@
         }).join("") : '<p class="meta">Evariki due ledu 👍</p>';
       }).catch(function (e) { host.innerHTML = '<p class="meta">' + esc(e.message) + "</p>"; });
     }
+    // ---- treatment consent -------------------------------------------------
+    // Photographs have always asked. The procedures never did — a laser, a
+    // peel, PRP: explained across a desk and written down nowhere.
+    function cnsapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/consent?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    function loadPatientConsents(phone) {
+      var host = $("ptCns"); if (!host) return;
+      cnsapi("of", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
+        host.innerHTML = (j.rows.length ? j.rows.map(function (c) {
+          return '<div class="vrow' + (c.withdrawn ? " quiet" : "") + '"><b>' + esc(c.templateName) +
+            (c.withdrawn ? " — venakki teesukunnaru" : "") + "</b>" +
+            '<div class="meta">' + fmtDay(c.signedAt) + " · " + esc(c.takenBy) + " · v" + c.templateVersion +
+            (c.hasSig ? " · signature undi" : " · signature ledu") +
+            (c.withdrawn ? " · " + esc(c.withdrawn.reason) : "") + "</div>" +
+            '<div class="acts" style="margin-top:6px">' +
+            '<button class="btn btn--sm" data-act="cns-open" data-id="' + esc(c.id) + '">Chudandi</button>' +
+            (!c.withdrawn && state.allow("consent.take") ? '<button class="btn btn--sm" data-act="cns-wd" data-id="' + esc(c.id) + '" data-n="' + esc(c.templateName) + '" style="color:var(--bad)">Venakki teesuko</button>' : "") +
+            "</div></div>";
+        }).join("") : '<p class="meta">Consent emi ledu.</p>') +
+          (state.allow("consent.take") ? '<button class="btn btn--sm btn--gold" style="margin-top:8px" data-act="cns-new" data-phone="' + esc(phone) + '" data-name="' + esc((ptOpen || {}).name || "") + '">+ Consent teesuko</button>' : "");
+      }).catch(function (e) { host.innerHTML = '<p class="meta">' + esc(e.message) + "</p>"; });
+    }
+
+    // The patient reads it, ticks it, and signs it with a finger. The text
+    // they agreed to is frozen into the record on the server, so a template
+    // edited next year cannot change what somebody agreed to today.
+    function consentSheet(phone, name) {
+      cnsapi("templates").then(function (j) {
+        var ready = (j.templates || []).filter(function (t) { return t.approved; });
+        var pending = (j.templates || []).filter(function (t) { return !t.approved; });
+        var wrap = document.createElement("div");
+        wrap.className = "sheet open";
+        wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
+          "<h2>Consent — " + esc(name || phone) + "</h2>" +
+          // A lead saved with a number and no name still needs a name on
+          // the consent, so ask for it here rather than failing at save.
+          (name ? "" : '<input id="cnsName" class="inp" placeholder="Patient peru" style="width:100%;margin-bottom:10px" />') +
+          (ready.length
+            ? '<select id="cnsPick" class="sel" style="width:100%;margin-bottom:10px">' + ready.map(function (t) {
+                return '<option value="' + esc(t.id) + '">' + esc(t.name) + "</option>";
+              }).join("") + "</select>" +
+              '<div id="cnsBody" style="white-space:pre-wrap;font-size:.9rem;line-height:1.5;max-height:34vh;overflow:auto;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:12px"></div>' +
+              '<label class="switch" style="margin-top:10px"><input type="checkbox" id="cnsOk" /> Patient idi chadivaru / vinnaru, ophukunnaru</label>' +
+              '<p class="meta" style="margin-top:10px">Patient ikkada sign cheyyandi:</p>' +
+              '<canvas id="cnsSig" style="width:100%;height:140px;background:#fff;border-radius:12px;touch-action:none"></canvas>' +
+              '<div style="display:flex;gap:8px;margin-top:10px"><button class="btn btn--sm" id="cnsClear">Signature clear</button>' +
+              '<button class="btn btn--gold btn--sm" id="cnsSave" style="flex:1">Save cheyyandi</button></div>'
+            : '<p class="meta">Inka e consent ki kuda doctor approval ledu. Control panel → Controls lo approve cheyyandi.</p>') +
+          (pending.length ? '<p class="meta" style="margin-top:10px;color:var(--g3)">Approval kosam chustunnavi: ' + pending.map(function (t) { return esc(t.name); }).join(", ") + "</p>" : "") +
+          '<div class="err" id="cnsErr"></div>' +
+          '<button class="btn btn--sm" id="cnsClose" style="margin-top:10px;width:100%">Close</button></div>';
+        document.body.appendChild(wrap);
+        var close = function () { if (end) removeEventListener("mouseup", end); wrap.remove(); paintBack(); };
+        wrap.querySelector(".sheet-bg").onclick = close;
+        wrap.querySelector("#cnsClose").onclick = close;
+        if (!ready.length) { paintBack(); return; }
+
+        var paint = function () {
+          var t = ready.filter(function (x) { return x.id === wrap.querySelector("#cnsPick").value; })[0];
+          wrap.querySelector("#cnsBody").textContent = t ? t.body : "";
+        };
+        wrap.querySelector("#cnsPick").onchange = paint;
+        paint();
+
+        // a plain finger-drawn signature, nothing clever
+        var cv = wrap.querySelector("#cnsSig"), ctx = cv.getContext("2d"), drew = false;
+        var fit = function () {
+          var r = cv.getBoundingClientRect(), dpr = window.devicePixelRatio || 1;
+          cv.width = Math.round(r.width * dpr); cv.height = Math.round(r.height * dpr);
+          ctx.scale(dpr, dpr); ctx.lineWidth = 2.2; ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.strokeStyle = "#111";
+        };
+        setTimeout(fit, 30);
+        var drawing = false, last = null;
+        var end = function () { drawing = false; };
+        var pos = function (e) {
+          var r = cv.getBoundingClientRect();
+          var p = e.touches ? e.touches[0] : e;
+          return { x: p.clientX - r.left, y: p.clientY - r.top };
+        };
+        var start = function (e) { e.preventDefault(); drawing = true; last = pos(e); };
+        var move = function (e) {
+          if (!drawing) return; e.preventDefault();
+          var p = pos(e);
+          ctx.beginPath(); ctx.moveTo(last.x, last.y); ctx.lineTo(p.x, p.y); ctx.stroke();
+          last = p; drew = true;
+        };
+        cv.addEventListener("mousedown", start); cv.addEventListener("mousemove", move);
+        addEventListener("mouseup", end);
+        cv.addEventListener("touchstart", start, { passive: false });
+        cv.addEventListener("touchmove", move, { passive: false });
+        cv.addEventListener("touchend", end);
+        wrap.querySelector("#cnsClear").onclick = function () { ctx.clearRect(0, 0, cv.width, cv.height); drew = false; };
+
+        wrap.querySelector("#cnsSave").onclick = function () {
+          var err = wrap.querySelector("#cnsErr");
+          err.textContent = "";
+          if (!wrap.querySelector("#cnsOk").checked) { err.textContent = "Patient ophukunnaru ani tick cheyyandi"; return; }
+          if (!drew) { err.textContent = "Patient signature kavali"; return; }
+          var who = (name || (wrap.querySelector("#cnsName") || {}).value || "").trim();
+          if (!who) { err.textContent = "Patient peru ivvandi"; return; }
+          var btn = wrap.querySelector("#cnsSave"); btn.disabled = true;
+          cnsapi("sign", {
+            phone: phone, name: who, templateId: wrap.querySelector("#cnsPick").value,
+            agreed: true, signature: cv.toDataURL("image/png"),
+          }).then(function () {
+            close(); toast("Consent save ayindi");
+            if (ptOpen && ptOpen.phone === phone) loadPatientConsents(phone);
+          }).catch(function (x) { err.textContent = x.message; btn.disabled = false; });
+        };
+        paintBack();
+      }).catch(function (e) { toast(e.message); });
+    }
+
     function loadPatientPkgs(phone) {
       var host = $("ptPkgs"); if (!host) return;
       pkapi("of", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
@@ -1367,6 +1493,7 @@
           '<button class="btn btn--sm" data-act="pt-edit" data-phone="' + esc(p.phone) + '">✎ Details</button>' : "") +
         "</div>" +
 
+        '<div class="pt-sec"><h3>Consent <span class="te" style="font-size:.85rem">· అంగీకారం</span></h3><div id="ptCns"><p class="meta">Loading…</p></div></div>' +
         '<div class="pt-sec"><h3>Packages <span class="te" style="font-size:.85rem">· సిట్టింగ్‌లు</span></h3><div id="ptPkgs"><p class="meta">Loading…</p></div></div>' +
         (state.allow("money.view") ? '<div class="pt-sec"><h3>Bills <span class="te" style="font-size:.85rem">· బిల్లులు</span></h3><div id="ptMoney"><p class="meta">Loading…</p></div></div>' : "") +
         '<div class="pt-sec"><h3>Before / after <span class="te" style="font-size:.85rem">· ఫోటోలు</span></h3>' + tl + "</div>" +
@@ -1377,6 +1504,7 @@
         '<div class="pt-sec"><h3>Notes</h3>' + notes + "</div>";
       paintThumbs($("ptBody"));
       loadPatientPkgs(p.phone);
+      loadPatientConsents(p.phone);
       if (state.allow("money.view")) loadPatientMoney(p.phone);
     }
     function fmtDay(ts) {
@@ -2569,6 +2697,71 @@
         return;
       }
       if (el.dataset.act === "mn-new") { newBill(el.dataset.phone, el.dataset.name); return; }
+      if (el.dataset.act === "cns-appr") {
+        if (!confirm(el.dataset.n + " — ee maatalu meeru poorthiga chadivara?\n\nApprove chesaka vaatitho patients consent istaru. Meeru approve chesaru ani prati consent meeda raasi untundi.")) return;
+        el.disabled = true;
+        cnsapi("approve", { id: el.dataset.id })
+          .then(function (j) { paintTemplates(Object.assign({ canApprove: true }, j)); toast("Approve chesaru"); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "cns-editt") {
+        cnsapi("templates").then(function (j) {
+          var t = (j.templates || []).filter(function (x) { return x.id === el.dataset.id; })[0];
+          if (!t) return;
+          var body = prompt("Maatalu marchandi. Marchaka doctor malli approve cheyyali.", t.body);
+          if (body === null || body.trim().length < 40) { if (body !== null) toast("Chala chinnadi"); return; }
+          return cnsapi("edit-template", { id: t.id, body: body.trim() }).then(function (r) {
+            paintTemplates(Object.assign({ canApprove: true }, r));
+            $("cnsTplMsg").textContent = "Maarindi — ippudu malli approve cheyyandi.";
+          });
+        }).catch(function (x) { toast(x.message); });
+        return;
+      }
+      if (el.dataset.act === "cns-new") { consentSheet(el.dataset.phone, el.dataset.name); return; }
+      if (el.dataset.act === "cns-open") {
+        cnsapi("of", null, "&phone=" + encodeURIComponent((ptOpen || {}).phone || "")).then(function (j) {
+          var c = (j.rows || []).filter(function (x) { return x.id === el.dataset.id; })[0];
+          if (!c) return;
+          var wrap = document.createElement("div");
+          wrap.className = "sheet open";
+          wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
+            "<h2>" + esc(c.templateName) + "</h2>" +
+            '<div class="meta">' + esc(c.name) + " · " + fmtDay(c.signedAt) + " · teesukunnadi " + esc(c.takenBy) +
+            " · wording v" + c.templateVersion + (c.approvedWording ? " (approved " + esc(c.approvedWording.by) + ")" : "") + "</div>" +
+            (c.withdrawn ? '<div class="meta" style="color:var(--bad);margin-top:6px">Venakki teesukunnaru — ' + esc(c.withdrawn.reason) + " (" + esc(c.withdrawn.by) + ")</div>" : "") +
+            '<div style="white-space:pre-wrap;font-size:.9rem;line-height:1.5;margin-top:10px;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:12px;max-height:40vh;overflow:auto">' + esc(c.body) + "</div>" +
+            (c.hasSig ? '<p class="meta" style="margin-top:10px">Signature:</p><img id="cnsImg" alt="" style="width:100%;max-height:34vh;object-fit:contain;background:#fff;border-radius:12px" />' : "") +
+            '<button class="btn btn--sm" id="cnsX" style="margin-top:10px;width:100%">Close</button></div>';
+          document.body.appendChild(wrap);
+          var close = function () { wrap.remove(); paintBack(); };
+          wrap.querySelector(".sheet-bg").onclick = close;
+          wrap.querySelector("#cnsX").onclick = close;
+          var img = wrap.querySelector("#cnsImg");
+          if (img) {
+            fetch(ORIGIN + "/api/consent?a=sig&id=" + encodeURIComponent(c.id), { headers: { Authorization: "Bearer " + tok } })
+              .then(function (r) {
+                // An error comes back as JSON; showing it as an image would
+                // give a broken icon and no reason why.
+                if (!r.ok || String(r.headers.get("content-type") || "").indexOf("image") < 0) throw new Error("sig");
+                return r.blob();
+              })
+              .then(function (blob) { img.src = URL.createObjectURL(blob); })
+              .catch(function () { img.replaceWith(Object.assign(document.createElement("p"), { className: "meta", textContent: "Signature teeyaleka poyam." })); });
+          }
+          paintBack();
+        }).catch(function (x) { toast(x.message); });
+        return;
+      }
+      if (el.dataset.act === "cns-wd") {
+        var why = prompt(el.dataset.n + " consent ni enduku venakki teesukuntunnaru?\n\n(Idi delete kaadu — asalu consent alaage untundi, pakkana ee karanam raasi untundi.)");
+        if (!why || !why.trim()) return;
+        el.disabled = true;
+        cnsapi("withdraw", { id: el.dataset.id, reason: why.trim() })
+          .then(function () { toast("Venakki teesukunnam"); if (ptOpen) loadPatientConsents(ptOpen.phone); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "stk-use" || el.dataset.act === "stk-in") {
         var isUse = el.dataset.act === "stk-use";
         var n = prompt(el.dataset.n + " — " + (isUse ? "enni vaadaru?" : "enni vachayi?"), "1");
@@ -2831,6 +3024,29 @@
       if (!confirm("Password teesestara? Appudu OTP login matrame untundi.")) return;
       api("set-password", { off: true }).then(function () { toast("Password removed — OTP only"); return loadPanel(); }).catch(function (x) { $("pwdErr").textContent = x.message; });
     };
+    // ---- consent wording ----
+    // The words are a clinical and legal matter, so they are the doctor's to
+    // approve, not the app's to assume. Nothing can be signed from a template
+    // nobody has read, and changing the words clears the approval.
+    function paintTemplates(j) {
+      $("cnsTpl").innerHTML = (j.templates || []).map(function (t) {
+        return '<div class="vrow"><b>' + esc(t.name) + " <span class=\"meta\">v" + (t.version || 1) + "</span></b>" +
+          '<div class="meta" style="white-space:pre-wrap;max-height:9em;overflow:auto;margin:6px 0">' + esc(t.body) + "</div>" +
+          (t.approved
+            ? '<div class="meta" style="color:var(--ok)">✓ Approve chesindi ' + esc(t.approved.by) + " · " + fmtDay(t.approved.ts) + "</div>"
+            : '<div class="meta" style="color:var(--hot)">Inka approval ledu — deenitho consent teesukolemu</div>') +
+          (j.canApprove ? '<div class="acts" style="margin-top:6px">' +
+            (t.approved ? "" : '<button class="btn btn--sm btn--gold" data-act="cns-appr" data-id="' + esc(t.id) + '" data-n="' + esc(t.name) + '">Chadivanu, approve chestunna</button>') +
+            '<button class="btn btn--sm" data-act="cns-editt" data-id="' + esc(t.id) + '" data-n="' + esc(t.name) + '">Maatalu marchu</button></div>' : "") +
+          "</div>";
+      }).join("");
+    }
+    if ($("cnsLoad")) $("cnsLoad").onclick = function () {
+      $("cnsTpl").textContent = "Chustunna…"; $("cnsLoad").disabled = true;
+      cnsapi("templates").then(paintTemplates).catch(function (e) { $("cnsTpl").textContent = e.message; })
+        .finally(function () { $("cnsLoad").disabled = false; });
+    };
+
     // ---- backups ----
     function bkapi(a, body) {
       var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };

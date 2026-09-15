@@ -37,8 +37,10 @@ const trim = (l) => Object.assign({}, l, {
   call_prep: l.call_prep.length > 200 ? l.call_prep.slice(0, 200) + "…" : l.call_prep,
 });
 
+const mockTpl = require("../api/consent.js").DRAFTS.map((t) => Object.assign({}, t, { version: 1, approved: null }));
+const mockCns = [];
 const CAPS = ["leads.view", "leads.edit", "appts.view", "appts.edit", "academy.view", "academy.edit",
-  "posts.view", "reviews.view", "reports.view", "money.view", "money.bill", "money.expense", "stock.view", "stock.edit", "attend.manage", "pkg.log", "ai.use", "msg.send", "team.manage", "settings.manage"];
+  "posts.view", "reviews.view", "reports.view", "money.view", "money.bill", "money.expense", "stock.view", "stock.edit", "attend.manage", "consent.take", "pkg.log", "ai.use", "msg.send", "team.manage", "settings.manage"];
 
 function page(offset) {
   const from = Math.max(0, offset | 0);
@@ -108,6 +110,36 @@ http.createServer((req, res) => {
     if (a === "copy") { mockMoved = Math.min(4180, mockMoved + 200); return send(200, { ok: true, moved: 200, skipped: 0, done: mockMoved >= 4180 }); }
     return send(200, { ok: true });
   }
+  if (u.pathname === "/api/consent") {  // consent-mock
+    const a = u.searchParams.get("a") || "templates";
+    if (a === "templates") return send(200, { ok: true, canApprove: true, canTake: true,
+      templates: mockTpl.map((t) => ({ id: t.id, name: t.name, version: t.version, approved: t.approved, body: t.body })) });
+    if (a === "of") return send(200, { ok: true, rows: mockCns.slice().sort((x, y) => y.signedAt - x.signedAt) });
+    if (a === "sig") { res.writeHead(200, { "Content-Type": "image/png" }); return res.end(Buffer.from(
+      "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64")); }
+    let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => {
+      const b = (() => { try { return JSON.parse(body || "{}"); } catch (e) { return {}; } })();
+      const t = mockTpl.find((x) => x.id === (b.id || b.templateId));
+      if (a === "approve") { t.approved = { by: "Owner", ts: Date.now() }; return send(200, { ok: true, templates: mockTpl }); }
+      if (a === "edit-template") { t.body = String(b.body || t.body); t.version++; t.approved = null; return send(200, { ok: true, templates: mockTpl }); }
+      if (a === "sign") {
+        if (!t.approved) return send(400, { error: "Ee consent maatalaki inka doctor approval ledu — mundu approve cheyyandi" });
+        if (!b.agreed) return send(400, { error: "Patient ophukunnaru ani tick cheyyandi" });
+        const c = { id: "c" + (mockCns.length + 1), phone: b.phone, name: b.name, templateId: t.id, templateName: t.name,
+          templateVersion: t.version, body: t.body, signedAt: Date.now(), takenBy: "Owner", hasSig: !!b.signature,
+          approvedWording: t.approved, withdrawn: null };
+        mockCns.push(c); return send(200, { ok: true, consent: c });
+      }
+      if (a === "withdraw") {
+        const c = mockCns.find((x) => x.id === b.id);
+        if (!c) return send(404, { error: "dorakaledu" });
+        if (c.withdrawn) return send(400, { error: "Idi ippatike venakki teesukunnaru" });
+        c.withdrawn = { ts: Date.now(), by: "Owner", reason: String(b.reason || "") };
+        return send(200, { ok: true });
+      }
+      return send(400, { error: "Unknown action" });
+    });
+  }
   if (u.pathname === "/api/stock") {  // stock-mock
     const a = u.searchParams.get("a") || "list";
     if (a === "list") return send(200, { ok: true, canEdit: true, lowCount: 2,
@@ -155,6 +187,9 @@ http.createServer((req, res) => {
     if (a === "day") return send(200, { ok: true, day: "2026-09-15", collected: 12500, billed: 15000,
       byMode: { cash: 5000, upi: 7500, card: 0, other: 0 }, count: 3,
       payments: [{ billId: "B1007", phone: "9876500041", name: "Latha Devi", amount: 5000, mode: "cash", by: "Reception", ts: Date.now() - 5400000 }] });
+    if (a === "of") return send(200, { ok: true, due: 3000, bills: [{ id: "B1001", phone: "9876543210", name: "Sita Rani",
+      ts: Date.now() - 7 * 86400000, total: 5000, paid: 2000, balance: 3000, items: [{ name: "Laser — face", amount: 5000 }],
+      payments: [{ amount: 2000, mode: "upi", by: "Reception", ts: Date.now() - 7 * 86400000 }] }] });
     if (a === "dues") return send(200, { ok: true, due: 8500,
       rows: [{ id: "B1001", phone: "9876500041", name: "Latha Devi", ts: Date.now() - 7 * 86400000, total: 5000, paid: 2000, balance: 3000, reminded: 0 },
              { id: "B1004", phone: "9876500045", name: "Ravi Kumar", ts: Date.now() - 12 * 86400000, total: 8000, paid: 2500, balance: 5500, reminded: Date.now() - 2 * 86400000 }] });
