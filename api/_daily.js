@@ -300,7 +300,8 @@ async function genImage(topic) {
     img.measure = await measureImage(img, key);
     img.penalty = layoutPenalty(img.measure);
     if (!best || img.penalty < best.penalty) best = img;
-    if (img.penalty < 0.6) break;
+    // no measurement (check model unavailable on this key) → keep the photo rather than pay for blind redraws
+    if (!img.measure || img.penalty < 0.6) break;
   }
   return best;
 }
