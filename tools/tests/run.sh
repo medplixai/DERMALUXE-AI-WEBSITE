@@ -8,20 +8,26 @@
 # a branch, every tab has a panel, every capability has a label.
 #
 # Nothing here touches the live clinic. It needs no keys and no network.
-set -uo pipefail
+set -o pipefail   # not -u: an empty glob is a normal state, not an error
 cd "$(dirname "$0")/../.." || exit 1
 export DL_API="$PWD/api"
 export STAFF_SECRET="${STAFF_SECRET:-local-test-secret}"
 fail=0
+shopt -s nullglob
+behaviour=(tools/tests/t-*.js)
+wiring=(tools/tests/wire*.js)
+
 echo "── what the app does ──────────────────────────────"
-for f in tools/tests/t-*.js; do
+[ ${#behaviour[@]} -eq 0 ] && echo "(none yet)"
+for f in "${behaviour[@]}"; do
   out=$(node "$f" 2>&1)
   if echo "$out" | grep -qE "FAILURE|✗"; then fail=1; printf "%-14s FAILED\n" "$(basename "$f" .js)"; echo "$out" | grep -E "✗|FAILURE" | sed 's/^/    /';
   else printf "%-14s %s\n" "$(basename "$f" .js)" "$(echo "$out" | tail -1)"; fi
 done
 echo
 echo "── how it is wired together ───────────────────────"
-for f in tools/tests/wire*.js; do
+[ ${#wiring[@]} -eq 0 ] && echo "(none yet)"
+for f in "${wiring[@]}"; do
   out=$(node "$f" 2>&1 | tail -1)
   printf "%-14s %s\n" "$(basename "$f" .js)" "$out"
 done
