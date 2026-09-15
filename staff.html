@@ -321,6 +321,8 @@
         <button class="tab" data-t="today">Today's post</button>
         <button class="tab" data-t="reviews">Reviews</button>
         <button class="tab hide" data-t="office" id="officeTab">✦ AI Office</button>
+        <button class="tab hide" data-t="stock" id="stockTab">📦 Stock</button>
+        <button class="tab" data-t="attend">🕘 Haajaru</button>
         <button class="tab hide" data-t="team" id="teamTab">⚙ Control panel</button>
       </div>
 
@@ -418,6 +420,33 @@
           <div class="noteform"><input id="officeQ" placeholder="Ex: ee roju enni leads? evariki mundu call cheyyali?" maxlength="1200" /><button class="btn btn--gold btn--sm" id="officeSend">Ask</button></div>
           <div class="err" id="officeErr"></div></div>
       </section>
+      <section id="t-stock" class="hide">
+        <div class="countdown" id="stkHead"></div>
+        <div class="box hide" id="stkAddBox"><h2>Kotha item <span class="te" style="font-size:.85rem;color:var(--g3)">· కొత్త వస్తువు</span></h2>
+          <p>Peru, ippudu enni unnayo, and <b style="color:var(--g2);font-weight:500">e number ki digithe cheppalo</b> (low). Aa number ki digithe meeku notification vastundi.</p>
+          <div class="noteform" style="margin-top:10px;flex-wrap:wrap">
+            <input id="stkName" placeholder="Item peru" style="min-width:150px" />
+            <input id="stkQty" placeholder="Enni" inputmode="decimal" style="max-width:90px" />
+            <select id="stkUnit" class="sel"></select>
+            <input id="stkLow" placeholder="Low" inputmode="decimal" style="max-width:80px" />
+            <button class="btn btn--gold btn--sm" id="stkAdd">Add</button>
+          </div>
+          <div class="err" id="stkErr"></div></div>
+        <div class="list" id="stkList"></div>
+        <div class="grp"><div class="grp-h"><h2>Chivari marpulu</h2></div><div id="stkLog"></div></div>
+      </section>
+
+      <section id="t-attend" class="hide">
+        <div class="countdown" id="attHead"></div>
+        <div class="box"><h2>Meeru <span class="te" style="font-size:.85rem;color:var(--g3)">· మీరు</span></h2>
+          <div id="attMe" class="meta">—</div>
+          <div class="noteform" style="margin-top:10px"><button class="btn btn--gold btn--sm" id="attIn">Vachanu</button><button class="btn btn--sm" id="attOut">Velthunna</button></div>
+          <div class="err" id="attErr"></div></div>
+        <div class="grp"><div class="grp-h"><h2>Ee roju</h2><i id="attDay"></i></div><div id="attList"></div></div>
+        <div class="box hide" id="attMonthBox"><h2>Ee nela <span class="te" style="font-size:.85rem;color:var(--g3)">· ఈ నెల</span></h2>
+          <div id="attMonth" class="meta"></div></div>
+      </section>
+
       <section id="t-team" class="hide">
         <div class="cpnav" id="cpnav">
           <button class="on" data-cp="people">Logins</button>
@@ -672,7 +701,8 @@
       $("meRole").textContent = me.roleLabel || me.role;
       if (allow("team.manage")) $("teamTab").classList.remove("hide");
       if (allow("ai.use")) $("officeTab").classList.remove("hide");
-      [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"]].forEach(function (p) {
+      if (allow("stock.view")) $("stockTab").classList.remove("hide");
+      [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"], ["stock", "stock.view"]].forEach(function (p) {
         var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
       });
       var firstTab = document.querySelector(".tab:not(.hide)");
@@ -1014,6 +1044,123 @@
     }
     var rateCard = null;
     function rupee(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
+    // ---- the shelf ---------------------------------------------------------
+    // Nothing counted the consumables, so the way to find out the PRP kits had
+    // run out was to reach for one with a patient already in the chair.
+    var stkUnits = [];
+    function stkapi(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/stock?a=" + a, opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    function loadStock() {
+      if (!state.allow("stock.view")) return Promise.resolve();
+      return stkapi("list").then(function (j) {
+        stkUnits = j.units || [];
+        if ($("stkUnit").options.length !== stkUnits.length) {
+          $("stkUnit").innerHTML = stkUnits.map(function (u) { return '<option value="' + esc(u) + '">' + esc(u) + "</option>"; }).join("");
+        }
+        $("stkAddBox").classList.toggle("hide", !j.canEdit);
+        $("stkHead").className = "countdown";
+        $("stkHead").innerHTML =
+          "<div><b>" + j.rows.length + "</b><span>Items</span></div>" +
+          '<div><b style="color:' + (j.lowCount ? "var(--hot)" : "var(--ok)") + '">' + j.lowCount + "</b><span>Aipotunnavi</span></div>";
+        $("stkList").innerHTML = j.rows.length ? j.rows.map(function (it) {
+          return '<article class="seat' + (it.isLow ? "" : " quiet") + '"><div class="row1">' +
+            "<div><h3>" + esc(it.name) + "</h3>" +
+            '<div class="meta">' + it.qty + " " + esc(it.unit) + (it.low ? " · low " + it.low : "") +
+            (it.note ? " · " + esc(it.note) : "") + " · " + esc(it.by || "") + " " + ago(it.updatedAt || it.ts) + "</div></div>" +
+            (it.isLow ? '<span class="chip hot">aipotondi</span>' : '<span class="chip">' + it.qty + "</span>") + "</div>" +
+            (j.canEdit ? '<div class="acts">' +
+              '<button class="btn btn--sm" data-act="stk-use" data-id="' + esc(it.id) + '" data-n="' + esc(it.name) + '">− Vaadaam</button>' +
+              '<button class="btn btn--sm" data-act="stk-in" data-id="' + esc(it.id) + '" data-n="' + esc(it.name) + '">+ Vachindi</button>' +
+              '<button class="btn btn--sm" data-act="stk-count" data-id="' + esc(it.id) + '" data-n="' + esc(it.name) + '" data-q="' + it.qty + '">Lekka</button>' +
+              '<button class="btn btn--sm" data-act="stk-edit" data-id="' + esc(it.id) + '" data-n="' + esc(it.name) + '" data-low="' + it.low + '">✎</button>' +
+              '<button class="btn btn--sm" data-act="stk-del" data-id="' + esc(it.id) + '" data-n="' + esc(it.name) + '" style="color:var(--bad)">Teesey</button>' +
+              "</div>" : "") + "</article>";
+        }).join("") : '<div class="empty">Inka items ledu.' + (j.canEdit ? " Paina okati add cheyandi." : "") + "</div>";
+        $("stkLog").innerHTML = (j.log || []).length ? j.log.map(function (x) {
+          return '<div class="vrow"><b>' + esc(x.name) + " " + (x.change > 0 ? "+" : "") + x.change + "</b>" +
+            '<div class="meta">' + esc(x.reason || "") + " · " + esc(x.by) + " · " + ago(x.ts) + " · migilindi " + x.left + "</div></div>";
+        }).join("") : '<p class="meta">Inka marpulu ledu.</p>';
+      }).catch(function (e) { $("stkList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
+    if ($("stkAdd")) $("stkAdd").onclick = function () {
+      $("stkErr").textContent = "";
+      var name = $("stkName").value.trim();
+      if (!name) { $("stkErr").textContent = "Peru ivvandi"; return; }
+      $("stkAdd").disabled = true;
+      stkapi("add", { name: name, qty: Number($("stkQty").value) || 0, unit: $("stkUnit").value, low: Number($("stkLow").value) || 0 })
+        .then(function () { $("stkName").value = ""; $("stkQty").value = ""; $("stkLow").value = ""; toast("Add ayindi"); return loadStock(); })
+        .catch(function (x) { $("stkErr").textContent = x.message; })
+        .finally(function () { $("stkAdd").disabled = false; });
+    };
+
+    // ---- who is in today ---------------------------------------------------
+    function attapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/attend?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    var attLabels = {};
+    function loadAttend() {
+      return attapi("day").then(function (j) {
+        attLabels = j.labels || {};
+        $("attHead").className = "countdown";
+        $("attHead").innerHTML =
+          "<div><b>" + j.counts.present + "</b><span>Vachcharu</span></div>" +
+          "<div><b>" + j.counts.leave + "</b><span>Leave</span></div>" +
+          "<div><b>" + j.counts.unmarked + "</b><span>Mark cheyyaledu</span></div>";
+        $("attDay").textContent = j.day;
+        var mine = j.me;
+        $("attMe").innerHTML = mine.in
+          ? "Ee roju " + esc(fmtT(mine.in)) + " ki vachcharu" + (mine.out ? ", " + esc(fmtT(mine.out)) + " ki vellaru." : ". Inka velladu.")
+          : "Ee roju inka mark cheyyaledu.";
+        $("attIn").classList.toggle("hide", !!mine.in);
+        $("attOut").classList.toggle("hide", !mine.in || !!mine.out);
+        $("attList").innerHTML = j.rows.map(function (r) {
+          var chip = r.status
+            ? '<span class="chip' + (r.status === "leave" ? " hot" : "") + '">' + esc(attLabels[r.status] || r.status) + "</span>"
+            : '<span class="chip">—</span>';
+          return '<article class="seat' + (r.status ? "" : " quiet") + '"><div class="row1"><div><h3>' + esc(r.name) +
+            ' <span class="meta">· ' + esc(r.role) + "</span></h3>" +
+            '<div class="meta">' + (r.inAt ? "vachcharu " + esc(r.inAt) : "") + (r.outAt ? " · vellaru " + esc(r.outAt) : "") +
+            (r.note ? " · " + esc(r.note) : "") + (r.markedBy ? " · " + esc(r.markedBy) : "") + "</div></div>" + chip + "</div>" +
+            (j.canManage ? '<div class="acts">' + (j.statuses || []).map(function (st) {
+              return '<button class="btn btn--sm' + (r.status === st ? " btn--gold" : "") + '" data-act="att-mark" data-phone="' + esc(r.phone) +
+                '" data-st="' + esc(st) + '" data-name="' + esc(r.name) + '">' + esc(attLabels[st] || st) + "</button>";
+            }).join("") + "</div>" : "") + "</article>";
+        }).join("");
+        $("attMonthBox").classList.toggle("hide", !j.canManage);
+        if (j.canManage) loadAttMonth();
+      }).catch(function (e) { $("attList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
+    function loadAttMonth() {
+      return attapi("month").then(function (j) {
+        $("attMonth").innerHTML = '<div style="opacity:.7;margin-bottom:6px">' + esc(j.month) + "</div>" + j.rows.map(function (r) {
+          return '<div style="display:flex;justify-content:space-between;padding:3px 0"><span>' + esc(r.name) + "</span>" +
+            '<b style="color:var(--text);font-weight:500">' + r.present + " + " + r.half + " half · " + r.leave + " leave</b></div>";
+        }).join("");
+      }).catch(function () {});
+    }
+    function fmtT(ts) { return new Date(ts).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" }); }
+    if ($("attIn")) $("attIn").onclick = function () {
+      $("attErr").textContent = ""; $("attIn").disabled = true;
+      attapi("in", {}).then(function (j) { toast(j.at + " ki mark chesam"); return loadAttend(); })
+        .catch(function (x) { $("attErr").textContent = x.message; })
+        .finally(function () { $("attIn").disabled = false; });
+    };
+    if ($("attOut")) $("attOut").onclick = function () {
+      $("attErr").textContent = ""; $("attOut").disabled = true;
+      attapi("out", {}).then(function (j) { toast(j.at + " ki mark chesam"); return loadAttend(); })
+        .catch(function (x) { $("attErr").textContent = x.message; })
+        .finally(function () { $("attOut").disabled = false; });
+    };
+
     // ---- what went out, and what is left ----------------------------------
     // Money counted only what came in, so the question the owner actually has
     // — after everything, what is left — had no answer anywhere.
@@ -1492,10 +1639,12 @@
       office:'<svg viewBox="0 0 24 24"><path d="M12 3.5 13.7 9l5.3 1.8L13.7 12.6 12 18l-1.7-5.4L5 10.8 10.3 9 12 3.5Z"/><path d="M18.5 16.2l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></svg>',
       today:'<svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m4.5 17 4.7-4.2a2 2 0 0 1 2.7 0L20 19"/></svg>',
       reviews:'<svg viewBox="0 0 24 24"><path d="m12 4 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8L12 4Z"/></svg>',
+      stock:'<svg viewBox="0 0 24 24"><path d="M3.5 7.5 12 4l8.5 3.5v9L12 20l-8.5-3.5v-9Z"/><path d="M3.5 7.5 12 11l8.5-3.5M12 11v9"/></svg>',
+      attend:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
       team:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'
     };
-    var NAV_LABEL = { leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", team:"Panel" };
-    var NAV_PREF = ["leads","appts","patients","money","numbers","academy","students","office","today","reviews","team"];
+    var NAV_LABEL = { leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", stock:"Stock", attend:"Haajaru", team:"Panel" };
+    var NAV_PREF = ["leads","appts","patients","money","numbers","attend","stock","academy","students","office","today","reviews","team"];
     var NAV_BADGE = { leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad", patients:"nPt" };
 
     function plug(n) { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n]) || null; }
@@ -2209,6 +2358,8 @@
       if (t === "academy") loadFunnel();
       if (t === "patients") loadPatients();
       if (t === "money") { loadMoney(); loadExpenses(); }
+      if (t === "stock") loadStock();
+      if (t === "attend") loadAttend();
       if (t === "numbers") loadInsights();
       if (t === "appts") loadSchedule();
     });
@@ -2418,6 +2569,57 @@
         return;
       }
       if (el.dataset.act === "mn-new") { newBill(el.dataset.phone, el.dataset.name); return; }
+      if (el.dataset.act === "stk-use" || el.dataset.act === "stk-in") {
+        var isUse = el.dataset.act === "stk-use";
+        var n = prompt(el.dataset.n + " — " + (isUse ? "enni vaadaru?" : "enni vachayi?"), "1");
+        if (!n) return;
+        var amt = Number(n);
+        if (!(amt > 0)) { toast("Sarpaina number ivvandi"); return; }
+        el.disabled = true;
+        stkapi("move", { id: el.dataset.id, change: isUse ? -amt : amt })
+          .then(function (j) { toast(j.item.name + " — " + j.item.qty + " " + j.item.unit + " migilindi"); return loadStock(); })
+          .catch(function (x) { toast(x.message); })
+          .finally(function () { el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "stk-count") {
+        var c = prompt(el.dataset.n + " — shelf meeda nijam ga enni unnayi?", el.dataset.q);
+        if (c === null) return;
+        el.disabled = true;
+        stkapi("count", { id: el.dataset.id, qty: Number(c) })
+          .then(function () { toast("Lekka sarichesam"); return loadStock(); })
+          .catch(function (x) { toast(x.message); })
+          .finally(function () { el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "stk-edit") {
+        var lo = prompt(el.dataset.n + " — e number ki digithe cheppalo?", el.dataset.low);
+        if (lo === null) return;
+        el.disabled = true;
+        stkapi("edit", { id: el.dataset.id, low: Number(lo) })
+          .then(function () { toast("Marchesam"); return loadStock(); })
+          .catch(function (x) { toast(x.message); })
+          .finally(function () { el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "stk-del") {
+        if (!confirm(el.dataset.n + " ni list nunchi teeseyyanaa?")) return;
+        el.disabled = true;
+        stkapi("remove", { id: el.dataset.id })
+          .then(function () { toast("Teesesam"); return loadStock(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "att-mark") {
+        var note = "";
+        if (el.dataset.st === "leave") { note = prompt(el.dataset.name + " — leave enduku? (optional)", "") || ""; }
+        el.disabled = true;
+        attapi("mark", { phone: el.dataset.phone, status: el.dataset.st, note: note })
+          .then(function () { toast(el.dataset.name + " — " + (attLabels[el.dataset.st] || el.dataset.st)); return loadAttend(); })
+          .catch(function (x) { toast(x.message); })
+          .finally(function () { el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "exp-del") {
         if (!confirm(el.dataset.what + " ane kharchu ni teeseyyanaa?")) return;
         el.disabled = true;

@@ -68,6 +68,12 @@
     "api/expense.js": {
       "maxDuration": 30
     },
+    "api/stock.js": {
+      "maxDuration": 30
+    },
+    "api/attend.js": {
+      "maxDuration": 30
+    },
     "api/cron-backup.js": {
       "maxDuration": 300
     },

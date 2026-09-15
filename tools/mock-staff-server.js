@@ -38,7 +38,7 @@ const trim = (l) => Object.assign({}, l, {
 });
 
 const CAPS = ["leads.view", "leads.edit", "appts.view", "appts.edit", "academy.view", "academy.edit",
-  "posts.view", "reviews.view", "reports.view", "money.view", "money.bill", "pkg.log", "ai.use", "msg.send", "team.manage", "settings.manage"];
+  "posts.view", "reviews.view", "reports.view", "money.view", "money.bill", "money.expense", "stock.view", "stock.edit", "attend.manage", "pkg.log", "ai.use", "msg.send", "team.manage", "settings.manage"];
 
 function page(offset) {
   const from = Math.max(0, offset | 0);
@@ -107,6 +107,34 @@ http.createServer((req, res) => {
     if (a === "status") return send(200, { ok: true, from: 4180, to: mockMoved, cursor: "0", live: "redis (america)" });
     if (a === "copy") { mockMoved = Math.min(4180, mockMoved + 200); return send(200, { ok: true, moved: 200, skipped: 0, done: mockMoved >= 4180 }); }
     return send(200, { ok: true });
+  }
+  if (u.pathname === "/api/stock") {  // stock-mock
+    const a = u.searchParams.get("a") || "list";
+    if (a === "list") return send(200, { ok: true, canEdit: true, lowCount: 2,
+      units: ["pcs","box","ml","vial","pack","kit","tube","pair"],
+      rows: [
+        { id: "s1", name: "PRP kits", qty: 2, unit: "kit", low: 3, isLow: true, by: "Latha", updatedAt: Date.now() - 3600000 },
+        { id: "s2", name: "Diode laser tips", qty: 1, unit: "pcs", low: 2, isLow: true, note: "1064nm", by: "Owner", updatedAt: Date.now() - 86400000 },
+        { id: "s3", name: "Nitrile gloves", qty: 8, unit: "box", low: 3, isLow: false, by: "Sowmya", updatedAt: Date.now() - 7200000 },
+      ],
+      log: [{ ts: Date.now() - 3600000, name: "PRP kits", change: -1, left: 2, reason: "vaadaam", by: "Latha" }] });
+    return send(200, { ok: true, item: { id: "s1", name: "PRP kits", qty: 3, unit: "kit", isLow: true }, warned: true });
+  }
+  if (u.pathname === "/api/attend") {  // attend-mock
+    const a = u.searchParams.get("a") || "day";
+    if (a === "day") return send(200, { ok: true, day: "2026-09-15", today: "2026-09-15", canManage: true,
+      statuses: ["present","leave","half","holiday"], labels: { present:"Vachcharu", leave:"Leave", half:"Half day", holiday:"Selavu" },
+      me: { phone: "9010427777", status: null, in: 0, out: 0 },
+      counts: { present: 2, leave: 1, unmarked: 1 },
+      rows: [
+        { phone: "9876500051", name: "Sowmya", role: "reception", status: "present", in: Date.now()-14400000, out: 0, inAt: "9:15 am", outAt: "", note: "", markedBy: "Sowmya" },
+        { phone: "9876500052", name: "Latha", role: "therapist", status: "leave", in: 0, out: 0, inAt: "", outAt: "", note: "fever", markedBy: "Owner" },
+        { phone: "9876500053", name: "Kiran", role: "doctor", status: "present", in: Date.now()-10800000, out: 0, inAt: "10:00 am", outAt: "", note: "", markedBy: "Kiran" },
+        { phone: "9010427777", name: "Owner", role: "owner", status: null, in: 0, out: 0, inAt: "", outAt: "", note: "", markedBy: "" },
+      ] });
+    if (a === "month") return send(200, { ok: true, month: "2026-09",
+      rows: [{ name: "Sowmya", present: 12, half: 1, leave: 2 }, { name: "Latha", present: 11, half: 0, leave: 3 }] });
+    return send(200, { ok: true, at: "9:15 am" });
   }
   if (u.pathname === "/api/expense") {  // expense-mock
     const a = u.searchParams.get("a") || "summary";

@@ -302,12 +302,23 @@ module.exports = async (req, res) => {
         let dueToday = 0;
         try { dueToday = (await require("./package.js").due(cfg, 0)).length; } catch (e) {}
 
+        // What is about to run out belongs in the morning, not in the middle
+        // of a procedure.
+        let lowStock = [];
+        try {
+          const stock = require("./stock.js");
+          lowStock = (await stock.all(cfg)).filter(stock.isLow);
+        } catch (e) { console.error("brief: stock", e && e.message); }
+
         const lines = [];
         if (appts.length) lines.push(`📅 ${appts.length} appointments — modati ${admin.fmtIst(appts[0].at)}`);
         else lines.push("📅 Ee roju appointments inka ledu");
         if (unconfirmed) lines.push(`❓ ${unconfirmed} inka confirm kaledu`);
         if (openHot) lines.push(`🔥 ${openHot} hot lead${openHot > 1 ? "s" : ""} ki call cheyyali`);
         if (dueToday) lines.push(`🔁 ${dueToday} patient${dueToday > 1 ? "s" : ""} ki next sitting due`);
+        if (lowStock.length) {
+          lines.push(`📦 ${lowStock.map((x) => x.name).slice(0, 3).join(", ")}${lowStock.length > 3 ? ` +${lowStock.length - 3}` : ""} aipotunnayi`);
+        }
 
         const push = require("./_push.js");
         if (push.enabled()) {
