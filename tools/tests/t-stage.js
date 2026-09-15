@@ -79,5 +79,14 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   is(silly.totalDays, 30, "a student with nothing filled in still gets a sane answer");
   is(silly.percent, 0, "and no invented progress");
 
+  // Recording a payment or issuing a certificate is exactly when somebody is
+  // watching the progress line — it must not vanish until a reload.
+  console.log("\n  — the progress travels with the student —");
+  const acsrc = fs.readFileSync(path.join(process.env.DL_API, "academy.js"), "utf8");
+  const returns = acsrc.match(/return json\(res, 200, \{ ok: true, student: [^}]+\}\);/g) || [];
+  is(returns.length > 0, true, `${returns.length} places hand a student back`);
+  is(returns.every((r) => /withProgress\(s\)/.test(r)), true, "and every one of them attaches the progress");
+  is(/progress: progressOf\(s\)/.test(acsrc), true, "the list does too");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nstages and progress behave");
 })();

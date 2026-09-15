@@ -110,11 +110,15 @@ module.exports = async (req, res) => {
     const pend = await guard.kvCommand(cfg, ["LRANGE", clinic.PENDING_KEY, "0", "99"]).catch(() => ({}));
     const raws = pend.result || [];
     if (!raws.length) return json(res, 200, { ok: true, sent: 0, failed: 0, waiting: 0 });
-    await guard.kvCommand(cfg, ["LTRIM", clinic.PENDING_KEY, String(raws.length), "-1"]).catch(() => {});
     let sent = 0, failed = 0;
     for (const raw of raws) {
       const lead = parse(raw, null);
       if (!lead) continue;
+      // Each one is taken out by its exact value, never by counting from the
+      // front: a lead that fails somewhere else while this is running is
+      // pushed onto the same end, and trimming by count would throw that one
+      // away instead. A failure here is re-parked by the connector itself.
+      await guard.kvCommand(cfg, ["LREM", clinic.PENDING_KEY, "1", raw]).catch(() => {});
       const r = await clinic.forwardLead(cfg, lead).catch(() => ({ synced: false }));
       if (r && r.synced) sent++; else failed++;
     }

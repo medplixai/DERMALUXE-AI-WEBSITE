@@ -1614,11 +1614,17 @@
       return ptapi("list", null, q ? "&q=" + encodeURIComponent(q) : "").then(function (j) {
         ptRows = j.rows || [];
         $("nPt").textContent = j.total || 0;
-        $("ptStat").textContent = j.total + " patients · " + j.repeats + " malli vachina vaaru";
+        // The stage is the point of the whole thing, so it goes where it can be
+        // seen without opening anybody: the header counts, and each row.
+        var set = (j.stages || []).filter(function (x) { return x.count; });
+        $("ptStat").innerHTML = j.total + " patients · " + j.repeats + " malli vachina vaaru" +
+          (set.length ? " · " + set.map(function (x) { return x.count + " " + esc(x.label); }).join(" · ") : "") +
+          (j.stageless ? ' · <span style="color:var(--g3)">' + j.stageless + " ki stage pettaledu</span>" : "");
         $("ptList").innerHTML = ptRows.length ? ptRows.map(function (r) {
           return '<article class="ptrow" data-act="pt-open" data-phone="' + esc(r.phone) + '">' +
             '<div class="row1"><h3>' + esc(r.name) + ' <span class="meta">· ' + esc(r.phone) + "</span></h3>" +
-            "<div>" + (r.repeat ? '<span class="chip">' + r.visits + " sarlu</span> " : "") +
+            "<div>" + (r.stageLabel ? '<span class="chip ok">' + esc(r.stageLabel) + "</span> " : "") +
+            (r.repeat ? '<span class="chip">' + r.visits + " sarlu</span> " : "") +
             (r.everBooked ? '<span class="chip ok">visited</span>' : "") + "</div></div>" +
             '<div class="meta">' + esc(String(r.concern || "").slice(0, 70)) + " · chivari sari " + ago(r.last) + "</div></article>";
         }).join("") : '<div class="empty">Evaru dorakaledu.</div>';
@@ -1641,7 +1647,7 @@
           (o[0] === "declined" && !on ? ' style="color:var(--bad)"' : "") +
           ">" + esc(o[1]) + "</button>";
       }).join(" ");
-      var last = p.stageLog && p.stageLog.length ? p.stageLog[0] : null;
+      var hist = (p.stageLog || []).slice(0, 4);
       return '<div class="pt-sec"><h3>Ekkada unnaru <span class="te" style="font-size:.85rem">· ఏ దశలో</span></h3>' +
         (cur
           ? '<div class="meta" style="margin-bottom:8px">' + esc(stageName(cur)) +
@@ -1651,8 +1657,8 @@
         '<div class="acts" style="flex-wrap:wrap">' + chips +
         (cur && can ? ' <button class="btn btn--sm" data-act="pt-stage" data-phone="' + esc(p.phone) + '" data-stage="">Teesey</button>' : "") +
         "</div>" +
-        (last && p.stageLog.length > 1
-          ? '<div class="meta" style="margin-top:8px;opacity:.8">Mundu: ' + p.stageLog.slice(0, 4).map(function (x) {
+        (hist.length > 1
+          ? '<div class="meta" style="margin-top:8px;opacity:.8">Mundu: ' + hist.map(function (x) {
               return esc(stageName(x.to) || "—") + " (" + esc(x.by) + ", " + fmtDay(x.ts) + ")";
             }).join(" ← ") + "</div>"
           : "") +
@@ -3083,8 +3089,9 @@
       }
       if (el.dataset.act === "pt-stage") {
         var st = el.dataset.stage || "";
-        var why = st ? (prompt(stageName(st) + " — emaina note? (optional)", "") || "") : "";
-        if (why === null) return;
+        // One tap is the decision; the note is optional, and cancelling the
+        // note does not cancel the move. Another chip changes it back.
+        var why = st ? (prompt(stageName(st) + " — emaina note? (vaddante Cancel)", "") || "") : "";
         el.disabled = true;
         ptapi("stage", { phone: el.dataset.phone, stage: st, note: why })
           .then(function (j) { ptOpen = j.patient; renderPatient(); toast(st ? stageName(st) + " ani pettam" : "Teesesam"); })

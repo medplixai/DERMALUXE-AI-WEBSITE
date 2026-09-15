@@ -36,5 +36,38 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   is(after.body.waiting, 0, "and the test lead does NOT stay in the queue as a fake patient");
   is(!!after.body.last && after.body.last.ok === false, true, "but the failed attempt is remembered");
 
+  // The queue is a list that failures are pushed onto the front of. Reading
+  // it and then removing "the first N" are two separate round trips, and a
+  // lead that fails in between lands exactly in that gap.
+  console.log("\n  — a lead is parked in the gap between reading the queue and clearing it —");
+  const clinic = require(require("path").join(process.env.DL_API, "_clinic.js"));
+  const guard = require(require("path").join(process.env.DL_API, "_guard.js"));
+  h.run(["DEL", clinic.PENDING_KEY]);
+  for (const n of ["old-1", "old-2", "old-3"]) h.run(["LPUSH", clinic.PENDING_KEY, JSON.stringify({ ts: Date.now(), name: n })]);
+
+  // The instant the queue has been read, somebody else's lead fails and is
+  // parked. This is the window, and nothing else in the test can reach it.
+  const realCmd = guard.kvCommand;
+  let slipped = false;
+  guard.kvCommand = async (cfg2, cmd) => {
+    const out = await realCmd(cfg2, cmd);
+    if (!slipped && cmd[0] === "LRANGE" && cmd[1] === clinic.PENDING_KEY) {
+      slipped = true;
+      h.run(["LPUSH", clinic.PENDING_KEY, JSON.stringify({ ts: Date.now(), name: "BRAND NEW" })]);
+    }
+    return out;
+  };
+  const realFetch = global.fetch;
+  global.fetch = async () => { throw new Error("hospital down"); };
+  const out = await h.call(hms2, { a: "retry" }, { a: "retry" });
+  global.fetch = realFetch;
+  guard.kvCommand = realCmd;
+
+  const left = h.run(["LRANGE", clinic.PENDING_KEY, "0", "99"]).map((x) => JSON.parse(x).name);
+  is(out.body.sent, 0, "nothing got through");
+  is(left.includes("BRAND NEW"), true, "the lead parked in that gap survives");
+  is(["old-1", "old-2", "old-3"].every((n) => left.includes(n)), true, "and all three that failed are back");
+  is(left.length, 4, "four waiting, none lost and none duplicated");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe bridge behaves");
 })();

@@ -137,6 +137,12 @@ function progressOf(s) {
   };
 }
 
+// Anywhere a student is handed back to the dashboard, the progress goes with
+// them — otherwise recording a payment or issuing a certificate makes the
+// progress line vanish until somebody reloads, which is exactly the moment
+// they want to see it move.
+const withProgress = (s) => Object.assign({}, s, { progress: progressOf(s) });
+
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
   const cfg = guard.kvConfig();
@@ -384,7 +390,7 @@ module.exports = async (req, res) => {
       try { const f = await buildDocs(cfg, s, ["receipt"]); if (f.receipt) await notify.sendWaDocLink(phone, f.receipt.url, f.receipt.name, "🧾 Advance payment receipt · రసీదు"); }
       catch (e) { console.error("receipt", e && e.message); await alertAdmins(`⚠️ Academy: receipt generate avvaledu — ${s.name} (${s.id}). Dashboard lo "Resend docs" try cheyandi.`); }
     }
-    return json(res, 200, { ok: true, student: s, formUrl: url });
+    return json(res, 200, { ok: true, student: withProgress(s), formUrl: url });
   }
 
   const s = await getSt(cfg, String(b.id || ""));
@@ -414,7 +420,7 @@ module.exports = async (req, res) => {
       console.error("academy: pay receipt", e && e.message);
       warn = "Payment record ayindi ✅ kani receipt generate avvaledu — 'Resend docs' tho malli try cheyandi.";
     }
-    return json(res, 200, { ok: true, student: s, receipt, warn });
+    return json(res, 200, { ok: true, student: withProgress(s), receipt, warn });
   }
   if (a === "send") {
     const ALLOW = ["receipt", "admission", "idcard", "certificate"];
@@ -448,13 +454,13 @@ module.exports = async (req, res) => {
       if (!certOk) await notify.sendAcademyTemplate(s.phone, "academy_certificate", [String(s.name || "").split(" ")[0], docs.course(s).name, s.certNo, s.grade], f.certificate.id, "Mee certificate ready — 'hi' ani reply cheyandi.");
       await notify.sendWa(s.phone, `💼 Job opportunities mana clinics lo unnayi — interested ayithe ikkade reply cheyandi.\nAlumni group lo kotha protocols, refresher sessions & job openings share chestam. All the best! 🌟`);
     }
-    return json(res, 200, { ok: true, student: s, certificate: f.certificate });
+    return json(res, 200, { ok: true, student: withProgress(s), certificate: f.certificate });
   }
   if (a === "status") {
     const st = String(b.status || "");
     if (!["enquiry", "enrolled", "active", "completed", "dropped"].includes(st)) return json(res, 400, { error: "bad status" });
     s.status = st; await putSt(cfg, s);
-    return json(res, 200, { ok: true, student: s });
+    return json(res, 200, { ok: true, student: withProgress(s) });
   }
   if (a === "link") return json(res, 200, { ok: true, url: `${BASE}/academy-join.html?t=${linkToken(s.id)}` });
   if (a === "material") {

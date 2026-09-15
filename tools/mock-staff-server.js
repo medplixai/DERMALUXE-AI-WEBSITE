@@ -250,13 +250,20 @@ http.createServer((req, res) => {
     ].map((x) => Object.assign(x, { progress: progressOf(x) }));
     if (a === "students" || a === "list") return send(200, { ok: true, students: st });
     if (a === "reopen") return send(200, { ok: true, url: "https://www.dermaluxe.ai/academy-join.html?t=xyz" });
-    return send(200, { ok: true, students: st, student: st[0] });
+    if (a === "pay") {
+      // mirror the real server: the paid student comes back WITH progress
+      const s2 = Object.assign({}, st[1], { paid: st[1].fee });
+      return send(200, { ok: true, student: Object.assign(s2, { progress: progressOf(s2) }), receipt: null });
+    }
+    return send(200, { ok: true, students: st, student: Object.assign({}, st[0], { progress: progressOf(st[0]) }) });
   }
   if (u.pathname === "/api/patient") {  // pt-msg-mock
     const a = u.searchParams.get("a") || "list";
     const p = () => Object.assign({ phone: "9876543210", name: "Sita Rani", since: Date.now() - 86400000 * 40, allergies: "",
       counts: { visits: 3, booked: 1, photos: 0, upcoming: 0 }, photos: [], visits: [], notes: [], appts: [] }, mockStage);
-    if (a === "list") return send(200, { ok: true, rows: [p()], total: 1, repeats: 1,
+    if (a === "list") return send(200, { ok: true,
+      rows: [Object.assign(p(), { stageLabel: mockStage.stage ? ({consult:"Consultation",plan:"Plan ichcharu",procedure:"Procedure nadustundi",course:"Course ayipoyindi",review:"Review / maintenance",declined:"Vaddannaru"})[mockStage.stage] : "", visits: 3, last: Date.now() - 86400000, concern: "acne" })],
+      total: 1, repeats: 1,
       stages: [["consult","Consultation"],["plan","Plan ichcharu"],["procedure","Procedure nadustundi"],["course","Course ayipoyindi"],["review","Review / maintenance"],["declined","Vaddannaru"]]
         .map(([key,label]) => ({ key, label, count: mockStage.stage === key ? 1 : 0 })),
       stageless: mockStage.stage ? 0 : 1 });
