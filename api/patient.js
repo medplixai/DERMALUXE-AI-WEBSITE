@@ -234,8 +234,12 @@ module.exports = async (req, res) => {
     // it goes in the file, so the next person knows what was said
     const notes = (cur.notes || []).slice(0, 119);
     notes.unshift({ ts: Date.now(), by: me.name, text: "📤 " + text.slice(0, 300) });
-    await guard.kvCommand(cfg, ["SET", `pt:${phone}`, JSON.stringify(Object.assign({}, cur, { notes }))]).catch(() => {});
-    return json(res, 200, { ok: true, via, patient: await build(cfg, phone, { allowEmpty: true }) });
+    // The message has already gone. If writing it into the file fails, say
+    // so — otherwise the next person sees nothing and sends it again.
+    const saved = await guard.kvWrite(cfg, ["SET", `pt:${phone}`, JSON.stringify(Object.assign({}, cur, { notes }))], "patient message note");
+    return json(res, 200, { ok: true, via, noteSaved: saved,
+      warn: saved ? undefined : "Message vellindi, kaani file lo raayaleka poyam",
+      patient: await build(cfg, phone, { allowEmpty: true }) });
   }
 
   return json(res, 400, { error: "Unknown action" });

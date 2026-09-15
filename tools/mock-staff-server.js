@@ -209,7 +209,7 @@ http.createServer((req, res) => {
     const a = u.searchParams.get("a") || "list";
     const p = { phone: "9876543210", name: "Sita Rani", since: Date.now() - 86400000 * 40, allergies: "",
       counts: { visits: 3, booked: 1, photos: 0, upcoming: 0 }, photos: [], visits: [], notes: [], appts: [] };
-    if (a === "list") return send(200, { ok: true, rows: [p] });
+    if (a === "list") return send(200, { ok: true, rows: [p], total: 1, repeats: 1 });
     return send(200, { ok: true, patient: p, via: "message" });
   }
   if (u.pathname.startsWith("/api/")) return send(200, { ok: true, rows: [], photos: [], days: [], team: [] });

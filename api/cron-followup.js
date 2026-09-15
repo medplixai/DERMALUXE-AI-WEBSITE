@@ -258,7 +258,7 @@ module.exports = async (req, res) => {
             body: "Recall messages vellayi — call chesi slot pettandi.",
             tab: "appts", data: { kind: "recall" },
           });
-        } catch (e) {}
+        } catch (e) { console.error("cron: recall push", e && e.message); }
       }
     }
   } catch (e) { console.error("cron: recalls", e && e.message); }
@@ -300,7 +300,8 @@ module.exports = async (req, res) => {
         }
 
         let dueToday = 0;
-        try { dueToday = (await require("./package.js").due(cfg, 0)).length; } catch (e) {}
+        try { dueToday = (await require("./package.js").due(cfg, 0)).length; }
+    catch (e) { console.error("cron: briefing package due", e && e.message); }
 
         // What is about to run out belongs in the morning, not in the middle
         // of a procedure.
@@ -359,7 +360,7 @@ module.exports = async (req, res) => {
             body: "Evaraina reply iste Money tab lo payment record cheyandi.",
             tab: "money", data: { kind: "dues" },
           });
-        } catch (e) {}
+        } catch (e) { console.error("cron: dues push", e && e.message); }
       }
     }
   } catch (e) { console.error("cron: dues", e && e.message); }

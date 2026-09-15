@@ -2475,7 +2475,10 @@
       var b = e.target.closest(".tab"); if (!b) return;
       var t = b.dataset.t;
       document.querySelectorAll(".tab").forEach(function (x) { x.classList.toggle("on", x === b); });
-      ["leads", "appts", "patients", "money", "numbers", "academy", "students", "office", "today", "reviews", "team"].forEach(function (x) { $("t-" + x).classList.toggle("hide", x !== t); });
+      // Every panel in the page, not a list somebody has to remember to add
+      // to. Stock and Haajaru were missing from that list, so those two
+      // tabs hid everything and showed nothing.
+      document.querySelectorAll('section[id^="t-"]').forEach(function (p) { p.classList.toggle("hide", p.id !== "t-" + t); });
       $("appbar").querySelectorAll("[data-nav]").forEach(function (n) {
         n.classList.toggle("on", n.dataset.nav === t || (n.dataset.nav === "__more" && !$("appbar").querySelector('[data-nav="' + t + '"]')));
       });
@@ -2853,7 +2856,7 @@
         if (!txt || txt.trim().length < 5) return;
         el.disabled = true;
         ptapi("message", { phone: el.dataset.phone, text: txt.trim(), name: who })
-          .then(function (j) { ptOpen = j.patient; renderPatient(); toast(j.via === "template" ? "Template tho pampam" : "Pampam"); })
+          .then(function (j) { ptOpen = j.patient; renderPatient(); toast(j.warn || (j.via === "template" ? "Template tho pampam" : "Pampam")); })
           .catch(function (x) { toast(x.message); })
           .finally(function () { el.disabled = false; });
         return;

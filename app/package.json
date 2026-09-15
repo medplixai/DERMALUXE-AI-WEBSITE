@@ -1,6 +1,6 @@
 {
   "name": "dermaluxe-staff-app",
-  "version": "1.20.0",
+  "version": "1.20.1",
   "private": true,
   "description": "DermaLuxe by Medicare — staff Android app (Capacitor shell around the staff dashboard).",
   "scripts": {
