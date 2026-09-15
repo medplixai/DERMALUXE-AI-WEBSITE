@@ -14,6 +14,20 @@
 // the preferred name, date of birth, allergies, tags, and notes about the
 // person rather than about one enquiry.
 const guard = require("./_guard.js");
+
+// Where a person is in their treatment, once the enquiry funnel has done its
+// job. Lead status ends at "visited" — it answers whether they came, not what
+// happened after. These are the stages a skin clinic actually moves through,
+// kept few enough that the desk will really set them.
+const STAGES = ["consult", "plan", "procedure", "course", "review", "declined"];
+const STAGE_TE = {
+  consult:   "Consultation",
+  plan:      "Plan ichcharu",
+  procedure: "Procedure nadustundi",
+  course:    "Course ayipoyindi",
+  review:    "Review / maintenance",
+  declined:  "Vaddannaru",
+};
 const staff = require("./staff.js");
 const notify = require("./_notify.js");
 
@@ -108,6 +122,11 @@ async function build(cfg, phone, opts) {
     since: first,
     dob: extra.dob || "",
     allergies: extra.allergies || "",
+    stage: extra.stage || "",
+    stageAt: extra.stageAt || 0,
+    stageBy: extra.stageBy || "",
+    stageNote: extra.stageNote || "",
+    stageLog: Array.isArray(extra.stageLog) ? extra.stageLog : [],
     tags: Array.isArray(extra.tags) ? extra.tags : [],
     concerns: Array.from(new Set(visits.map((v) => v.concern).filter(Boolean))).slice(0, 12),
     visits, notes, photos, appts,
@@ -177,11 +196,25 @@ module.exports = async (req, res) => {
         r.phone.includes(term) || (r.concern || "").toLowerCase().includes(term));
     }
     rows.sort((a2, b2) => b2.last - a2.last);
+    const shown = rows.slice(0, 200);
+    // The treatment stage lives on the patient record, not on the enquiries
+    // this list is built from — so read the ones we are about to show.
+    if (shown.length) {
+      const saved = await guard.kvPipeline(cfg, shown.map((r) => ["GET", `pt:${r.phone}`])).catch(() => []);
+      shown.forEach((r, i) => {
+        const p2 = parse(saved[i], null) || {};
+        r.stage = p2.stage || "";
+        r.stageLabel = p2.stage ? STAGE_TE[p2.stage] : "";
+        r.stageAt = p2.stageAt || 0;
+      });
+    }
     return json(res, 200, {
       ok: true,
-      rows: rows.slice(0, 200),
+      rows: shown,
       total: rows.length,
       repeats: rows.filter((r) => r.repeat).length,
+      stages: STAGES.map((k) => ({ key: k, label: STAGE_TE[k], count: shown.filter((r) => r.stage === k).length })),
+      stageless: shown.filter((r) => !r.stage).length,
     });
   }
 
@@ -202,6 +235,25 @@ module.exports = async (req, res) => {
       by: me.phone,
     });
     await guard.kvCommand(cfg, ["SET", `pt:${phone}`, JSON.stringify(next)]);
+    return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true }) });
+  }
+
+  // Moving somebody along. Every move is written down with who moved them —
+  // "she was on procedure last month" is a question that comes up.
+  if (a === "stage") {
+    if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki stage marche permission ledu" });
+    const st = String(b.stage || "");
+    if (st && !STAGES.includes(st)) return json(res, 400, { error: "bad stage" });
+    const at = Date.now();
+    const note = clean(b.note, 120);
+    const log = (cur.stageLog || []).slice(0, 39);
+    if (st !== (cur.stage || "")) log.unshift({ ts: at, by: me.name, from: cur.stage || "", to: st, note });
+    const next = Object.assign({}, cur, {
+      stage: st, stageAt: st ? at : 0, stageBy: st ? me.name : "", stageNote: note,
+      stageLog: log, since: cur.since || at,
+    });
+    const ok = await guard.kvWrite(cfg, ["SET", `pt:${phone}`, JSON.stringify(next)], "patient stage");
+    if (!ok) return json(res, 500, { error: "Save avvaledu — malli try cheyandi" });
     return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true }) });
   }
 
@@ -244,3 +296,5 @@ module.exports = async (req, res) => {
 
   return json(res, 400, { error: "Unknown action" });
 };
+module.exports.STAGES = STAGES;
+module.exports.STAGE_TE = STAGE_TE;

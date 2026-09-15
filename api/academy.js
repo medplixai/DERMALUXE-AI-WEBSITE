@@ -92,6 +92,51 @@ async function buildDocs(cfg, s, which, extra = {}) {
 const adminPhones = () => guard.ownerPhones();
 async function alertAdmins(text) { await Promise.allSettled(adminPhones().map((ph) => notify.sendWa(ph, text))); }
 
+// How far through the course a student actually is, and what is still owed to
+// them. Every piece of this was already stored — it had just never been put
+// together into one answer, so "eee student ekkada undi?" needed three
+// screens and some arithmetic.
+function progressOf(s) {
+  const DAY = 86400000;
+  const months = (() => {
+    const m = String(s.duration || "1 month").match(/(\d+)/);
+    return Math.max(1, Math.min(12, m ? Number(m[1]) : 1));
+  })();
+  const totalDays = months * 30;
+  const start = Date.parse(String(s.startISO || "") + "T00:00:00+05:30");
+  const started = Number.isFinite(start) && start <= Date.now();
+  const day = started ? Math.min(totalDays, Math.max(1, Math.ceil((Date.now() - start) / DAY))) : 0;
+  const fee = Number(s.fee) || 0, paid = Number(s.paid) || 0;
+  const balance = Math.max(0, fee - paid);
+
+  // The things that have to happen, in the order they happen. Each one is
+  // either done or it is not — nothing here is a guess.
+  const steps = [
+    { key: "seat",    label: "Seat reserve ayindi", done: true, at: s.created || 0 },
+    { key: "form",    label: "Onboarding form",     done: !!s.onboarded },
+    { key: "fee",     label: "Fee mottam",          done: fee > 0 && balance === 0,
+      hint: balance ? "₹" + balance.toLocaleString("en-IN") + " balance" : "" },
+    { key: "started", label: "Training modalu",     done: started, hint: started ? "" : (s.startISO || "") },
+    { key: "done",    label: "Course ayipoyindi",   done: s.status === "completed" || (started && day >= totalDays) },
+    { key: "cert",    label: "Certificate",         done: !!s.certNo, hint: s.certNo || "" },
+  ];
+  const doneCount = steps.filter((x) => x.done).length;
+
+  return {
+    months, totalDays, day, started,
+    daysLeft: started ? Math.max(0, totalDays - day) : totalDays,
+    percent: started ? Math.round((day / totalDays) * 100) : 0,
+    balance, steps, doneCount, stepCount: steps.length,
+    // one line the owner can read without doing any work
+    where: s.status === "dropped" ? "Aagipoyaru"
+      : s.certNo ? "Certificate ichcham"
+      : (started && day >= totalDays) || s.status === "completed" ? "Course ayipoyindi — certificate pending"
+      : started ? `Training nadustondi — day ${day} / ${totalDays}`
+      : balance ? `Inka modalu kaledu · ₹${balance.toLocaleString("en-IN")} balance`
+      : "Modalu kaledu — batch kosam chustunnaru",
+  };
+}
+
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
   const cfg = guard.kvConfig();
@@ -300,7 +345,8 @@ module.exports = async (req, res) => {
       if (!s) continue;
       students.push({ id: s.id, name: s.name, phone: s.phone, course: s.course, duration: s.duration, status: s.status,
         fee: s.fee, paid: s.paid, batch: s.batch, created: s.created, onboarded: s.onboarded, startISO: s.startISO,
-        certNo: s.certNo, grade: s.grade, docsPending: !!s.docsPending, notes: (s.notes || []).slice(0, 3) });
+        certNo: s.certNo, grade: s.grade, docsPending: !!s.docsPending, notes: (s.notes || []).slice(0, 3),
+        progress: progressOf(s) });
     }
     return json(res, 200, { ok: true, students, batch: docs.BATCH, courses: docs.COURSES });
   }

@@ -1625,6 +1625,41 @@
         syncBadges();
       }).catch(function (e) { $("ptList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
+    // Lead status answers whether they came. This answers what happened after
+    // — and it is one row of taps, because anything slower does not get set.
+    var PT_STAGES = [
+      ["consult", "Consultation"], ["plan", "Plan ichcharu"], ["procedure", "Procedure"],
+      ["course", "Ayipoyindi"], ["review", "Review"], ["declined", "Vaddannaru"],
+    ];
+    function stageStrip(p) {
+      var cur = p.stage || "";
+      var can = state.allow("leads.edit");
+      var chips = PT_STAGES.map(function (o) {
+        var on = cur === o[0];
+        return '<button class="btn btn--sm' + (on ? " btn--gold" : "") + '"' +
+          (can ? ' data-act="pt-stage" data-phone="' + esc(p.phone) + '" data-stage="' + o[0] + '"' : " disabled") +
+          (o[0] === "declined" && !on ? ' style="color:var(--bad)"' : "") +
+          ">" + esc(o[1]) + "</button>";
+      }).join(" ");
+      var last = p.stageLog && p.stageLog.length ? p.stageLog[0] : null;
+      return '<div class="pt-sec"><h3>Ekkada unnaru <span class="te" style="font-size:.85rem">· ఏ దశలో</span></h3>' +
+        (cur
+          ? '<div class="meta" style="margin-bottom:8px">' + esc(stageName(cur)) +
+            (p.stageAt ? " · " + ago(p.stageAt) : "") + (p.stageBy ? " · " + esc(p.stageBy) : "") +
+            (p.stageNote ? '<br><span style="opacity:.85">' + esc(p.stageNote) + "</span>" : "") + "</div>"
+          : '<p class="meta" style="margin-bottom:8px">Inka set cheyyaledu.</p>') +
+        '<div class="acts" style="flex-wrap:wrap">' + chips +
+        (cur && can ? ' <button class="btn btn--sm" data-act="pt-stage" data-phone="' + esc(p.phone) + '" data-stage="">Teesey</button>' : "") +
+        "</div>" +
+        (last && p.stageLog.length > 1
+          ? '<div class="meta" style="margin-top:8px;opacity:.8">Mundu: ' + p.stageLog.slice(0, 4).map(function (x) {
+              return esc(stageName(x.to) || "—") + " (" + esc(x.by) + ", " + fmtDay(x.ts) + ")";
+            }).join(" ← ") + "</div>"
+          : "") +
+        "</div>";
+    }
+    function stageName(k) { var f = PT_STAGES.filter(function (o) { return o[0] === k; })[0]; return f ? f[1] : k; }
+
     function openPatient(phone) {
       $("ptSheet").classList.add("open");
       $("ptBody").innerHTML = '<div class="sk" style="margin-top:20px"><div></div><div></div><div></div></div>';
@@ -1674,6 +1709,7 @@
           '<button class="btn btn--sm" data-act="pt-edit" data-phone="' + esc(p.phone) + '">✎ Details</button>' : "") +
         "</div>" +
 
+        stageStrip(p) +
         '<div class="pt-sec"><h3>Consent <span class="te" style="font-size:.85rem">· అంగీకారం</span></h3><div id="ptCns"><p class="meta">Loading…</p></div></div>' +
         '<div class="pt-sec"><h3>Packages <span class="te" style="font-size:.85rem">· సిట్టింగ్‌లు</span></h3><div id="ptPkgs"><p class="meta">Loading…</p></div></div>' +
         (state.allow("money.view") ? '<div class="pt-sec"><h3>Bills <span class="te" style="font-size:.85rem">· బిల్లులు</span></h3><div id="ptMoney"><p class="meta">Loading…</p></div></div>' : "") +
@@ -3045,6 +3081,16 @@
           .finally(function () { el.disabled = false; });
         return;
       }
+      if (el.dataset.act === "pt-stage") {
+        var st = el.dataset.stage || "";
+        var why = st ? (prompt(stageName(st) + " — emaina note? (optional)", "") || "") : "";
+        if (why === null) return;
+        el.disabled = true;
+        ptapi("stage", { phone: el.dataset.phone, stage: st, note: why })
+          .then(function (j) { ptOpen = j.patient; renderPatient(); toast(st ? stageName(st) + " ani pettam" : "Teesesam"); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "pt-note") {
         var nt2 = prompt((el.dataset.name || "Ee patient") + " gurinchi note:", "");
         if (!nt2 || !nt2.trim()) return;
@@ -3135,6 +3181,26 @@
     var students = [];
     function loadStudents() { sapi("list").then(function (j) { students = j.students || []; renderStudents(); fillThumbs(); }).catch(function (e) { toast(e.message); }); }
     function money(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
+    // Where this student is, in one line and one bar. The server works it out
+    // from what was already stored — start date, fee, form, certificate — so
+    // nothing here needs anybody to remember to update a field.
+    function progressRow(s) {
+      var p = s.progress;
+      if (!p) return "";
+      var bar = '<div style="height:6px;border-radius:100px;background:var(--ink2);overflow:hidden;margin:6px 0">' +
+        '<div style="height:100%;width:' + Math.max(2, p.percent) + '%;background:' +
+        (s.status === "dropped" ? "var(--bad)" : p.percent >= 100 ? "var(--ok)" : "var(--g2)") + '"></div></div>';
+      var steps = (p.steps || []).map(function (x) {
+        return '<span style="opacity:' + (x.done ? "1" : ".45") + '">' + (x.done ? "✓" : "○") + " " + esc(x.label) +
+          (x.hint ? ' <span style="opacity:.7">(' + esc(x.hint) + ")</span>" : "") + "</span>";
+      }).join(' <span style="opacity:.3">·</span> ');
+      return '<div class="meta" style="margin-top:6px">' +
+        '<b style="color:var(--text);font-weight:500">' + esc(p.where) + "</b>" +
+        (p.started && p.daysLeft ? ' · inka ' + p.daysLeft + " rojulu" : "") + "</div>" +
+        bar +
+        '<div class="meta" style="display:flex;flex-wrap:wrap;gap:6px 8px">' + steps + "</div>";
+    }
+
     function renderStudents() {
       $("nStud").textContent = students.length;
       $("studList").innerHTML = students.length ? students.map(function (s) {
@@ -3144,6 +3210,7 @@
           '<div class="row"><div><h3>' + esc(s.name) + ' <span class="meta">· ' + esc(s.id) + '</span></h3>' +
           '<div class="meta">' + esc(cn) + ' · ' + esc(s.duration || "") + ' · ' + esc(s.phone) + (s.onboarded ? " · form ✓" : " · form pending") + '</div></div>' +
           '<div><span class="badge ' + (s.status === "completed" ? "warm" : bal > 0 ? "hot" : "") + '">' + esc(s.status || "enrolled") + '</span></div></div>' +
+          progressRow(s) +
           '<div class="concern">Fee ' + money(s.fee) + ' · Paid <b style="color:var(--ok)">' + money(s.paid) + '</b> · Balance <b style="color:' + (bal ? "var(--hot)" : "var(--ok)") + '">' + money(bal) + '</b>' + (s.certNo ? ' · Cert ' + esc(s.certNo) : "") + '</div>' +
           '<div class="acts">' +
           '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(s.phone) + '">💬 WhatsApp</a>' +

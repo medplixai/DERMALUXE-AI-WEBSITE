@@ -38,7 +38,14 @@ const trim = (l) => Object.assign({}, l, {
 });
 
 const mockTpl = require("../api/consent.js").DRAFTS.map((t) => Object.assign({}, t, { version: 1, approved: null }));
+const progressOf = (() => {
+  // the real one, read straight out of api/academy.js so it cannot drift
+  const src = fs.readFileSync(path.join(ROOT, "api", "academy.js"), "utf8");
+  const m = src.match(/function progressOf\(s\) \{[\s\S]*?\n\}/);
+  return eval("(" + m[0] + ")");
+})();
 const mockCns = [];
+const mockStage = { stage: "", stageAt: 0, stageBy: "", stageNote: "", stageLog: [] };
 // Pretend the hospital bridge is configured and two leads did not get through.
 const mockHms = { ok: true, connected: true, host: "clinic.medicare-hms.in", tenant: "dlx-eluru", hasKey: true,
   portalUrl: "", bookingUrl: "", missing: [], waiting: 2, oldest: Date.now() - 5 * 3600000,
@@ -233,20 +240,40 @@ http.createServer((req, res) => {
   }
   if (u.pathname === "/api/academy") {  // acad:st-mock
     const a = u.searchParams.get("a") || "list";
+    // The real server computes `progress` from what it already stores; the
+    // mock mirrors the same shape so the dashboard is exercised honestly.
+    const iso = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
     const st = [
-      { id: "DLA001", name: "Keerthi", phone: "9876500021", course: "skin", duration: "1 month", fee: 49999, paid: 49999, status: "enrolled", onboarded: 1, notes: [] },
-      { id: "DLA002", name: "Harika", phone: "9876500022", course: "both", duration: "2 months", fee: 99999, paid: 9999, status: "enrolled", onboarded: 0, notes: [] },
-    ];
+      { id: "DLA001", name: "Keerthi", phone: "9876500021", course: "skin", duration: "1 month", fee: 49999, paid: 49999, status: "enrolled", onboarded: 1, startISO: iso(12), created: Date.now() - 20 * 86400000, notes: [] },
+      { id: "DLA002", name: "Harika", phone: "9876500022", course: "both", duration: "2 months", fee: 99999, paid: 9999, status: "enrolled", onboarded: 0, startISO: iso(-9), created: Date.now() - 3 * 86400000, notes: [] },
+      { id: "DLA003", name: "Sravani", phone: "9876500023", course: "hair", duration: "1 month", fee: 49999, paid: 49999, status: "completed", onboarded: 1, startISO: iso(40), certNo: "DLA-C-0007", created: Date.now() - 50 * 86400000, notes: [] },
+    ].map((x) => Object.assign(x, { progress: progressOf(x) }));
     if (a === "students" || a === "list") return send(200, { ok: true, students: st });
     if (a === "reopen") return send(200, { ok: true, url: "https://www.dermaluxe.ai/academy-join.html?t=xyz" });
     return send(200, { ok: true, students: st, student: st[0] });
   }
   if (u.pathname === "/api/patient") {  // pt-msg-mock
     const a = u.searchParams.get("a") || "list";
-    const p = { phone: "9876543210", name: "Sita Rani", since: Date.now() - 86400000 * 40, allergies: "",
-      counts: { visits: 3, booked: 1, photos: 0, upcoming: 0 }, photos: [], visits: [], notes: [], appts: [] };
-    if (a === "list") return send(200, { ok: true, rows: [p], total: 1, repeats: 1 });
-    return send(200, { ok: true, patient: p, via: "message" });
+    const p = () => Object.assign({ phone: "9876543210", name: "Sita Rani", since: Date.now() - 86400000 * 40, allergies: "",
+      counts: { visits: 3, booked: 1, photos: 0, upcoming: 0 }, photos: [], visits: [], notes: [], appts: [] }, mockStage);
+    if (a === "list") return send(200, { ok: true, rows: [p()], total: 1, repeats: 1,
+      stages: [["consult","Consultation"],["plan","Plan ichcharu"],["procedure","Procedure nadustundi"],["course","Course ayipoyindi"],["review","Review / maintenance"],["declined","Vaddannaru"]]
+        .map(([key,label]) => ({ key, label, count: mockStage.stage === key ? 1 : 0 })),
+      stageless: mockStage.stage ? 0 : 1 });
+    if (a === "stage") {
+      let body = ""; req.on("data", (c) => (body += c));
+      return req.on("end", () => {
+        const b2 = (() => { try { return JSON.parse(body || "{}"); } catch (e) { return {}; } })();
+        const from = mockStage.stage || "";
+        mockStage.stage = b2.stage || "";
+        mockStage.stageAt = mockStage.stage ? Date.now() : 0;
+        mockStage.stageBy = mockStage.stage ? "Owner (mock)" : "";
+        mockStage.stageNote = b2.note || "";
+        if (from !== mockStage.stage) mockStage.stageLog.unshift({ ts: Date.now(), by: "Owner (mock)", from, to: mockStage.stage, note: b2.note || "" });
+        return send(200, { ok: true, patient: p() });
+      });
+    }
+    return send(200, { ok: true, patient: p(), via: "message" });
   }
   if (u.pathname.startsWith("/api/")) return send(200, { ok: true, rows: [], photos: [], days: [], team: [] });
 
