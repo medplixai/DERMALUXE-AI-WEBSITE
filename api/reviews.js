@@ -16,7 +16,10 @@ const CACHE_KEY = "gplace:reviews:v1";
 // computed here on every request and thrown away.
 const WRITE_KEY = "gplace:writeurl";
 const PLACE_KEY = "gplace:id";
-const CACHE_SEC = 6 * 3600;
+// Google is asked at most once an hour, which is a couple of dozen calls a
+// day — nothing. Six hours was set when the clinic had no reviews at all; now
+// that they arrive, a new one should not take most of a day to appear.
+const CACHE_SEC = 3600;
 const LOOKUP_QUERY = "DermaLuxe by Medicare Skin and Hair Clinic, Kasturi Vari Street, Eluru";
 // Listing's Google Maps CID — the fallback "write a review" link when the
 // place id is not (yet) known. Opens the listing where "Write a review" sits.
@@ -74,7 +77,10 @@ function shape(p, placeId) {
 
 module.exports = async (req, res) => {
   if (req.method !== "GET") return res.status(405).json({ error: "Method not allowed" });
-  res.setHeader("Cache-Control", "public, s-maxage=3600, stale-while-revalidate=86400");
+  // Two caches sit on this: the KV copy above, and this one at the edge. An
+  // hour at each plus a day of stale-while-revalidate meant a review could be
+  // a day old before anybody saw it on the homepage.
+  res.setHeader("Cache-Control", "public, s-maxage=600, stale-while-revalidate=3600");
 
   const key = process.env.GOOGLE_PLACES_API_KEY;
   if (!key) return res.status(200).json({ ok: true, configured: false, writeUrl: MAPS_CID_URL, mapsUrl: MAPS_CID_URL, reviews: [] });
@@ -104,7 +110,10 @@ module.exports = async (req, res) => {
     }
     const out = shape(await fetchPlace(key, placeId), placeId);
     if (cfg) {
-      try { await guard.kvCommand(cfg, ["SET", CACHE_KEY, JSON.stringify(out), "EX", String(CACHE_SEC)]); } catch (e) {}
+      // kvCommand swallows its own failures, so a broken write here would be
+      // invisible — and "the reviews stopped updating" is exactly the kind of
+      // thing nobody notices for weeks. kvWrite says so.
+      await guard.kvWrite(cfg, ["SET", CACHE_KEY, JSON.stringify(out), "EX", String(CACHE_SEC)], "reviews cache");
       // No expiry: a place id does not change, and the review ask must not go
       // quiet just because this cache happened to lapse.
       try { if (out.writeUrl) await guard.kvCommand(cfg, ["SET", WRITE_KEY, out.writeUrl]); } catch (e) {}
