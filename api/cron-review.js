@@ -22,7 +22,7 @@
 // still owes money — being chased for a bill and asked for stars in the same
 // week is how a clinic earns a one-star.
 //
-// Manual run: /api/cron-review?key=<ADMIN_KEY>[&dry=1][&day=YYYY-MM-DD][&force=1]
+// Manual run: /api/cron-review?key=<ADMIN_KEY or CRON_SECRET>[&dry=1][&day=YYYY-MM-DD][&force=1]
 //
 // KV used here:
 //   bill:day:<YYYY-MM-DD>  bill ids touched that day (written by /api/money)
@@ -47,11 +47,25 @@ function istDayBack(n) {
 
 module.exports = async (req, res) => {
   const q = req.query || {};
-  // Vercel's scheduler sends the bearer; a human needs the admin key.
-  if (process.env.CRON_SECRET && String(req.headers.authorization || "") !== `Bearer ${process.env.CRON_SECRET}`) {
-    if (!process.env.ADMIN_KEY || !guard.safeEqual(String(q.key || ""), process.env.ADMIN_KEY)) {
-      return res.status(401).json({ error: "unauthorized" });
-    }
+  // Vercel's scheduler sends the bearer; a person running it by hand sends a
+  // key. Either of the two secrets the project already has will do, so the
+  // owner does not have to hunt for a particular one.
+  //
+  // This refuses when NONE of them is configured, rather than letting the
+  // endpoint stand open. The other crons in here are written the other way
+  // round — `if (CRON_SECRET) { ...check... }` — which means deleting that one
+  // variable would quietly open them to anybody. For a job that sends
+  // WhatsApp messages to patients, closed is the only safe way to fail.
+  const keys = [process.env.CRON_SECRET, process.env.ADMIN_KEY].filter(Boolean);
+  const bearer = String(req.headers.authorization || "");
+  const given = String(q.key || "");
+  const allowed = keys.length > 0 && keys.some((k) =>
+    bearer === `Bearer ${k}` || (given && guard.safeEqual(given, k)));
+  if (!allowed) {
+    return res.status(401).json({
+      error: "unauthorized",
+      note: keys.length ? undefined : "CRON_SECRET / ADMIN_KEY unset — nothing may run this",
+    });
   }
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: true, note: "kv not configured" });

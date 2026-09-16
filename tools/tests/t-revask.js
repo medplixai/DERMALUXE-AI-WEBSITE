@@ -3,16 +3,25 @@
 // who is still being chased for a bill, or ask the same person every visit,
 // and a 5.0 becomes a 4.2.
 process.env.REVIEW_LINK = "https://g.page/r/DERMALUXE/review";
-delete process.env.CRON_SECRET;
 const path = require("path");
 const h = require("./harness.js");
+// After the harness, not before: it sets ADMIN_KEY itself, and whoever writes
+// last wins.
+process.env.ADMIN_KEY = "test-admin-key";
+process.env.CRON_SECRET = "test-cron-secret";
 const notify = require(path.join(__dirname, "..", "..", "api", "_notify.js"));
 let fails = 0;
 const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.stringify(want);
   if (!ok) fails++; console.log(`  ${ok ? "ok " : "✗  "} ${what}${ok ? "" : `  got ${JSON.stringify(got)} want ${JSON.stringify(want)}`}`); };
 
 const cron = h.load("cron-review");
-const R = (q) => h.call(cron, q || {});
+const R = (q) => h.call(cron, Object.assign({ key: "test-admin-key" }, q || {}));
+// h.call always sends empty headers, so the scheduler's path is driven directly.
+const asScheduler = (auth) => new Promise((resolve) => {
+  const res = { _c: 200, setHeader() {}, status(c) { this._c = c; return this; },
+    json(o) { resolve({ code: this._c, body: o }); return this; } };
+  cron({ method: "GET", headers: { authorization: auth }, query: { dry: "1" }, body: {} }, res);
+});
 
 const dayBack = (n) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" })
   .format(new Date(Date.now() - n * 86400000));
@@ -101,6 +110,24 @@ const clear = () => { h.sent.length = 0; };
   clear();
   const r6 = await R({ day: day5 });
   is(r6.body.sent, 1, "and tomorrow it gets there");
+
+  console.log("\n  — who may run it —");
+  clear();
+  is((await h.call(cron, {})).code, 401, "no key, no run");
+  is((await h.call(cron, { key: "guess" })).code, 401, "and a wrong one is no better");
+  is((await R({ key: process.env.CRON_SECRET, dry: "1" })).code, 200, "either of the project's secrets works");
+  is((await asScheduler("Bearer test-cron-secret")).code, 200, "and Vercel's own scheduler gets in");
+  is((await asScheduler("Bearer nope")).code, 401, "but only with the real one");
+
+  // The other crons here are written `if (CRON_SECRET) { ...check... }`, which
+  // stands wide open the moment that variable is missing. This one sends
+  // WhatsApp messages to patients, so with nothing configured it must refuse.
+  const cs = process.env.CRON_SECRET, ak = process.env.ADMIN_KEY;
+  delete process.env.CRON_SECRET; delete process.env.ADMIN_KEY;
+  const open = await h.call(cron, {});
+  is(open.code, 401, "with no secret configured at all it refuses, rather than standing open");
+  is(String(open.body.note || "").includes("unset"), true, "and says why");
+  process.env.CRON_SECRET = cs; process.env.ADMIN_KEY = ak;
 
   console.log("\n  — no link, no ask —");
   clear();
