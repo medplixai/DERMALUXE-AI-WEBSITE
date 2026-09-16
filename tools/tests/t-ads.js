@@ -10,6 +10,8 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
 
 // Meta is stubbed. A test must never touch a live ad account.
 const calls = [];
+// Swapped between cases: Meta sends spend_cap "0" when there is NO cap.
+let acctCap = { spend_cap: "13000000" };
 global.fetch = async (url, opt) => {
   const full = String(url);
   const u = full.split("?")[0];          // match the path, not the query
@@ -25,7 +27,10 @@ global.fetch = async (url, opt) => {
     { id: "222", name: "Hair transplant", status: "PAUSED", effective_status: "PAUSED", objective: "MESSAGES", daily_budget: "80000",
       insights: { data: [{ spend: "7390", reach: "150079", actions: [{ action_type: "onsite_conversion.messaging_conversation_started", value: "48" }] }] } },
   ] });
-  if (/\/act_\d+$/.test(u)) return ok({ name: "DermaLuxe", currency: "INR", account_status: 1, amount_spent: "120860", spend_cap: "130000" });
+  // The account edge reports money in PAISE (insights "spend" is in rupees).
+  // ₹120,860 spent against a ₹130,000 cap.
+  if (/\/act_\d+$/.test(u)) return ok(Object.assign({ name: "DermaLuxe", currency: "INR", account_status: 1,
+    amount_spent: "12086000" }, acctCap));
   if (/\/\d+$/.test(u) && opt && opt.method === "POST") return ok({ success: true });
   if (/\/\d+$/.test(u)) return ok({ id: "111" });
   return ok({});
@@ -55,6 +60,14 @@ const A = (q, b) => h.call(ads, q, b);
   is(o.body.account.costEach, 65, "₹65 each — the number the owner actually watches");
   is(o.body.today.spend, 2962, "today's spend is separate");
   is(o.body.account.capLeft, 9140, "and what is left inside the spending limit");
+
+  // A brand-new account has no cap at all, and Meta says so with the string
+  // "0". That is truthy, so the screen used to announce "₹0 left" — telling
+  // the owner they could not spend, on an account with no limit.
+  acctCap = { spend_cap: "0" };
+  h.run(["DEL", "ads:conn"]);
+  const nocap = await A({ a: "overview", days: "30" });
+  is(nocap.body.account.capLeft, null, "no cap set means no limit line at all");
 
   console.log("\n  — our side of it —");
   is(o.body.ours.leads, 6, "six leads came from Instagram/Facebook");

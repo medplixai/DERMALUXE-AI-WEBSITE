@@ -27,6 +27,8 @@ const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
 const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
 const rupees = (v) => Math.round(Number(v) || 0);
+// Account-level money comes from Meta in paise, unlike insights "spend".
+const paise = (v) => Math.round((Number(v) || 0) / 100);
 
 // Ads need their own permission (ads_read / ads_management). The page and
 // WhatsApp tokens the clinic already has do not carry it, so a dedicated one
@@ -209,7 +211,11 @@ module.exports = async (req, res) => {
         active: Number(acc.account_status) === 1,
         spend, impressions: Number(i0.impressions || 0), reach: Number(i0.reach || 0),
         results, costEach: results ? Math.round(spend / results) : 0,
-        capLeft: acc.spend_cap ? Math.max(0, rupees(acc.spend_cap) - rupees(acc.amount_spent)) : null,
+        // Meta sends both of these in paise, and sends spend_cap as the STRING
+        // "0" when the account has no cap at all — which is truthy, so the
+        // obvious version of this line printed "₹0 left" on an account that
+        // has no limit whatsoever: the exact opposite of the truth.
+        capLeft: paise(acc.spend_cap) ? Math.max(0, paise(acc.spend_cap) - paise(acc.amount_spent)) : null,
       };
       const t0 = (todayIns.data || [])[0] || {};
       today = { spend: rupees(t0.spend), impressions: Number(t0.impressions || 0) };
