@@ -83,6 +83,9 @@
     "api/referral.js": {
       "maxDuration": 30
     },
+    "api/post.js": {
+      "maxDuration": 60
+    },
     "api/cron-backup.js": {
       "maxDuration": 300
     },

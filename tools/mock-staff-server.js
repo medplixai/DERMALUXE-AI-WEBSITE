@@ -48,6 +48,7 @@ const mockRef = { code: "DL5310", count: 2, unrewarded: 1, cameFrom: "", rows: [
   { phone: "9876500061", name: "Sita Rani", ts: Date.now() - 4 * 86400000, rewarded: null },
   { phone: "9876500062", name: "Ravi Kumar", ts: Date.now() - 20 * 86400000, rewarded: { ts: Date.now() - 19 * 86400000, by: "Sowmya", what: "20% off" } },
 ] };
+const mockPostQ = [{ imgId: "q0", caption: "Repu podduna — laser hair removal offer", due: Date.now() + 5 * 3600000, kind: "post", tries: 0, by: "Owner" }];
 const mockCns = [];
 const mockStage = { stage: "", stageAt: 0, stageBy: "", stageNote: "", stageLog: [] };
 // Pretend the hospital bridge is configured and two leads did not get through.
@@ -159,6 +160,24 @@ http.createServer((req, res) => {
       sources: [{ name: "whatsapp", leads: 96, booked: 41, revenue: 148000 }, { name: "instagram", leads: 71, booked: 22, revenue: 86000 }, { name: "web", leads: 45, booked: 11, revenue: 50000 }],
       treatments: [{ name: "Laser — full face", count: 31, value: 118000 }, { name: "PRP hair therapy", count: 22, value: 84000 }],
       patients: { total: 148, repeats: 52, repeatRate: 35 } });
+  }
+  if (u.pathname === "/api/post") {  // post-mock
+    const a = u.searchParams.get("a") || "list";
+    if (a === "list") return send(200, { ok: true, canPost: true, account: "@dermaluxe.ai", crossPosts: true,
+      queue: mockPostQ,
+      posted: [
+        { id: "ig1", imgId: "p1", caption: "Hydrafacial — instant glow, zero downtime ✨", kind: "post", link: "https://instagram.com/p/abc", fb: true, at: Date.now() - 20 * 3600000, by: "Owner" },
+        { id: "ig2", imgId: "p2", caption: "PRP hair therapy — mee sonta raktham nunchi", kind: "reel", link: "https://instagram.com/reel/def", fb: false, at: Date.now() - 3 * 86400000, by: "Sowmya" },
+      ] });
+    let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => {
+      const b2 = (() => { try { return JSON.parse(body || "{}"); } catch (e) { return {}; } })();
+      if (a === "create") {
+        if (b2.due) { mockPostQ.push({ imgId: "q" + (mockPostQ.length + 1), caption: b2.caption, due: b2.due, kind: "post", tries: 0, by: "Owner (mock)" }); return send(200, { ok: true, scheduled: true, due: b2.due }); }
+        return send(200, { ok: true, link: "https://instagram.com/p/new", fb: true, id: "ig_new" });
+      }
+      if (a === "cancel") { const i = mockPostQ.findIndex((x) => x.imgId === b2.imgId); if (i < 0) return send(404, { error: "Aa post queue lo ledu" }); mockPostQ.splice(i, 1); return send(200, { ok: true }); }
+      return send(400, { error: "Unknown action" });
+    });
   }
   if (u.pathname === "/api/referral") {  // referral-mock
     const a = u.searchParams.get("a") || "of";

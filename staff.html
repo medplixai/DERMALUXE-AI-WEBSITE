@@ -1891,12 +1891,160 @@
       else if (state.data && state.data.academy) $("sSeats").textContent = state.data.academy.booked + "/10";
     }
 
+    function postapi(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/post?a=" + a, opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+
     function renderToday() {
       var d = state.data, t = d.today, html = '';
       html += '<div class="box"><h2>Today\'s auto post</h2>' + (t ? '<p><b style="color:var(--g1);font-weight:500">' + esc(t.h1) + '</b><br /><span class="te">' + esc(t.te || "") + '</span><br /><span class="meta">' + (t.page ? 'Page: ' + esc(t.page) : '') + '</span></p>' : '<p>No post generated yet today (7:00 AM build → 8:30 AM publish).</p>') +
-        '<p style="margin-top:8px"><a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/dermaluxe.ai/">Instagram ↗</a> <a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61592844155911">Facebook ↗</a></p></div>';
-      html += '<div class="box"><h2>Queue</h2>' + (d.queue.length ? d.queue.map(function (it) { return '<div style="display:grid;grid-template-columns:90px 1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--soft)"><img class="qimg" src="' + ORIGIN + '/api/media?id=' + esc(it.imgId) + '" alt="" onerror="this.style.display=\'none\'" /><div><div class="meta">' + (it.story ? '📸 Story' : '🖼 Feed post') + ' · due ' + fmtAt(it.due) + (it.auto ? ' · auto' : '') + '</div><div style="font-size:.85rem;color:var(--muted);margin-top:4px">' + esc(String(it.caption || "").slice(0, 140)) + '</div></div></div>'; }).join("") : '<p>Queue empty.</p>') + '</div>';
+        '<p style="margin-top:8px"><a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/dermaluxe.ai/">Instagram ↗</a> <a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61592844155911">Facebook ↗</a>' +
+        (state.allow("posts.toggle") ? ' <button class="btn btn--gold btn--sm" id="postNew">+ Kotha post</button>' : "") + '</p></div>';
+      html += '<div id="postBox"><div class="sk"><div></div><div></div></div></div>';
       $("t-today").innerHTML = html;
+      if ($("postNew")) $("postNew").onclick = function () { newPostSheet(); };
+      loadPosts();
+    }
+
+    // Everything the clinic has put out, and everything waiting to go. Until
+    // now a published post existed only on Instagram — the app could not even
+    // list what it had posted.
+    function loadPosts() {
+      var host = $("postBox"); if (!host) return;
+      postapi("list").then(function (j) {
+        var canPost = j.canPost;
+        var queue = (j.queue || []).map(function (it) {
+          var late = it.due && it.due < Date.now() - 900000;
+          return '<div class="vrow"><div style="display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start">' +
+            '<img class="qimg" src="' + ORIGIN + '/api/media?id=' + esc(it.imgId) + '" alt="" onerror="this.style.display=\'none\'" />' +
+            "<div><b>" + (it.kind === "story" ? "📸 Story" : it.kind === "reel" ? "🎬 Reel" : "🖼 Post") + "</b> " +
+            '<span class="meta">· ' + fmtAt(it.due) + (it.by ? " · " + esc(it.by) : "") + "</span>" +
+            (late ? '<div class="meta" style="color:var(--hot)">Time dati poyindi — cron 10 nimishalaki okasari chustundi' + (it.tries ? " · " + it.tries + " sarlu try chesindi" : "") + "</div>" : "") +
+            '<div class="meta" style="margin-top:4px">' + esc(String(it.caption || "").slice(0, 120)) + "</div>" +
+            (canPost ? '<div class="acts" style="margin-top:6px"><button class="btn btn--sm" data-act="post-cancel" data-img="' + esc(it.imgId) + '" style="color:var(--bad)">Teesey</button></div>' : "") +
+            "</div></div></div>";
+        }).join("");
+
+        var posted = (j.posted || []).map(function (p) {
+          return '<div class="vrow"><div style="display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start">' +
+            (p.imgId ? '<img class="qimg" src="' + ORIGIN + '/api/media?id=' + esc(p.imgId) + '" alt="" onerror="this.style.display=\'none\'" />' : "<div></div>") +
+            "<div><b>" + (p.kind === "story" ? "📸 Story" : p.kind === "reel" ? "🎬 Reel" : "🖼 Post") + "</b> " +
+            '<span class="meta">· ' + fmtAt(p.at) + (p.by ? " · " + esc(p.by) : "") + "</span>" +
+            '<div class="meta" style="margin-top:2px">Instagram ✓' + (p.fb ? " · Facebook ✓" : ' · <span style="opacity:.7">Facebook ✗</span>') + "</div>" +
+            '<div class="meta" style="margin-top:4px">' + esc(String(p.caption || "").slice(0, 120)) + "</div>" +
+            (p.link ? '<div class="acts" style="margin-top:6px"><a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(p.link) + '">Instagram lo chudu ↗</a></div>' : "") +
+            "</div></div></div>";
+        }).join("");
+
+        host.innerHTML =
+          '<div class="box"><h2>Pampalsinavi <span class="te" style="font-size:.85rem;color:var(--g3)">· క్యూ</span></h2>' +
+          (queue || '<p class="meta">Queue khali.</p>') + "</div>" +
+          '<div class="box"><h2>Pettinavi <span class="te" style="font-size:.85rem;color:var(--g3)">· వెళ్ళినవి</span></h2>' +
+          (posted || '<p class="meta">Inka ikkada nunchi emi pettaledu. Mundu pettinavi Instagram lo unnayi — ikapai anni ikkada kanipistayi.</p>') + "</div>";
+      }).catch(function (e) { host.innerHTML = '<div class="box"><p class="meta">' + esc(e.message) + "</p></div>"; });
+    }
+
+    // Photo, caption, and one decision: now or later.
+    function newPostSheet() {
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      var d = new Date(Date.now() + 330 * 60000).toISOString().slice(0, 10);
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
+        "<h2>Kotha post</h2>" +
+        '<p class="meta" style="margin-bottom:10px">Instagram <b>@dermaluxe.ai</b> ki veltundi, Facebook page ki kuda.</p>' +
+        '<div id="npPic" class="meta" style="margin-bottom:8px">Photo inka teesukoledu.</div>' +
+        '<div style="display:flex;gap:8px;margin-bottom:10px">' +
+          (NATIVE ? '<button class="btn btn--sm" id="npCam" style="flex:1">📷 Camera</button>' : "") +
+          '<button class="btn btn--sm" id="npPick" style="flex:1">🖼 Gallery nunchi</button></div>' +
+        '<input type="file" id="npFile" accept="image/jpeg,image/png" class="hide" />' +
+        '<textarea id="npCap" class="inp" rows="4" placeholder="Caption — em raayalo raayandi" style="width:100%;margin-bottom:8px"></textarea>' +
+        '<label class="switch" style="margin-bottom:10px"><input type="checkbox" id="npLater" /> Ippudu kaadu, taruvata pettandi</label>' +
+        '<div id="npWhen" class="hide" style="display:flex;gap:8px;margin-bottom:10px">' +
+          '<input id="npDay" class="inp" type="date" value="' + d + '" style="flex:1.2" />' +
+          '<input id="npTime" class="inp" placeholder="6:00 pm" style="flex:1" /></div>' +
+        '<div class="err" id="npErr"></div>' +
+        '<button class="btn btn--gold btn--sm" id="npGo" style="width:100%">Pettandi</button>' +
+        '<button class="btn btn--sm" id="npX" style="margin-top:8px;width:100%">Close</button></div>';
+      document.body.appendChild(wrap);
+      var close = function () { wrap.remove(); paintBack(); };
+      wrap.querySelector(".sheet-bg").onclick = close;
+      wrap.querySelector("#npX").onclick = close;
+
+      var later = wrap.querySelector("#npLater");
+      later.onchange = function () { wrap.querySelector("#npWhen").classList.toggle("hide", !later.checked); };
+
+      var dataUrl = "";
+      var show = function (u) {
+        dataUrl = u;
+        wrap.querySelector("#npPic").innerHTML = '<img src="' + u + '" alt="" style="width:100%;max-height:34vh;object-fit:contain;border-radius:12px;background:var(--ink2)" />';
+      };
+      // Instagram refuses anything too large, and a phone photo is far bigger
+      // than it needs to be — shrink before it ever leaves the device.
+      var shrink = function (u) {
+        return new Promise(function (resolve) {
+          var img = new Image();
+          img.onload = function () {
+            var max = 1440, w = img.width, h = img.height;
+            if (Math.max(w, h) > max) { var k = max / Math.max(w, h); w = Math.round(w * k); h = Math.round(h * k); }
+            var c = document.createElement("canvas"); c.width = w; c.height = h;
+            c.getContext("2d").drawImage(img, 0, 0, w, h);
+            resolve(c.toDataURL("image/jpeg", 0.82));
+          };
+          img.onerror = function () { resolve(u); };
+          img.src = u;
+        });
+      };
+      var file = wrap.querySelector("#npFile");
+      wrap.querySelector("#npPick").onclick = function () { file.click(); };
+      file.onchange = function () {
+        var f = file.files && file.files[0]; if (!f) return;
+        var fr = new FileReader();
+        fr.onload = function () { shrink(fr.result).then(show); };
+        fr.readAsDataURL(f);
+      };
+      var cam = wrap.querySelector("#npCam");
+      if (cam) cam.onclick = function () {
+        var C = plug("Camera");
+        if (!C) { toast("Camera app lo matrame"); return; }
+        C.getPhoto({ quality: 82, width: 1440, resultType: "dataUrl", source: "CAMERA", correctOrientation: true })
+          .then(function (img) { if (img && img.dataUrl) return shrink(img.dataUrl).then(show); })
+          .catch(function () {});
+      };
+
+      wrap.querySelector("#npGo").onclick = function () {
+        var err = wrap.querySelector("#npErr"); err.textContent = "";
+        var cap = (wrap.querySelector("#npCap").value || "").trim();
+        if (!dataUrl) { err.textContent = "Mundu photo teeskondi"; return; }
+        if (!cap) { err.textContent = "Caption raayandi"; return; }
+        var due = 0;
+        if (later.checked) {
+          var day = wrap.querySelector("#npDay").value || d, tm = (wrap.querySelector("#npTime").value || "").trim();
+          var m2 = tm.toLowerCase().match(/^(\d{1,2})[:.]?(\d{2})?\s*(am|pm)?$/);
+          if (!m2) { err.textContent = "Time sarigga raayandi — 6:00 pm laaga"; return; }
+          var hh = Number(m2[1]), mm = Number(m2[2] || 0), ap = m2[3];
+          if (ap === "pm" && hh < 12) hh += 12;
+          if (ap === "am" && hh === 12) hh = 0;
+          if (hh > 23 || mm > 59) { err.textContent = "Time sarigga ledu"; return; }
+          due = new Date(day + "T" + String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + ":00+05:30").getTime();
+        }
+        // It goes to a public account the whole town can see. Say so once.
+        if (!confirm(due ? "Ee post " + fmtAt(due) + " ki Instagram inka Facebook lo veltundi. Sare na?"
+                         : "Ippude Instagram inka Facebook lo veltundi. Sare na?")) return;
+        var btn = wrap.querySelector("#npGo"); btn.disabled = true;
+        btn.textContent = due ? "Queue lo pedutunna…" : "Pedutunna… (oka nimisham)";
+        postapi("create", { image: dataUrl, caption: cap, due: due })
+          .then(function (j) {
+            close();
+            toast(j.scheduled ? "Queue lo pettam — " + fmtAt(j.due) : (j.fb ? "Instagram + Facebook lo vellindi" : "Instagram lo vellindi"));
+            loadPosts();
+          })
+          .catch(function (x) { err.textContent = x.message; btn.disabled = false; btn.textContent = "Pettandi"; });
+      };
+      paintBack();
     }
     function renderReviews() {
       var d = state.data;
@@ -3166,6 +3314,14 @@
           .then(function (j) { ptOpen = j.patient; renderPatient(); toast(j.warn || (j.via === "template" ? "Template tho pampam" : "Pampam")); })
           .catch(function (x) { toast(x.message); })
           .finally(function () { el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "post-cancel") {
+        if (!confirm("Ee post ni queue nunchi teeseyyala?")) return;
+        el.disabled = true;
+        postapi("cancel", { imgId: el.dataset.img })
+          .then(function () { toast("Teesesam"); loadPosts(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
         return;
       }
       if (el.dataset.act === "ref-send") {

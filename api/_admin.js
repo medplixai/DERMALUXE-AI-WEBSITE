@@ -407,7 +407,23 @@ async function publishNow(cfg, item, legacyCaption) {
   try { const perm = await igGet(`/${pd.id}?fields=permalink`, tok); link = perm.permalink || ""; } catch (e) {}
   let fb = false;
   if (!item.story) { try { fb = await fbCrossPost(cfg, item); } catch (e) {} }
-  return { ok: true, link, fb };
+
+  // Write down what went out. Nothing has ever recorded this: a post was
+  // published and then existed only on Instagram, so the clinic could not
+  // look back at what it had posted, let alone what any of it did. Every
+  // path publishes through here — WhatsApp, the cron, the dashboard — so
+  // this is the one place that sees them all.
+  try {
+    await guard.kvCommand(cfg, ["LPUSH", "post:log", JSON.stringify({
+      id: pd.id, imgId: item.imgId || "", vidId: item.vidId || "",
+      caption: String(item.caption || "").slice(0, 400),
+      kind: item.story ? "story" : item.vidId ? "reel" : "post",
+      link, fb, at: Date.now(), by: item.by || "",
+    })]);
+    await guard.kvCommand(cfg, ["LTRIM", "post:log", "0", "199"]);
+  } catch (e) { console.error("adm: post log", e && e.message); }
+
+  return { ok: true, link, fb, id: pd.id };
 }
 
 async function publishPending(cfg, digits) {
