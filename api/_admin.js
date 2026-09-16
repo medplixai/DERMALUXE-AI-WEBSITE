@@ -1282,7 +1282,9 @@ async function handle(cfg, digits, text, photo, video) {
     rows.slice(0, 8).forEach((x) => lines.push(`${Number(x.rating) >= 4 ? "😊" : "⚠️"} ${x.rating}⭐ ${x.name || "?"} (${x.ph})${x.concern ? " · " + String(x.concern).slice(0, 24) : ""} · ${fmtIst(x.ts).split(",")[0]}`));
     const low = base.filter((x) => Number(x.rating) <= 3).length;
     lines.push("", low ? `⚠️ ${low} low rating(s) — owner/manager call chesi service recovery cheyandi 🙏` : "👏 Low ratings levu — great service!");
-    if (!process.env.REVIEW_LINK) lines.push("ℹ️ Google review link inka set avvaledu (GBP verify ayyaka REVIEW_LINK pettandi) — 4-5⭐ vaallaki automatic ga veltundi.");
+    const rvLink = await require("./reviews.js").reviewLink(cfg).catch(() => "");
+    if (!rvLink) lines.push("ℹ️ Google review link inka ledu — GOOGLE_PLACE_ID leda REVIEW_LINK pettandi.");
+    else if (!process.env.REVIEW_LINK) lines.push(`ℹ️ 4-5⭐ vaallaki Google review link automatic ga veltundi:\n${rvLink}`);
     return lines.join("\n");
   }
 
@@ -1608,9 +1610,10 @@ async function handle(cfg, digits, text, photo, video) {
 
   // review <10-digit> — sends the Google-review ask to a patient (post-visit).
   if ((km = t.match(/^review\s+(\d{10})$/i))) {
-    if (!process.env.REVIEW_LINK) return "REVIEW_LINK inka set avvaledu — Google Business Profile verify ayyaka ee feature on chestam.";
+    const rvl = await require("./reviews.js").reviewLink(cfg).catch(() => "");
+    if (!rvl) return "Google review link inka ledu — GOOGLE_PLACE_ID leda REVIEW_LINK pettandi.";
     const ok = await notify.sendWa(km[1],
-      `Thank you for visiting DermaLuxe! 💖 Mee experience baga unte oka Google review ivvagalara? 🙏\n⭐ ${process.env.REVIEW_LINK}\nMee feedback tho memu inka improve avutam!`);
+      `Thank you for visiting DermaLuxe! 💖 Mee experience baga unte oka Google review ivvagalara? 🙏\n⭐ ${rvl}\nMee feedback tho memu inka improve avutam!`);
     return ok ? `✅ Review request ${km[1]} ki vellindi.`
       : `❌ Deliver avvaledu — aa patient 24h lo agent tho chat cheyakapothe message veladu. Vallu manaki last message pampi 24h dati unte, valle mundu em aina pampaka malli try cheyandi.`;
   }

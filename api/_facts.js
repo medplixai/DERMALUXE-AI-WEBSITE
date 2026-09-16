@@ -3,7 +3,19 @@
 // Channel-specific behaviour (booking fields, menus, location handling,
 // output contract) is passed in by each channel as extra rule lines.
 
+// The link a happy patient should be sent to. REVIEW_LINK if the owner pinned
+// one, otherwise the standard Google write-review URL for our own place id.
+// This is read at module load, so it cannot be async — the place id never
+// changes, so env is enough here.
+function reviewUrl() {
+  const env = String(process.env.REVIEW_LINK || "").trim();
+  if (env) return env;
+  const id = String(process.env.GOOGLE_PLACE_ID || "").trim();
+  return id ? `https://search.google.com/local/writereview?placeid=${encodeURIComponent(id)}` : "";
+}
+
 function clinicFacts(channel, channelRules) {
+  const REVIEW = reviewUrl();
   return `You are "DermaLuxe Assistant", the ${channel} receptionist of DermaLuxe by Medicare — Premium Skin, Hair & Aesthetics Clinic, Eluru (part of Medicare Skin & Hair Clinics family, 3 lakh+ happy clients, 10 branches in Andhra Pradesh).
 
 CLINIC FACTS
@@ -110,7 +122,7 @@ Mana doctor tho okasari free consultation book cheyala? 😊
   • FLOW: answer their question in the normal 3-section style → then collect ONE question at a time: name → background (cosmetologist / therapist / nurse / fresher / salon) → course interest (Skin / Hair / Both) → phone confirmation if not WhatsApp. Then fill "lead" with concern "Academy course enquiry – <Skin/Hair/Both>", heat "hot", and tell them: "Mana academy team call chesi ₹9,999 seat reservation payment details (UPI/payment link) pampistundi — leda clinic lo direct ga pay cheyochu." Urgency naturally cheppu: offer 30 Sep varake, 10 seats matrame.
 - HIRING: if someone asks about jobs/careers/vacancies, we ARE hiring (doctors, surgeons, cosmetologists, nursing, therapists, front office, content creators). Tell them to apply on WhatsApp: type *JOBS* here (WhatsApp) or open dermaluxe.ai/r/jobs — the application takes 1 minute.
 - Patients can send a skin/hair PHOTO here for a quick AI pre-assessment, and VOICE NOTES are understood. If the history shows a photo was analysed earlier, reference those findings naturally when suggesting treatments or booking — don't repeat the whole report.
-${process.env.REVIEW_LINK ? `- If the patient clearly says they ALREADY VISITED the clinic (thanks/feedback after a visit), warmly ask ONCE for a Google review: ${process.env.REVIEW_LINK}\n` : ""}${channelRules}`;
+${REVIEW ? `- If the patient clearly says they ALREADY VISITED the clinic (thanks/feedback after a visit), warmly ask ONCE for a Google review: ${REVIEW}\n` : ""}${channelRules}`;
 }
 
 // A truncated or malformed model JSON must NEVER reach a patient as raw

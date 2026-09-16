@@ -9,6 +9,12 @@
 const guard = require("./_guard.js");
 
 const CACHE_KEY = "gplace:reviews:v1";
+// The "write a review" URL, kept where the rest of the clinic can reach it.
+// Asking a happy patient for a review is the single biggest thing a local
+// clinic can do, and the whole of that machinery has been dark because one
+// environment variable was never set — while a perfectly good link was being
+// computed here on every request and thrown away.
+const WRITE_KEY = "gplace:writeurl";
 const PLACE_KEY = "gplace:id";
 const CACHE_SEC = 6 * 3600;
 const LOOKUP_QUERY = "DermaLuxe by Medicare Skin and Hair Clinic, Kasturi Vari Street, Eluru";
@@ -97,7 +103,12 @@ module.exports = async (req, res) => {
       if (cfg) { try { await guard.kvCommand(cfg, ["SET", PLACE_KEY, placeId]); } catch (e) {} }
     }
     const out = shape(await fetchPlace(key, placeId), placeId);
-    if (cfg) { try { await guard.kvCommand(cfg, ["SET", CACHE_KEY, JSON.stringify(out), "EX", String(CACHE_SEC)]); } catch (e) {} }
+    if (cfg) {
+      try { await guard.kvCommand(cfg, ["SET", CACHE_KEY, JSON.stringify(out), "EX", String(CACHE_SEC)]); } catch (e) {}
+      // No expiry: a place id does not change, and the review ask must not go
+      // quiet just because this cache happened to lapse.
+      try { if (out.writeUrl) await guard.kvCommand(cfg, ["SET", WRITE_KEY, out.writeUrl]); } catch (e) {}
+    }
     return res.status(200).json(out);
   } catch (e) {
     console.error("reviews:", e.message);
@@ -106,3 +117,21 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: false, configured: true, error: e.message.slice(0, 160), writeUrl: MAPS_CID_URL, mapsUrl: MAPS_CID_URL, reviews: [] });
   }
 };
+
+// What to send a happy patient. REVIEW_LINK still wins, so the owner can point
+// it anywhere; otherwise the link Google itself gave us for this place, and
+// only then the map listing.
+async function reviewLink(cfg) {
+  const env = String(process.env.REVIEW_LINK || "").trim();
+  if (env) return env;
+  if (cfg) {
+    try {
+      const r = await guard.kvCommand(cfg, ["GET", WRITE_KEY]);
+      if (r && r.result) return String(r.result);
+    } catch (e) {}
+  }
+  const id = String(process.env.GOOGLE_PLACE_ID || "").trim();
+  return id ? `https://search.google.com/local/writereview?placeid=${encodeURIComponent(id)}` : "";
+}
+module.exports.reviewLink = reviewLink;
+module.exports.WRITE_KEY = WRITE_KEY;

@@ -423,7 +423,10 @@ async function recordRating(cfg, phone, rating, askRaw, profileName) {
   await guard.kvCommand(cfg, ["LPUSH", "rv:log", JSON.stringify({ ph: phone, name, rating, concern: ask.concern || "", ts: Date.now() })]).catch(() => {});
   await guard.kvCommand(cfg, ["LTRIM", "rv:log", "0", "499"]).catch(() => {});
   if (rating >= 4) {
-    const link = process.env.REVIEW_LINK;
+    // Google's own write-review link for this place when the owner has not
+    // pinned one — a four or five star patient is the only moment this ask
+    // ever works, and it was being skipped.
+    const link = await require("./reviews.js").reviewLink(cfg).catch(() => "");
     return `${rating === 5 ? "🌟" : "😊"} Thank you ${name}! Mee ${rating}⭐ maaku chala important 💖\n\n` +
       (link
         ? `Google lo oka chinna review raasthe inka chala mandiki help avutundi 🙏\n⭐ ${link}\n\n`
