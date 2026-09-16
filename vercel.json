@@ -86,6 +86,9 @@
     "api/post.js": {
       "maxDuration": 60
     },
+    "api/ads.js": {
+      "maxDuration": 30
+    },
     "api/cron-backup.js": {
       "maxDuration": 300
     },

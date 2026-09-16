@@ -386,6 +386,7 @@
           <button data-days="90">90 rojulu</button>
         </div>
         <div id="insBody"><div class="sk"><div></div><div></div><div></div></div></div>
+        <div id="adsBoard" style="margin-top:14px"></div>
         <div id="refBoard" style="margin-top:14px"></div>
       </section>
       <section id="t-academy" class="hide">
@@ -1353,6 +1354,88 @@
       }).catch(function () { host.innerHTML = ""; });
     }
 
+    function adsapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/ads?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+    function money0(n) { return "₹" + Number(n || 0).toLocaleString("en-IN"); }
+
+    // The one screen where a tap spends money. It leads with what the money
+    // bought — patients — not with reach.
+    function loadAds() {
+      var host = $("adsBoard"); if (!host) return;
+      adsapi("overview", null, "&days=" + insDays).then(function (j) {
+        if (!j.connected) {
+          host.innerHTML = '<div class="box"><h2>Meta Ads <span class="te" style="font-size:.9rem;color:var(--g3)">· ప్రకటనలు</span></h2>' +
+            '<p class="meta"><b style="color:var(--bad);font-weight:500">Inka connect cheyyaledu.</b> Vercel lo ivi pettandi: <b>' +
+            esc((j.needs || []).join(", ")) + "</b></p>" +
+            (j.tried && j.tried.length
+              ? '<p class="meta" style="margin-top:6px;opacity:.8">Try chesinavi: ' + j.tried.map(function (t) { return esc(t.name) + " — " + esc(t.why); }).join(" · ") + "</p>"
+              : "") +
+            oursBlock(j) + "</div>";
+          return;
+        }
+        var A = j.account || {}, T = j.today || {}, J = j.joined || {};
+        var cards = [
+          ["Ee roju kharchu", money0(T.spend), (T.impressions || 0).toLocaleString("en-IN") + " sarlu chupinchindi"],
+          [insDays + " rojula kharchu", money0(A.spend), (A.reach || 0).toLocaleString("en-IN") + " mandiki"],
+          ["Okko సంభాషణ ki", money0(A.costEach), "lakshyam " + money0(j.target)],
+          ["Nadustunna campaigns", String((j.campaigns || []).filter(function (c) { return c.running; }).length), (j.campaigns || []).length + " mottam"],
+        ].map(function (c) {
+          return '<div class="cell"><dt>' + esc(c[0]) + "</dt><dd>" + esc(c[1]) + "</dd>" +
+            '<div class="meta" style="margin-top:2px">' + esc(c[2]) + "</div></div>";
+        }).join("");
+
+        var camps = (j.campaigns || []).map(function (c) {
+          var col = c.verdict.tone === "good" ? "var(--ok)" : c.verdict.tone === "bad" ? "var(--bad)" : c.verdict.tone === "warn" ? "var(--hot)" : "var(--muted)";
+          return '<div class="vrow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start">' +
+            "<b>" + esc(c.name) + "</b>" +
+            '<span class="badge ' + (c.running ? "" : "quiet") + '">' + esc(c.running ? "ON" : c.status) + "</span></div>" +
+            '<div class="meta" style="color:' + col + ';margin-top:4px">' + esc(c.verdict.text) + "</div>" +
+            '<div class="meta" style="margin-top:4px">' + money0(c.spend) + " · " + (c.reach || 0).toLocaleString("en-IN") + " mandiki · " +
+              c.results + " సంభాషణలు" + (c.daily ? " · roju " + money0(c.daily) : "") + "</div>" +
+            (j.canChange
+              ? '<div class="acts" style="margin-top:6px">' +
+                '<button class="btn btn--sm" data-act="ads-budget" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '" data-d="' + c.daily + '">Budget marchu</button>' +
+                (c.running
+                  ? '<button class="btn btn--sm" data-act="ads-pause" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '" style="color:var(--bad)">Aapu</button>'
+                  : '<button class="btn btn--sm" data-act="ads-resume" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">Malli modalu</button>') + "</div>"
+              : "") +
+            "</div>";
+        }).join("");
+
+        host.innerHTML = '<div class="box"><h2>Meta Ads <span class="te" style="font-size:.9rem;color:var(--g3)">· ప్రకటనలు</span></h2>' +
+          '<p class="meta">Account ' + esc(A.name || j.accountId) + (A.capLeft !== null && A.capLeft !== undefined ? " · limit lo migilindi " + money0(A.capLeft) : "") + "</p>" +
+          (j.error ? '<p class="meta" style="color:var(--hot)">Meta nunchi: ' + esc(j.error) + "</p>" : "") +
+          '<div class="grid" style="margin-top:10px">' + cards + "</div>" +
+          oursBlock(j) +
+          (camps ? '<h3 style="margin-top:14px;font-size:1rem">Campaigns</h3>' + camps : '<p class="meta" style="margin-top:10px">Campaigns emi ledu.</p>') +
+          "</div>";
+      }).catch(function () { host.innerHTML = ""; });
+    }
+
+    // The join, spelled out — Meta counts conversations it started, we count
+    // people who became patients. Saying which is which is the whole point.
+    function oursBlock(j) {
+      var o = j.ours || {}, J = j.joined || null;
+      return '<div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--line)">' +
+        '<div class="meta" style="margin-bottom:6px">Ee ' + j.days + ' rojullo Instagram/Facebook nunchi <b style="color:var(--text);font-weight:500">' +
+        (o.leads || 0) + " leads</b> → <b style=\"color:var(--text);font-weight:500\">" + (o.booked || 0) + " book</b> → <b style=\"color:var(--text);font-weight:500\">" +
+        (o.came || 0) + " vachcharu</b></div>" +
+        (J
+          ? '<div class="meta">Okko lead ki ' + money0(J.costPerLead) + " · okko booking ki " + money0(J.costPerBooked) +
+            (J.costPerCame ? " · <b style=\"color:var(--text);font-weight:500\">okko patient ki " + money0(J.costPerCame) + "</b>" : "") + "</div>" +
+            '<div class="meta" style="margin-top:4px">Ads meeda ' + money0(J.spend) + " petti, vaallu " +
+            '<b style="color:' + (J.back >= 100 ? "var(--ok)" : "var(--hot)") + ';font-weight:500">' + money0(J.revenue) + "</b> ichcharu" +
+            (J.spend ? " (" + J.back + "%)" : "") + "</div>"
+          : "") +
+        '<p class="meta" style="margin-top:6px;opacity:.75">Meta lekka inka mana lekka veru veru — Meta taanu modalu petta సంభాషణలు lekkistundi, manam patient ayyina vaallani.</p>' +
+        "</div>";
+    }
+
     function loadInsights() {
       $("insBody").innerHTML = '<div class="sk"><div></div><div></div><div></div></div>';
       var opt = { headers: { Authorization: "Bearer " + tok } };
@@ -1362,7 +1445,8 @@
         .catch(function (e) { $("insBody").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; })
         // Its own request, not chained behind the numbers: one of them failing
         // must not quietly take the other off the screen.
-        .then(loadRefBoard);
+        .then(loadRefBoard)
+        .then(loadAds);
     }
     function bar(pct, colour) {
       return '<div style="height:6px;border-radius:100px;background:var(--ink2);overflow:hidden;margin-top:5px">' +
@@ -3314,6 +3398,29 @@
           .then(function (j) { ptOpen = j.patient; renderPatient(); toast(j.warn || (j.via === "template" ? "Template tho pampam" : "Pampam")); })
           .catch(function (x) { toast(x.message); })
           .finally(function () { el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ads-budget") {
+        var cur = el.dataset.d && el.dataset.d !== "0" ? el.dataset.d : "";
+        var v = prompt(el.dataset.n + "\n\nRoju budget entha? (rupayalu)", cur);
+        if (!v) return;
+        var n2 = Math.round(Number(String(v).replace(/[^0-9]/g, "")) || 0);
+        if (!n2) { toast("Number ivvandi"); return; }
+        // Real money, on a live account. Say the number back before it goes.
+        if (!confirm(el.dataset.n + "\n\nRoju ₹" + n2.toLocaleString("en-IN") + " kharchu avutundi.\nSare na?")) return;
+        el.disabled = true;
+        adsapi("budget", { id: el.dataset.id, daily: n2 })
+          .then(function () { toast("Budget marchamu"); loadAds(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ads-pause" || el.dataset.act === "ads-resume") {
+        var pausing = el.dataset.act === "ads-pause";
+        if (!confirm(el.dataset.n + "\n\n" + (pausing ? "Ee campaign ni aapala?" : "Malli modalu pettala? Dabbu kharchu avvadam modalavutundi."))) return;
+        el.disabled = true;
+        adsapi(pausing ? "pause" : "resume", { id: el.dataset.id })
+          .then(function () { toast(pausing ? "Aapesam" : "Malli modalu pettam"); loadAds(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
         return;
       }
       if (el.dataset.act === "post-cancel") {

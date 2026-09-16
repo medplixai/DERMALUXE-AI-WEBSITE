@@ -161,6 +161,21 @@ http.createServer((req, res) => {
       treatments: [{ name: "Laser — full face", count: 31, value: 118000 }, { name: "PRP hair therapy", count: 22, value: 84000 }],
       patients: { total: 148, repeats: 52, repeatRate: 35 } });
   }
+  if (u.pathname === "/api/ads") {  // ads-mock
+    const a = u.searchParams.get("a") || "overview";
+    if (a === "overview") return send(200, { ok: true, connected: true, days: 30, target: 300, canChange: true,
+      tokenName: "META_ADS_TOKEN", accountId: "2110247062961086",
+      account: { name: "DermaLuxe", currency: "INR", active: true, spend: 120860, impressions: 2000000, reach: 500000, results: 1863, costEach: 65, capLeft: 9140 },
+      today: { spend: 2962, impressions: 102786 },
+      ours: { leads: 96, booked: 41, came: 12, revenue: 386000, people: 96 },
+      joined: { spend: 120860, costPerLead: 1259, costPerBooked: 2948, costPerCame: 10072, revenue: 386000, back: 319 },
+      campaigns: [
+        { id: "111", name: "Laser — Eluru radius", objective: "MESSAGES", status: "ACTIVE", running: true, daily: 2000, spend: 18919, impressions: 246595, reach: 246595, results: 960, costEach: 20, verdict: { tone: "good", text: "Chala baagundi — okko సంభాషణ ₹20. Budget penchavachu" } },
+        { id: "222", name: "Hair transplant — awareness", objective: "MESSAGES", status: "ACTIVE", running: true, daily: 800, spend: 7595, impressions: 99970, reach: 99970, results: 176, costEach: 43, verdict: { tone: "good", text: "Baagundi — okko సంభాషణ ₹43" } },
+        { id: "333", name: "Bridal package", objective: "ENGAGEMENT", status: "ACTIVE", running: true, daily: 500, spend: 7390, impressions: 150079, reach: 150079, results: 10, costEach: 739, verdict: { tone: "bad", text: "Chala kharidu — okko సంభాషణ ₹739. Aapeyyadam manchidi" } },
+      ] });
+    let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => send(200, { ok: true }));
+  }
   if (u.pathname === "/api/post") {  // post-mock
     const a = u.searchParams.get("a") || "list";
     if (a === "list") return send(200, { ok: true, canPost: true, account: "@dermaluxe.ai", crossPosts: true,
