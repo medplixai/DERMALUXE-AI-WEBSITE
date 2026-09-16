@@ -118,6 +118,10 @@
       "schedule": "0 2 * * *"
     },
     {
+      "path": "/api/cron-review",
+      "schedule": "0 6 * * *"
+    },
+    {
       "path": "/api/cron-backup",
       "schedule": "20 20 * * *"
     }

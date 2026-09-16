@@ -28,6 +28,72 @@ const json = (res, code, body) => {
 };
 const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
+const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
+
+// ---- which post actually brought somebody in -------------------------------
+// The Ads block can join money to patients because Meta hands back what it
+// charged. An organic post hands back nothing at all, so the only join left
+// is time: somebody who messages from Instagram an hour after a reel went up
+// almost certainly saw the reel.
+//
+// That is a fair reading, not proof, and the screen says so rather than
+// dressing a guess up as a measurement. A lead goes to the newest post that
+// went out before it, and only within three days — after that it is the
+// clinic's name doing the work, not that post.
+const CREDIT_MS = 72 * 3600000;
+const SOCIAL = ["instagram", "facebook", "messenger", "ig", "fb"];
+const srcOf = (l) => String(l.src || l.type || "").toLowerCase();
+const fromSocial = (l) => SOCIAL.some((x) => srcOf(l).includes(x));
+
+async function creditPosts(cfg, posted) {
+  const live = posted.filter((p) => Number(p.at) > 0);
+  if (!live.length) return;
+  live.forEach((p) => { p.leads = 0; p.came = 0; p.revenue = 0; });
+
+  const since = Math.min(...live.map((p) => Number(p.at)));
+  const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "1999"]).catch(() => ({}));
+  const leads = ((r && r.result) || []).map((x) => parse(x, null)).filter(Boolean)
+    .filter((l) => fromSocial(l) && Number(l.ts) >= since);
+  if (!leads.length) return;
+
+  const st = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result) || {};
+  const keyOf = (l) => `${l.ts}|${digits10(l.phone) || l.src_id || ""}`;
+
+  // Newest first, so the first post older than the lead is the right one.
+  const byTime = live.slice().sort((a, b) => Number(b.at) - Number(a.at));
+  const owner = new Map();   // phone -> the post it was credited to
+  for (const l of leads) {
+    const t = Number(l.ts);
+    const p = byTime.find((x) => Number(x.at) <= t && t - Number(x.at) <= CREDIT_MS);
+    if (!p) continue;
+    p.leads++;
+    if ((st[keyOf(l)] || "") === "visited") p.came++;
+    const ph = digits10(l.phone);
+    // Somebody who wrote in twice is one person; the first post they saw keeps
+    // them, so money is never counted against two posts at once.
+    if (ph && !owner.has(ph)) owner.set(ph, p);
+  }
+  if (!owner.size) return;
+
+  // What those people paid, from the bills already in the system.
+  const phones = [...owner.keys()];
+  const idLists = await guard.kvPipeline(cfg, phones.map((ph) => ["LRANGE", `bill:of:${ph}`, "0", "19"])).catch(() => []);
+  const want = [];
+  phones.forEach((ph, i) => {
+    for (const id of (Array.isArray(idLists[i]) ? idLists[i] : [])) want.push({ ph, id });
+  });
+  if (!want.length) return;
+  const bills = await guard.kvPipeline(cfg, want.map((w) => ["GET", `bill:${w.id}`])).catch(() => []);
+  want.forEach((w, i) => {
+    const bill = parse(bills[i], null);
+    if (!bill) return;
+    const p = owner.get(w.ph);
+    if (!p) return;
+    for (const pay of (bill.payments || [])) {
+      if (Number(pay.ts) >= Number(p.at)) p.revenue += Math.max(0, Math.round(Number(pay.amount) || 0));
+    }
+  });
+}
 
 // An image large enough to look good and small enough to survive the KV
 // request limit. The WhatsApp path leans on WhatsApp's own compression; a
@@ -68,6 +134,9 @@ module.exports = async (req, res) => {
       .sort((x, y) => x.due - y.due);
 
     const posted = (Array.isArray(lRaw) ? lRaw : []).map((x) => parse(x, null)).filter(Boolean);
+    // Never let the attribution take the tab down with it: the list of what
+    // went out is the point of this screen, the credit beside it is extra.
+    await creditPosts(cfg, posted).catch((e) => console.error("post: credit", e && e.message));
 
     return json(res, 200, {
       ok: true, queue, posted,
@@ -76,6 +145,7 @@ module.exports = async (req, res) => {
       // these go to is the clinic's, not the person's who pressed the button.
       account: "@dermaluxe.ai",
       crossPosts: process.env.FB_CROSSPOST !== "0",
+      creditHours: CREDIT_MS / 3600000,
     });
   }
 

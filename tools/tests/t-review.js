@@ -1,5 +1,8 @@
-// Asking a happy patient for a Google review. The clinic has zero reviews and
-// this whole machine was switched off by one unset environment variable.
+// Where the "leave us a review" link comes from. The clinic has 5.0 from 19
+// reviews — an earlier note here said zero, which was a stale cache being
+// read as the truth. Small counts are exactly why the link has to resolve:
+// at 19, one more review still moves the number people see.
+// The sending side lives in cron-review.js / t-revask.js.
 delete process.env.REVIEW_LINK;
 process.env.GOOGLE_PLACE_ID = "ChIJ-cpL25oVNjoR2mAIo7G_RF0";
 const path = require("path");

@@ -89,5 +89,53 @@ const PIC = "data:image/jpeg;base64," + Buffer.from("x".repeat(600)).toString("b
   is((await P({ a: "list" })).code, 403, "somebody with no posts permission sees none of it");
   h.as(["*"]);
 
+  // ---- which post brought somebody in -------------------------------------
+  // Until now a post went out and the clinic never found out whether anybody
+  // came of it. The join is by time, so the rules around the edges are the
+  // whole thing: the right post, only social leads, and money counted once.
+  console.log("\n  — what each post actually did —");
+  h.run(["DEL", "post:log"]); h.run(["DEL", "dl_leads"]); h.run(["DEL", "dl_status"]);
+  const H = 3600000, now2 = Date.now();
+  const older = now2 - 10 * 24 * H,  newer = now2 - 2 * 24 * H;
+  h.run(["RPUSH", "post:log", JSON.stringify({ id: "p_new", caption: "Laser reel", kind: "reel", at: newer })]);
+  h.run(["RPUSH", "post:log", JSON.stringify({ id: "p_old", caption: "Acne post", kind: "post", at: older })]);
+
+  const lead = (ts, phone, src) => h.run(["RPUSH", "dl_leads", JSON.stringify({ ts, phone, name: "L" + phone.slice(-2), src })]);
+  lead(newer + 2 * H, "9000000011", "instagram");       // 2h after the reel
+  lead(newer + 30 * H, "9000000012", "facebook");       // next day, still the reel
+  lead(older + 1 * H, "9000000013", "instagram");       // the older post
+  lead(older + 96 * H, "9000000014", "instagram");      // four days later — neither
+  lead(newer + 3 * H, "9000000015", "walk-in");         // not from social at all
+  lead(newer - 5 * H, "9000000016", "instagram");       // before the reel went up
+  h.run(["HSET", "dl_status", (newer + 2 * H) + "|9000000011", "visited"]);
+  h.run(["HSET", "dl_status", (newer + 30 * H) + "|9000000012", "booked"]);
+  h.run(["HSET", "dl_status", (older + 1 * H) + "|9000000013", "visited"]);
+  // the one who came, paid
+  h.run(["RPUSH", "bill:of:9000000011", "BX1"]);
+  h.run(["SET", "bill:BX1", JSON.stringify({ id: "BX1", phone: "9000000011",
+    items: [{ name: "Laser", price: 12000 }], payments: [{ amount: 12000, ts: newer + 26 * H }] })]);
+
+  const credited = await P({ a: "list" });
+  const byId = {}; credited.body.posted.forEach((x) => { byId[x.id] = x; });
+  is(byId.p_new.leads, 2, "the reel gets the two who wrote in after it");
+  is(byId.p_new.came, 1, "one of them actually turned up");
+  is(byId.p_new.revenue, 12000, "and what that one paid");
+  is(byId.p_old.leads, 1, "the older post keeps its own");
+  is(byId.p_old.came, 1, "who also came");
+  is(byId.p_old.revenue, 0, "but paid nothing");
+  is(credited.body.creditHours, 72, "and the screen is told the window it is being shown");
+
+  console.log("\n  — and what it must not count —");
+  is(byId.p_new.leads + byId.p_old.leads, 3,
+    "a walk-in, somebody four days later, and somebody who wrote in BEFORE the post are all left out");
+
+  // Money paid before the post existed is not the post's doing.
+  h.run(["RPUSH", "bill:of:9000000013", "BX2"]);
+  h.run(["SET", "bill:BX2", JSON.stringify({ id: "BX2", phone: "9000000013",
+    items: [{ name: "Peel", price: 4000 }], payments: [{ amount: 4000, ts: older - 5 * H }] })]);
+  const again = await P({ a: "list" });
+  is(again.body.posted.find((x) => x.id === "p_old").revenue, 0,
+    "a payment made before the post went out is not credited to it");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nposting behaves");
 })();

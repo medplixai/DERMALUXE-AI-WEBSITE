@@ -2020,6 +2020,12 @@
             '<span class="meta">· ' + fmtAt(p.at) + (p.by ? " · " + esc(p.by) : "") + "</span>" +
             '<div class="meta" style="margin-top:2px">Instagram ✓' + (p.fb ? " · Facebook ✓" : ' · <span style="opacity:.7">Facebook ✗</span>') + "</div>" +
             '<div class="meta" style="margin-top:4px">' + esc(String(p.caption || "").slice(0, 120)) + "</div>" +
+            // What it did. Nothing here was measurable before: a post went out
+            // and the clinic never found out whether anybody came of it.
+            (p.leads
+              ? '<div class="meta" style="margin-top:4px;color:var(--ok)"><b>' + p.leads + " lead" + (p.leads > 1 ? "s" : "") + "</b> → " +
+                p.came + " vachcharu" + (p.revenue ? " · " + money0(p.revenue) : "") + "</div>"
+              : '<div class="meta" style="margin-top:4px;opacity:.6">Inka evaru raaledu</div>') +
             (p.link ? '<div class="acts" style="margin-top:6px"><a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(p.link) + '">Instagram lo chudu ↗</a></div>' : "") +
             "</div></div></div>";
         }).join("");
@@ -2028,7 +2034,8 @@
           '<div class="box"><h2>Pampalsinavi <span class="te" style="font-size:.85rem;color:var(--g3)">· క్యూ</span></h2>' +
           (queue || '<p class="meta">Queue khali.</p>') + "</div>" +
           '<div class="box"><h2>Pettinavi <span class="te" style="font-size:.85rem;color:var(--g3)">· వెళ్ళినవి</span></h2>' +
-          (posted || '<p class="meta">Inka ikkada nunchi emi pettaledu. Mundu pettinavi Instagram lo unnayi — ikapai anni ikkada kanipistayi.</p>') + "</div>";
+          (posted || '<p class="meta">Inka ikkada nunchi emi pettaledu. Mundu pettinavi Instagram lo unnayi — ikapai anni ikkada kanipistayi.</p>') +
+          (posted ? '<p class="meta" style="margin-top:10px;opacity:.7">Post taruvata ' + (j.creditHours || 72) / 24 + ' rojullo Instagram/Facebook nunchi vachchina vaallani aa post ki kalipi chupistunnam. Idi oka anchana — Instagram evaru e post chusi raasaro cheppadu. Kaani e rakam posts pani chestunnayo ee lekka tho telustundi.</p>' : "") + "</div>";
       }).catch(function (e) { host.innerHTML = '<div class="box"><p class="meta">' + esc(e.message) + "</p></div>"; });
     }
 
