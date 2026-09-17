@@ -93,7 +93,7 @@ async function snapshot(cfg, me) {
     const studs = [];
     for (const id of ids.slice(0, 60)) { const r = await guard.kvCommand(cfg, ["GET", `acad:st:${id}`]).catch(() => ({})); try { if (r.result) studs.push(JSON.parse(r.result)); } catch (e) {} }
     const due = studs.filter((s) => Math.max(0, (s.fee || 0) - (s.paid || 0)) > 0);
-    out.push(`ACADEMY — Batch ${docs.BATCH.no} starts ${docs.BATCH.start}; seats booked ${booked}/10 (${10 - booked} left); launch offer ends 30 Sep 2026.`);
+    out.push(`ACADEMY — Batch ${docs.BATCH.no} starts ${docs.BATCH.start}; seats booked ${booked}/${docs.BATCH.seats} (${docs.BATCH.seats - booked} left); launch offer ends ${docs.BATCH.offerEnd}.`);
     out.push(`  students on record: ${studs.length}; onboarding form pending: ${studs.filter((s) => !s.onboarded).length}; fee balance pending: ${due.length}`);
     studs.slice(0, 12).forEach((s) => out.push(`   • ${s.id} | ${s.name} | ${s.phone} | ${s.course} | paid ₹${(s.paid || 0).toLocaleString("en-IN")} / fee ₹${(s.fee || 0).toLocaleString("en-IN")} | ${s.status}${s.onboarded ? "" : " | FORM PENDING"}`));
     const acadLeads = leads.filter((l) => /^academy/i.test(String(l.concern || ""))).slice(0, 8);
@@ -117,7 +117,7 @@ Mon–Sat 9 AM–9 PM, Sunday closed. Rama Mahal, Kasturi Vari Street, Opposite 
 WhatsApp 99591 34666 (AI agent, 24×7) · Calls +91 99491 34666 · www.dermaluxe.ai
 Doctors: Dr. Nikhitha Priyanka (MD DVL, main consultant), Dr. Meghana Valeti (MD DVL, Gold Medalist, Founder & Medical Director), Dr. Sai Divija (MD DVL).
 Services: lasers (Diode LHR, PICO, CO2, MNRF), peels, Hydrafacial, acne/pigmentation/anti-ageing, hair fall, PRP & GFC, hair transplant (FUE/DHI), medical dermatology, weight loss, bridal packages.
-DermaLuxe Academy: Skin Care / Hair Care / Skin+Hair courses, 1 or 2 months, 10 seats per batch, Batch 1 starts 20 Oct 2026. Launch offer ₹49,999 / ₹49,999 / ₹99,999 till 30 Sep 2026; ₹9,999 reserves a seat. Trainer Dr. Meghana Valeti.
+DermaLuxe Academy: Skin Care / Hair Care / Skin+Hair courses, 1 or 2 months, ${docs.BATCH.seats} seats per batch, Batch ${docs.BATCH.no} starts ${docs.BATCH.start}. Launch offer ₹49,999 / ₹49,999 / ₹99,999 till ${docs.BATCH.offerEnd}; ₹9,999 reserves a seat. Trainer Dr. Meghana Valeti.
 Automation already running: WhatsApp AI agent (bookings, reminders, follow-ups, reviews, referrals), Instagram/Facebook DM agents, daily auto-post to Instagram + Facebook, academy daily study material + fee reminders, staff dashboard.`;
 
 // Separate the proposal block from the answer the colleague reads, and throw

@@ -17,7 +17,19 @@ const COURSES = {
   hair:  { name: "Advanced Hair Care Treatments", te: "అడ్వాన్స్‌డ్ హెయిర్ కేర్ ట్రీట్‌మెంట్స్", fee: 100000, offer: 49999 },
   both:  { name: "Skin + Hair Master Programme",  te: "స్కిన్ + హెయిర్ మాస్టర్ ప్రోగ్రామ్",   fee: 200000, offer: 99999 },
 };
-const BATCH = { no: 1, start: "20 October 2026", startISO: "2026-10-20", seats: 10, venue: "DermaLuxe Skin & Hair Clinics, Eluru" };
+// One batch, written down once. The launch-offer date in particular was
+// repeated in seven files — academy.js, whatsapp.js, office.js, _facts.js and
+// here — so extending the offer meant changing seven places, and missing one
+// meant the WhatsApp agent quoting a patient a different date from the poster
+// they had just seen.
+const BATCH = {
+  no: 1, start: "20 October 2026", startISO: "2026-10-20",
+  seats: 10, venue: "DermaLuxe Skin & Hair Clinics, Eluru",
+  offerEnd: "30 Sep 2026", offerEndLong: "30 September 2026", offerEndISO: "2026-09-30",
+};
+// Last moment of the launch offer, 23:59:59 IST on offerEndISO.
+BATCH.offerEndMs = Date.parse(BATCH.offerEndISO + "T23:59:59+05:30");
+BATCH.startMs = Date.parse(BATCH.startISO + "T00:00:00+05:30");
 
 const esc = (s) => String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const money = (n) => "₹" + Number(n || 0).toLocaleString("en-IN");
@@ -111,7 +123,7 @@ function receiptHtml(s, p = {}) {
     <tr><th>Date</th><td>${esc(dmy(p.ts))}</td></tr>
   </table></div>
   <div class="box" style="margin-top:4mm"><span class="tag">Fee summary · ఫీజు వివరాలు</span><table style="margin-top:1.5mm">
-    <tr><th>Course fee (offer)</th><td>${money(total)} <span style="color:var(--muted2);text-decoration:line-through;margin-left:3mm">${money(c.fee)}</span> <span style="color:var(--g3);font-size:7.5pt">Launch offer till 30 Sep 2026</span></td></tr>
+    <tr><th>Course fee (offer)</th><td>${money(total)} <span style="color:var(--muted2);text-decoration:line-through;margin-left:3mm">${money(c.fee)}</span> <span style="color:var(--g3);font-size:7.5pt">Launch offer till ${BATCH.offerEnd}</span></td></tr>
     <tr><th>Total paid</th><td style="color:var(--g1)">${money(paidTotal)}</td></tr>
     <tr><th>Balance due</th><td style="color:${bal ? "#ffb3a7" : "var(--g1)"}">${money(bal)}${bal ? " — payable on or before " + esc(BATCH.start) + " (course starting day)" : " — fully paid ✓"}</td></tr>
   </table></div>

@@ -560,6 +560,7 @@ async function fetchMedia(mediaId) {
 // Send a picture by public URL (gallery before/after shots live in KV and are
 // served by api/media.js). Failure is silent — the text reply already went.
 const CATALOG_URL = "https://www.dermaluxe.ai/assets/academy/DermaLuxe-Academy-Course-Catalog.pdf";
+const acadDocs = require("./_docs.js");   // batch dates/seats, written down once
 const ACADEMY_ASK = /(academy|acadamy|course|cours|training|trainin|cosmetolog|therapist course|nerchuko|nerpist|nerputar|శిక్షణ|కోర్సు|అకాడమీ)/i;
 async function sendCloudDocument(phoneNumberId, to, url, filename, caption) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -587,9 +588,10 @@ async function academyCtx(cfg, hist, text) {
     const inConvo = ACADEMY_ASK.test(String(text || "")) || (hist || []).slice(-4).some((t) => ACADEMY_ASK.test(String(t.u || "")) || /academy/i.test(String(t.a || "")));
     if (!inConvo || !cfg) return "";
     const b = await guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({}));
-    const booked = Math.max(0, Math.min(10, Number(b.result || 0))), left = 10 - booked;
-    const days = Math.max(0, Math.ceil((Date.UTC(2026, 8, 30, 18, 30) - Date.now()) / 86400000));
-    return `[ACADEMY SEATS STATUS: booked ${booked}/10, seats left ${left}; launch offer ends 30 Sep 2026 (${days} days left); batch starts 20 Oct 2026] `;
+    const seats = acadDocs.BATCH.seats;
+    const booked = Math.max(0, Math.min(seats, Number(b.result || 0))), left = seats - booked;
+    const days = Math.max(0, Math.ceil((acadDocs.BATCH.offerEndMs - Date.now()) / 86400000));
+    return `[ACADEMY SEATS STATUS: booked ${booked}/${seats}, seats left ${left}; launch offer ends ${acadDocs.BATCH.offerEnd} (${days} days left); batch starts ${acadDocs.BATCH.start}] `;
   } catch (e) { return ""; }
 }
 // Material parked by cron-academy while the 24-hour window was shut: the moment
@@ -630,7 +632,7 @@ async function maybeSendCatalog(cfg, cloud, out, text) {
     } catch (e) {}
   }
   const ok = await sendCloudDocument(cloud.phoneNumberId, cloud.to, CATALOG_URL, "DermaLuxe-Academy-Course-Catalog.pdf",
-    "📄 DermaLuxe Academy — Course Catalog\nSkin Care · Hair Care · Skin + Hair · Fees & launch offer (till 30 Sep 2026) · Batch 1: 20 Oct 2026 · Only 10 seats\n\nSeat reserve cheyalante *ACADEMY* ani reply cheyandi 😊");
+    `📄 DermaLuxe Academy — Course Catalog\nSkin Care · Hair Care · Skin + Hair · Fees & launch offer (till ${acadDocs.BATCH.offerEnd}) · Batch ${acadDocs.BATCH.no}: ${acadDocs.BATCH.start} · Only ${acadDocs.BATCH.seats} seats\n\nSeat reserve cheyalante *ACADEMY* ani reply cheyandi 😊`);
   if (!ok && cfg && digits) await guard.kvCommand(cfg, ["DEL", `acad:pdf:${digits}`]).catch(() => {});
   return ok;
 }

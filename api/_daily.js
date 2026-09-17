@@ -11,6 +11,7 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 const guard = require("./_guard.js");
+const docs = require("./_docs.js");
 
 const IST_MS = 330 * 60000;
 const SITE = "https://www.dermaluxe.ai";
@@ -62,6 +63,103 @@ const TOPICS = [
 
 const PILLAR_BY_DAY = ["tips", "edu", "tx", "myth", "trust", "cta", "season"]; // Sun..Sat
 
+// ---- DermaLuxe Academy campaign --------------------------------------------
+// The clinic teaches as well as treats, and Batch 1 has ten seats and a launch
+// price with an end date. A seat is worth far more than a consultation, so for
+// the run-up these get their own daily poster rather than one turn in the
+// ordinary rotation.
+//
+// Five angles, because five different things stop somebody signing up: they do
+// not know it is closing, they do not think they qualify, they assume it is
+// slides and theory, they cannot picture what it leads to, and they do not
+// know who is teaching. One poster each.
+//
+// The seat count and the days left are filled in at build time from what the
+// owner has actually recorded — never guessed. The trainer poster deliberately
+// asks for a room and not a person: an AI likeness of a named real doctor is
+// not something to put on a poster.
+const ACADEMY_TOPICS = [
+  { key: "acad-seats", pillar: "academy",
+    h1: "Ten seats. One batch.", te: "పది సీట్లు మాత్రమే",
+    sub: "Batch 1 · Eluru · Skin · Hair · Skin+Hair", page: "academy.html",
+    img: "Elegant empty training classroom in a luxury clinic — a short row of cream chairs facing a treatment couch, warm golden accent light, dark charcoal walls, no people, no text." },
+  { key: "acad-who", pillar: "academy",
+    h1: "Beautician? Nurse? Fresher?", te: "మీరు చేరవచ్చా? — అవును",
+    sub: "Cosmetologists · Therapists · Salon & spa · Nursing · Freshers", page: "academy.html",
+    img: "Three South Indian women in crisp clinical white coats standing together in a modern aesthetics clinic, warm confident expressions, golden key light, dark elegant background." },
+  { key: "acad-hands", pillar: "academy",
+    h1: "On the machines, not slides", te: "స్లైడ్స్ కాదు — నిజమైన మెషీన్లు",
+    sub: "PICO · Diode · MNRF · HIFU · Hydrafacial · Supervised, on real cases", page: "academy.html",
+    img: "Close-up of gloved hands holding an aesthetic laser handpiece over a treatment couch in a dark luxurious clinic room, golden accent light, no faces, no brand names." },
+  { key: "acad-career", pillar: "academy",
+    h1: "Learn it, then run it", te: "నేర్చుకోండి — సొంతంగా చేయండి",
+    sub: "Certificate · Written protocols · Consultation skills · Setup guidance", page: "academy.html",
+    img: "Confident South Indian woman in her late 20s in a white clinic coat standing in the doorway of her own small treatment room, warm golden light, dark background." },
+  { key: "acad-trainer", pillar: "academy",
+    h1: "Taught by an MD dermatologist", te: "MD డెర్మటాలజిస్ట్ చేత శిక్షణ",
+    sub: "Dr. Meghana Valeti · MD DVL, Gold Medalist · Not a parlour course", page: "academy.html",
+    img: "Elegant consultation desk in a dermatology clinic with a gold-accented lamp, a stethoscope and a framed certificate softly out of focus behind, warm golden light, dark luxurious tones, no people." },
+];
+
+// Whole days between two moments, counted the way a person counts them: by the
+// calendar date in Eluru, not by dividing a duration. The deadline is 23:59 on
+// its day, so ceil() of the gap reads one day too many all morning — and the
+// poster that should say "ends today" would be saying "ends in 1 day".
+const istDateOf = (ms) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ms));
+const daysUntilIst = (targetMs, nowMs) =>
+  Math.round((Date.parse(istDateOf(targetMs) + "T00:00:00Z") - Date.parse(istDateOf(nowMs) + "T00:00:00Z")) / 86400000);
+
+// On while there are seats left and the batch has not started. The owner can
+// force it either way: "acad:dp" = "1" or "0".
+async function academyState(cfg) {
+  let booked = 0, forced = null;
+  if (cfg) {
+    const [b, f] = await guard.kvPipeline(cfg, [["GET", "acad:booked"], ["GET", "acad:dp"]]).catch(() => [null, null]);
+    booked = Math.max(0, Math.min(docs.BATCH.seats, Number(b) || 0));
+    if (f === "0" || f === "1") forced = f;
+  }
+  const left = Math.max(0, docs.BATCH.seats - booked);
+  const now = Date.now();
+  const offerDays = daysUntilIst(docs.BATCH.offerEndMs, now);
+  const batchDays = daysUntilIst(docs.BATCH.startMs, now);
+  const natural = left > 0 && batchDays >= 0;
+  return { on: forced === "1" || (forced !== "0" && natural), left, booked, offerDays, batchDays, forced };
+}
+
+// The one line under the headline, rewritten with what is true today. Seats
+// first when they are nearly gone, the closing price while it is still open,
+// and the start date once it is not.
+function academySub(t, st) {
+  const bits = [];
+  if (st.left > 0 && st.left <= 4) bits.push(`Only ${st.left} seat${st.left > 1 ? "s" : ""} left`);
+  // Zero is the last day, not a day that has passed: the offer runs to 23:59.
+  if (st.offerDays > 1) bits.push(`Launch price ends in ${st.offerDays} days`);
+  else if (st.offerDays === 1) bits.push("Launch price ends tomorrow");
+  else if (st.offerDays === 0) bits.push("Launch price ends today");
+  else if (st.batchDays > 1) bits.push(`Starts in ${st.batchDays} days`);
+  else if (st.batchDays === 1) bits.push("Starts tomorrow");
+  else if (st.batchDays === 0) bits.push("Starts today");
+  bits.push(`Batch ${docs.BATCH.no} — ${docs.BATCH.start}`);
+  // The poster has room for one line; keep the truest two fragments.
+  const line = bits.slice(0, 2).join(" · ");
+  return line.length >= 10 ? line.slice(0, 80) : t.sub;
+}
+
+async function academyTopic(cfg) {
+  const st = await academyState(cfg);
+  if (!st.on) return null;
+  let recent = [];
+  if (cfg) {
+    try { const r = await guard.kvCommand(cfg, ["LRANGE", "dp:hist", "0", "9"]); recent = (r.result || []).map((x) => String(x).split("|")[0]); } catch (e) {}
+  }
+  // Round-robin, so the same poster does not land twice in a week.
+  let pool = ACADEMY_TOPICS.filter((t) => recent.indexOf(t.key) === -1);
+  if (!pool.length) pool = ACADEMY_TOPICS;
+  const t = pool[Math.floor(Math.random() * pool.length)];
+  return Object.assign({}, t, { sub: academySub(t, st), academy: st });
+}
+
+
 function todayIst() {
   const d = new Date(Date.now() + IST_MS);
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-${String(d.getUTCDate()).padStart(2, "0")}`;
@@ -77,16 +175,20 @@ function phones(list) { return String(list || "").split(",").map((s) => s.replac
 // ---- 1. Topic ------------------------------------------------------------
 async function pickTopic(cfg, forceKey) {
   if (forceKey) {
-    const t = TOPICS.find((x) => x.key === forceKey);
+    const t = TOPICS.concat(ACADEMY_TOPICS).find((x) => x.key === forceKey);
     if (t) return t;
   }
   let recent = [];
   if (cfg) { try { const r = await guard.kvCommand(cfg, ["LRANGE", "dp:hist", "0", "19"]); recent = (r.result || []).map((s) => String(s).split("|")[0]); } catch (e) {}
   }
   const pillar = PILLAR_BY_DAY[istDow()];
-  let pool = TOPICS.filter((t) => t.pillar === pillar && recent.indexOf(t.key) === -1);
-  if (!pool.length) pool = TOPICS.filter((t) => recent.indexOf(t.key) === -1);
-  if (!pool.length) pool = TOPICS;
+  // The academy posters run as their own campaign and must never fall out of
+  // the ordinary rotation by chance — a seats-are-going poster on a random
+  // Tuesday after the batch has started would be a lie.
+  const ordinary = TOPICS.filter((t) => t.pillar !== "academy");
+  let pool = ordinary.filter((t) => t.pillar === pillar && recent.indexOf(t.key) === -1);
+  if (!pool.length) pool = ordinary.filter((t) => recent.indexOf(t.key) === -1);
+  if (!pool.length) pool = ordinary;
   // seasonal nudges
   const m = new Date(Date.now() + IST_MS).getUTCMonth() + 1;
   const boost = (k) => { const t = pool.find((x) => x.key === k); return t && Math.random() < 0.5 ? t : null; };
@@ -139,6 +241,10 @@ async function leadInsights(cfg) {
 }
 
 async function planTopic(cfg) {
+  // The campaign takes the day when it is on. Its copy is written against real
+  // seat numbers and real dates, so it is not handed to the planner to reword.
+  const acad = await academyTopic(cfg).catch(() => null);
+  if (acad) return acad;
   const base = await pickTopic(cfg);
   if (!process.env.ANTHROPIC_API_KEY || process.env.DAILY_PLANNER === "0") return base;
   let recent = [];
@@ -192,8 +298,46 @@ JSON: {"key":"...","h1":"...","te":"...","sub":"...","img":"...","why":"..."}`;
 }
 
 // ---- 2. Caption (Claude) ---------------------------------------------------
+// The academy caption is a different job from the clinic's. Course fees may be
+// named — the clinic's own rule is that treatment prices are never posted and
+// academy fees are the one exception — and the whole caption exists to get one
+// word typed into WhatsApp, because that word is what the agent is waiting for.
+function academyCaptionSys(st) {
+  const seats = st && st.left > 0 && st.left <= 4 ? `Only ${st.left} seat${st.left > 1 ? "s" : ""} are left — say so plainly, once.` : `Ten seats in the batch — say so, without inventing a number that is left.`;
+  const when = st && st.offerDays >= 0
+    ? `The launch price closes on ${docs.BATCH.offerEndLong} — ${st.offerDays === 0 ? "today" : st.offerDays === 1 ? "tomorrow" : st.offerDays + " days away"}. Give that date.`
+    : `The launch price has closed. Do not mention it. The batch starts ${docs.BATCH.start}.`;
+  return `You write Instagram captions for DERMALUXE ACADEMY — the training centre of DermaLuxe by Medicare, Eluru, Andhra Pradesh. This is a course for people who want to DO these treatments, not receive them: cosmetologists, beauty therapists, salon and spa staff, nurses and paramedics, and freshers who are serious.
+
+Facts you may use, and nothing beyond them:
+- Batch ${docs.BATCH.no} starts ${docs.BATCH.start}, at ${docs.BATCH.venue}. ${docs.BATCH.seats} seats.
+- Courses: Advanced Skin Care, Advanced Hair Care, or Skin + Hair Master Programme.
+- Launch fees: Skin ₹49,999 and Hair ₹49,999 (regular ₹1,00,000 each); Skin + Hair ₹99,999 (regular ₹2,00,000). ₹9,999 reserves a seat.
+- Trained by Dr. Meghana Valeti, MD DVL, Gold Medalist. Hands-on, on USFDA-approved machines, on real supervised cases.
+- ${seats}
+- ${when}
+
+Style: confident and warm, 5-8 short lines, English with ONE natural Telugu line, no hype, max 3 emojis, no emoji in the first line. Never promise an income, a job, or "guaranteed placement" — say what they will be able to do, not what they will earn.
+
+The second line from the end must be exactly:
+"📲 WhatsApp *ACADEMY* to 99591 34666 · wa.me/919959134666"
+and the last line before the hashtags exactly:
+"📍 DermaLuxe Academy, R.R. Peta, Eluru"
+then 7-9 hashtags including #DermaLuxeAcademy #CosmetologyCourse #Eluru #AndhraPradesh.
+Output ONLY the caption text — no JSON, no quotes, no preamble.`;
+}
+
+function academyCaptionFallback(topic, st) {
+  const closing = st && st.offerDays >= 0
+    ? `Launch fees close ${docs.BATCH.offerEnd}.\n`
+    : "";
+  const seats = st && st.left > 0 && st.left <= 4 ? `Only ${st.left} seat${st.left > 1 ? "s" : ""} left.\n` : `${docs.BATCH.seats} seats in the batch.\n`;
+  return `${topic.h1}\n${topic.te}\n\nDermaLuxe Academy, Eluru — Advanced Skin & Hair Aesthetics training.\nHands-on, on USFDA-approved machines, with Dr. Meghana Valeti (MD DVL).\nFor cosmetologists, therapists, salon & spa staff, nurses and serious freshers.\n\nBatch ${docs.BATCH.no} starts ${docs.BATCH.start}.\n${seats}${closing}\n📲 WhatsApp *ACADEMY* to 99591 34666 · wa.me/919959134666\n📍 DermaLuxe Academy, R.R. Peta, Eluru\n\n#DermaLuxeAcademy #CosmetologyCourse #Eluru #AndhraPradesh #SkinCareTraining #HairCareTraining #AestheticsCourse #DermaLuxeEluru`;
+}
+
 async function writeCaption(topic) {
-  const sys = `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly these 3 lines:\n"📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY the caption text itself — no JSON, no quotes, no preamble.`;
+  const acad = topic && topic.pillar === "academy";
+  const sys = acad ? academyCaptionSys(topic.academy) : `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly these 3 lines:\n"📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY the caption text itself — no JSON, no quotes, no preamble.`;
   const user = `Today's poster: headline "${topic.h1}" · Telugu line "${topic.te}" · sub-line "${topic.sub}". Website page: ${SITE}/${topic.page}. Write the caption.`;
   try {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -210,9 +354,14 @@ async function writeCaption(topic) {
     if (t.length > 40) {
       let c = t.slice(0, 1900);
       if (!/wa\.me\/919959134666/.test(c)) c += "\n\n📲 WhatsApp: 99591 34666 · wa.me/919959134666";
+      // The academy poster is only worth posting if the word that triggers the
+      // agent is in the caption. A model that drifted off the instruction gets
+      // the line added rather than the post going out with no way in.
+      if (acad && !/\bACADEMY\b/.test(c)) c += "\n\n📲 WhatsApp *ACADEMY* to 99591 34666 · wa.me/919959134666";
       return c;
     }
   } catch (e) { console.error("daily: caption", e && e.message); }
+  if (acad) return academyCaptionFallback(topic, topic.academy);
   return `${topic.h1}\n${topic.te}\n\n${topic.sub}.\nEvery treatment at DermaLuxe is planned by MD dermatologists with USFDA-approved technology.\n\n📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru\n\n#DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru #HairClinicEluru #SkinCare #AndhraPradesh`;
 }
 
@@ -320,6 +469,15 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 // __fit() sits the headline block just above the footer and shrinks the type
 // until the block starts below the face band, so long copy never climbs onto it.
 function posterHtml(topic, img) {
+  // A course poster and a treatment poster are not the same advert. The line
+  // across the top and the word on the WhatsApp pill both change, because on
+  // Instagram most people never open the caption — if the picture does not say
+  // what to type, the poster collects nothing.
+  const acad = topic && topic.pillar === "academy";
+  const eyebrow = acad ? "DermaLuxe Academy · Eluru" : "Eluru · MD Dermatologists";
+  const waLabel = acad ? 'WhatsApp "ACADEMY"' : "WhatsApp";
+  const brandName = acad ? "DermaLuxe Academy — Skin & Hair Aesthetics Training" : "DermaLuxe by Medicare Skin And Hair Clinics";
+  const brandTe = acad ? "డెర్మాలక్స్ అకాడమీ — స్కిన్ & హెయిర్ శిక్షణ" : "డెర్మాలక్స్ బై మెడికేర్ స్కిన్ అండ్ హెయిర్ క్లినిక్స్";
   const photo = img ? `url("data:${img.mime};base64,${img.b64}") center top/cover no-repeat` : "radial-gradient(70% 45% at 50% 32%,rgba(198,162,92,.30),transparent 70%)";
   const frame = img ? framing(img.measure) : { k: 1, lift: 0 };
   const h1size = topic.h1.length <= 22 ? 92 : topic.h1.length <= 30 ? 82 : 74;
@@ -359,9 +517,9 @@ h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;
 .wa .num{font-size:31px;font-weight:500;letter-spacing:.03em;line-height:1.1;white-space:nowrap}
 </style></head><body><div class="photo"></div><div class="shade"></div><div class="vign"></div><div class="frame"></div><div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div>
 <div class="head"><img class="logo" src="data:image/png;base64,${logoB64()}" alt=""><div class="city">ఏలూరు</div></div>
-<div class="txt"><div class="eyebrow"><i></i>Eluru · MD Dermatologists<i class="r"></i></div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="sub">${esc(topic.sub)}</div></div>
-<div class="foot"><div class="brand"><div class="n">DermaLuxe by Medicare Skin And Hair Clinics</div><div class="nt">డెర్మాలక్స్ బై మెడికేర్ స్కిన్ అండ్ హెయిర్ క్లినిక్స్</div><div class="a">Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div></div>
-<div class="wa"><svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#15120d" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg><div><div class="l">WhatsApp</div><div class="num">99591 34666</div></div></div></div>
+<div class="txt"><div class="eyebrow"><i></i>${esc(eyebrow)}<i class="r"></i></div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="sub">${esc(topic.sub)}</div></div>
+<div class="foot"><div class="brand"><div class="n">${esc(brandName)}</div><div class="nt">${esc(brandTe)}</div><div class="a">Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div></div>
+<div class="wa"><svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#15120d" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg><div><div class="l">${esc(waLabel)}</div><div class="num">99591 34666</div></div></div></div>
 <script>
 window.__fit = function () {
   var txt = document.querySelector(".txt"), foot = document.querySelector(".foot"), h1 = document.querySelector("h1"), te = document.querySelector(".te"), sub = document.querySelector(".sub");
@@ -435,4 +593,4 @@ async function createDailyPost(cfg, opts = {}) {
   return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
 }
 
-module.exports = { TOPICS, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
+module.exports = { TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };

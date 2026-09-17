@@ -4,7 +4,17 @@ const S = (q, b) => h.call(sch, q, b);
 let fails = 0;
 const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.stringify(want);
   if (!ok) fails++; console.log(`  ${ok ? "ok " : "✗  "} ${what}${ok ? "" : `  got ${JSON.stringify(got)} want ${JSON.stringify(want)}`}`); };
-const tomorrow11 = () => { const d = new Date(Date.now() + 86400000); d.setUTCHours(5, 30, 0, 0); return d.getTime(); };
+// 11:00 tomorrow, by the calendar in Eluru. The obvious version of this —
+// add a day to the UTC clock and set the UTC hours — is a different day
+// between 18:30 and midnight UTC, because IST is already tomorrow by then.
+// The app buckets its day sheet in IST, so the helper that builds the fixture
+// has to as well, or this test fails every night after 6pm UTC and passes
+// again by morning.
+const IST = 330 * 60000;
+const tomorrow11 = () => {
+  const ist = new Date(Date.now() + IST);
+  return Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + 1, 11, 0, 0) - IST;
+};
 
 (async () => {
   console.log("APPOINTMENTS — booking, clashes, and the day sheet\n");

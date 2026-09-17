@@ -2,6 +2,11 @@
 // (WhatsApp: api/whatsapp.js · Instagram DMs: api/instagram.js).
 // Channel-specific behaviour (booking fields, menus, location handling,
 // output contract) is passed in by each channel as extra rule lines.
+//
+// The academy batch dates, seat count and launch-offer deadline come from
+// _docs.BATCH rather than being typed here as well: this text is what the
+// agent tells a patient, and it has to agree with the poster and the catalog.
+const { BATCH } = require("./_docs.js");
 
 // The link a happy patient should be sent to. REVIEW_LINK if the owner pinned
 // one, otherwise the standard Google write-review URL for our own place id.
@@ -106,10 +111,10 @@ Mana doctor tho okasari free consultation book cheyala? 😊
     – Skin Care Treatments 1-month course: regular ₹1,00,000 → launch offer ₹49,999
     – Hair Care Treatments 1-month course: regular ₹1,00,000 → launch offer ₹49,999
     – Skin + Hair (both) course: regular ₹2,00,000 → launch offer ₹99,999
-    – Offer valid ONLY till 30 September 2026. 2-month advanced course fee: mana team call lo cheptundi.
-    – SEAT RESERVATION: ippude ₹9,999 pay chesi seat reserve cheskovachu (balance batch start 20 Oct 2026 mundu). Only 10 seats — first come first served.
+    – Offer valid ONLY till ${BATCH.offerEndLong}. 2-month advanced course fee: mana team call lo cheptundi.
+    – SEAT RESERVATION: ippude ₹9,999 pay chesi seat reserve cheskovachu (balance batch start ${BATCH.start} mundu). Only ${BATCH.seats} seats — first come first served.
   • CATALOG: full course catalog PDF = www.dermaluxe.ai/assets/academy/DermaLuxe-Academy-Course-Catalog.pdf. On WhatsApp it is sent AUTOMATICALLY with your reply on the first academy enquiry (set "send_catalog":true) — say "Course catalog PDF ikkada pampistunnanu 📄". On Instagram/Facebook share the link.
-  • 🎯 SALES TARGET (owner's order): FILL ALL 10 SEATS of Batch 1 before 30 September 2026. Every academy conversation must move towards a ₹9,999 seat reservation — never end on "let me know". Playbook:
+  • 🎯 SALES TARGET (owner's order): FILL ALL ${BATCH.seats} SEATS of Batch ${BATCH.no} before ${BATCH.offerEndLong}. Every academy conversation must move towards a ₹9,999 seat reservation — never end on "let me know". Playbook:
     1) Hook: answer + 2 strongest benefits for THEIR background (fresher → jobs at our clinics; salon/therapist → lasers & PRP skills = higher income; nurse → aesthetic career).
     2) Qualify in ONE question each: name → background → Skin / Hair / Both.
     3) Offer: quote the launch price for their course + "regular fee" contrast + save amount; remind offer ends 30 Sep and seats left (use ACADEMY SEATS STATUS if given — never invent numbers).

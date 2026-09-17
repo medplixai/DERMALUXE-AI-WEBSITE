@@ -52,7 +52,11 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   console.log("\nACADEMY — how far through the course\n");
   const src = fs.readFileSync(path.join(process.env.DL_API, "academy.js"), "utf8");
   const progressOf = eval("(" + src.match(/function progressOf\(s\) \{[\s\S]*?\n\}/)[0] + ")");
-  const iso = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
+  // The date n days ago in Eluru, not in UTC. progressOf reads these strings as
+  // IST midnight, so a UTC-derived date is a day out for the five and a half
+  // hours after midnight IST — and "day 13" quietly becomes "day 14".
+  const iso = (n) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" })
+    .format(new Date(Date.now() - n * 86400000));
 
   const notYet = progressOf({ duration: "1 month", startISO: iso(-15), fee: 50000, paid: 10000, created: Date.now() });
   is(notYet.started, false, "a batch that has not started says so");

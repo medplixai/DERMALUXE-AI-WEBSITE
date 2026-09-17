@@ -303,8 +303,11 @@ module.exports = async (req, res) => {
       });
     }
 
-    const OFFER_ENDS = Date.UTC(2026, 8, 30, 18, 29, 59);      // 30 Sep 2026, 23:59:59 IST
-    const BATCH_STARTS = Date.UTC(2026, 9, 19, 18, 30, 0);     // 20 Oct 2026, 00:00 IST
+    // From _docs.BATCH, not typed again here: the same two dates are quoted to
+    // patients by the WhatsApp agent and printed on the daily academy poster,
+    // and they have to agree.
+    const OFFER_ENDS = docs.BATCH.offerEndMs;
+    const BATCH_STARTS = docs.BATCH.startMs;
     const now = Date.now();
     const days = (t) => Math.max(0, Math.ceil((t - now) / 86400000));
 
@@ -337,7 +340,7 @@ module.exports = async (req, res) => {
         enquiry: rows.filter((r) => r.stage === "enquiry").length,
         lost: rows.filter((r) => r.stage === "lost").length,
       },
-      deadline: { offerDays: days(OFFER_ENDS), batchDays: days(BATCH_STARTS), offer: "30 Sep 2026", batch: "20 Oct 2026" },
+      deadline: { offerDays: days(OFFER_ENDS), batchDays: days(BATCH_STARTS), offer: docs.BATCH.offerEnd, batch: docs.BATCH.start },
     });
   }
 
