@@ -47,26 +47,8 @@ function istDayBack(n) {
 
 module.exports = async (req, res) => {
   const q = req.query || {};
-  // Vercel's scheduler sends the bearer; a person running it by hand sends a
-  // key. Either of the two secrets the project already has will do, so the
-  // owner does not have to hunt for a particular one.
-  //
-  // This refuses when NONE of them is configured, rather than letting the
-  // endpoint stand open. The other crons in here are written the other way
-  // round — `if (CRON_SECRET) { ...check... }` — which means deleting that one
-  // variable would quietly open them to anybody. For a job that sends
-  // WhatsApp messages to patients, closed is the only safe way to fail.
-  const keys = [process.env.CRON_SECRET, process.env.ADMIN_KEY].filter(Boolean);
-  const bearer = String(req.headers.authorization || "");
-  const given = String(q.key || "");
-  const allowed = keys.length > 0 && keys.some((k) =>
-    bearer === `Bearer ${k}` || (given && guard.safeEqual(given, k)));
-  if (!allowed) {
-    return res.status(401).json({
-      error: "unauthorized",
-      note: keys.length ? undefined : "CRON_SECRET / ADMIN_KEY unset — nothing may run this",
-    });
-  }
+  const gate = guard.cronAuth(req);
+  if (!gate.ok) return res.status(401).json({ error: "unauthorized", note: gate.note });
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: true, note: "kv not configured" });
 

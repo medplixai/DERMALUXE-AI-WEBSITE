@@ -34,11 +34,10 @@ const daysUntil = (iso) => Math.round((new Date(iso + "T00:00:00Z") - new Date(i
 
 module.exports = async (req, res) => {
   const q = req.query || {};
-  const auth = String(req.headers.authorization || "");
-  const okCron = !!process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`;
-  const okAdmin = !!process.env.ADMIN_KEY && guard.safeEqual(String(req.headers["x-admin-key"] || q.key || ""), process.env.ADMIN_KEY);
-  if (!okCron && !okAdmin) return res.status(401).json({ error: "unauthorized" });
+  const gate = guard.cronAuth(req);
+  if (!gate.ok) return res.status(401).json({ error: "unauthorized", note: gate.note });
   // overrides can mass-message students, so they need the admin key, not just the cron secret
+  const okAdmin = gate.byAdmin;
   if (!okAdmin && (q.force || q.day !== undefined || q.dry)) return res.status(403).json({ error: "force/day/dry need the admin key" });
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: false, note: "kv not configured" });

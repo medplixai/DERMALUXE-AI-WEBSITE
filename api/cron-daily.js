@@ -42,19 +42,8 @@ async function waText(to, text) {
 
 module.exports = async (req, res) => {
   const q = req.query || {};
-  const auth = String(req.headers.authorization || "");
-  // Closed when nothing is configured, not open. This endpoint publishes to
-  // Instagram and Facebook on ?now=1; the old line read
-  //   CRON_SECRET ? check it : true
-  // which let anybody at all run it the moment that one variable went missing.
-  const okCron = !!process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`;
-  const okAdmin = !!process.env.ADMIN_KEY && guard.safeEqual(String(req.headers["x-admin-key"] || q.key || ""), process.env.ADMIN_KEY);
-  if (!okCron && !okAdmin) {
-    return res.status(401).json({
-      error: "unauthorized",
-      note: (process.env.CRON_SECRET || process.env.ADMIN_KEY) ? undefined : "CRON_SECRET / ADMIN_KEY unset — nothing may run this",
-    });
-  }
+  const gate = guard.cronAuth(req);
+  if (!gate.ok) return res.status(401).json({ error: "unauthorized", note: gate.note });
 
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: false, note: "kv not configured" });

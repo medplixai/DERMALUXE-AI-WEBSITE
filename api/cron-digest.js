@@ -12,11 +12,8 @@ const dg = require("./_digest.js");
 const wk = require("./_weekly.js");
 
 module.exports = async (req, res) => {
-  if (process.env.CRON_SECRET) {
-    if (String(req.headers.authorization || "") !== `Bearer ${process.env.CRON_SECRET}`) {
-      return res.status(401).json({ error: "unauthorized" });
-    }
-  }
+  const gate = guard.cronAuth(req);
+  if (!gate.ok) return res.status(401).json({ error: "unauthorized", note: gate.note });
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: true, note: "kv not configured" });
 

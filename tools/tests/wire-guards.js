@@ -24,7 +24,9 @@ for (const f of files.sort()) {
   const how = [];
   if (/requireStaff\(/.test(s)) how.push("staff login");
   if (/requireAdmin|ADMIN_KEY|adminKey/.test(s)) how.push("admin key");
-  if (/CRON_SECRET|x-vercel-cron|isCron\(/.test(s)) how.push("cron only");
+  // guard.cronAuth is the shared gate the scheduled jobs use; before it, each
+  // of them tested CRON_SECRET itself, so both spellings count as gated.
+  if (/cronAuth\(|CRON_SECRET|x-vercel-cron|isCron\(/.test(s)) how.push("cron only");
   if (/verifySignature|X-Hub-Signature|appSecret|hmac/i.test(s)) how.push("signature");
   if (/signedToken|verifyToken|sign\(/.test(s)) how.push("signed link");
   const pub = PUBLIC_ON_PURPOSE[f];

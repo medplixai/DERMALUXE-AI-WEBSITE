@@ -10,6 +10,32 @@ function safeEqual(a, b) {
   return crypto.timingSafeEqual(A, B);
 }
 
+// Who may run a scheduled job.
+//
+// Vercel's scheduler sends the bearer; a person running one by hand sends
+// ?key= or an x-admin-key header, and either secret is accepted there since
+// both are equally secret.
+//
+// It refuses when NEITHER secret is configured. Every cron here used to be
+// written `if (process.env.CRON_SECRET) { ...check the bearer... }`, which
+// skips the check entirely the moment that one variable goes missing — and
+// these jobs publish to Instagram and Facebook, message patients, and write
+// backups. Failing open on an absent environment variable is not something to
+// leave lying in six files, so it lives here once.
+function cronAuth(req) {
+  const q = (req && req.query) || {};
+  const hd = (req && req.headers) || {};
+  const secrets = [process.env.CRON_SECRET, process.env.ADMIN_KEY].filter(Boolean);
+  if (!secrets.length) return { ok: false, byCron: false, byAdmin: false, note: "CRON_SECRET / ADMIN_KEY unset — nothing may run this" };
+  const byCron = !!process.env.CRON_SECRET && String(hd.authorization || "") === `Bearer ${process.env.CRON_SECRET}`;
+  const given = String(hd["x-admin-key"] || q.key || "");
+  const byKey = given.length > 0 && secrets.some((sec) => safeEqual(given, sec));
+  // Only the admin key stands in for a person: the cron secret is the
+  // scheduler's, and jobs that gate destructive overrides check byAdmin.
+  const byAdmin = given.length > 0 && !!process.env.ADMIN_KEY && safeEqual(given, process.env.ADMIN_KEY);
+  return { ok: byCron || byKey, byCron, byAdmin };
+}
+
 // Where the clinic's data lives, and how to talk to it.
 //
 // Two stores are understood. The original is Upstash Redis, reached over its
@@ -192,4 +218,4 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };
+module.exports = { cronAuth, kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };
