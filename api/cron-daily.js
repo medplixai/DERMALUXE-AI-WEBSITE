@@ -5,6 +5,8 @@
 // command "daily post now" (?now=1 → publishes immediately instead of queueing).
 //
 // KV switch: dp:enabled = "0" pauses the auto-post (admin: "daily off"/"daily on").
+// ?preview=1[&topic=<key>] builds a poster, WhatsApps it to the owner, and
+// leaves no trace — nothing queued, nothing published, nothing recorded.
 const guard = require("./_guard.js");
 const daily = require("./_daily.js");
 const admin = require("./_admin.js");
@@ -41,15 +43,29 @@ async function waText(to, text) {
 module.exports = async (req, res) => {
   const q = req.query || {};
   const auth = String(req.headers.authorization || "");
-  const okCron = process.env.CRON_SECRET ? auth === `Bearer ${process.env.CRON_SECRET}` : true;
-  const okAdmin = process.env.ADMIN_KEY ? guard.safeEqual(String(req.headers["x-admin-key"] || q.key || ""), process.env.ADMIN_KEY) : false;
-  if (!okCron && !okAdmin) return res.status(401).json({ error: "unauthorized" });
+  // Closed when nothing is configured, not open. This endpoint publishes to
+  // Instagram and Facebook on ?now=1; the old line read
+  //   CRON_SECRET ? check it : true
+  // which let anybody at all run it the moment that one variable went missing.
+  const okCron = !!process.env.CRON_SECRET && auth === `Bearer ${process.env.CRON_SECRET}`;
+  const okAdmin = !!process.env.ADMIN_KEY && guard.safeEqual(String(req.headers["x-admin-key"] || q.key || ""), process.env.ADMIN_KEY);
+  if (!okCron && !okAdmin) {
+    return res.status(401).json({
+      error: "unauthorized",
+      note: (process.env.CRON_SECRET || process.env.ADMIN_KEY) ? undefined : "CRON_SECRET / ADMIN_KEY unset — nothing may run this",
+    });
+  }
 
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: false, note: "kv not configured" });
 
   const now = q.now === "1";
-  const force = !!q.force || now;
+  // Build a poster and send it to the owner on WhatsApp, and do nothing else:
+  // do not queue it, do not publish it, do not mark the day as done, do not
+  // put the topic in the history. Looking at something should not change it.
+  // `preview` is already taken further down for the WhatsApp blurb.
+  const previewOnly = q.preview === "1";
+  const force = !!q.force || now || previewOnly;
   if (!force) {
     const en = await guard.kvCommand(cfg, ["GET", "dp:enabled"]).catch(() => ({}));
     if (String(en.result || "1") === "0") return res.status(200).json({ ok: true, skipped: "disabled" });
@@ -61,7 +77,7 @@ module.exports = async (req, res) => {
   const t0 = Date.now();
   let out;
   try {
-    out = await daily.createDailyPost(cfg, { topic: q.topic || undefined, by: q.by || undefined, queue: !now, dueMs: now ? Date.now() : undefined });
+    out = await daily.createDailyPost(cfg, { topic: q.topic || undefined, by: q.by || undefined, preview: previewOnly, queue: !now && !previewOnly, dueMs: now ? Date.now() : undefined });
   } catch (e) {
     console.error("cron-daily: build failed", e && e.message);
     if (!force) await guard.kvCommand(cfg, ["DEL", `dp:done:${daily.todayIst()}`]).catch(() => {});
@@ -72,6 +88,12 @@ module.exports = async (req, res) => {
 
   const url = `${BASE}/api/media?id=${out.imgId}`;
   let published = null, storyOut = null;
+  if (previewOnly) {
+    const cap = `👀 *Preview only — idi ekkadiki veLLaledu.*\n${out.topic.h1}${out.hadImage ? "" : "\n⚠️ Photo raaledu — background matrame"}\n\n${out.caption}`.slice(0, 900);
+    for (const ph of out.notify) { if (!(await waImage(ph, url, cap))) await waText(ph, cap); }
+    return res.status(200).json({ ok: true, preview: true, imgId: out.imgId, topic: out.topic.key,
+      headline: out.topic.h1, sub: out.topic.sub, hadImage: out.hadImage, sentTo: out.notify.length, ms: Date.now() - t0 });
+  }
   if (now) {
     published = await admin.publishNow(cfg, { imgId: out.imgId, caption: out.caption, auto: true });
     // same poster as an Instagram story (24h) — stories skip captions/FB

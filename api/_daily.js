@@ -581,7 +581,12 @@ async function createDailyPost(cfg, opts = {}) {
   const by = opts.by || admins[0] || "";
   const notifyList = Array.from(new Set(phones(process.env.DAILY_POST_PHONES).length ? phones(process.env.DAILY_POST_PHONES) : admins.concat(phones(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666"))));
   if (cfg) {
-    await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, b64, "EX", "259200"]);
+    // A preview is shown and then forgotten: the picture is kept just long
+    // enough to reach WhatsApp, and nothing else is written. Without this the
+    // act of looking at a poster would mark its topic as already used and
+    // change what tomorrow posts.
+    await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, b64, "EX", opts.preview ? "7200" : "259200"]);
+    if (opts.preview) return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: false, preview: true };
     if (opts.queue !== false) {
       await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId, caption, due, by, tries: 0, auto: true, topic: topic.key, notify: notifyList })]);
     }
