@@ -215,6 +215,30 @@ h3 { font-size: 1.4rem; }
 .nav__links a:not(.btn):hover::after,
 .nav__links a.active::after { width: 100%; }
 .nav__links a.active { color: var(--gold-1); }
+
+/* The logo is a wide mark — 640×286, about 2¼ times as wide as it is tall —
+   and the bar also holds ten links. At full size the two need ~1320px, the
+   container is 1200px at most, so on every desktop width flexbox took the
+   difference out of the logo's box while its height stayed pinned at 132px:
+   the mark was squeezed sideways to about half its width and pressed up
+   against "Home". It may no longer shrink or stretch; the room comes from a
+   smaller mark and a tighter menu instead, and below 1241px, where even that
+   does not fit, the menu folds into the button (see the 1240px query). */
+.nav__brand { flex-shrink: 0; }
+.nav__brand img { object-fit: contain; }
+.nav__links { min-width: 0; }
+@media (min-width: 1241px) {
+  .nav__brand img { height: 96px; }
+  .nav.scrolled .nav__brand img { height: 80px; }
+  .nav__inner { height: 128px; }
+  .nav.scrolled .nav__inner { height: 100px; }
+  .nav__links { gap: .95rem; }
+  .nav__links a:not(.btn) { letter-spacing: .5px; font-size: .74rem; }
+}
+@media (min-width: 1300px) {
+  .nav__brand img { height: 112px; }
+  .nav__inner { height: 140px; }
+}
 .nav__cta { padding: .65rem 1.2rem; }
 
 .nav__toggle { display: none; flex-direction: column; gap: 5px; background: none; border: 0; cursor: pointer; padding: 8px; }
@@ -1029,7 +1053,7 @@ h3 { font-size: 1.4rem; }
   .footer__grid { grid-template-columns: 1fr 1fr; }
 }
 
-@media (max-width: 1180px) {
+@media (max-width: 1240px) {   /* was 1180: 1181–1240 cannot fit the full bar, see .nav__brand above */
   .nav__toggle { display: flex; }
   .nav__links {
     position: fixed; inset: 0 0 0 auto; width: min(82%, 340px); height: 100vh;
