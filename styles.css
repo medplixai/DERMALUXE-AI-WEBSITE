@@ -35,6 +35,12 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html { scroll-behavior: smooth; -webkit-text-size-adjust: 100%; }
+/* The closed menu drawer waits just off the right edge, and on a phone that
+   was enough to make the page's layout wider than the screen (655px on a
+   360px phone). body already hid the overflow; clipping at the root as well
+   keeps the layout the width of the screen. clip, not hidden, so nothing
+   sticky inside stops sticking. */
+html { overflow-x: clip; }
 
 body {
   font-family: var(--font-sans);
@@ -1064,6 +1070,30 @@ h3 { font-size: 1.4rem; }
   .nav__links.open { transform: translateX(0); box-shadow: -20px 0 60px -20px rgba(0,0,0,.9); }
   .nav__links a:not(.btn) { font-size: 1rem; white-space: normal; }
   .nav__cta { margin-top: .6rem; padding: 1rem 2rem; }
+}
+
+/* The open drawer on a phone. On a 360×740 screen its last item — the gold
+   Book Consultation button — sat two-thirds under the Call / WhatsApp / Book
+   bar pinned to the bottom (which is drawn above it), and on a shorter phone
+   the list, centred in a box that could not scroll, ran off the top and the
+   bottom alike. So: room at the bottom for that bar, scrolling when the list
+   is taller than the screen, and centred only while it fits — the auto margins
+   on the first and last items do the centring and give way when they must.
+   dvh, because 100vh on a phone includes the part under the address bar. */
+@media (max-width: 1240px) {
+  .nav__links {
+    height: 100vh; height: 100dvh;
+    overflow-y: auto; overscroll-behavior: contain;
+    justify-content: flex-start;
+    padding-bottom: calc(2.5rem + 60px + env(safe-area-inset-bottom, 0px));
+  }
+  .nav__links > :first-child { margin-top: auto; }
+  .nav__links > :last-child { margin-bottom: auto; }
+}
+/* On the common 360×740 Android the list was ~15px too tall to sit clear of
+   that bar without scrolling; a little less air between items fixes it. */
+@media (max-width: 1240px) and (max-height: 820px) {
+  .nav__links { gap: 1.05rem; }
 }
 
 @media (max-width: 860px) {
