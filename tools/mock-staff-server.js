@@ -292,6 +292,35 @@ http.createServer((req, res) => {
       return send(400, { error: "Unknown action" });
     });
   }
+  if (u.pathname === "/api/schedule") {  // schedule-mock: a day with three doctors and a waitlist
+    const a = u.searchParams.get("a") || "day";
+    const istDayS = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
+    const day = u.searchParams.get("day") || istDayS(Date.now());
+    const at = (h, m) => new Date(day + "T" + String(h).padStart(2, "0") + ":" + String(m).padStart(2, "0") + ":00+05:30").getTime();
+    const tm = (ts) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(ts));
+    const team = [{ phone: "9000000001", name: "Dr. Nikhitha", role: "doctor" }, { phone: "9000000002", name: "Dr. Sai Divija", role: "doctor" }, { phone: "9000000003", name: "Latha (therapist)", role: "therapist" }, { phone: "9000000004", name: "Sowmya", role: "reception" }];
+    if (!global.mockSch) global.mockSch = [
+      ["Lakshmi Priya", 10, 0, 30, "9000000001", "Consultation", "booked", true], ["Ravi Teja", 10, 30, 45, "9000000002", "PRP", "arrived", true],
+      ["Anusha", 11, 0, 60, "9000000003", "Hydrafacial", "booked", false], ["Kiran", 12, 0, 30, "9000000001", "Acne follow-up", "done", true],
+      ["Padma", 15, 30, 45, "9000000002", "Laser — face", "booked", false], ["Suresh", 17, 0, 30, "", "Hair fall", "booked", false],
+      ["Meena", 18, 0, 60, "9000000003", "Chemical peel", "booked", true],
+    ].map((r, i) => ({ id: "s" + i, name: r[0], ph: "98765432" + String(10 + i), atH: r[1], atM: r[2], mins: r[3], staff: r[4], staffName: (team.find((t) => t.phone === r[4]) || {}).name || "", concern: r[5], status: r[6], cf: r[7], room: r[5] === "Hydrafacial" ? "Hydrafacial" : r[5].startsWith("Laser") ? "Laser room" : "" }));
+    if (a === "week") return send(200, { ok: true, team, days: Array.from({ length: 7 }, (_, i) => ({ day: istDayS(Date.now() + i * 86400000), total: i ? 3 : global.mockSch.length, mine: 0 })) });
+    if (a === "day") {
+      const rows = global.mockSch.map((r) => Object.assign({}, r, { at: r.at || at(r.atH, r.atM), day, time: tm(r.at || at(r.atH, r.atM)) }));
+      return send(200, { ok: true, day, rows, team, rooms: ["Consultation", "Laser room", "Hydrafacial", "Procedure room"],
+        wait: [{ id: "w1", ph: "9876500777", name: "Bhavani", concern: "PICO laser", day, when: "evening", ts: Date.now() - 7200000, by: "Sowmya" }],
+        counts: { total: rows.length, booked: 4, arrived: 1, done: 1, unconfirmed: 3 } });
+    }
+    let raw = ""; req.on("data", (c) => { raw += c; });
+    return req.on("end", () => {
+      let body = {}; try { body = JSON.parse(raw || "{}"); } catch (e) {}
+      const r = global.mockSch.find((x) => x.id === body.id);
+      if (a === "move" && r) { r.at = body.at; }
+      if (a === "assign" && r) { r.staff = body.staff; r.staffName = body.staffName; }
+      return send(200, { ok: true });
+    });
+  }
   if (u.pathname === "/api/pay") {  // pay-mock: the patient's bill link
     if (req.method === "POST") return send(200, { ok: true, msg: "Thank you 🙏 Clinic bank lo check chesi confirm chestundi." });
     const url = "upi://pay?pa=dermaluxe%40okaxis&pn=DermaLuxe%20by%20Medicare&am=3000&cu=INR&tn=DermaLuxe%20bill%20B1001";

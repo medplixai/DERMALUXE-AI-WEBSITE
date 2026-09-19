@@ -118,8 +118,8 @@ async function build(cfg, phone, opts) {
 
   // visits that have already happened, and whether they came
   const past = ((doneR && doneR.result) || []).map((x) => parse(x, null)).filter(Boolean)
-    .filter((a) => digits10(a.ph) === phone)
-    .map((a) => ({ at: a.at, concern: a.concern || a.treatment || "", noShow: !!a.ns, arrived: !!a.arrived, rated: !!a.rv }))
+    .filter((a) => digits10(a.ph) === phone && a.status !== "cancelled")
+    .map((a) => ({ at: a.at, concern: a.concern || a.treatment || "", noShow: !!a.ns || a.status === "noshow", arrived: !!a.arrived, rated: !!a.rv }))
     .sort((a, b) => (b.at || 0) - (a.at || 0));
   const ratings = ((rvR && rvR.result) || []).map((x) => parse(x, null)).filter(Boolean)
     .filter((r) => digits10(r.ph) === phone)

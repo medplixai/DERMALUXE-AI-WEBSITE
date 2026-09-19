@@ -76,9 +76,46 @@ function clash(rows, next, skipId) {
     const s2 = Number(a.at), e2 = s2 + (Number(a.mins) || 30) * 60000;
     if (!(s1 < e2 && s2 < e1)) continue;
     if (next.staff && digits10(a.staff) === next.staff) return { who: "doctor", name: a.staffName || "aa doctor", at: istTime(s2), name2: a.name };
+    // one laser, one Hydrafacial machine, one room: two patients cannot be on it at once
+    if (next.room && a.room && String(a.room).toLowerCase() === String(next.room).toLowerCase()) return { who: "room", name: a.room, at: istTime(s2), name2: a.name };
     if (digits10(a.ph) === next.ph) return { who: "patient", name: a.name, at: istTime(s2) };
   }
   return null;
+}
+
+// The rooms and machines that can only take one patient at a time. The owner
+// keeps the list; an appointment on one of them clashes with any other on it.
+const ROOMS = "sch:rooms", WAIT = "sch:wait";
+const DEFAULT_ROOMS = ["Consultation", "Laser room", "Hydrafacial", "Procedure room"];
+async function rooms(cfg) {
+  const r = await guard.kvCommand(cfg, ["GET", ROOMS]).catch(() => ({}));
+  const v = parse((r && r.result) || "", null);
+  return Array.isArray(v) && v.length ? v : DEFAULT_ROOMS;
+}
+
+// People who want a slot sooner than there is one. When an appointment is
+// cancelled or missed, whoever is waiting for that day (or any day) is who the
+// desk should offer it to first.
+async function waitlist(cfg) {
+  const r = await guard.kvCommand(cfg, ["LRANGE", WAIT, "0", "99"]).catch(() => ({}));
+  return ((r && r.result) || []).map((raw) => Object.assign({ raw }, parse(raw, {}))).filter((w) => w.id && w.ph);
+}
+async function waitFor(cfg, day) {
+  return (await waitlist(cfg)).filter((w) => !w.day || w.day === day).map(({ raw, ...w }) => w);
+}
+async function freedSlot(cfg, a) {
+  const day = istDay(a.at);
+  const m = await waitFor(cfg, day);
+  if (!m.length) return [];
+  try {
+    const push = require("./_push.js");
+    if (push.enabled()) await push.notifyCap(cfg, "appts.edit", {
+      title: `🕒 ${istTime(a.at)} slot khali ayindi`,
+      body: `Waitlist lo ${m.length} mandi unnaru — ${m.slice(0, 3).map((w) => w.name).join(", ")}. Offer cheyandi.`,
+      tab: "appts", data: { kind: "waitlist", day },
+    });
+  } catch (e) { console.error("schedule: waitlist push", e && e.message); }
+  return m;
 }
 
 // Somebody who did not turn up is not a lost cause, they are a person whose
@@ -125,7 +162,9 @@ async function createAppt(cfg, me, b) {
     return { code: 409, body: {
       error: cl.who === "doctor"
         ? `${cl.name} ki aa time lo already ${cl.name2 || "oka patient"} undi (${cl.at}). Vere time chudandi.`
-        : `Ee patient ki aa time lo already appointment undi (${cl.at}).`,
+        : cl.who === "room"
+          ? `${cl.name} aa time lo ${cl.name2 || "vere patient"} tho busy (${cl.at}). Vere time leda vere machine chudandi.`
+          : `Ee patient ki aa time lo already appointment undi (${cl.at}).`,
       clash: cl,
     } };
   }
@@ -167,6 +206,8 @@ module.exports = async (req, res) => {
       const mine = list.filter((r) => r.staff === me.phone);
       return json(res, 200, {
         ok: true, day, rows: list, mine: mine.length, team,
+        rooms: await rooms(cfg),
+        wait: (await waitlist(cfg)).map(({ raw, ...w }) => w),
         counts: {
           total: list.length,
           booked: list.filter((r) => r.status === "booked").length,
@@ -193,7 +234,47 @@ module.exports = async (req, res) => {
 
   if (a === "create") {
     const out = await createAppt(cfg, me, b);
+    if (out.code === 200 && b.fromWait) {
+      const w = (await waitlist(cfg)).find((x) => x.id === clean(b.fromWait, 16));
+      if (w) await guard.kvCommand(cfg, ["LREM", WAIT, "1", w.raw]).catch(() => {});
+    }
     return json(res, out.code, out.body);
+  }
+
+  if (a === "rooms-save") {
+    if (!allow("settings.manage")) return json(res, 403, { error: "Rooms list owner matrame marchagalaru" });
+    const list = (Array.isArray(b.rooms) ? b.rooms : []).map((x) => clean(x, 30)).filter(Boolean);
+    const uniq = Array.from(new Set(list.map((x) => x.toLowerCase()))).map((l) => list.find((x) => x.toLowerCase() === l)).slice(0, 20);
+    await guard.kvCommand(cfg, ["SET", ROOMS, JSON.stringify(uniq)]);
+    return json(res, 200, { ok: true, rooms: uniq.length ? uniq : DEFAULT_ROOMS });
+  }
+
+  if (a === "wait-add") {
+    const ph = digits10(b.ph);
+    if (!/^[6-9]\d{9}$/.test(ph)) return json(res, 400, { error: "Valid number ivvandi" });
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : "";
+    const w = { id: crypto.randomBytes(5).toString("hex"), ph, name: clean(b.name, 60) || "Patient", concern: clean(b.concern, 80), day, when: clean(b.when, 40), ts: Date.now(), by: me.name };
+    await guard.kvCommand(cfg, ["RPUSH", WAIT, JSON.stringify(w)]);
+    await guard.kvCommand(cfg, ["LTRIM", WAIT, "-100", "-1"]).catch(() => {});
+    return json(res, 200, { ok: true, wait: w });
+  }
+  if (a === "wait-remove" || a === "wait-offer") {
+    const w = (await waitlist(cfg)).find((x) => x.id === clean(b.wid, 16));
+    if (!w) return json(res, 404, { error: "Waitlist lo ledu — evaro ippatike chusaru" });
+    if (a === "wait-remove") {
+      await guard.kvCommand(cfg, ["LREM", WAIT, "1", w.raw]).catch(() => {});
+      return json(res, 200, { ok: true });
+    }
+    const at = Number(b.at);
+    if (!at) return json(res, 400, { error: "E time offer chestunnaro ivvandi" });
+    const first = String(w.name || "").trim().split(" ")[0] || "andi";
+    const when = `${istTime(at)}, ${new Date(at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short" })}`;
+    await tellPatient(w.ph, `Namaste ${first} garu 🙏 DermaLuxe lo ${when} ki oka slot khali ayindi${w.concern ? " (" + w.concern + ")" : ""}.\n\nKavalante ee message ki *YES* ani reply cheyandi — mee peru meeda book chestam 😊`);
+    const next = Object.assign({}, w, { offered: (w.offered || []).concat([{ at, ts: Date.now(), by: me.name }]).slice(-5) });
+    delete next.raw;
+    await guard.kvCommand(cfg, ["LREM", WAIT, "1", w.raw]).catch(() => {});
+    await guard.kvCommand(cfg, ["RPUSH", WAIT, JSON.stringify(next)]).catch(() => {});
+    return json(res, 200, { ok: true, offered: when });
   }
 
   // For a reschedule, `at` is where it is going — the record is still found at
@@ -237,7 +318,7 @@ module.exports = async (req, res) => {
       await guard.kvCommand(cfg, ["LPUSH", DONE, JSON.stringify(next)]).catch(() => {});
       await guard.kvCommand(cfg, ["LTRIM", DONE, "0", "499"]).catch(() => {});
       await tellPatient(cur.ph, `${cur.name || "Hi"}, mee appointment cancel chesamu. Kotha time kavalante ee message ki reply cheyandi 🙏`);
-      return json(res, 200, { ok: true, cancelled: true });
+      return json(res, 200, { ok: true, cancelled: true, freed: { at: cur.at, mins: cur.mins || 30 }, waitMatches: cur.at > Date.now() ? await freedSlot(cfg, cur) : [] });
     }
     if (st === "done" || st === "noshow") {
       // Marking a no-show over WhatsApp has always invited the patient to

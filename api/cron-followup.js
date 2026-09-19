@@ -178,7 +178,8 @@ module.exports = async (req, res) => {
       const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "299"]);
       for (const raw of (dq.result || [])) {
         let a; try { a = JSON.parse(raw); } catch (e) { continue; }
-        if (!a || !a.ph || !a.at || a.ns) continue;
+        // a cancelled or missed appointment was not a visit — no "how was it?"
+        if (!a || !a.ph || !a.at || a.ns || a.status === "cancelled" || a.status === "noshow") continue;
         const days = (now - a.at) / 86400000;
         const first = String(a.name || "").split(" ")[0] || "friend";
         const what = String(a.concern || "treatment").slice(0, 50);
@@ -217,7 +218,7 @@ module.exports = async (req, res) => {
       const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]);
       for (const raw of (dq.result || [])) {
         let a; try { a = JSON.parse(raw); } catch (e) { continue; }
-        if (!a || !a.ph || !a.at || a.fu || a.ns) continue; // ns = marked no-show (rebook nudge already sent)
+        if (!a || !a.ph || !a.at || a.fu || a.ns || a.status === "cancelled" || a.status === "noshow") continue; // ns = marked no-show (rebook nudge already sent)
         if (istDay(a.at) !== yday) continue;
         const first = String(a.name || "").split(" ")[0] || "friend";
         const ok = await notify.sendWa(a.ph,

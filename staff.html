@@ -457,6 +457,25 @@
     .pv-card{background:var(--panel)}
     .pv-sk .pv-th,.pv-sk i{background:var(--panel2);animation:pulse 1.6s ease-in-out infinite}
     @media (prefers-reduced-motion:reduce){.sk>div::before,.sk>div::after,.skk::before,.stat b:empty,.pv-sk .pv-th,.pv-sk i{animation:none}}
+    /* ---- appointments grid ---- */
+    .seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
+    .seg button{border:0;background:var(--panel);padding:6px 12px;font:inherit;font-size:.82rem;cursor:pointer;color:var(--muted)}
+    .seg button.on{background:var(--g1);color:#fff}
+    .grid-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);max-height:calc(100dvh - 240px)}
+    .gcal{display:grid;position:relative;min-width:100%}
+    .gcal .gh{position:sticky;top:0;z-index:3;background:var(--panel);border-bottom:1px solid var(--line);padding:8px 6px;font-size:.8rem;font-weight:600;text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gcal .gt{position:sticky;left:0;z-index:2;background:var(--panel);font-size:.68rem;color:var(--muted2);text-align:right;padding-right:6px;border-right:1px solid var(--line)}
+    .gcal .gcol{position:relative;border-right:1px solid var(--line)}
+    .gcal .gline{position:absolute;left:0;right:0;border-top:1px dashed var(--line)}
+    .gcal .gline.h{border-top-style:solid}
+    .gblk{position:absolute;left:3px;right:3px;border-radius:8px;padding:4px 6px;font-size:.72rem;line-height:1.25;overflow:hidden;cursor:grab;background:#eef2ff;border:1px solid #c7d2fe;color:#1e1b4b;touch-action:none;user-select:none}
+    .gblk b{display:block;font-size:.76rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .gblk.arrived{background:#d1fae5;border-color:#6ee7b7;color:#064e3b}
+    .gblk.done{background:var(--panel2);border-color:var(--line2);color:var(--muted)}
+    .gblk.unconf{box-shadow:inset 3px 0 0 var(--hot)}
+    .gblk.drag{opacity:.85;cursor:grabbing;z-index:5;box-shadow:0 8px 20px rgba(0,0,0,.18)}
+    .gnow{position:absolute;left:0;right:0;border-top:2px solid var(--bad);z-index:4;pointer-events:none}
+    .gslot-free{position:absolute;left:3px;right:3px;border-radius:8px;border:1px dashed var(--line2)}
     /* ---- patient file: summary, timeline, compare ---- */
     .pt-sum{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
     .pt-sum span{font-size:.78rem;background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:3px 10px;color:var(--text)}
@@ -609,9 +628,13 @@
         <div class="countdown" id="schHead"><div class="skk"></div><div class="skk"></div></div>
         <div class="filters" style="margin-bottom:8px">
           <label class="switch"><input type="checkbox" id="myDay" /> Naavi matrame</label>
+          <div class="seg" role="tablist" aria-label="View"><button type="button" data-act="sch-view" data-v="list" id="svList" class="on">List</button><button type="button" data-act="sch-view" data-v="grid" id="svGrid">Grid</button></div>
           <button class="btn btn--sm btn--gold hide" id="schNew">+ Kotha appointment</button>
+          <button class="btn btn--sm hide" id="waitNew">+ Waitlist</button>
         </div>
         <div id="schList"><div class="sk"><div></div><div></div><div></div><div></div></div></div>
+        <div id="schGrid" class="hide"></div>
+        <div class="grp hide" id="waitWrap"><div class="grp-h"><h2>Waitlist <span class="te" style="font-size:.85rem">· ముందు స్లాట్ కావాలి</span></h2><i id="waitCount"></i></div><div id="waitList"></div></div>
         <div class="grp"><div class="grp-h"><h2>Next sitting due <span class="te" style="font-size:.85rem">· రీకాల్</span></h2><i id="dueCount"></i></div><div id="dueList"><div class="sk"><div></div><div></div></div></div></div>
       </section>
       <section id="t-patients" class="hide">
@@ -1259,6 +1282,110 @@
             '<button class="btn btn--sm" data-act="sch-cancel" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">✖</button>' : "") +
           "</div></div></article>";
       }).join("") : '<div class="empty">' + (schMine ? "Mee peru meeda ee roju emi ledu." : "Ee roju appointments ledu.") + "</div>";
+      $("schList").classList.toggle("hide", schView === "grid");
+      $("schGrid").classList.toggle("hide", schView !== "grid");
+      $("svList").classList.toggle("on", schView !== "grid"); $("svGrid").classList.toggle("on", schView === "grid");
+      if (schView === "grid") renderGrid(d, rows);
+      renderWait(d);
+    }
+    // ---- the day as a grid: one column per doctor, drag to move ----------
+    var schView = (function () { try { return localStorage.getItem("dl_schview") || "list"; } catch (e) { return "list"; } })();
+    var G_START = 9, G_END = 21, G_PX = 1.3;             // 9 AM – 9 PM, 1.3 px a minute
+    function dayAt(dayISO, mins) { return new Date(dayISO + "T00:00:00+05:30").getTime() + mins * 60000; }
+    function minsOfDay(ts) { var d = new Date(ts + 19800000); return d.getUTCHours() * 60 + d.getUTCMinutes(); }
+    function renderGrid(d, rows) {
+      var cols = [];
+      var seen = {};
+      (d.team || []).forEach(function (t) {
+        if (/doctor|therapist|owner|manager/.test(t.role || "") || rows.some(function (r) { return r.staff === t.phone; })) { cols.push({ key: t.phone, name: t.name }); seen[t.phone] = 1; }
+      });
+      rows.forEach(function (r) { if (r.staff && !seen[r.staff]) { cols.push({ key: r.staff, name: r.staffName || r.staff }); seen[r.staff] = 1; } });
+      cols.push({ key: "", name: "Assign kaledu" });
+      var H = (G_END - G_START) * 60 * G_PX, colW = 150;
+      var html = '<div class="gcal" id="gcal" style="grid-template-columns:52px repeat(' + cols.length + ',minmax(' + colW + 'px,1fr))">';
+      html += '<div class="gh" style="left:0;z-index:4"></div>' + cols.map(function (c) { return '<div class="gh" title="' + esc(c.name) + '">' + esc(c.name) + "</div>"; }).join("");
+      html += '<div class="gt" style="height:' + H + 'px;position:relative">';
+      for (var h = G_START; h < G_END; h++) html += '<div style="position:absolute;top:' + ((h - G_START) * 60 * G_PX - 6) + 'px;right:6px">' + (h % 12 || 12) + (h < 12 ? " am" : " pm") + "</div>";
+      html += "</div>";
+      cols.forEach(function (c, ci) {
+        html += '<div class="gcol" data-col="' + esc(c.key) + '" data-ci="' + ci + '" style="height:' + H + 'px">';
+        for (var m = 0; m < (G_END - G_START) * 60; m += 30) html += '<div class="gline' + (m % 60 === 0 ? " h" : "") + '" style="top:' + (m * G_PX) + 'px"></div>';
+        rows.filter(function (r) { return (r.staff || "") === c.key; }).forEach(function (r) {
+          var top = (minsOfDay(r.at) - G_START * 60) * G_PX, ht = Math.max(22, (r.mins || 30) * G_PX - 2);
+          if (top < -ht || top > H) return;
+          html += '<div class="gblk ' + esc(r.status) + (r.cf || r.status !== "booked" ? "" : " unconf") + '" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-mins="' + (r.mins || 30) + '" data-name="' + esc(r.name) + '" style="top:' + Math.max(0, top) + "px;height:" + ht + 'px">' +
+            "<b>" + esc(r.time) + " · " + esc(r.name) + "</b>" + esc(r.concern || "") + (r.room ? " · " + esc(r.room) : "") + "</div>";
+        });
+        html += "</div>";
+      });
+      html += "</div>";
+      $("schGrid").innerHTML = '<div class="grid-wrap">' + html + "</div>" +
+        (state.allow("appts.edit") ? '<p class="meta" style="margin-top:6px">Block ni pattukoni lagandi — paiki/kindiki = time, pakkaki = vere doctor. Tap = patient file.</p>' : "");
+      if (schDay === istToday()) {
+        var nm = minsOfDay(Date.now()) - G_START * 60;
+        if (nm > 0 && nm < (G_END - G_START) * 60) {
+          document.querySelectorAll("#gcal .gcol").forEach(function (c) { c.insertAdjacentHTML("beforeend", '<div class="gnow" style="top:' + nm * G_PX + 'px"></div>'); });
+          var wrap = document.querySelector("#schGrid .grid-wrap"); if (wrap) wrap.scrollTop = Math.max(0, nm * G_PX - 120);
+        }
+      }
+      wireGridDrag(cols);
+    }
+    function wireGridDrag(cols) {
+      var canEdit = state.allow("appts.edit");
+      document.querySelectorAll("#gcal .gblk").forEach(function (el) {
+        var st = null;
+        el.addEventListener("pointerdown", function (e) {
+          st = { x: e.clientX, y: e.clientY, top: el.offsetTop, col: el.parentNode, moved: false };
+          if (canEdit) el.setPointerCapture(e.pointerId);
+        });
+        el.addEventListener("pointermove", function (e) {
+          if (!st || !canEdit) return;
+          var dy = e.clientY - st.y, dx = e.clientX - st.x;
+          if (!st.moved && Math.abs(dy) < 6 && Math.abs(dx) < 6) return;
+          st.moved = true; el.classList.add("drag");
+          var snap = 15 * G_PX;
+          el.style.top = Math.max(0, Math.round((st.top + dy) / snap) * snap) + "px";
+          el.style.transform = "translateX(" + dx + "px)";
+        });
+        el.addEventListener("pointerup", function (e) {
+          if (!st) return;
+          var s0 = st; st = null;
+          el.classList.remove("drag"); el.style.transform = "";
+          if (!s0.moved) { openPatient(el.dataset.ph); return; }
+          var target = null;
+          document.querySelectorAll("#gcal .gcol").forEach(function (c) { var r = c.getBoundingClientRect(); if (e.clientX >= r.left && e.clientX < r.right) target = c; });
+          var newMins = G_START * 60 + Math.round(el.offsetTop / G_PX);
+          var newAt = dayAt(schDay, newMins), oldAt = Number(el.dataset.at);
+          var newCol = target ? target.dataset.col : s0.col.dataset.col, oldCol = s0.col.dataset.col;
+          var colName = (cols.filter(function (c) { return c.key === newCol; })[0] || {}).name || "";
+          var timeChanged = Math.abs(newAt - oldAt) >= 60000, colChanged = newCol !== oldCol;
+          if (!timeChanged && !colChanged) { el.style.top = s0.top + "px"; return; }
+          var msg = el.dataset.name + ":\n" + (timeChanged ? "• Time → " + new Date(newAt).toLocaleTimeString("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit" }) + " (patient ki WhatsApp veltundi)\n" : "") +
+            (colChanged ? "• Doctor → " + (newCol ? colName : "evvaru kaadu") + "\n" : "") + "\nSare na?";
+          if (!confirm(msg)) { renderSchedule(); return; }
+          var chain = Promise.resolve();
+          if (colChanged) chain = chain.then(function () { return schapi("assign", { id: el.dataset.id, ph: el.dataset.ph, at: oldAt, staff: newCol, staffName: newCol ? colName : "", mins: Number(el.dataset.mins) }); });
+          if (timeChanged) chain = chain.then(function () { return schapi("move", { id: el.dataset.id, ph: el.dataset.ph, oldAt: oldAt, at: newAt }); });
+          chain.then(function () { toast("Marchamu ✅"); return loadSchedule(true); })
+            .catch(function (x) { toast(x.message); loadSchedule(true); });
+        });
+      });
+    }
+    function renderWait(d) {
+      var canEdit = state.allow("appts.edit");
+      $("waitNew").classList.toggle("hide", !canEdit);
+      var w = d.wait || [];
+      $("waitWrap").classList.toggle("hide", !w.length);
+      $("waitCount").textContent = w.length ? w.length + " mandhi" : "";
+      $("waitList").innerHTML = w.map(function (x) {
+        var last = (x.offered || []).slice(-1)[0];
+        return '<article class="seat quiet"><div class="row1"><div><h3 data-act="pt-open" data-phone="' + esc(x.ph) + '" style="cursor:pointer">' + esc(x.name) + ' <span class="meta">· ' + esc(x.ph) + "</span></h3>" +
+          '<div class="meta">' + esc(x.concern || "—") + " · " + (x.day ? esc(x.day) : "ye roju aina") + (x.when ? " · " + esc(x.when) : "") + " · " + esc(x.by || "") + " " + ago(x.ts) +
+          (last ? " · offer pampamu " + ago(last.ts) : "") + "</div></div></div>" +
+          (canEdit ? '<div class="acts"><button class="btn btn--sm btn--gold" data-act="wait-offer" data-id="' + esc(x.id) + '" data-name="' + esc(x.name) + '">📩 Slot offer</button>' +
+            '<button class="btn btn--sm" data-act="wait-book" data-id="' + esc(x.id) + '" data-ph="' + esc(x.ph) + '" data-name="' + esc(x.name) + '" data-c="' + esc(x.concern || "") + '">📅 Book</button>' +
+            '<button class="btn btn--sm" data-act="wait-rm" data-id="' + esc(x.id) + '">✖</button></div>' : "") + "</article>";
+      }).join("");
     }
     // "3 PM" typed at the desk, turned into a real moment in IST
     function askTime(dayISO, label) {
@@ -1273,7 +1400,14 @@
       return new Date(dayISO + "T" + String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + ":00+05:30").getTime();
     }
     function schSend(action, body, okMsg) {
-      return schapi(action, body).then(function () { toast(okMsg); return loadSchedule(true); })
+      return schapi(action, body).then(function (j) {
+        toast(okMsg);
+        var m = (j && j.waitMatches) || [];
+        if (m.length && j.freed && confirm("Ee slot khali ayindi.\nWaitlist lo " + m.length + " mandhi unnaru: " + m.slice(0, 3).map(function (w) { return w.name; }).join(", ") + ".\n\nMundu " + m[0].name + " ki offer pampanaa?")) {
+          schapi("wait-offer", { wid: m[0].id, at: j.freed.at }).then(function (o) { toast(m[0].name + " ki offer pampamu"); }).catch(function (x) { toast(x.message); });
+        }
+        return loadSchedule(true);
+      })
         .catch(function (e) {
           if (e.status === 409 && confirm(e.message + "\n\nAyina book cheyyala?")) {
             return schapi(action, Object.assign({ force: true }, body)).then(function () { toast(okMsg); return loadSchedule(true); });
@@ -1281,6 +1415,14 @@
           toast(e.message);
         });
     }
+    if ($("waitNew")) $("waitNew").onclick = function () {
+      var ph = prompt("Waitlist — patient mobile number?", ""); if (!ph) return;
+      var nm = prompt("Peru?", "") || "";
+      var cn = prompt("Treatment / concern?", "") || "";
+      var dy = prompt("E roju kavali? (YYYY-MM-DD, khali ga vadilithe ye roju aina)", schDay) || "";
+      var wh = prompt("E time bagutundi? (ex: evening, 11-1) — optional", "") || "";
+      schapi("wait-add", { ph: ph, name: nm, concern: cn, day: dy.trim(), when: wh }).then(function () { toast("Waitlist lo pettamu"); return loadSchedule(true); }).catch(function (x) { toast(x.message); });
+    };
     // ---- packages & recalls ---------------------------------------------
     function pkapi(a, body, qs) { return xcall("/api/package", a, body, qs); }
     function pkgLine(p) {
@@ -4027,6 +4169,28 @@
         schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "noshow" }, "Raaledu ani mark chesam — rebook message pampam");
         return;
       }
+      if (el.dataset.act === "sch-view") {
+        schView = el.dataset.v === "grid" ? "grid" : "list";
+        try { localStorage.setItem("dl_schview", schView); } catch (x) {}
+        renderSchedule(); return;
+      }
+      if (el.dataset.act === "wait-rm") {
+        if (!confirm("Waitlist nundi teeseyanaa?")) return;
+        schapi("wait-remove", { wid: el.dataset.id }).then(function () { toast("Teesesam"); return loadSchedule(true); }).catch(function (x) { toast(x.message); });
+        return;
+      }
+      if (el.dataset.act === "wait-offer") {
+        var ot = askTime(schDay, el.dataset.name + " ki e time offer cheyyali? (" + schDay + ")");
+        if (!ot) return;
+        schapi("wait-offer", { wid: el.dataset.id, at: ot }).then(function (o) { toast("Offer pampamu — " + o.offered); return loadSchedule(true); }).catch(function (x) { toast(x.message); });
+        return;
+      }
+      if (el.dataset.act === "wait-book") {
+        var bt = askTime(schDay, el.dataset.name + " ki e time book cheyyali? (" + schDay + ")");
+        if (!bt) return;
+        schSend("create", { ph: el.dataset.ph, name: el.dataset.name, concern: el.dataset.c, at: bt, fromWait: el.dataset.id }, "Book ayindi — waitlist nundi teesesam");
+        return;
+      }
       if (el.dataset.act === "sch-cancel") {
         if (!confirm((el.dataset.name || "Ee appointment") + " cancel chestara? Patient ki WhatsApp veltundi.")) return;
         schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "cancelled" }, "Cancel ayindi");
@@ -4046,7 +4210,11 @@
         if (pick === null) return;
         var idx = parseInt(pick, 10);
         var who = idx > 0 ? team[idx - 1] : null;
-        var rm = prompt("Room (optional):", "") || "";
+        var roomList = (schData && schData.rooms) || [];
+        var rmPick = prompt("Room / machine?\n\n" + roomList.map(function (r3, i3) { return (i3 + 1) + ") " + r3; }).join("\n") + "\n\n0 = room vaddu (leda peru type cheyandi)", "0");
+        if (rmPick === null) return;
+        var rmN = parseInt(rmPick, 10);
+        var rm = rmN > 0 && roomList[rmN - 1] ? roomList[rmN - 1] : (isNaN(rmN) ? String(rmPick).trim() : "");
         var mn5 = Number(prompt("Entha sepu? (nimishalu)", "30") || 30);
         schSend("assign", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at),
           staff: who ? who.phone : "", staffName: who ? who.name : "", room: rm, mins: mn5 },
