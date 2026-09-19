@@ -381,8 +381,21 @@ async function gemini(model, body, key) {
   return r.json();
 }
 
+// The photograph is drawn for the headline, not beside it. The library brief
+// alone describes a scene; with only that, the picture and the words above it
+// could be about two different things. So the model is told what the poster
+// says and asked to illustrate exactly that — and told, in as many words, not
+// to letter it, because a quoted headline in a prompt is an open invitation to
+// paint the words in. The vision check still catches any that slip through.
+function imagePrompt(topic) {
+  const says = `This photograph is the background of a poster whose headline reads: "${topic.h1}"` +
+    (topic.sub ? ` (supporting line: "${topic.sub}")` : "") +
+    ". The picture must illustrate that headline directly, so that anybody seeing the two together connects them at a glance. Do NOT write the headline or any other words, letters or numbers anywhere in the image.";
+  return STYLE + " " + says + " Subject: " + topic.img + COMPOSITION;
+}
+
 async function drawImage(topic, key) {
-  const prompt = STYLE + " Subject: " + topic.img + COMPOSITION;
+  const prompt = imagePrompt(topic);
   for (const model of IMAGE_MODELS) {
     const imageConfig = Object.assign({ aspectRatio: "4:5" }, /pro/.test(model) ? { imageSize: "2K" } : {});
     for (let attempt = 0; attempt < 2; attempt++) {
@@ -456,6 +469,47 @@ async function genImage(topic) {
 }
 
 // ---- 4. Poster HTML ---------------------------------------------------------
+// ---- the doctor on the poster ---------------------------------------------
+// A real photograph and a real name, never a generated face. fx/fy is where the
+// face sits in each photograph (as a fraction of width/height), so the round
+// crop is centred on the face rather than on a white coat. The credentials are
+// the ones the WhatsApp agent is allowed to quote (see _facts.js) — nothing
+// here is embellished.
+const DOCTORS = {
+  nikhitha: { name: "Dr. Nikhitha Priyanka", cred: "MD (DVL) · Senior Dermatologist",
+    file: ["dr-nikhitha.webp"], aspect: 1050 / 1400, fx: 0.53, fy: 0.33 },
+  meghana: { name: "Dr. Meghana Valeti", cred: "MD (DVL) · Gold Medalist · Medical Director",
+    file: ["founders", "meghana.webp"], aspect: 600 / 720, fx: 0.51, fy: 0.31 },
+  sai: { name: "Dr. Sai Divija", cred: "MD (DVL) · Dermatologist",
+    file: ["dr-sai-divija.webp"], aspect: 880 / 1100, fx: 0.47, fy: 0.30 },
+};
+const DOCTOR_ROTA = ["nikhitha", "meghana", "sai"];
+const _docPhoto = {};
+function doctorPhoto(key) {
+  if (key in _docPhoto) return _docPhoto[key];
+  const d = DOCTORS[key];
+  // Spelled out per file so Vercel's file tracer bundles each photograph.
+  const at = key === "nikhitha" ? path.join(__dirname, "..", "assets", "dr-nikhitha.webp")
+    : key === "meghana" ? path.join(__dirname, "..", "assets", "founders", "meghana.webp")
+    : key === "sai" ? path.join(__dirname, "..", "assets", "dr-sai-divija.webp") : "";
+  try { _docPhoto[key] = d && at ? fs.readFileSync(at).toString("base64") : ""; } catch (e) { _docPhoto[key] = ""; }
+  return _docPhoto[key];
+}
+// Academy posters show the trainer. Clinic posters take the three doctors in
+// turn, a different one each day. The owner can pin one with KV dp:doctor
+// (nikhitha / meghana / sai) or take the doctor off with dp:doctor = "off".
+async function pickDoctor(cfg, topic) {
+  let pin = "";
+  if (cfg) { try { pin = String((await guard.kvCommand(cfg, ["GET", "dp:doctor"])).result || "").toLowerCase(); } catch (e) {} }
+  if (pin === "off") return null;
+  let key = DOCTORS[pin] ? pin
+    : topic && topic.pillar === "academy" ? "meghana"
+    : DOCTOR_ROTA[Math.floor((Date.now() + IST_MS) / 86400000) % DOCTOR_ROTA.length];
+  const b64 = doctorPhoto(key);
+  if (!b64) return null;
+  return Object.assign({ key, b64 }, DOCTORS[key]);
+}
+
 let LOGO_B64 = null;
 function logoB64() {
   if (LOGO_B64) return LOGO_B64;
@@ -468,7 +522,7 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 // headline block · footer (clinic name EN + TE, address, WhatsApp pill).
 // __fit() sits the headline block just above the footer and shrinks the type
 // until the block starts below the face band, so long copy never climbs onto it.
-function posterHtml(topic, img) {
+function posterHtml(topic, img, doc) {
   // A course poster and a treatment poster are not the same advert. The line
   // across the top and the word on the WhatsApp pill both change, because on
   // Instagram most people never open the caption — if the picture does not say
@@ -478,6 +532,10 @@ function posterHtml(topic, img) {
   const waLabel = acad ? 'WhatsApp "ACADEMY"' : "WhatsApp";
   const brandName = acad ? "DermaLuxe Academy — Skin & Hair Aesthetics Training" : "DermaLuxe by Medicare Skin And Hair Clinics";
   const brandTe = acad ? "డెర్మాలక్స్ అకాడమీ — స్కిన్ & హెయిర్ శిక్షణ" : "డెర్మాలక్స్ బై మెడికేర్ స్కిన్ అండ్ హెయిర్ క్లినిక్స్";
+  // The doctor's round photo: the image is scaled so the face fills about half
+  // the circle, then moved so the face sits in its middle.
+  const D = 116, BH = D * 2.5, BW = doc ? BH * doc.aspect : 0;
+  const docCss = doc ? `background:#1b1812 url("data:image/webp;base64,${doc.b64}") no-repeat;background-size:${BW.toFixed(0)}px ${BH.toFixed(0)}px;background-position:${(D / 2 - doc.fx * BW).toFixed(1)}px ${(D / 2 - doc.fy * BH).toFixed(1)}px` : "";
   const photo = img ? `url("data:${img.mime};base64,${img.b64}") center top/cover no-repeat` : "radial-gradient(70% 45% at 50% 32%,rgba(198,162,92,.30),transparent 70%)";
   const frame = img ? framing(img.measure) : { k: 1, lift: 0 };
   const h1size = topic.h1.length <= 22 ? 92 : topic.h1.length <= 30 ? 82 : 74;
@@ -506,7 +564,15 @@ body{color:var(--ink);font-family:Jost,sans-serif;position:relative}
 h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;line-height:1.02;margin:0;color:var(--ink);text-wrap:balance;text-shadow:0 2px 22px rgba(0,0,0,.8)}
 .te{font-family:"Noto Sans Telugu",sans-serif;font-weight:500;font-size:${tesize}px;line-height:1.45;color:var(--gold);text-shadow:0 2px 14px rgba(0,0,0,.85)}
 .sub{font-size:25px;font-weight:300;color:var(--mute);line-height:1.45;max-width:880px;text-wrap:balance}
-.foot{position:absolute;left:66px;right:66px;bottom:60px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:24px;border-top:1px solid rgba(230,201,138,.38)}
+.foot{position:absolute;left:66px;right:66px;bottom:52px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:24px;border-top:1px solid rgba(230,201,138,.38)}
+.foot.withdoc{bottom:92px}
+.dr{display:flex;align-items:center;gap:20px;min-width:0}
+.dr .ph{flex:none;width:${D}px;height:${D}px;border-radius:50%;${docCss};box-shadow:0 0 0 3px #0a0a0c,0 0 0 5px rgba(230,201,138,.9),0 8px 26px rgba(0,0,0,.6)}
+.dr .t{min-width:0}
+.dr .k{font-size:14px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);font-weight:500}
+.dr .dn{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:36px;line-height:1.08;color:var(--ink);white-space:nowrap;margin-top:3px}
+.dr .dc{font-size:18px;color:var(--mute);margin-top:4px;white-space:nowrap;letter-spacing:.01em}
+.addr{position:absolute;left:66px;right:66px;bottom:50px;text-align:center;font-size:17px;color:#aaa396;letter-spacing:.03em;white-space:nowrap}
 .brand{min-width:0}
 .brand .n{font-size:25px;color:var(--ink);letter-spacing:.02em;white-space:nowrap}
 .brand .nt{font-family:"Noto Sans Telugu",sans-serif;font-size:19px;color:var(--mute);margin-top:1px;white-space:nowrap}
@@ -518,15 +584,26 @@ h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;
 </style></head><body><div class="photo"></div><div class="shade"></div><div class="vign"></div><div class="frame"></div><div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div>
 <div class="head"><img class="logo" src="data:image/png;base64,${logoB64()}" alt=""><div class="city">ఏలూరు</div></div>
 <div class="txt"><div class="eyebrow"><i></i>${esc(eyebrow)}<i class="r"></i></div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="sub">${esc(topic.sub)}</div></div>
-<div class="foot"><div class="brand"><div class="n">${esc(brandName)}</div><div class="nt">${esc(brandTe)}</div><div class="a">Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div></div>
+${doc
+  ? `<div class="foot withdoc"><div class="dr"><div class="ph"></div><div class="t"><div class="k">${acad ? "Your trainer" : "Your doctor"}</div><div class="dn">${esc(doc.name)}</div><div class="dc">${esc(doc.cred)}</div></div></div>`
+  : `<div class="foot"><div class="brand"><div class="n">${esc(brandName)}</div><div class="nt">${esc(brandTe)}</div><div class="a">Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div></div>`}
 <div class="wa"><svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#15120d" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg><div><div class="l">${esc(waLabel)}</div><div class="num">99591 34666</div></div></div></div>
+${doc ? `<div class="addr">${acad ? "DermaLuxe Academy" : "DermaLuxe by Medicare"} · Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div>` : ""}
 <script>
 window.__fit = function () {
   var txt = document.querySelector(".txt"), foot = document.querySelector(".foot"), h1 = document.querySelector("h1"), te = document.querySelector(".te"), sub = document.querySelector(".sub");
-  var brand = document.querySelector(".brand");
+  var brand = document.querySelector(".brand"), dr = document.querySelector(".dr .t");
   // footer: keep the name on one line next to the pill
-  var n = parseFloat(getComputedStyle(brand.querySelector(".n")).fontSize);
-  while (brand.scrollWidth > brand.clientWidth + 1 && n > 18) { n -= 1; brand.querySelector(".n").style.fontSize = n + "px"; brand.querySelector(".nt").style.fontSize = (n * 0.76) + "px"; brand.querySelector(".a").style.fontSize = (n * 0.68) + "px"; }
+  if (brand) {
+    var n = parseFloat(getComputedStyle(brand.querySelector(".n")).fontSize);
+    while (brand.scrollWidth > brand.clientWidth + 1 && n > 18) { n -= 1; brand.querySelector(".n").style.fontSize = n + "px"; brand.querySelector(".nt").style.fontSize = (n * 0.76) + "px"; brand.querySelector(".a").style.fontSize = (n * 0.68) + "px"; }
+  }
+  if (dr) {
+    var dn = dr.querySelector(".dn"), dc = dr.querySelector(".dc"), a = parseFloat(getComputedStyle(dn).fontSize), c = parseFloat(getComputedStyle(dc).fontSize);
+    while (dr.scrollWidth > dr.clientWidth + 1 && a > 24) { a -= 1; dn.style.fontSize = a + "px"; if (c > 14) { c -= 0.5; dc.style.fontSize = c + "px"; } }
+  }
+  var addr = document.querySelector(".addr");
+  if (addr) { var af = 17; while (addr.scrollWidth > addr.clientWidth + 1 && af > 12) { af -= 0.5; addr.style.fontSize = af + "px"; } }
   txt.style.bottom = (1350 - foot.offsetTop + 46) + "px";
   var floor = 1350 * 0.555, h = parseFloat(getComputedStyle(h1).fontSize), t = parseFloat(getComputedStyle(te).fontSize), s = 25;
   for (var i = 0; i < 30 && txt.offsetTop < floor; i++) {
@@ -574,7 +651,8 @@ async function renderPoster(html) {
 async function createDailyPost(cfg, opts = {}) {
   const topic = opts.topic ? await pickTopic(cfg, opts.topic) : await planTopic(cfg);
   const [img, caption] = await Promise.all([genImage(topic), writeCaption(topic)]);
-  const b64 = await renderPoster(posterHtml(topic, img));
+  const doc = await pickDoctor(cfg, topic).catch(() => null);
+  const b64 = await renderPoster(posterHtml(topic, img, doc));
   const imgId = crypto.randomBytes(16).toString("hex");
   const due = opts.dueMs || todayAtIst(8, 30);
   const admins = guard.ownerPhones();
@@ -598,4 +676,4 @@ async function createDailyPost(cfg, opts = {}) {
   return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
 }
 
-module.exports = { TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
+module.exports = { DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };

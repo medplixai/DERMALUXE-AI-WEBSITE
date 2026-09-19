@@ -126,6 +126,38 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
     "the trainer poster asks the image model for a room, not a likeness of a named doctor");
   is(/Meghana/.test(trainer.sub), true, "her name is set in type instead");
 
+  console.log("\n  — the picture is drawn for the headline —");
+  const clinic = daily.TOPICS.find((t) => t.key === "hydrafacial");
+  const pr = daily.imagePrompt(clinic);
+  is(pr.includes(clinic.h1), true, "the image model is told the headline");
+  is(pr.includes(clinic.img), true, "as well as the scene");
+  is(/Do NOT write the headline or any other words/.test(pr), true, "and told not to letter it into the picture");
+
+  console.log("\n  — the doctor at the foot of the poster —");
+  h.run(["DEL", "dp:doctor"]);
+  const acadDoc = await daily.pickDoctor({ kind: "pg" }, daily.ACADEMY_TOPICS[0]);
+  is(acadDoc && acadDoc.key, "meghana", "an academy poster shows the trainer");
+  is(!!(acadDoc && acadDoc.b64.length > 1000), true, "with her real photograph, read from the site's own files");
+  const seen = new Set();
+  for (const d of ["2026-09-19", "2026-09-20", "2026-09-21"]) { at(d + "T07:00:00+05:30"); seen.add((await daily.pickDoctor({ kind: "pg" }, clinic)).key); }
+  is(seen.size, 3, "clinic posters take the three doctors in turn: " + [...seen].join(", "));
+  h.run(["SET", "dp:doctor", "sai"]);
+  is((await daily.pickDoctor({ kind: "pg" }, daily.ACADEMY_TOPICS[0])).key, "sai", "the owner can pin one");
+  h.run(["SET", "dp:doctor", "off"]);
+  is(await daily.pickDoctor({ kind: "pg" }, clinic), null, "or take the doctor off");
+  h.run(["DEL", "dp:doctor"]);
+  at(DURING);
+
+  const withDoc = daily.posterHtml(clinic, null, await daily.pickDoctor({ kind: "pg" }, clinic));
+  is(/Your doctor/.test(withDoc) && /MD \(DVL\)/.test(withDoc), true, "the poster names the doctor and her degree");
+  is(/Opp\. Happy Mobiles/.test(withDoc), true, "and still carries the address");
+  is(/99591 34666/.test(withDoc), true, "and the WhatsApp number");
+  const noDoc = daily.posterHtml(clinic, null, null);
+  is(/DermaLuxe by Medicare Skin And Hair Clinics/.test(noDoc) && !/Your doctor/.test(noDoc), true,
+    "with no doctor it falls back to the clinic's own footer, not a gap");
+  const acadHtml = daily.posterHtml(daily.ACADEMY_TOPICS[0], null, acadDoc);
+  is(/Your trainer/.test(acadHtml) && /Meghana Valeti/.test(acadHtml), true, "an academy poster calls her the trainer");
+
   restore();
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe academy campaign behaves");
   process.exit(fails ? 1 : 0);
