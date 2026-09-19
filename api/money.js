@@ -256,10 +256,13 @@ module.exports = async (req, res) => {
       items, payments: [], ts: Date.now(), by: me.name, byPhone: me.phone,
       note: clean(b.note, 200),
     };
+    // who did the treatment — the doctor or therapist it is credited to
+    const doneBy = digits10(b.doneBy);
+    if (/^[6-9]\d{9}$/.test(doneBy)) { bill.doneBy = doneBy; bill.doneByName = clean(b.doneByName, 40); }
     // money first, paperwork after: an advance given at the desk is recorded
     // as part of the same action rather than a second step someone can forget
     const adv = money(b.paid);
-    if (adv > 0) bill.payments.push({ amount: adv, mode: MODES.includes(b.mode) ? b.mode : "cash", ref: clean(b.ref, 40), ts: Date.now(), by: me.name });
+    if (adv > 0) bill.payments.push({ amount: adv, mode: MODES.includes(b.mode) ? b.mode : "cash", ref: clean(b.ref, 40), ts: Date.now(), by: me.name, byPhone: me.phone });
     await putBill(cfg, bill);
     const day = istDay();
     await guard.kvCommand(cfg, ["LPUSH", `bill:of:${phone}`, id]).catch(() => {});
@@ -289,7 +292,7 @@ module.exports = async (req, res) => {
     const paidAt = guard.stamp(b.at, 3 * 86400000);
     bill.payments = (bill.payments || []).concat([{
       amount: amt, mode: MODES.includes(b.mode) ? b.mode : "cash",
-      ref: clean(b.ref, 40), ts: paidAt, by: me.name,
+      ref: clean(b.ref, 40), ts: paidAt, by: me.name, byPhone: me.phone,
     }]);
     await putBill(cfg, bill);
     const day = istDay(paidAt);

@@ -701,6 +701,7 @@
         </div>
         <div id="insBody"><div class="sk"><div></div><div></div><div></div></div></div>
         <div id="pnlBoard" style="margin-top:14px"></div>
+        <div id="incBoard" style="margin-top:14px"></div>
         <div id="adsBoard" style="margin-top:14px"></div>
         <div id="refBoard" style="margin-top:14px"></div>
       </section>
@@ -759,6 +760,7 @@
 
       <section id="t-attend" class="hide">
         <div class="countdown" id="attHead"><div class="skk"></div><div class="skk"></div></div>
+        <div class="box hide" id="incMine"></div>
         <div class="box"><h2>Meeru <span class="te" style="font-size:.85rem;color:var(--g3)">· మీరు</span></h2>
           <div id="attMe" class="meta">—</div>
           <div class="noteform" style="margin-top:10px"><button class="btn btn--gold btn--sm" id="attIn">Vachanu</button><button class="btn btn--sm" id="attOut">Velthunna</button></div>
@@ -1938,6 +1940,7 @@
         // must not quietly take the other off the screen.
         .then(loadRefBoard)
         .then(function () { return loadPnl(); })
+        .then(function () { return loadIncBoard(); })
         .then(loadAds);
     }
     // ---- the month's profit and loss --------------------------------------
@@ -2195,7 +2198,51 @@
     // ---- who is in today ---------------------------------------------------
     function attapi(a, body, qs) { return xcall("/api/attend", a, body, qs); }
     var attLabels = {};
+    // ---- incentives ------------------------------------------------------
+    function incapi(a, body, qs) { return xcall("/api/incentive", a, body, qs); }
+    function incLine(r) {
+      var bits = [];
+      if (r.collected) bits.push("collection " + rupee(r.collected) + (r.rate.collectPct ? " × " + r.rate.collectPct + "%" : ""));
+      if (r.treated) bits.push("treatments " + rupee(r.treated) + (r.rate.treatPct ? " × " + r.rate.treatPct + "%" : ""));
+      if (r.conversions) bits.push(r.conversions + " leads book/visit" + (r.rate.perConv ? " × " + rupee(r.rate.perConv) : ""));
+      return bits.join(" · ") || "Ee nela inka emi ledu";
+    }
+    function loadMyInc() {
+      var host = $("incMine"); if (!host) return;
+      incapi("report").then(function (j) {
+        if (j.owner) { host.classList.add("hide"); return; }
+        var r = j.rows[0];
+        host.classList.remove("hide");
+        host.innerHTML = '<h2>Mee incentive — ee nela <span class="te" style="font-size:.85rem;color:var(--g3)">· ప్రోత్సాహకం</span></h2>' +
+          '<div style="font-size:1.6rem;font-weight:700;margin:4px 0">' + rupee(r.amount) + "</div>" +
+          '<p class="meta">' + esc(incLine(r)) + "</p>";
+      }).catch(function () { host.classList.add("hide"); });
+    }
+    function loadIncBoard() {
+      var host = $("incBoard"); if (!host) return Promise.resolve();
+      if (!state.allow("settings.manage")) { host.innerHTML = ""; return Promise.resolve(); }
+      return incapi("report").then(function (j) {
+        var roles = {}; j.rows.forEach(function (r) { roles[r.role] = 1; });
+        var R = j.rules || { roles: {}, people: {} };
+        host.innerHTML = '<div class="box"><h2>Staff incentives — ' + esc(j.month) + ' <span class="te" style="font-size:.85rem;color:var(--g3)">· ప్రోత్సాహకాలు</span></h2>' +
+          '<p class="meta">Collection = vaallu raasina bills lo ee nela vachina dabbu. Treatment = bill lo "chesinavaru" ani vaalla peru unna treatments. Leads = vaallu booked/visited ki marchina enquiries. Mottam ' + rupee(j.total) + ".</p>" +
+          j.rows.map(function (r) {
+            return '<div class="pnl-row"><span><b style="font-weight:600">' + esc(r.name) + '</b> <span class="meta">· ' + esc(r.role) + '</span><br><span class="meta">' + esc(incLine(r)) + "</span></span><span><b>" + rupee(r.amount) + "</b></span></div>";
+          }).join("") +
+          '<h3 style="font-size:.9rem;margin:14px 0 6px">Rates (role-wise)</h3>' +
+          '<div style="overflow-x:auto"><table class="inc-rates" style="width:100%;border-collapse:collapse;font-size:.84rem"><tr><th style="text-align:left">Role</th><th>Collection %</th><th>Treatment %</th><th>₹ / lead</th></tr>' +
+          Object.keys(roles).filter(function (r) { return r !== "owner"; }).map(function (rl) {
+            var x = R.roles[rl] || {};
+            return '<tr data-role="' + esc(rl) + '"><td>' + esc(rl) + '</td><td><input data-k="collectPct" inputmode="decimal" value="' + (x.collectPct || 0) + '" style="width:70px" aria-label="Collection percent"></td>' +
+              '<td><input data-k="treatPct" inputmode="decimal" value="' + (x.treatPct || 0) + '" style="width:70px" aria-label="Treatment percent"></td>' +
+              '<td><input data-k="perConv" inputmode="numeric" value="' + (x.perConv || 0) + '" style="width:80px" aria-label="Rupees per lead"></td></tr>';
+          }).join("") + "</table></div>" +
+          '<button class="btn btn--sm btn--gold" data-act="inc-save" style="margin-top:8px">Rates save cheyyi</button></div>';
+        host._people = R.people || {};
+      }).catch(function (e) { host.innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
     function loadAttend() {
+      loadMyInc();
       return attapi("day").then(function (j) {
         attLabels = j.labels || {};
         $("attHead").className = "countdown";
@@ -2392,7 +2439,13 @@
         var total = items.reduce(function (n, i) { return n + i.price * i.qty; }, 0);
         var paid = Number(prompt("Total " + rupee(total) + ".\nIppudu enta vachindi? (0 ante tarvata)", String(total)) || 0);
         var mode = paid > 0 ? (prompt("Ela vachindi? cash / upi / card", "upi") || "cash").toLowerCase().trim() : "cash";
-        mnapi("bill", { phone: phone, name: name, items: items, paid: paid, mode: mode })
+        var team5 = ((schData && schData.team) || (schWeek && schWeek.team) || []).filter(function (t) { return /doctor|therapist|owner|manager/.test(t.role || ""); });
+        var doer = null;
+        if (team5.length) {
+          var dp = prompt("Treatment evaru chesaru? (incentive kosam)\n\n" + team5.map(function (t, i) { return (i + 1) + ") " + t.name; }).join("\n") + "\n\n0 = cheppanu", "0");
+          var dn = parseInt(dp, 10); if (dn > 0 && team5[dn - 1]) doer = team5[dn - 1];
+        }
+        mnapi("bill", { phone: phone, name: name, items: items, paid: paid, mode: mode, doneBy: doer ? doer.phone : "", doneByName: doer ? doer.name : "" })
           .then(function (j) {
             toast("Bill " + j.bill.id + " · balance " + rupee(j.bill.balance));
             if (ptOpen && ptOpen.phone === phone) loadPatientMoney(phone);
@@ -4217,6 +4270,18 @@
       if (el.dataset.act === "sch-noshow") {
         if (!confirm(el.dataset.name + " raaledu ani mark cheyyanaa?\n\nVaallaki 'malli book chesukondi' ani message veltundi.")) return;
         schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "noshow" }, "Raaledu ani mark chesam — rebook message pampam");
+        return;
+      }
+      if (el.dataset.act === "inc-save") {
+        var rolesBody = {};
+        document.querySelectorAll(".inc-rates tr[data-role]").forEach(function (tr) {
+          var o = {}; tr.querySelectorAll("input[data-k]").forEach(function (inp) { o[inp.dataset.k] = Number(inp.value || 0); });
+          rolesBody[tr.dataset.role] = o;
+        });
+        el.disabled = true;
+        incapi("rules-save", { roles: rolesBody, people: ($("incBoard")._people || {}) })
+          .then(function () { toast("Rates save ayyayi"); return loadIncBoard(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
         return;
       }
       if (el.dataset.act === "pnl-m") {

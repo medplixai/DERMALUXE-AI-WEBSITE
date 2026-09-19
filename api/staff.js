@@ -601,6 +601,7 @@ module.exports = async (req, res) => {
     if (prevAt && at < prevAt) return json(res, 200, { ok: true, skipped: "newer change already saved", at: prevAt });
     await guard.kvCommand(cfg, ["HSET", STATUS, key, s]);
     await guard.kvCommand(cfg, ["HSET", STATUS_TS, key, String(at)]).catch(() => {});
+    await guard.kvCommand(cfg, ["HSET", "dl_status_by", key, me.phone]).catch(() => {});   // who moved it — for incentives
     return json(res, 200, { ok: true, at });
   }
   if (a === "note") {

@@ -109,6 +109,7 @@ module.exports = async (req, res) => {
     if (!STATUSES.includes(st)) return json(res, 400, { error: "bad status" });
     await guard.kvCommand(cfg, ["HSET", "dl_status", key, st]);
     await guard.kvCommand(cfg, ["HSET", "dl_status_ts", key, String(Date.now())]).catch(() => {});
+    await guard.kvCommand(cfg, ["HSET", "dl_status_by", key, me.phone]).catch(() => {});
     await audit(cfg, me, `status ${st} on ${key.split("|")[1] || key}`);
     return json(res, 200, { ok: true, did: "Status " + st });
   }
