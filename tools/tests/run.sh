@@ -28,8 +28,14 @@ echo
 echo "── how it is wired together ───────────────────────"
 [ ${#wiring[@]} -eq 0 ] && echo "(none yet)"
 for f in "${wiring[@]}"; do
-  out=$(node "$f" 2>&1 | tail -1)
-  printf "%-14s %s\n" "$(basename "$f" .js)" "$out"
+  full=$(node "$f" 2>&1); code=$?
+  out=$(echo "$full" | tail -1)
+  # A wiring check that finds something must fail the run, not just print a
+  # quiet last line. This used to report "all good" over a staff.js that
+  # could not load at all.
+  if [ $code -ne 0 ] || echo "$full" | grep -qE "^ *✗|problem\(s\)|NOTHING GUARDS|SOMETHING IS BROKEN"; then
+    fail=1; printf "%-14s FAILED\n" "$(basename "$f" .js)"; echo "$full" | grep -E "✗|problem" | head -20 | sed 's/^/    /'
+  else printf "%-14s %s\n" "$(basename "$f" .js)" "$out"; fi
 done
 echo
 [ $fail -eq 0 ] && echo "all good" || echo "SOMETHING IS BROKEN — see above"
