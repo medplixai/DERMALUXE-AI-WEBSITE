@@ -1868,6 +1868,11 @@
             '<div class="meta" style="color:' + col + ';margin-top:4px">' + esc(c.verdict.text) + "</div>" +
             '<div class="meta" style="margin-top:4px">' + money0(c.spend) + " · " + (c.reach || 0).toLocaleString("en-IN") + " mandiki · " +
               c.results + " సంభాషణలు" + (c.daily ? " · roju " + money0(c.daily) : "") + "</div>" +
+            (c.patients && c.patients.leads
+              ? '<div class="meta" style="margin-top:4px;color:var(--text)">👥 Ee ad nundi: <b>' + c.patients.leads + "</b> leads · " + c.patients.booked + " book · <b>" + c.patients.came + "</b> vachharu" +
+                (c.patients.revenue ? " · " + money0(c.patients.revenue) + " vachindi (" + c.patients.back + "%)" : "") +
+                (c.patients.costPerPatient ? ' · <b style="color:var(--g2)">okko patient ki ' + money0(c.patients.costPerPatient) + "</b>" : "") + "</div>"
+              : "") +
             (j.canChange
               ? '<div class="acts" style="margin-top:6px">' +
                 '<button class="btn btn--sm" data-act="ads-budget" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '" data-d="' + c.daily + '">Budget marchu</button>' +

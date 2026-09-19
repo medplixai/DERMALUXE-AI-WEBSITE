@@ -98,7 +98,7 @@ const tokenOf = (name) => process.env[name];
 // rest of the dashboard shows.
 const PAID_SRC = ["instagram", "facebook", "messenger", "ig", "fb"];
 const srcOf = (l) => String(l.src || l.type || "").toLowerCase();
-const isPaid = (l) => PAID_SRC.some((s) => srcOf(l).includes(s));
+const isPaid = (l) => !!l.ad_id || PAID_SRC.some((s) => srcOf(l).includes(s));
 
 async function ourSide(cfg, sinceMs) {
   const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "1999"]).catch(() => ({}));
@@ -127,7 +127,35 @@ async function ourSide(cfg, sinceMs) {
       }
     }
   }
-  return { leads: paid.length, booked, came, revenue, people: phones.size };
+  // Per ad: leads that Meta told us came from a specific ad (WhatsApp and
+  // Messenger click-to-chat ads carry the ad id), and what those people did.
+  const byAd = {};
+  const payOf = {};
+  for (const l of leads.filter((x) => x.ad_id)) {
+    const ad = String(l.ad_id);
+    const row = byAd[ad] || (byAd[ad] = { leads: 0, booked: 0, came: 0, revenue: 0, phones: [] });
+    row.leads++;
+    const s = st[keyOf(l)] || "";
+    if (["booked", "visited"].includes(s)) row.booked++;
+    if (s === "visited") row.came++;
+    const ph = digits10(l.phone);
+    if (ph && !row.phones.includes(ph)) row.phones.push(ph);
+  }
+  const adPhones = [...new Set(Object.values(byAd).flatMap((r) => r.phones))];
+  if (adPhones.length) {
+    const ids = await guard.kvPipeline(cfg, adPhones.map((p) => ["LRANGE", `bill:of:${p}`, "0", "19"])).catch(() => []);
+    for (let i = 0; i < adPhones.length; i++) {
+      const list = Array.isArray(ids[i]) ? ids[i] : [];
+      if (!list.length) continue;
+      const bills = await guard.kvPipeline(cfg, list.map((id) => ["GET", `bill:${id}`])).catch(() => []);
+      let sum = 0;
+      for (const raw of bills) { const bill = parse(raw, null); if (bill) for (const p of (bill.payments || [])) if (Number(p.ts) >= sinceMs) sum += rupees(p.amount); }
+      payOf[adPhones[i]] = sum;
+    }
+    for (const r of Object.values(byAd)) r.revenue = r.phones.reduce((n, p) => n + (payOf[p] || 0), 0);
+  }
+  for (const r of Object.values(byAd)) delete r.phones;
+  return { leads: paid.length, booked, came, revenue, people: phones.size, fromAds: leads.filter((x) => x.ad_id).length, byAd };
 }
 
 // ---- what to say about one campaign ----------------------------------------
@@ -186,7 +214,7 @@ module.exports = async (req, res) => {
 
     let account = null, campaigns = [], today = null, err = "";
     try {
-      const [acc, ins, todayIns, camps] = await Promise.all([
+      const [acc, ins, todayIns, camps, adsList] = await Promise.all([
         graph(act, tok, { fields: "name,currency,amount_spent,spend_cap,account_status" }),
         graph(act + "/insights", tok, { fields: "spend,impressions,reach,actions", time_range: JSON.stringify({ since: since_s, until: until_s }) }),
         graph(act + "/insights", tok, { fields: "spend,impressions", date_preset: "today" }),
@@ -195,7 +223,10 @@ module.exports = async (req, res) => {
                   `insights.time_range(${JSON.stringify({ since: since_s, until: until_s })}){spend,impressions,reach,actions}`,
           limit: 50,
         }),
+        Object.keys(ours.byAd || {}).length ? graph(act + "/ads", tok, { fields: "id,campaign_id", limit: 500 }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
       ]);
+      const adToCamp = {};
+      for (const x of (adsList.data || [])) adToCamp[String(x.id)] = String(x.campaign_id);
 
       const conv = (actions) => {
         const rows = actions || [];
@@ -224,8 +255,16 @@ module.exports = async (req, res) => {
         const ci = ((c.insights || {}).data || [])[0] || {};
         const s = rupees(ci.spend), r = conv(ci.actions);
         const each = r ? Math.round(s / r) : 0;
+        // what the people this campaign's ads brought actually did
+        const pts = { leads: 0, booked: 0, came: 0, revenue: 0 };
+        for (const [ad, r] of Object.entries(ours.byAd || {})) {
+          if (adToCamp[ad] !== String(c.id)) continue;
+          pts.leads += r.leads; pts.booked += r.booked; pts.came += r.came; pts.revenue += r.revenue;
+        }
+        pts.costPerPatient = pts.came ? Math.round(s / pts.came) : 0;
+        pts.back = s ? Math.round((pts.revenue / s) * 100) : 0;
         return {
-          id: c.id, name: c.name, objective: c.objective,
+          id: c.id, name: c.name, objective: c.objective, patients: pts,
           status: c.effective_status || c.status,
           running: (c.effective_status || c.status) === "ACTIVE",
           daily: c.daily_budget ? Math.round(Number(c.daily_budget) / 100) : 0,

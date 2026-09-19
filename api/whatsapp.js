@@ -788,6 +788,11 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
   // One lead per patient per 6h conversation window — as the chat progresses,
   // the earlier row is replaced by this enriched one (and keeps the desk's
   // status and notes).
+  if (cfg) {
+    const ar = await guard.kvCommand(cfg, ["GET", `ad:ref:${phone}`]).catch(() => ({}));
+    let ref = null; try { ref = ar && ar.result ? JSON.parse(ar.result) : null; } catch (e) {}
+    if (ref && ref.ad) { lead.ad_id = ref.ad; if (ref.headline) lead.ad_headline = ref.headline; }
+  }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
   await leadstore.saveLead(cfg, lead, (l) => (l.src_id || l.phone) === phone && l.type === lead.type && lead.ts - l.ts < 21600000);
@@ -898,6 +903,14 @@ module.exports = async (req, res) => {
         const first = await guard.kvCommand(cfg, ["SET", `wa:seen:${msg.id}`, "1", "NX", "EX", "21600"]);
         if (!first.result) return res.status(200).json({ ok: true });
       } catch (e) {}
+    }
+    // Came from a click-to-WhatsApp ad: Meta says which ad. Kept for 30 days
+    // so the lead this conversation becomes is credited to that ad, and the
+    // Ads screen can say what each campaign cost per patient, not per chat.
+    if (cfg && msg.referral && (msg.referral.source_type === "ad" || msg.referral.source_id)) {
+      const rph = String(msg.from || "").replace(/\D/g, "").slice(-10);
+      const ref = { ad: String(msg.referral.source_id || "").slice(0, 40), headline: String(msg.referral.headline || "").slice(0, 120), ts: Date.now() };
+      if (rph.length === 10 && ref.ad) await guard.kvCommand(cfg, ["SET", `ad:ref:${rph}`, JSON.stringify(ref), "EX", String(30 * 86400)]).catch(() => {});
     }
 
     const fromFull = String(msg.from || "").replace(/\D/g, "");

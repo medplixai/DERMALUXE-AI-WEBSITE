@@ -212,6 +212,11 @@ async function storeLead(cfg, leadInfo, psid, fbName, lastMsg) {
     if (cfg) await guard.kvCommand(cfg, ["SET", `fb:p:${psid}`,
       JSON.stringify({ name: lead.name, concern: lead.concern, ts: Date.now() }), "EX", String(PROFILE_TTL)]);
   } catch (e) {}
+  if (cfg) {
+    const ar = await guard.kvCommand(cfg, ["GET", `ad:ref:fb:${psid}`]).catch(() => ({}));
+    let ref = null; try { ref = ar && ar.result ? JSON.parse(ar.result) : null; } catch (e) {}
+    if (ref && ref.ad) lead.ad_id = ref.ad;
+  }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
   // One lead per conversation: replaces the earlier row, keeping the desk's
@@ -261,6 +266,13 @@ module.exports = async (req, res) => {
   if (!psid || psid === String(entry.id || "")) return res.status(200).json({ ok: true });
 
   const cfg = guard.kvConfig();
+
+  // A Click-to-Messenger ad: Meta names the ad on the message (or on the
+  // referral event that opens the thread). Kept so the lead is credited to it.
+  const refObj = m.referral || (msg && msg.referral) || (m.postback && m.postback.referral) || null;
+  if (cfg && refObj && refObj.ad_id) {
+    await guard.kvCommand(cfg, ["SET", `ad:ref:fb:${psid}`, JSON.stringify({ ad: String(refObj.ad_id).slice(0, 40), ts: Date.now() }), "EX", String(30 * 86400)]).catch(() => {});
+  }
 
   const mid = (msg && msg.mid) || (m.postback && m.postback.mid) || "";
   if (cfg && mid) {
