@@ -48,6 +48,9 @@ const mockRef = { code: "DL5310", count: 2, unrewarded: 1, cameFrom: "", rows: [
   { phone: "9876500061", name: "Sita Rani", ts: Date.now() - 4 * 86400000, rewarded: null },
   { phone: "9876500062", name: "Ravi Kumar", ts: Date.now() - 20 * 86400000, rewarded: { ts: Date.now() - 19 * 86400000, by: "Sowmya", what: "20% off" } },
 ] };
+const mockPv = [
+  { id: "a1b2c3d4e5f60718", imgId: "pvseed1", topic: "hydrafacial", pillar: "tx", h1: "Hydrafacial glow in 30 minutes", te: "హైడ్రాఫేషియల్ — వెంటనే గ్లో", look: "macro", doctor: "Dr. Nikhitha Priyanka", hadImage: true, status: "posted", link: "https://instagram.com/p/x", by: "Owner", at: Date.now() - 86400000, postedAt: Date.now() - 80000000, caption: "Hydrafacial glow in 30 minutes\nCleanse · Exfoliate · Hydrate" },
+];
 const mockPostQ = [{ imgId: "q0", caption: "Repu podduna — laser hair removal offer", due: Date.now() + 5 * 3600000, kind: "post", tries: 0, by: "Owner" }];
 const mockCns = [];
 const mockStage = { stage: "", stageAt: 0, stageBy: "", stageNote: "", stageLog: [] };
@@ -176,16 +179,26 @@ http.createServer((req, res) => {
       ] });
     let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => send(200, { ok: true }));
   }
-  if (u.pathname === "/api/poster") {  // poster-preview-mock
-    const a = u.searchParams.get("a") || "topics";
+  if (u.pathname === "/api/poster") {  // poster-mock: saved daily posters
+    const a = u.searchParams.get("a") || "list";
     if (a === "topics") return send(200, { ok: true, topics: [
       { key: "acad-seats", h1: "Ten seats. One batch.", pillar: "academy" }, { key: "acad-who", h1: "Beautician? Nurse? Fresher?", pillar: "academy" },
       { key: "hydrafacial", h1: "Hydrafacial glow in 30 minutes", pillar: "tx" }, { key: "hair-fall", h1: "Hair fall? Find the cause first", pillar: "edu" } ] });
-    let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => setTimeout(() => send(200, {
-      ok: true, imgId: "pv" + Date.now(), topic: "acad-seats", h1: "Ten seats. One batch.", te: "పది సీట్లు మాత్రమే",
-      look: "daylight", doctor: "Dr. Meghana Valeti", hadImage: true, ms: 84000,
-      caption: "Ten seats. One batch.\nపది సీట్లు మాత్రమే\n\nDermaLuxe Academy, Eluru — hands-on training.\n\n📲 WhatsApp *ACADEMY* to 99591 34666",
-    }), 2500));
+    if (a === "list") return setTimeout(() => send(200, { ok: true, keepDays: 14, posters: mockPv }), 900);
+    let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => {
+      const b2 = (() => { try { return JSON.parse(body || "{}"); } catch (e) { return {}; } })();
+      const row = mockPv.find((x) => x.id === b2.id);
+      const fresh = (extra) => Object.assign({ imgId: "pv" + Date.now(), topic: "acad-seats", pillar: "academy", h1: "Ten seats. One batch.", te: "పది సీట్లు మాత్రమే",
+        look: ["daylight", "golden", "macro", "studio"][mockPv.length % 4], doctor: "Dr. Meghana Valeti", hadImage: true, by: "Owner (mock)", at: Date.now(),
+        caption: "Ten seats. One batch.\nపది సీట్లు మాత్రమే\n\nDermaLuxe Academy, Eluru — hands-on training.\n📲 WhatsApp *ACADEMY* to 99591 34666" }, extra);
+      if (a === "create") return setTimeout(() => { const r = fresh({ id: Math.random().toString(16).slice(2, 18).padEnd(16, "0"), status: "draft", note: b2.note || "" }); mockPv.unshift(r); send(200, { ok: true, poster: r }); }, 3000);
+      if (!row) return send(404, { error: "Aa poster dorakaledu" });
+      if (a === "regenerate") return setTimeout(() => { Object.assign(row, fresh({ note: b2.note || "", redone: (row.redone || 0) + 1 })); send(200, { ok: true, poster: row }); }, 3000);
+      if (a === "post") { Object.assign(row, { status: "posted", link: "https://instagram.com/p/mock", postedAt: Date.now() }); return send(200, { ok: true, poster: row }); }
+      if (a === "schedule") { Object.assign(row, { status: "scheduled", due: Date.now() + 20 * 3600000 }); return send(200, { ok: true, poster: row }); }
+      if (a === "remove") { mockPv.splice(mockPv.indexOf(row), 1); return send(200, { ok: true }); }
+      return send(400, { error: "Unknown action" });
+    });
   }
   if (u.pathname === "/api/media" && /^pv/.test(u.searchParams.get("id") || "")) {  // the preview picture
     res.writeHead(200, { "Content-Type": "image/jpeg" });

@@ -413,7 +413,13 @@ function imagePrompt(topic) {
     (topic.sub ? ` (supporting line: "${topic.sub}")` : "") +
     ". The picture must illustrate that headline directly, so that anybody seeing the two together connects them at a glance. Do NOT write the headline or any other words, letters or numbers anywhere in the image.";
   const look = (topic.look && topic.look.text) || LOOKS[0].text;
-  return STYLE + " " + look + " " + says + " Subject: " + topic.img + COMPOSITION;
+  // A change the owner asked for when regenerating: their own words, placed
+  // last so they override anything above them (the no-text and no-doctor's-
+  // face rules are restated after it, because those are not the owner's to
+  // waive by accident in a one-line note).
+  const note = String(topic.note || "").replace(/\s+/g, " ").trim().slice(0, 300);
+  const owner = note ? ` Owner's change request for this picture (follow it): "${note}". Still no words in the image and no doctor's face.` : "";
+  return STYLE + " " + look + " " + says + " Subject: " + topic.img + COMPOSITION + owner;
 }
 
 async function drawImage(topic, key) {
@@ -672,7 +678,7 @@ async function renderPoster(html) {
 // Returns {imgId, caption, topic, due, queued}
 async function createDailyPost(cfg, opts = {}) {
   const picked = opts.topic ? await pickTopic(cfg, opts.topic) : await planTopic(cfg);
-  const topic = Object.assign({}, picked, { look: await pickLook(cfg).catch(() => LOOKS[0]) });
+  const topic = Object.assign({}, picked, { look: await pickLook(cfg).catch(() => LOOKS[0]), note: opts.note || "" });
   const [img, caption] = await Promise.all([genImage(topic), writeCaption(topic)]);
   const doc = await pickDoctor(cfg, topic).catch(() => null);
   const b64 = await renderPoster(posterHtml(topic, img, doc));
@@ -686,7 +692,8 @@ async function createDailyPost(cfg, opts = {}) {
     // enough to reach WhatsApp, and nothing else is written. Without this the
     // act of looking at a poster would mark its topic as already used and
     // change what tomorrow posts.
-    await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, b64, "EX", opts.preview ? "7200" : "259200"]);
+    const keep = opts.preview ? String(Math.max(600, Math.min(1209600, Number(opts.keepSec) || 7200))) : "259200";
+    await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, b64, "EX", keep]);
     if (opts.preview) return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: false, preview: true, doctor: doc ? doc.name : "" };
     if (opts.queue !== false) {
       await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId, caption, due, by, tries: 0, auto: true, topic: topic.key, notify: notifyList })]);

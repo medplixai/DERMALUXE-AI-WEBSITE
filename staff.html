@@ -269,7 +269,34 @@
     .switch input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
     .switch input:checked::after{left:19px}
     @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.seats{grid-template-columns:repeat(5,1fr)}}
-  @media (max-width: 640px){ .pv-grid{grid-template-columns:1fr !important} }
+      .pv-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+    .pv-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .pv-bar select{flex:1 1 220px;min-width:0}.pv-bar input{flex:2 1 260px;min-width:0}
+    .pv-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px;margin-top:6px}
+    .pv-card{display:flex;gap:12px;background:var(--ink2);border:1px solid var(--line);border-radius:var(--r);padding:10px;min-width:0}
+    .pv-th{flex:none;width:112px;aspect-ratio:4/5;border-radius:10px;overflow:hidden;background:var(--panel2);display:block}
+    .pv-th img{width:100%;height:100%;object-fit:cover;display:block}
+    .pv-th.pv-gone{display:grid;place-items:center}.pv-th.pv-gone img{display:none}.pv-th.pv-gone::after{content:"Image expire";font-size:.7rem;color:var(--muted2)}
+    .pv-bd{min-width:0;flex:1;display:flex;flex-direction:column;gap:3px}
+    .pv-chips{display:flex;flex-wrap:wrap;gap:4px}
+    .pv-s,.pv-c{font-size:.68rem;letter-spacing:.04em;padding:2px 7px;border-radius:6px;background:var(--soft);color:var(--muted)}
+    .pv-s--draft{background:rgba(233,207,143,.12);color:var(--g2)}
+    .pv-s--sch{background:rgba(127,167,201,.16);color:#a9c8e6}
+    .pv-s--ok{background:rgba(95,211,155,.14);color:var(--ok)}
+    .pv-s--bad{background:rgba(255,107,107,.14);color:var(--bad)}
+    .pv-h{color:var(--g1);font-weight:500;line-height:1.25;margin-top:2px}
+    .pv-te{font-size:.85rem}
+    .pv-asked{font-style:italic}
+    .pv-cap{font-size:.78rem;color:var(--muted);margin:2px 0 0;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;white-space:pre-line}
+    .pv-acts{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;align-items:center}
+    .pv-acts .pv-note{flex:1 1 100%;font-size:.8rem;padding:6px 10px}
+    .pv-del{color:var(--bad)}
+    /* the skeleton: the same card, in shimmering placeholders */
+    .pv-sk .pv-th,.pv-sk i{background:linear-gradient(100deg,var(--panel) 30%,var(--panel2) 50%,var(--panel) 70%);background-size:280% 100%;animation:sh 1.3s linear infinite}
+    .pv-sk i{display:block;height:10px;border-radius:5px;margin:4px 0}
+    .pv-wait{font-size:.8rem;color:var(--g2);margin-top:6px}
+    @media (prefers-reduced-motion: reduce){.pv-sk .pv-th,.pv-sk i{animation:none}}
+    @media (max-width: 640px){ .pv-grid{grid-template-columns:1fr} .pv-th{width:96px} }
 </style>
 </head>
 <body>
@@ -1989,19 +2016,22 @@
       html += '<div class="box"><h2>Today\'s auto post</h2>' + (t ? '<p><b style="color:var(--g1);font-weight:500">' + esc(t.h1) + '</b><br /><span class="te">' + esc(t.te || "") + '</span><br /><span class="meta">' + (t.page ? 'Page: ' + esc(t.page) : '') + '</span></p>' : '<p>No post generated yet today (7:00 AM build → 8:30 AM publish).</p>') +
         '<p style="margin-top:8px"><a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/dermaluxe.ai/">Instagram ↗</a> <a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61592844155911">Facebook ↗</a>' +
         (state.allow("posts.toggle") ? ' <button class="btn btn--gold btn--sm" id="postNew">+ Kotha post</button>' : "") + '</p></div>';
-      // Build a poster and look at it here, without it going anywhere.
+      // Daily posters made here are saved as cards — the way the Medicare staff
+      // app's daily content works — so one that is liked can be put out, and
+      // one that is not can be redone with a word about what to change.
       if (state.allow("posts.toggle")) {
-        html += '<div class="box" id="pvBox"><h2>Poster preview <span class="te" style="font-size:.85rem;color:var(--g3)">· చూసి చూడండి</span></h2>' +
-          '<p class="meta" style="margin-bottom:10px">Nijamaina poster — Gemini photo, doctor tho. <b>Ekkadiki post avvadu.</b></p>' +
-          '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
-            '<select id="pvTopic" class="inp" style="flex:1;min-width:200px"><option value="">Automatic — repu vachche laaga</option></select>' +
+        html += '<div class="box" id="pvBox"><div class="pv-head"><h2>Daily posters <span class="te" style="font-size:.85rem;color:var(--g3)">· పోస్టర్లు</span></h2>' +
+          '<span class="meta">Auto: 7:00 tayaru → 8:30 post · ikkada chesinavi save avutayi</span></div>' +
+          '<div class="pv-bar"><select id="pvTopic" class="inp"><option value="">Automatic — repu vachche laaga</option></select>' +
+            '<input id="pvNote" class="inp" maxlength="300" placeholder="Em undali? (optional) — e.g. navvutunna ammayi, pagati velugu" />' +
             '<button class="btn btn--gold btn--sm" id="pvGo">🎨 Poster create cheyyi</button></div>' +
-          '<div id="pvOut" style="margin-top:12px"></div></div>';
+          '<div id="pvMsg" class="meta" style="min-height:1.2em;margin:6px 0 2px"></div>' +
+          '<div id="pvList" class="pv-grid">' + pvSkeleton(2) + '</div></div>';
       }
       html += '<div id="postBox"><div class="sk"><div></div><div></div></div></div>';
       $("t-today").innerHTML = html;
       if ($("postNew")) $("postNew").onclick = function () { newPostSheet(); };
-      if ($("pvGo")) wirePreview();
+      if ($("pvGo")) wirePosters();
       loadPosts();
     }
 
@@ -2014,8 +2044,68 @@
     }
 
     var LOOK_TE = { studio: "Chikati studio", daylight: "Kitiki velugu", macro: "Close-up", golden: "Golden hour" };
-    function wirePreview() {
-      var sel = $("pvTopic"), go = $("pvGo"), out = $("pvOut");
+    var PV_STATUS = { draft: ["Draft", "pv-s--draft"], scheduled: ["Scheduled", "pv-s--sch"], posted: ["Posted", "pv-s--ok"] };
+
+    // The shape of a poster card, drawn before there is one — so the tab never
+    // sits blank while the list loads, and a poster being made has a place.
+    function pvSkeleton(n, label) {
+      var one = '<div class="pv-card pv-sk" aria-busy="true"><div class="pv-th"></div><div class="pv-bd">' +
+        '<i style="width:40%"></i><i style="width:82%;height:14px"></i><i style="width:60%"></i><i style="width:92%"></i><i style="width:74%"></i>' +
+        (label ? '<span class="pv-wait">' + label + '</span>' : "") + '</div></div>';
+      var out = ""; for (var i = 0; i < n; i++) out += one; return out;
+    }
+
+    function pvCard(r) {
+      var img = ORIGIN + "/api/media?id=" + encodeURIComponent(r.imgId);
+      var st = PV_STATUS[r.status] || [r.status, ""];
+      var when = r.status === "posted" ? "Post ayyindi " + fmtAt(r.postedAt || r.at) : r.status === "scheduled" ? "Veltundi " + fmtAt(r.due) : fmtAt(r.at);
+      var acts = "";
+      if (r.status !== "posted") {
+        acts = '<div class="pv-acts">' +
+          '<input class="inp pv-note" data-id="' + esc(r.id) + '" maxlength="300" placeholder="Em maarchali? (optional)" />' +
+          '<button class="btn btn--sm" data-act="pv-redo" data-id="' + esc(r.id) + '">↻ Regenerate</button>' +
+          '<button class="btn btn--gold btn--sm" data-act="pv-post" data-id="' + esc(r.id) + '">Post now</button>' +
+          (r.status === "draft" ? '<button class="btn btn--sm" data-act="pv-sch" data-id="' + esc(r.id) + '">Repu 8:30 ki</button>' : "") +
+          '<button class="btn btn--sm pv-del" data-act="pv-del" data-id="' + esc(r.id) + '" title="Teesey">✕</button></div>';
+      } else if (r.link) {
+        acts = '<div class="pv-acts"><a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(r.link) + '">Instagram lo chudu ↗</a></div>';
+      }
+      return '<div class="pv-card" id="pv-' + esc(r.id) + '">' +
+        '<a class="pv-th" href="' + img + '" target="_blank" rel="noopener"><img src="' + img + '" alt="' + esc(r.h1) + '" loading="lazy" onerror="this.parentNode.classList.add(\'pv-gone\')" /></a>' +
+        '<div class="pv-bd">' +
+          '<div class="pv-chips"><span class="pv-s ' + st[1] + '">' + esc(st[0]) + '</span>' +
+            (r.look ? '<span class="pv-c">' + esc(LOOK_TE[r.look] || r.look) + '</span>' : "") +
+            (r.pillar === "academy" ? '<span class="pv-c">Academy</span>' : "") +
+            (r.hadImage ? "" : '<span class="pv-s pv-s--bad">photo raaledu</span>') + '</div>' +
+          '<b class="pv-h">' + esc(r.h1) + '</b>' +
+          (r.te ? '<div class="te pv-te">' + esc(r.te) + '</div>' : "") +
+          '<div class="meta">' + esc(when) + (r.doctor ? " · " + esc(r.doctor) : "") + (r.by ? " · " + esc(r.by) : "") + '</div>' +
+          (r.note ? '<div class="meta pv-asked">“' + esc(r.note) + '”</div>' : "") +
+          '<p class="pv-cap">' + esc(r.caption || "") + '</p>' + acts +
+        '</div></div>';
+    }
+
+    function loadPosters() {
+      var list = $("pvList"); if (!list) return;
+      return posterapi("list").then(function (j) {
+        var rows = j.posters || [];
+        list.innerHTML = rows.length ? rows.map(pvCard).join("")
+          : '<p class="meta" style="padding:6px 2px">Inka emi ledu — pina <b>Poster create cheyyi</b> nokkandi. Chesinavi ikkada ' + (j.keepDays || 14) + ' rojulu untayi.</p>';
+      }).catch(function (e) { list.innerHTML = '<p class="meta" style="color:var(--bad)">' + esc(e.message) + '</p>'; });
+    }
+
+    // A build takes a minute or two; the skeleton card counts the seconds.
+    function pvBusy(where, label) {
+      var started = Date.now();
+      var tick = setInterval(function () {
+        var w = document.querySelector(where + " .pv-wait");
+        if (w) w.textContent = label + " · " + Math.round((Date.now() - started) / 1000) + "s";
+      }, 1000);
+      return function () { clearInterval(tick); };
+    }
+
+    function wirePosters() {
+      var sel = $("pvTopic"), go = $("pvGo"), note = $("pvNote"), list = $("pvList"), msg = $("pvMsg");
       posterapi("topics").then(function (j) {
         var groups = { academy: "Academy", tx: "Treatments", edu: "Education", myth: "Myths", trust: "Trust", cta: "Offers", season: "Season", tips: "Tips" };
         var by = {};
@@ -2026,26 +2116,59 @@
           sel.appendChild(g);
         });
       }).catch(function () {});
+      loadPosters();
+
       go.onclick = function () {
-        go.disabled = true; sel.disabled = true;
-        var started = Date.now();
-        out.innerHTML = '<div class="meta" id="pvWait">🎨 Poster tayaru avutondi — photo geeyadam, check cheyyadam… 1–2 nimishalu padutundi.</div>';
-        var tick = setInterval(function () { var w = $("pvWait"); if (w) w.textContent = "🎨 Poster tayaru avutondi… " + Math.round((Date.now() - started) / 1000) + "s"; }, 1000);
-        posterapi("preview", { topic: sel.value }).then(function (j) {
-          clearInterval(tick);
-          var img = ORIGIN + "/api/media?id=" + encodeURIComponent(j.imgId);
-          out.innerHTML =
-            '<div style="display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start" class="pv-grid">' +
-              '<a href="' + img + '" target="_blank" rel="noopener"><img src="' + img + '" alt="Poster preview" style="width:100%;border-radius:10px;border:1px solid var(--line);display:block" /></a>' +
-              '<div><b style="color:var(--g1)">' + esc(j.h1) + '</b><div class="te">' + esc(j.te || "") + '</div>' +
-                '<div class="meta" style="margin-top:6px">' + esc(LOOK_TE[j.look] || j.look || "") + (j.doctor ? " · " + esc(j.doctor) : "") +
-                  " · " + Math.round((j.ms || 0) / 1000) + "s" + (j.hadImage ? "" : ' · <span style="color:var(--hot)">photo raaledu — background matrame</span>') + '</div>' +
-                '<pre class="meta" style="white-space:pre-wrap;margin-top:10px;font-family:inherit">' + esc(j.caption || "") + '</pre>' +
-                '<div class="meta" style="margin-top:8px">Idi 2 gantala tarvata kanipinchadu. Nachchakapothe malli nokkandi — prathi sari veru photo vastundi.</div></div></div>';
+        go.disabled = true; msg.textContent = "";
+        var holder = document.createElement("div");
+        holder.id = "pvMaking"; holder.innerHTML = pvSkeleton(1, "🎨 Tayaru avutondi");
+        var first = holder.firstChild; first.id = "pvMaking";
+        if (list.querySelector(".pv-card:not(.pv-sk)")) list.insertBefore(first, list.firstChild); else list.innerHTML = first.outerHTML;
+        var stop = pvBusy("#pvMaking", "🎨 Tayaru avutondi");
+        posterapi("create", { topic: sel.value, note: note.value }).then(function (j) {
+          stop(); note.value = "";
+          var slot = $("pvMaking"); if (slot) slot.outerHTML = pvCard(j.poster); else loadPosters();
+          msg.textContent = "✓ Save ayyindi — kinda card lo Post now / Repu 8:30 ki / Regenerate";
         }).catch(function (e) {
-          clearInterval(tick);
-          out.innerHTML = '<p class="meta" style="color:var(--bad)">' + esc(e.message) + '</p>';
-        }).then(function () { go.disabled = false; sel.disabled = false; go.textContent = "🎨 Malli create cheyyi"; });
+          stop(); var slot = $("pvMaking"); if (slot) slot.remove();
+          msg.innerHTML = '<span style="color:var(--bad)">' + esc(e.message) + '</span>';
+          if (!list.children.length) loadPosters();
+        }).then(function () { go.disabled = false; });
+      };
+
+      list.onclick = function (e) {
+        var b = e.target.closest("button[data-act]"); if (!b) return;
+        var id = b.dataset.id, card = $("pv-" + id);
+        if (!card) return;
+        var lock = function (on) { card.querySelectorAll("button,input").forEach(function (x) { x.disabled = on; }); };
+        var done = function (j, text) { if (j && j.poster) card.outerHTML = pvCard(j.poster); msg.textContent = text; };
+        var fail = function (err) { lock(false); msg.innerHTML = '<span style="color:var(--bad)">' + esc(err.message) + '</span>'; };
+
+        if (b.dataset.act === "pv-redo") {
+          var n = card.querySelector(".pv-note");
+          lock(true);
+          card.outerHTML = pvSkeleton(1, "↻ Malli tayaru avutondi").replace('class="pv-card pv-sk"', 'class="pv-card pv-sk" id="pv-' + esc(id) + '"');
+          var stop = pvBusy("#pv-" + id, "↻ Malli tayaru avutondi");
+          posterapi("regenerate", { id: id, note: n ? n.value : "" }).then(function (j) { stop(); var c = $("pv-" + id); if (c) c.outerHTML = pvCard(j.poster); msg.textContent = "✓ Kotta poster ready"; })
+            .catch(function (err) { stop(); msg.innerHTML = '<span style="color:var(--bad)">' + esc(err.message) + '</span>'; loadPosters(); });
+          return;
+        }
+        if (b.dataset.act === "pv-post") {
+          if (!confirm("Ee poster ippude Instagram + Facebook lo pettala?")) return;
+          lock(true); b.textContent = "Pedutunnam…";
+          posterapi("post", { id: id }).then(function (j) { done(j, "✓ Post ayyindi"); loadPosts(); }).catch(fail);
+          return;
+        }
+        if (b.dataset.act === "pv-sch") {
+          lock(true);
+          posterapi("schedule", { id: id }).then(function (j) { done(j, "✓ Repu 8:30 ki idi veltundi — automatic poster raadu"); loadPosts(); }).catch(fail);
+          return;
+        }
+        if (b.dataset.act === "pv-del") {
+          if (!confirm("Ee poster teeseyala?")) return;
+          lock(true);
+          posterapi("remove", { id: id }).then(function () { card.remove(); msg.textContent = "Teesesam"; if (!list.querySelector(".pv-card")) loadPosters(); loadPosts(); }).catch(fail);
+        }
       };
     }
 
