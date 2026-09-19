@@ -3,6 +3,7 @@
 // site with UTM params so GA4 attributes the visit to the channel.
 // Known tags: insta, wa, fb, gbp, story — but any short tag works.
 const guard = require("./_guard.js");
+const { BATCH } = require("./_docs.js");   // the batch date, written down once
 
 module.exports = async (req, res) => {
   const tag = String((req.query || {}).tag || "").toLowerCase().replace(/[^a-z0-9_-]/g, "").slice(0, 24) || "unknown";
@@ -22,9 +23,9 @@ module.exports = async (req, res) => {
   const WA_TAGS = {
     jobs: "JOBS", hiring: "JOBS", careers: "JOBS",
     // Training centre page (academy.html) → course enquiry straight to the agent
-    academy: "ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch 20 Oct 2026.",
-    training: "ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch 20 Oct 2026.",
-    course: "ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch 20 Oct 2026.",
+    academy: `ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch ${BATCH.start}.`,
+    training: `ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch ${BATCH.start}.`,
+    course: `ACADEMY — Hi DermaLuxe! Training centre course details kavali (Skin & Hair treatments). Batch ${BATCH.start}.`,
     // Instagram bio link + story links → straight into the WhatsApp agent
     // (owner's call, 2026-09-11: "andaru WhatsApp agent ki connect avvali")
     insta: "Hi DermaLuxe! Instagram nunchi vastunna. Free AI skin & hair analysis kavali.",

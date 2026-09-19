@@ -777,11 +777,12 @@ async function handle(cfg, digits, text, photo, video) {
       await guard.kvCommand(cfg, ["SET", "acad:booked", String(Math.max(0, Math.min(10, Number(n))))]);
     }
     const b = await guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({}));
-    const booked = Number(b.result || 0), left = Math.max(0, 10 - booked);
+    const { BATCH } = require("./_docs.js");   // batch dates and seats, written down once
+    const booked = Number(b.result || 0), left = Math.max(0, BATCH.seats - booked);
     const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]).catch(() => ({}));
     const leads = (r.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((l) => l && /^academy/i.test(String(l.concern || "")));
     const paid = leads.filter((l) => /paid/i.test(String(l.concern || ""))).length;
-    const lines = [`🎓 *Academy — Batch 1 (20 Oct 2026)*`, `Seats booked: *${booked}/10* · left: *${left}* · offer till 30 Sep`, `Enquiries: ${leads.length} · paid screenshots: ${paid}`];
+    const lines = [`🎓 *Academy — Batch ${BATCH.no} (${BATCH.start})*`, `Seats booked: *${booked}/${BATCH.seats}* · left: *${left}* · offer till ${BATCH.offerEnd}`, `Enquiries: ${leads.length} · paid screenshots: ${paid}`];
     leads.slice(0, 8).forEach((l) => lines.push(`• ${l.name || "?"} — ${String(l.concern || "").replace(/^Academy\s*/i, "")} (${l.phone || l.src_id || ""})`));
     lines.push("", "Update: *academy booked 3* (owner) · Enquiries WhatsApp lo 'ACADEMY' tho vastayi.");
     return lines.join("\n");

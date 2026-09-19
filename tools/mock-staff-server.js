@@ -48,6 +48,7 @@ const mockRef = { code: "DL5310", count: 2, unrewarded: 1, cameFrom: "", rows: [
   { phone: "9876500061", name: "Sita Rani", ts: Date.now() - 4 * 86400000, rewarded: null },
   { phone: "9876500062", name: "Ravi Kumar", ts: Date.now() - 20 * 86400000, rewarded: { ts: Date.now() - 19 * 86400000, by: "Sowmya", what: "20% off" } },
 ] };
+const mockPvSet = { doctor: "auto", academy: "auto" };
 const mockPv = [
   { id: "a1b2c3d4e5f60718", imgId: "pvseed1", topic: "hydrafacial", pillar: "tx", h1: "Hydrafacial glow in 30 minutes", te: "హైడ్రాఫేషియల్ — వెంటనే గ్లో", look: "macro", doctor: "Dr. Nikhitha Priyanka", hadImage: true, status: "posted", link: "https://instagram.com/p/x", by: "Owner", at: Date.now() - 86400000, postedAt: Date.now() - 80000000, caption: "Hydrafacial glow in 30 minutes\nCleanse · Exfoliate · Hydrate" },
 ];
@@ -98,7 +99,7 @@ http.createServer((req, res) => {
       at: Date.now(),
     });
     if (a === "storage-move") return send(200, { ok: true, moved: 12, skipped: 0, failed: 0, freedBytes: 3145728, done: true });
-    if (a === "panel") return send(200, {
+    if (a === "panel") return send(200, { health: { dbCheckAt: Date.now() - 23 * 60000, reviewAsks: [{ ts: Date.now() - 2 * 86400000, day: "2026-09-15", sent: 3 }, { ts: Date.now() - 86400000, day: "2026-09-16", sent: 2 }] },
       ok: true,
       roles: { owner: { label: "Owner", te: "ఓనర్", caps: ["*"], builtin: true }, reception: { label: "Reception", te: "రిసెప్షన్", caps: ["leads.view", "leads.edit", "appts.view", "appts.edit", "msg.send"], builtin: true } },
       capList: CAPS, capTe: {}, capGroups: [{ key: "leads", label: "Leads", caps: ["leads.view", "leads.edit"] }],
@@ -185,8 +186,11 @@ http.createServer((req, res) => {
       { key: "acad-seats", h1: "Ten seats. One batch.", pillar: "academy" }, { key: "acad-who", h1: "Beautician? Nurse? Fresher?", pillar: "academy" },
       { key: "hydrafacial", h1: "Hydrafacial glow in 30 minutes", pillar: "tx" }, { key: "hair-fall", h1: "Hair fall? Find the cause first", pillar: "edu" } ] });
     if (a === "list") return setTimeout(() => send(200, { ok: true, keepDays: 14, posters: mockPv }), 900);
+    if (a === "settings" && req.method === "GET") return send(200, Object.assign({ ok: true, canChange: true, doctors: [{ key: "nikhitha", name: "Dr. Nikhitha Priyanka" }, { key: "meghana", name: "Dr. Meghana Valeti" }, { key: "sai", name: "Dr. Sai Divija" }], campaign: { on: true, left: 6, offerDays: 11, batchDays: 31 } }, mockPvSet));
     let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => {
       const b2 = (() => { try { return JSON.parse(body || "{}"); } catch (e) { return {}; } })();
+      if (a === "settings") { if (b2.doctor) mockPvSet.doctor = b2.doctor; if (b2.academy) mockPvSet.academy = b2.academy;
+        return send(200, Object.assign({ ok: true, canChange: true, doctors: [{ key: "nikhitha", name: "Dr. Nikhitha Priyanka" }, { key: "meghana", name: "Dr. Meghana Valeti" }, { key: "sai", name: "Dr. Sai Divija" }], campaign: { on: mockPvSet.academy !== "off", left: 6, offerDays: 11, batchDays: 31 } }, mockPvSet)); }
       const row = mockPv.find((x) => x.id === b2.id);
       const fresh = (extra) => Object.assign({ imgId: "pv" + Date.now(), topic: "acad-seats", pillar: "academy", h1: "Ten seats. One batch.", te: "పది సీట్లు మాత్రమే",
         look: ["daylight", "golden", "macro", "studio"][mockPv.length % 4], doctor: "Dr. Meghana Valeti", hadImage: true, by: "Owner (mock)", at: Date.now(),

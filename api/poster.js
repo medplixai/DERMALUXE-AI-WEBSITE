@@ -107,6 +107,45 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, posters, keepDays: KEEP / 86400 });
   }
 
+  // The two switches the daily poster reads. They existed only as KV keys —
+  // the owner was told "set dp:doctor" with no way to set it — so they are
+  // here, readable by anybody who makes posters and changeable by the owner.
+  //   dp:doctor  which doctor sits at the foot (unset = take turns, "off" = none)
+  //   acad:dp    the academy campaign ("1" on, "0" off, unset = on while seats remain)
+  if (a === "settings") {
+    const canChange = allow("settings.manage");
+    if (req.method === "POST") {
+      if (!canChange) return json(res, 403, { error: "Idi owner matrame maarchagalaru" });
+      const changes = [];
+      if (b.doctor !== undefined) {
+        const d = String(b.doctor || "auto").toLowerCase();
+        if (d !== "auto" && d !== "off" && !daily.DOCTORS[d]) return json(res, 400, { error: "Aa doctor ledu" });
+        if (d === "auto") await guard.kvCommand(cfg, ["DEL", "dp:doctor"]).catch(() => {});
+        else await guard.kvWrite(cfg, ["SET", "dp:doctor", d], "poster doctor");
+        changes.push("poster doctor → " + d);
+      }
+      if (b.academy !== undefined) {
+        const v = String(b.academy || "auto");
+        if (["auto", "on", "off"].indexOf(v) === -1) return json(res, 400, { error: "auto / on / off matrame" });
+        if (v === "auto") await guard.kvCommand(cfg, ["DEL", "acad:dp"]).catch(() => {});
+        else await guard.kvWrite(cfg, ["SET", "acad:dp", v === "on" ? "1" : "0"], "academy campaign");
+        changes.push("academy posters → " + v);
+      }
+      if (changes.length) {
+        await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({ ts: Date.now(), by: me.name, phone: me.phone, what: "Daily poster: " + changes.join(", ") })]).catch(() => {});
+      }
+    }
+    const [pin, acadRaw] = await guard.kvPipeline(cfg, [["GET", "dp:doctor"], ["GET", "acad:dp"]]).catch(() => [null, null]);
+    const st = await daily.academyState(cfg).catch(() => null);
+    return json(res, 200, {
+      ok: true, canChange,
+      doctor: pin && (pin === "off" || daily.DOCTORS[pin]) ? pin : "auto",
+      academy: acadRaw === "1" ? "on" : acadRaw === "0" ? "off" : "auto",
+      doctors: Object.keys(daily.DOCTORS).map((k) => ({ key: k, name: daily.DOCTORS[k].name })),
+      campaign: st ? { on: st.on, left: st.left, offerDays: st.offerDays, batchDays: st.batchDays } : null,
+    });
+  }
+
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
 
   // Each build is a planner call, up to three image generations and a render.

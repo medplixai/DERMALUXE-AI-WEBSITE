@@ -545,6 +545,14 @@ module.exports = async (req, res) => {
       // Only which numbers have one — never a hash, never a length.
       guard.kvCommand(cfg, ["HKEYS", "staff:pwd"]).catch(() => ({})),
     ]);
+    // Two things that were written and never shown: when the hourly database
+    // check last passed (if that job itself stops, nothing else says so), and
+    // what the automatic review ask has sent.
+    const [hl, rl] = await guard.kvPipeline(cfg, [["GET", "health:last"], ["LRANGE", "rev:log", "0", "13"]]).catch(() => [null, []]);
+    const health = {
+      dbCheckAt: Number(hl) || 0,
+      reviewAsks: (Array.isArray(rl) ? rl : []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean),
+    };
     const hasPwd = new Set((pwdPhones && pwdPhones.result) || []);
     // Who is still using the one the owner sent them, rather than their own.
     const tempPwd = new Set();
@@ -565,7 +573,7 @@ module.exports = async (req, res) => {
     }).sort((x, y) => (y.lastLogin || 0) - (x.lastLogin || 0));
     const audit = (log.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
     return json(res, 200, {
-      ok: true, roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, people,
+      ok: true, roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, people, health,
       owners: ownerPhones().map((ph) => ({ phone: ph, lastLogin: Number(last[ph] || 0) || null })),
       passwordSet: !!(pwd && pwd.result),
       audit, me: Object.assign({}, me, { caps: effCaps(roles, me) }),

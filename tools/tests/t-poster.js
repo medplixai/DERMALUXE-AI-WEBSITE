@@ -97,6 +97,23 @@ const queue = () => h.run(["LRANGE", "adm:queue", "0", "99"]).map((x) => JSON.pa
   const got = l2.body.posters.find((x) => x.id === c3.body.poster.id);
   is([got.status, got.link], ["posted", "https://instagram.com/p/y"], "the card says it went, with its link");
 
+  console.log("\n  — the owner's two switches —");
+  // These existed only as KV keys the owner had been told to "set", with no
+  // way to set them.
+  const s0 = await P({ a: "settings" });
+  is([s0.body.doctor, s0.body.academy, s0.body.canChange], ["auto", "auto", true], "both start on automatic, and the owner may change them");
+  is(s0.body.doctors.map((d) => d.key), ["nikhitha", "meghana", "sai"], "the three doctors are offered");
+  await P({ a: "settings" }, { a: "settings", doctor: "sai", academy: "off" });
+  is([h.run(["GET", "dp:doctor"]), h.run(["GET", "acad:dp"])], ["sai", "0"], "a choice lands where the poster reads it");
+  is(JSON.parse(h.run(["LRANGE", "staff:audit", "0", "0"])[0]).what.includes("poster doctor → sai"), true, "and is written in the audit");
+  await P({ a: "settings" }, { a: "settings", doctor: "auto", academy: "auto" });
+  is([h.run(["GET", "dp:doctor"]), h.run(["GET", "acad:dp"])], [null, null], "back to automatic clears them");
+  is((await P({ a: "settings" }, { a: "settings", doctor: "dr-nobody" })).code, 400, "a doctor who is not on the list is refused");
+  h.as(["posts.toggle"]);
+  is((await P({ a: "settings" })).body.canChange, false, "somebody who makes posters can see the switches");
+  is((await P({ a: "settings" }, { a: "settings", doctor: "sai" })).code, 403, "but not change them");
+  h.as(["*"]);
+
   console.log("\n  — who may, and how often —");
   is((await P({ a: "create" }, { a: "create", topic: "../x" })).code, 400, "an unknown topic is refused");
   is((await P({ a: "post" }, { a: "post", id: "nope" })).code, 404, "an unknown poster is not found");

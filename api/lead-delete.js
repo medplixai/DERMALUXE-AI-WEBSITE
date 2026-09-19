@@ -21,43 +21,40 @@ module.exports = async (req, res) => {
   const rl = await guard.rateLimit(cfg, `rl:ldel:h:${guard.getIp(req)}`, 60, 3600);
   if (!rl.allowed) return res.status(429).json({ error: "Too many requests" });
 
+  // Each lead is taken out by its exact value (LREM), never by reading the
+  // whole list, deleting it and writing back what should stay. That old way
+  // lost, silently:
+  //   - any lead that arrived between the read and the delete,
+  //   - every lead past the first 5000 (the read stopped there; the delete did not),
+  //   - everything, if writing back failed — kvCommand reports errors instead
+  //     of throwing, so the reply still said ok,
+  //   - any entry that would not parse, dropped without a word.
+  // The staff app's own delete already worked this way.
   try {
-    const data = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "4999"]);
-    const all = data.result || [];
-    let keep;
-    const droppedKeys = [];
-    if (b.testCleanup === true) {
-      keep = all.filter((s) => {
-        try {
-          const l = JSON.parse(s);
-          const isTest = TEST_PREFIXES.some((p) => String(l.name || "").startsWith(p));
-          if (isTest) droppedKeys.push(`${l.ts}|${l.phone}`);
-          return !isTest;
-        } catch (e) { return false; }
-      });
-    } else {
-      const ts = Number(b.ts);
-      const phone = String(b.phone || "");
-      if (!ts || !phone) return res.status(400).json({ error: "ts and phone required" });
-      droppedKeys.push(`${ts}|${phone}`);
-      keep = all.filter((s) => {
-        try {
-          const l = JSON.parse(s);
-          return !(l.ts === ts && l.phone === phone);
-        } catch (e) { return false; }
-      });
+    const data = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "-1"]);
+    if (!data || data.error) return res.status(500).json({ error: "Could not read leads" });
+    const drop = [];
+    const ts = Number(b.ts), phone = String(b.phone || "");
+    if (b.testCleanup !== true && (!ts || !phone)) return res.status(400).json({ error: "ts and phone required" });
+    for (const s of (data.result || [])) {
+      let l;
+      try { l = JSON.parse(s); } catch (e) { continue; }   // never delete what cannot be read
+      const hit = b.testCleanup === true
+        ? TEST_PREFIXES.some((p) => String(l.name || "").startsWith(p))
+        : l.ts === ts && String(l.phone) === phone;
+      if (hit) drop.push({ raw: s, key: `${l.ts}|${l.phone}` });
     }
-    await guard.kvCommand(cfg, ["DEL", LIST_KEY]);
-    for (let i = 0; i < keep.length; i += 400) {
-      const chunk = keep.slice(i, i + 400);
-      if (chunk.length) await guard.kvCommand(cfg, ["RPUSH", LIST_KEY].concat(chunk));
+    let removed = 0, failed = 0;
+    const gone = [];
+    for (const d of drop) {
+      const r = await guard.kvCommand(cfg, ["LREM", LIST_KEY, "1", d.raw]);
+      if (r && !r.error && Number(r.result) > 0) { removed++; gone.push(d.key); } else failed++;
     }
-    // Tidy up follow-up statuses of removed leads
-    for (let i = 0; i < droppedKeys.length; i += 100) {
-      const chunk = droppedKeys.slice(i, i + 100);
-      if (chunk.length) await guard.kvCommand(cfg, ["HDEL", "dl_status"].concat(chunk)).catch(() => {});
+    for (let i = 0; i < gone.length; i += 100) {
+      const chunk = gone.slice(i, i + 100);
+      await guard.kvCommand(cfg, ["HDEL", "dl_status"].concat(chunk)).catch(() => {});
     }
-    return res.status(200).json({ ok: true, removed: all.length - keep.length });
+    return res.status(failed ? 500 : 200).json({ ok: !failed, removed, failed });
   } catch (e) {
     return res.status(500).json({ error: "Delete failed" });
   }
