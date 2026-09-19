@@ -654,7 +654,7 @@
         location.reload();
       });
     };
-    $("refreshBtn").onclick = function () { flushQueue().then(function () { return load(true); }).catch(function (e) { toast(e.message); }); };
+    $("refreshBtn").onclick = function () { if (typeof checkVersion === "function") checkVersion(); flushQueue().then(function () { return load(true); }).catch(function (e) { toast(e.message); }); };
 
     // ---- app ----
     var mustChange = false;
@@ -3065,6 +3065,30 @@
         }).catch(function () {});
       });
     }
+
+    // A deploy changes this page, but a window opened before it keeps running
+    // the old code: ↻ only reloads data, and the update prompt above fires only
+    // when sw.js changes, which it rarely does. So an open app never learned a
+    // new screen existed — the poster preview shipped and the owner's window
+    // simply did not have it. The page now remembers which version it was
+    // loaded as (the server's ETag for it) and, whenever it comes back into
+    // view, on ↻, and every ten minutes, asks whether that is still current.
+    // HEAD bypasses the service worker, so the answer is the server's.
+    var pageTag = null;
+    function checkVersion() {
+      if (NATIVE) return;   // the phone app carries its own copy and its own update check
+      fetch(location.pathname, { method: "HEAD", cache: "no-store" }).then(function (r) {
+        var tag = r.ok && r.headers.get("etag");
+        if (!tag) return;
+        if (pageTag === null) { pageTag = tag; return; }
+        if (tag !== pageTag) $("updateBar").classList.add("show");
+      }).catch(function () {});
+    }
+    checkVersion();
+    setInterval(checkVersion, 10 * 60 * 1000);
+    document.addEventListener("visibilitychange", function () { if (!document.hidden) checkVersion(); });
+    // the bar's button reloads even when there is no new service worker waiting
+    if (!$("updateNow").onclick) $("updateNow").onclick = function () { location.reload(); };
 
     setInterval(function () { if (state.data) paintNet(); }, 45000);
 
