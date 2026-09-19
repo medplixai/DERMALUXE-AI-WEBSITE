@@ -108,6 +108,7 @@ module.exports = async (req, res) => {
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "of");
+  if (req.method === "POST" && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
   if (a === "of") {
     const phone = digits10(q.phone || b.phone);

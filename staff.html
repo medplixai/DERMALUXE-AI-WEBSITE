@@ -832,10 +832,13 @@
     var tok = null; try { tok = localStorage.getItem(TOK); } catch (e) {}
     function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
     function toast(m) { var t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 2200); }
+    // Every write carries a client id, so the server can tell a retry from a
+    // second request and never records one payment twice.
+    function newCid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
     function api(a, body, method) {
       var opt = { method: method || (body ? "POST" : "GET"), headers: {} };
       if (tok) opt.headers.Authorization = "Bearer " + tok;
-      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a, cid: newCid() }, body)); }
       // Network failure and "the server answered with an error" are completely
       // different things, and the offline queue depends on telling them apart.
       // Matching words in an error message is not good enough — CapacitorHttp
@@ -1115,13 +1118,65 @@
     }
     // ---- the clinic day --------------------------------------------------
     var schDay = null, schData = null, schWeek = null, schMine = false;
-    function schapi(a, body, qs) {
+    // ---- one way to talk to every screen's API --------------------------
+    // Reads: the last good answer is kept on the phone, and shown (marked as
+    // old) when there is no network — so Appointments, Money, Stock and the
+    // rest open offline instead of showing an error.
+    // Writes: the ones listed in QUEUEABLE wait on the phone when there is no
+    // network and go up in order once it returns. Each carries its client id,
+    // so a write that did reach the server before the line dropped is not
+    // done twice when it is sent again.
+    var QUEUEABLE = {
+      "/api/money": ["pay", "bill"], "/api/schedule": ["create", "move", "status"],
+      "/api/stock": ["move", "count"], "/api/attend": ["mark", "in", "out"],
+      "/api/patient": ["note", "stage", "save"], "/api/package": ["log"], "/api/expense": ["add"],
+    };
+    var GET_KEEP = 40, GET_MAX = 250000, GIDX = "dl_gidx";
+    function gKey(path, a, qs) { return "dl_g:" + path + "?" + a + (qs || ""); }
+    function gSave(k, j) {
+      try {
+        var v = JSON.stringify({ at: Date.now(), j: j });
+        if (v.length > GET_MAX) return;
+        localStorage.setItem(k, v);
+        var idx = JSON.parse(localStorage.getItem(GIDX) || "[]").filter(function (x) { return x !== k; });
+        idx.unshift(k);
+        idx.slice(GET_KEEP).forEach(function (old) { localStorage.removeItem(old); });
+        localStorage.setItem(GIDX, JSON.stringify(idx.slice(0, GET_KEEP)));
+      } catch (e) {}
+    }
+    function gRead(k) { try { return JSON.parse(localStorage.getItem(k) || "null"); } catch (e) { return null; } }
+    function gClear() {
+      try { JSON.parse(localStorage.getItem(GIDX) || "[]").forEach(function (k) { localStorage.removeItem(k); }); localStorage.removeItem(GIDX); } catch (e) {}
+    }
+    function xcall(path, a, body, qs, noQueue) {
       var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
-      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(ORIGIN + "/api/schedule?a=" + a + (qs || ""), opt).then(function (r) {
-        return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; e.clash = j.clash; throw e; } return j; });
+      var payload = body ? Object.assign({ a: a }, body) : null;
+      if (payload && !payload.cid) payload.cid = newCid();
+      if (payload) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(payload); }
+      var k = body ? null : gKey(path, a, qs);
+      return fetch(ORIGIN + path + "?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().catch(function () { return { error: "Server sarigga spandinchaledu (" + r.status + ")" }; }).then(function (j) {
+          if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; e.clash = j.clash; throw e; }
+          if (k) gSave(k, j);
+          if (!online) { online = true; paintNet(); if (!noQueue) setTimeout(flushQueue, 50); }
+          return j;
+        });
+      }, function () {
+        if (online) { online = false; paintNet(); }
+        if (k) {
+          var c = gRead(k);
+          if (c) { var j = Object.assign({}, c.j, { _offline: c.at }); return j; }
+        }
+        if (payload && !noQueue && (QUEUEABLE[path] || []).indexOf(a) > -1) {
+          var cp = Object.assign({}, payload); delete cp.a;
+          enqueue(a, cp, path);
+          var q = new Error("📴 Offline — phone lo save ayindi, net vachaka automatic ga veltundi");
+          q.queued = true; q.net = true; throw q;
+        }
+        var e = new Error("Internet andaledu"); e.net = true; throw e;
       });
     }
+    function schapi(a, body, qs) { return xcall("/api/schedule", a, body, qs); }
     function istToday() {
       return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
     }
@@ -1214,13 +1269,7 @@
         });
     }
     // ---- packages & recalls ---------------------------------------------
-    function pkapi(a, body, qs) {
-      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
-      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(ORIGIN + "/api/package?a=" + a + (qs || ""), opt).then(function (r) {
-        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
-      });
-    }
+    function pkapi(a, body, qs) { return xcall("/api/package", a, body, qs); }
     function pkgLine(p) {
       return esc(p.treatment) + " " + p.done + "/" + p.total +
         (p.left === 0 ? " ✓" : p.overdueDays ? ' · <b style="color:var(--hot)">' + p.overdueDays + " rojulu late</b>"
@@ -1771,13 +1820,7 @@
       $("insBody").innerHTML = html;
     }
 
-    function mnapi(a, body, qs) {
-      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
-      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(ORIGIN + "/api/money?a=" + a + (qs || ""), opt).then(function (r) {
-        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
-      });
-    }
+    function mnapi(a, body, qs) { return xcall("/api/money", a, body, qs); }
     var rateCard = null;
     function rupee(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
     // ---- the shelf ---------------------------------------------------------
@@ -1900,13 +1943,7 @@
         .then(function () { ib.sending = false; $("ibSend").disabled = false; });
     });
 
-    function stkapi(a, body) {
-      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
-      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(ORIGIN + "/api/stock?a=" + a, opt).then(function (r) {
-        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
-      });
-    }
+    function stkapi(a, body) { return xcall("/api/stock", a, body); }
     function loadStock() {
       if (!state.allow("stock.view")) return Promise.resolve();
       return stkapi("list").then(function (j) {
@@ -1951,13 +1988,7 @@
     };
 
     // ---- who is in today ---------------------------------------------------
-    function attapi(a, body, qs) {
-      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
-      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(ORIGIN + "/api/attend?a=" + a + (qs || ""), opt).then(function (r) {
-        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
-      });
-    }
+    function attapi(a, body, qs) { return xcall("/api/attend", a, body, qs); }
     var attLabels = {};
     function loadAttend() {
       return attapi("day").then(function (j) {
@@ -2017,13 +2048,7 @@
     // Money counted only what came in, so the question the owner actually has
     // — after everything, what is left — had no answer anywhere.
     var expCats = [];
-    function expapi(a, body, qs) {
-      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
-      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(ORIGIN + "/api/expense?a=" + a + (qs || ""), opt).then(function (r) {
-        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
-      });
-    }
+    function expapi(a, body, qs) { return xcall("/api/expense", a, body, qs); }
     function loadExpenses() {
       if (!state.allow("money.expense")) return Promise.resolve();
       $("expWrap").classList.remove("hide");
@@ -2147,13 +2172,7 @@
     // The same person across every enquiry: their history, their notes, and
     // their photos on one timeline, oldest first, so a before and an after
     // taken months apart sit next to each other.
-    function ptapi(a, body, qs) {
-      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
-      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
-      return fetch(ORIGIN + "/api/patient?a=" + a + (qs || ""), opt).then(function (r) {
-        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
-      });
-    }
+    function ptapi(a, body, qs) { return xcall("/api/patient", a, body, qs); }
     var ptRows = [], ptOpen = null;
     function loadPatients() {
       var q = ($("ptQ").value || "").trim();
@@ -3181,7 +3200,7 @@
     }
     function clearCache() {
       try {
-        localStorage.removeItem(CACHE_K); localStorage.removeItem(QUEUE_K);
+        localStorage.removeItem(CACHE_K); localStorage.removeItem(QUEUE_K); localStorage.removeItem("dl_qfail"); gClear();
         localStorage.removeItem(PEND);              // a patient name and number
         localStorage.removeItem("dl_unlocked");
       } catch (e) {}
@@ -3192,9 +3211,11 @@
       try { var v = JSON.parse(localStorage.getItem(QUEUE_K) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; }
     }
     function writeQueue(q) { try { localStorage.setItem(QUEUE_K, JSON.stringify(q.slice(0, 200))); } catch (e) {} }
-    function enqueue(a, body) {
+    function enqueue(a, body, path) {
       var q = readQueue();
-      q.push({ a: a, body: Object.assign({ at: Date.now() }, body), id: Date.now() + "-" + Math.random().toString(36).slice(2, 7) });
+      var b2 = Object.assign({ at: Date.now() }, body);
+      if (!b2.cid) b2.cid = newCid();
+      q.push({ a: a, p: path || "", body: b2, id: Date.now() + "-" + Math.random().toString(36).slice(2, 7) });
       writeQueue(q);
       paintNet();
     }
@@ -3209,16 +3230,19 @@
         var list = readQueue();
         if (!list.length) return Promise.resolve();
         var item = list[0];
-        return api(item.a, item.body).then(function () {
+        return (item.p ? xcall(item.p, item.a, item.body, "", true) : api(item.a, item.body)).then(function () {
           writeQueue(readQueue().slice(1)); done++; return step();
         }).catch(function (e) {
           if (e.net) throw e;                       // still offline: keep it, stop here
           // Only a 400 means the write itself was bad. A 401 (token expired
           // while offline), 429 or 5xx must NOT throw away a call note — keep
           // it and try again later.
-          if (e.status !== 400) { stuck = true; throw e; }
+          if ([401, 429].indexOf(e.status) > -1 || e.status >= 500) { stuck = true; throw e; }
+          // Refused for a reason a retry will not fix (a clash, a closed bill,
+          // something no longer allowed). It is not thrown away quietly: it
+          // moves to a list the person is shown, with the server's reason.
           writeQueue(readQueue().slice(1));
-          console.warn("queue item dropped as invalid:", item.a, e.message);
+          addFailed(item, e.message);
           return step();
         });
       }
@@ -3232,10 +3256,36 @@
           return n;
         });
     }
+    var QFAIL = "dl_qfail";
+    function readFailed() { try { var v = JSON.parse(localStorage.getItem(QFAIL) || "[]"); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+    function addFailed(item, why) {
+      try { var f = readFailed(); f.unshift({ a: item.a, p: item.p || "/api/staff", at: (item.body || {}).at || Date.now(), why: String(why || "").slice(0, 200), body: item.body }); localStorage.setItem(QFAIL, JSON.stringify(f.slice(0, 50))); } catch (e) {}
+    }
+    var QNAME = { pay: "Payment", bill: "Bill", create: "Appointment", move: "Marpu", status: "Status", count: "Stock lekka", mark: "Haajaru", "in": "Haajaru (in)", out: "Haajaru (out)", note: "Note", stage: "Stage", save: "Patient details", log: "Sitting", add: "Kharchu", "lead-add": "Kotha lead" };
+    function showFailed() {
+      var f = readFailed();
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>Pampaleni marpulu</h2>' +
+        '<p class="meta">Offline lo chesina ee marpulu server oppukoledu — kaaranam kinda undi. Malli correct ga cheyandi, taruvata ikkada nundi teeseyandi.</p>' +
+        (f.length ? f.map(function (x, i) {
+          return '<div class="vrow"><b>' + esc(QNAME[x.a] || x.a) + " · " + fmtAt(x.at) + '</b><div class="meta">' + esc(x.why) + "</div>" +
+            '<div class="meta" style="font-size:.74rem">' + esc(JSON.stringify(Object.assign({}, x.body, { cid: undefined, at: undefined })).slice(0, 160)) + "</div></div>";
+        }).join("") : '<p class="meta">Emi levu.</p>') +
+        '<div style="display:flex;gap:8px;margin-top:12px"><button class="btn btn--sm" data-qf="clear">Anni teeseyandi</button><button class="btn btn--sm btn--gold" data-qf="close" style="flex:1">Close</button></div></div>';
+      wrap.addEventListener("click", function (e) {
+        var b = e.target.closest("[data-qf]");
+        if (e.target.classList.contains("sheet-bg") || (b && b.dataset.qf === "close")) { wrap.remove(); return; }
+        if (b && b.dataset.qf === "clear") { try { localStorage.removeItem(QFAIL); } catch (x) {} wrap.remove(); paintNet(); }
+      });
+      document.body.appendChild(wrap);
+    }
     // One line in the header that never lies about how fresh this is.
     function paintNet() {
       var el = $("netBar"); if (!el) return;
-      var q = readQueue().length;
+      var q = readQueue().length, nf = readFailed().length;
+      el.onclick = nf ? showFailed : null;
+      el.style.cursor = nf ? "pointer" : "";
       var d = state.data;
       var age = d && d.cachedAt ? d.cachedAt : (d && d.ts) || 0;
       if (!online) {
@@ -3248,6 +3298,7 @@
         el.className = "netbar stale";
         el.textContent = "Updated " + ago(d.cachedAt);
       } else { el.className = "netbar"; el.textContent = ""; }
+      if (nf) { el.className = "netbar off"; el.textContent = (el.textContent ? el.textContent + " · " : "") + "⚠️ " + nf + " marpu(lu) vellaledu — nokkandi"; }
     }
     addEventListener("online", function () { online = true; paintNet(); flushQueue().then(function () { load(true).catch(function () {}); }); });
     addEventListener("offline", function () { online = false; paintNet(); });
@@ -3707,7 +3758,7 @@
     // the bar's button reloads even when there is no new service worker waiting
     if (!$("updateNow").onclick) $("updateNow").onclick = function () { location.reload(); };
 
-    setInterval(function () { if (state.data) paintNet(); }, 45000);
+    setInterval(function () { if (state.data) paintNet(); if (tok && readQueue().length && navigator.onLine !== false) flushQueue(); }, 45000);
 
     // ---- events ----
     $("tabs").addEventListener("click", function (e) {

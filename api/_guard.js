@@ -214,8 +214,43 @@ function isOwnerPhone(digits) {
   return d.length === 10 && ownerPhones().indexOf(d) !== -1;
 }
 
+// A write the app may send twice. On a clinic line that drops, a request can
+// reach the server while its answer never reaches the phone; the phone then
+// sends it again from its offline queue, and a payment is recorded twice.
+// Every write from the app carries a client id (cid). The first time an id
+// succeeds it is remembered for a week; after that the same id is answered
+// "already done" without doing it again. Only success is remembered, so a
+// write that failed can still be retried.
+//
+// Called as guard.idem(...) so that `this` is whichever guard the caller
+// holds — the tests' in-memory one included.
+async function idem(cfg, b, res) {
+  const kv = (this && this.kvCommand) || kvCommand;
+  const cid = String((b && b.cid) || "").replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
+  if (!cfg || cid.length < 8 || !res) return false;
+  const seen = await kv(cfg, ["GET", `idem:${cid}`]).catch(() => ({}));
+  if (seen && seen.result) return true;
+  let code = 200;
+  const st = res.status.bind(res), js = res.json.bind(res);
+  res.status = (c) => { code = c; return st(c); };
+  res.json = (o) => (code < 300
+    ? Promise.resolve(kv(cfg, ["SET", `idem:${cid}`, "1", "EX", "604800"])).catch(() => {}).then(() => js(o))
+    : js(o));
+  return false;
+}
+
+// When something really happened, for a write that may arrive late from the
+// offline queue: the phone's own time, but never in the future and never
+// further back than `backMs` — a wrong phone clock cannot file a payment
+// last month.
+function stamp(v, backMs) {
+  const now = Date.now(), n = Number(v);
+  if (!n || !isFinite(n)) return now;
+  return Math.min(now, Math.max(now - (backMs || 3 * 86400000), n));
+}
+
 function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { cronAuth, kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };
+module.exports = { idem, stamp, cronAuth, kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };

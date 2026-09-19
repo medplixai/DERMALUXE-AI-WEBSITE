@@ -78,6 +78,7 @@ module.exports = async (req, res) => {
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "day");
+  if (req.method === "POST" && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
   // ---- reads ----
   if (a === "rates") {
@@ -209,12 +210,14 @@ module.exports = async (req, res) => {
     if (!bill) return json(res, 404, { error: "Bill dorakaledu" });
     const amt = money(b.amount);
     if (!(amt > 0)) return json(res, 400, { error: "Amount ivvandi" });
+    // taken offline and sent later: it belongs to the day it was taken
+    const paidAt = guard.stamp(b.at, 3 * 86400000);
     bill.payments = (bill.payments || []).concat([{
       amount: amt, mode: MODES.includes(b.mode) ? b.mode : "cash",
-      ref: clean(b.ref, 40), ts: Date.now(), by: me.name,
+      ref: clean(b.ref, 40), ts: paidAt, by: me.name,
     }]);
     await putBill(cfg, bill);
-    const day = istDay();
+    const day = istDay(paidAt);
     await guard.kvCommand(cfg, ["LPUSH", `bill:day:${day}`, id]).catch(() => {});
     await guard.kvCommand(cfg, ["EXPIRE", `bill:day:${day}`, String(400 * 86400)]).catch(() => {});
     const t = totals(bill);

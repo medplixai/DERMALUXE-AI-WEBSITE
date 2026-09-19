@@ -482,6 +482,7 @@ module.exports = async (req, res) => {
 
   if (a === "me") return json(res, 200, { ok: true, me: Object.assign({}, me, { caps: effCaps(roles, me) }) });
   if (a === "data") return json(res, 200, await dataPayload(cfg, me, roles));
+  if (req.method === "POST" && ["status", "note", "lead-add"].includes(a) && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
   // The rest of the lead book, a page at a time. The app asks for this when
   // someone searches, opens Patients, or widens the date filter — not on the

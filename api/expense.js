@@ -107,6 +107,7 @@ module.exports = async (req, res) => {
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "summary");
+  if (req.method === "POST" && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
   // Today, this month, and what is left after both.
   if (a === "summary") {

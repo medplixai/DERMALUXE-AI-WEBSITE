@@ -86,6 +86,7 @@ module.exports = async (req, res) => {
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "list");
+  if (req.method === "POST" && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
   if (a === "list") {
     const rl = await guard.rateLimit(cfg, `rl:stk:${me.phone}`, 300, 3600);

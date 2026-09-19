@@ -78,6 +78,7 @@ module.exports = async (req, res) => {
 
   const q = req.query || {}, b = (req.method === "POST" ? req.body : null) || {};
   const a = String(q.a || b.a || "day");
+  if (req.method === "POST" && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
   // Today's roster. Everybody can see who is in — that is the point of it.
   if (a === "day") {
@@ -130,16 +131,18 @@ module.exports = async (req, res) => {
 
   // Marking yourself in or out needs nothing but being yourself.
   if (a === "in" || a === "out") {
-    const day = istDay();
+    // a tap made offline counts at the time it was tapped, not when the line came back
+    const when = guard.stamp(b.at, 12 * 3600000);
+    const day = istDay(when);
     const marks = await dayOf(cfg, day);
     const cur = marks[me.phone] || { status: "present", by: me.name };
     if (a === "in") {
       if (cur.in) return json(res, 400, { error: "Ippatike vachcharu ani mark ayindi" });
-      cur.in = Date.now(); cur.status = cur.status === "leave" ? "present" : (cur.status || "present");
+      cur.in = when; cur.status = cur.status === "leave" ? "present" : (cur.status || "present");
     } else {
       if (!cur.in) return json(res, 400, { error: "Mundu 'Vachanu' kottandi" });
       if (cur.out) return json(res, 400, { error: "Ippatike vellaru ani mark ayindi" });
-      cur.out = Date.now();
+      cur.out = when;
     }
     cur.by = me.name;
     await put(cfg, day, me.phone, cur);

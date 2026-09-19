@@ -9,7 +9,7 @@
  * Bump CACHE on every release — activate() deletes anything with another name,
  * and the page shows an "update ready" prompt when a new worker takes over.
  */
-const CACHE = "dl-staff-v2";
+const CACHE = "dl-staff-v3";
 
 // The shell: enough to paint a working dashboard with no network.
 const SHELL = [
