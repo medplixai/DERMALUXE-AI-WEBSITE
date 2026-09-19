@@ -292,6 +292,13 @@ http.createServer((req, res) => {
       return send(400, { error: "Unknown action" });
     });
   }
+  if (u.pathname === "/api/pay") {  // pay-mock: the patient's bill link
+    if (req.method === "POST") return send(200, { ok: true, msg: "Thank you 🙏 Clinic bank lo check chesi confirm chestundi." });
+    const url = "upi://pay?pa=dermaluxe%40okaxis&pn=DermaLuxe%20by%20Medicare&am=3000&cu=INR&tn=DermaLuxe%20bill%20B1001";
+    return require("qrcode").toString(url, { type: "svg", margin: 1 }).then((qr) => send(200, { ok: true,
+      bill: { id: "B1001", name: "Sita", date: Date.now() - 86400000 * 3, items: [{ name: "Laser — face", qty: 1, price: 5000 }], payments: [{ amount: 2000, mode: "cash", ts: Date.now() - 86400000 * 3 }], total: 5000, paid: 2000, balance: 3000 },
+      upi: { vpa: "dermaluxe@okaxis", payee: "DermaLuxe by Medicare", url, qr }, razorpay: null }));
+  }
   if (u.pathname === "/api/inbox") {  // inbox-mock: WhatsApp conversations
     const a = u.searchParams.get("a") || "list";
     if (a === "list") return send(200, { ok: true, canReply: true, unread: mockIb.reduce((n, t) => n + t.unread, 0),

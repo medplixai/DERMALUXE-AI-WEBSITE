@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#ffffff" />
+<title>DermaLuxe Bill</title>
+<link rel="icon" href="assets/app/icon-192.png" />
+<style>
+  :root{--bg:#f6f5f2;--card:#fff;--ink:#1c1917;--muted:#78716c;--line:#e7e5e4;--gold:#9c7430;--gold2:#7a5a22;--ok:#047857;--okbg:#ecfdf5;--warn:#9a3412;--warnbg:#fff7ed;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Telugu",sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
+  main{max-width:460px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 16px 40px}
+  .brand{display:flex;align-items:center;gap:10px;margin:4px 0 16px}
+  .brand img{width:40px;height:40px;border-radius:10px}
+  .brand b{display:block;font-size:1rem}.brand small{color:var(--muted);font-size:.78rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:18px;margin-bottom:12px}
+  h1{font-size:1.15rem;margin:0 0 2px}
+  .meta{color:var(--muted);font-size:.82rem}
+  table{width:100%;border-collapse:collapse;margin-top:12px;font-size:.9rem;font-variant-numeric:tabular-nums}
+  td{padding:7px 0;border-bottom:1px solid var(--line)}td:last-child{text-align:right;white-space:nowrap}
+  tr.sum td{border:0;padding-top:10px;font-weight:600}
+  tr.bal td{font-size:1.05rem;color:var(--warn)}
+  .paid{display:inline-block;margin-top:12px;background:var(--okbg);color:var(--ok);font-weight:600;padding:6px 12px;border-radius:99px;font-size:.85rem}
+  .qr{display:grid;place-items:center;margin:6px auto 10px;width:220px;max-width:100%;padding:10px;border:1px solid var(--line);border-radius:14px;background:#fff}
+  .qr svg{width:100%;height:auto;display:block}
+  .btn{display:block;width:100%;text-align:center;text-decoration:none;border:0;border-radius:12px;padding:13px 16px;font:inherit;font-weight:600;font-size:.95rem;cursor:pointer;margin-top:8px}
+  .btn.gold{background:var(--gold);color:#fff}.btn.gold:active{background:var(--gold2)}
+  .btn.line{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .vpa{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--bg);border-radius:10px;padding:10px 12px;margin-top:8px;font-size:.9rem}
+  .vpa button{border:1px solid var(--line);background:#fff;border-radius:8px;padding:5px 10px;font:inherit;font-size:.8rem;cursor:pointer}
+  input{width:100%;border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit;font-size:1rem;margin-top:8px}
+  .msg{margin-top:10px;font-size:.88rem}.msg.ok{color:var(--ok)}.msg.err{color:#b91c1c}
+  h2{font-size:.98rem;margin:0 0 6px}
+  .te{font-size:.85rem;color:var(--muted)}
+  .foot{text-align:center;color:var(--muted);font-size:.76rem;margin-top:14px;line-height:1.6}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  @media print{ body{background:#fff} .noprint{display:none!important} .card{border:0;padding:0} main{padding:0} }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><img src="assets/app/icon-192.png" alt="" /><div><b>DermaLuxe by Medicare</b><small>Rama Mahal, Kasturi Vari Street, R.R. Peta, Eluru</small></div></div>
+  <div id="app"><div class="card"><p class="meta">Bill teestunnam…</p></div></div>
+  <p class="foot">Emaina doubt unte WhatsApp: <a href="https://wa.me/919959134666" style="color:var(--gold)">99591 34666</a><br />📞 +91 99491 34666</p>
+</main>
+<script>
+(function () {
+  var qs = new URLSearchParams(location.search), b = qs.get("b") || "", t = qs.get("t") || "";
+  var app = document.getElementById("app");
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function rs(n) { return "₹" + Number(n || 0).toLocaleString("en-IN"); }
+  function day(ts) { return new Date(ts).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }); }
+  if (!b || !t) { app.innerHTML = '<div class="card"><h1>Link sarigga ledu</h1><p class="meta">Clinic pampina link ni malli open cheyandi.</p></div>'; return; }
+  fetch("/api/pay?b=" + encodeURIComponent(b) + "&t=" + encodeURIComponent(t)).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || "Error"); return j; }); })
+    .then(render).catch(function (e) { app.innerHTML = '<div class="card"><h1>Bill open avvaledu</h1><p class="meta">' + esc(e.message) + "</p></div>"; });
+
+  function render(j) {
+    var x = j.bill;
+    var rows = x.items.map(function (i) { return "<tr><td>" + esc(i.name) + (i.qty > 1 ? " × " + i.qty : "") + "</td><td>" + rs(i.price * (i.qty || 1)) + "</td></tr>"; }).join("");
+    var pays = x.payments.map(function (p) { return '<tr><td class="meta">Paid · ' + esc(p.mode) + " · " + day(p.ts) + "</td><td>− " + rs(p.amount) + "</td></tr>"; }).join("");
+    var html = '<div class="card"><h1>Bill ' + esc(x.id) + "</h1>" +
+      '<p class="meta">' + (x.name ? esc(x.name) + " garu · " : "") + day(x.date) + "</p>" +
+      "<table>" + rows + '<tr class="sum"><td>Mottam</td><td>' + rs(x.total) + "</td></tr>" + pays +
+      (x.balance > 0 ? '<tr class="sum bal"><td>Migilinadi</td><td>' + rs(x.balance) + "</td></tr>" : "") + "</table>" +
+      (x.balance <= 0 ? '<span class="paid">✅ Full ga pay ayindi — thank you!</span>' : "") + "</div>";
+    if (x.balance > 0 && (j.upi || j.razorpay)) {
+      html += '<div class="card noprint"><h2>Ippude pay cheyandi <span class="te">· ఇప్పుడే చెల్లించండి</span></h2>';
+      if (j.upi) {
+        html += '<p class="meta">Phone lo unte kinda button nokkandi. Computer lo unte QR ni GPay / PhonePe / Paytm tho scan cheyandi.</p>' +
+          '<a class="btn gold" href="' + esc(j.upi.url) + '">📲 UPI tho ' + rs(x.balance) + " pay cheyandi</a>" +
+          (j.upi.qr ? '<div class="qr" aria-label="UPI QR code">' + j.upi.qr + "</div>" : "") +
+          '<div class="vpa"><span>UPI ID: <b>' + esc(j.upi.vpa) + '</b></span><button type="button" id="cp">Copy</button></div>';
+      }
+      if (j.razorpay) html += '<a class="btn ' + (j.upi ? "line" : "gold") + '" href="' + esc(j.razorpay) + '" rel="noopener">💳 Card / net banking / UPI (Razorpay)</a>';
+      html += "</div>";
+      if (j.upi) {
+        html += '<div class="card noprint"><h2>Pay chesara?</h2><p class="meta">UPI app lo kanipinche <b>UTR / reference number</b> (12 ankelu) ikkada ivvandi — clinic bank lo check chesi confirm chestundi.</p>' +
+          '<form id="cl"><input id="ref" inputmode="text" autocomplete="off" maxlength="30" placeholder="Ex: 426118123456" aria-label="UTR number" />' +
+          '<button class="btn line" type="submit" id="clb">Pay chesanu ✅</button></form><div class="msg" id="clm"></div></div>';
+      }
+    }
+    html += '<button class="btn line noprint" type="button" onclick="print()">🧾 Receipt save / print</button>';
+    app.innerHTML = html;
+    var cp = document.getElementById("cp");
+    if (cp) cp.onclick = function () { try { navigator.clipboard.writeText(j.upi.vpa); cp.textContent = "Copied ✓"; } catch (e) {} };
+    var f = document.getElementById("cl");
+    if (f) f.onsubmit = function (e) {
+      e.preventDefault();
+      var m = document.getElementById("clm"), btn = document.getElementById("clb"), ref = document.getElementById("ref").value.trim();
+      m.className = "msg"; m.textContent = ""; btn.disabled = true;
+      fetch("/api/pay", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ a: "claim", b: b, t: t, ref: ref }) })
+        .then(function (r) { return r.json().then(function (j2) { if (!r.ok) throw new Error(j2.error || "Error"); return j2; }); })
+        .then(function (j2) { m.className = "msg ok"; m.textContent = j2.msg; f.remove(); })
+        .catch(function (e2) { m.className = "msg err"; m.textContent = e2.message; btn.disabled = false; });
+    };
+  }
+})();
+</script>
+</body>
+</html>

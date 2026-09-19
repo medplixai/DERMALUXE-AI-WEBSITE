@@ -624,7 +624,20 @@
         <div class="box"><h2>Ee roju collection <span class="te" style="font-size:.85rem;color:var(--g3)">· ఈరోజు</span></h2>
           <div id="mnModes" class="meta"></div>
           <div id="mnList" style="margin-top:10px"><div class="sk"><div></div><div></div><div></div></div></div></div>
+        <div class="grp hide" id="mnClaimsWrap"><div class="grp-h"><h2>UPI lo pay chesaamu antunnaru <span class="te" style="font-size:.85rem">· బ్యాంక్ లో చెక్ చేయండి</span></h2><i id="mnClaimCount"></i></div><div id="mnClaims"></div></div>
         <div class="grp"><div class="grp-h"><h2>Pending dues</h2><i id="mnDueCount"></i></div><div id="mnDues"></div></div>
+        <div class="box hide" id="cashBox"><h2>Cash close <span class="te" style="font-size:.85rem;color:var(--g3)">· రోజు చివర క్యాష్ లెక్క</span></h2>
+          <p>Roju chivarlo drawer lo cash lekkapettandi. Undalsindi, unnadi teda unte owner ki WhatsApp veltundi.</p>
+          <div id="cashState" class="meta" style="margin:8px 0"></div>
+          <div class="noteform" style="flex-wrap:wrap">
+            <input id="cashFloat" inputmode="numeric" placeholder="Podduna float ₹" style="max-width:150px" aria-label="Opening float" />
+            <input id="cashSpent" inputmode="numeric" placeholder="Drawer nundi kharchu ₹" style="max-width:190px" aria-label="Cash spent" />
+            <input id="cashCounted" inputmode="numeric" placeholder="Ippudu drawer lo ₹" style="max-width:170px" aria-label="Cash counted" />
+            <input id="cashNote" placeholder="Note (optional)" style="min-width:140px" aria-label="Note" />
+            <button class="btn btn--gold btn--sm" id="cashGo">Close cheyyi</button>
+          </div>
+          <div class="err" id="cashErr"></div>
+          <div id="cashHist" style="margin-top:10px"></div></div>
 
         <div id="expWrap" class="hide">
           <div class="countdown" id="expHead"></div>
@@ -2091,8 +2104,10 @@
     };
 
     function loadMoney() {
+      if (state.allow("money.bill")) { loadClaims(); loadCloses(); }
       return Promise.all([mnapi("day"), mnapi("dues")]).then(function (r) {
         var day = r[0], dues = r[1];
+        paintClose(day);
         $("mnHead").className = "countdown";
         $("mnHead").innerHTML =
           "<div><b>" + rupee(day.collected) + "</b><span>Ee roju vachindi</span></div>" +
@@ -2113,12 +2128,55 @@
             '<div class="acts">' +
             '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(d2.phone) + '">💬 WhatsApp</a>' +
             (state.allow("money.bill") ? '<button class="btn btn--sm btn--gold" data-act="mn-pay" data-id="' + esc(d2.id) + '" data-bal="' + d2.balance + '" data-name="' + esc(d2.name) + '">💰 Payment vachindi</button>' +
-              '<button class="btn btn--sm" data-act="mn-remind" data-id="' + esc(d2.id) + '" data-name="' + esc(d2.name) + '" data-bal="' + d2.balance + '">🔔 Gurthu cheyyi</button>' : "") +
+              '<button class="btn btn--sm" data-act="mn-remind" data-id="' + esc(d2.id) + '" data-name="' + esc(d2.name) + '" data-bal="' + d2.balance + '">🔔 Gurthu cheyyi</button>' +
+              '<button class="btn btn--sm" data-act="mn-link" data-id="' + esc(d2.id) + '" data-name="' + esc(d2.name) + '" data-bal="' + d2.balance + '">📲 Pay link</button>' : "") +
             (d2.reminded ? '<span class="meta" style="align-self:center">chivari gurthu ' + ago(d2.reminded) + "</span>" : "") +
             "</div></article>";
         }).join("") : '<p class="meta">Evaru bakee ledu 👍</p>';
       }).catch(function (e) { $("mnList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
+    function loadClaims() {
+      return mnapi("claims").then(function (j) {
+        $("mnClaimsWrap").classList.toggle("hide", !j.rows.length);
+        $("mnClaimCount").textContent = j.rows.length ? j.rows.length + "" : "";
+        $("mnClaims").innerHTML = j.rows.map(function (c) {
+          return '<article class="seat"><div class="row1"><div><h3>' + esc(c.name || c.phone) + ' <span class="meta">· ' + esc(c.bill) + "</span></h3>" +
+            '<div class="meta">UTR <b style="color:var(--text)">' + esc(c.ref) + "</b> · " + ago(c.ts) + " · bank app lo ee UTR tho " + rupee(c.amount) + " vachindo chudandi</div></div>" +
+            '<span class="chip">' + rupee(c.amount) + "</span></div>" +
+            '<div class="acts"><button class="btn btn--sm btn--gold" data-act="mn-claim-ok" data-id="' + esc(c.id) + '" data-amt="' + c.amount + '" data-name="' + esc(c.name || "") + '">✅ Vachindi — record cheyyi</button>' +
+            '<button class="btn btn--sm" data-act="mn-claim-no" data-id="' + esc(c.id) + '">✗ Raaledu</button></div></article>';
+        }).join("");
+      }).catch(function () {});
+    }
+    function paintClose(day) {
+      if (!state.allow("money.bill")) return;
+      $("cashBox").classList.remove("hide");
+      var c = day && day.close;
+      $("cashState").innerHTML = "Ee roju cash vachindi: <b>" + rupee((day.byMode || {}).cash) + "</b>" +
+        (c ? " · Close chesaru " + esc(c.by) + " " + ago(c.at) + " — undalsindi " + rupee(c.expected) + ", unnadi " + rupee(c.counted) +
+          (c.diff ? ' · <b style="color:var(--bad)">teda ' + rupee(c.diff) + "</b>" : ' · <b style="color:var(--ok)">sari ✅</b>') : "");
+    }
+    function loadCloses() {
+      return mnapi("closes").then(function (j) {
+        $("cashHist").innerHTML = j.rows.length ? j.rows.slice(0, 7).map(function (c) {
+          return '<div class="vrow"><b>' + esc(c.day) + " · " + rupee(c.counted) + (c.diff ? ' <span style="color:var(--bad)">(' + (c.diff > 0 ? "+" : "") + rupee(c.diff).replace("₹-", "−₹") + ")</span>" : " ✅") + "</b>" +
+            '<div class="meta">float ' + rupee(c.float) + " + cash " + rupee(c.cashIn) + " − kharchu " + rupee(c.spent) + " = " + rupee(c.expected) + " · " + esc(c.by) + (c.note ? " · " + esc(c.note) : "") + "</div></div>";
+        }).join("") : "";
+      }).catch(function () {});
+    }
+    if ($("cashGo")) $("cashGo").onclick = function () {
+      var counted = $("cashCounted").value.trim();
+      $("cashErr").textContent = "";
+      if (counted === "" || !(Number(counted) >= 0)) { $("cashErr").textContent = "Drawer lo entha undo ivvandi"; return; }
+      var btn = this; btn.disabled = true;
+      mnapi("close", { counted: Number(counted), float: Number($("cashFloat").value || 0), spent: Number($("cashSpent").value || 0), note: $("cashNote").value.trim() })
+        .then(function (j) {
+          var c = j.close;
+          toast(c.diff ? "Teda " + rupee(c.diff) + " — owner ki cheppam" : "Cash sari ga undi ✅");
+          $("cashCounted").value = ""; $("cashNote").value = "";
+          return loadMoney();
+        }).catch(function (x) { $("cashErr").textContent = x.message; }).then(function () { btn.disabled = false; });
+    };
     function loadRates() {
       if (rateCard) return Promise.resolve(rateCard);
       return mnapi("rates").then(function (j) { rateCard = j.rates || []; return rateCard; });
@@ -4117,6 +4175,36 @@
         el.disabled = true;
         expapi("delete", { id: el.dataset.id })
           .then(function () { toast("Teesesam"); return loadExpenses(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "mn-link") {
+        if (!confirm(el.dataset.name + " ki " + rupee(Number(el.dataset.bal)) + " online pay link WhatsApp lo pampanaa?")) return;
+        el.disabled = true;
+        mnapi("paylink", { id: el.dataset.id, send: true })
+          .then(function (j) { toast("Pay link pampamu ✅"); return loadMoney(); })
+          .catch(function (x) {
+            el.disabled = false;
+            if (/UPI_VPA/.test(x.message)) { toast(x.message); return; }
+            mnapi("paylink", { id: el.dataset.id }).then(function (j) { nativeShare("DermaLuxe bill", "Bill pay link", j.url); }).catch(function () { toast(x.message); });
+          });
+        return;
+      }
+      if (el.dataset.act === "mn-claim-ok") {
+        var amt3 = Number(prompt((el.dataset.name || "") + " — bank lo entha vachindi?", el.dataset.amt) || 0);
+        if (!(amt3 > 0)) return;
+        el.disabled = true;
+        mnapi("claim-ok", { claim: el.dataset.id, amount: amt3 })
+          .then(function () { toast("Payment record ayindi ✅"); return loadMoney(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "mn-claim-no") {
+        var why3 = prompt("Enduku? (ex: bank lo ee UTR ledu)", "Bank lo ee UTR kanipinchaledu");
+        if (why3 === null) return;
+        el.disabled = true;
+        mnapi("claim-no", { claim: el.dataset.id, why: why3 })
+          .then(function () { toast("Teesesam"); return loadClaims(); })
           .catch(function (x) { toast(x.message); el.disabled = false; });
         return;
       }

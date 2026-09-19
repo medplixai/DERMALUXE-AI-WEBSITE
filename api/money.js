@@ -15,6 +15,7 @@ const crypto = require("crypto");
 const guard = require("./_guard.js");
 const staff = require("./staff.js");
 const notify = require("./_notify.js");
+const pay = require("./_pay.js");
 
 const json = (res, code, body) => {
   res.setHeader("Content-Type", "application/json; charset=utf-8");
@@ -105,27 +106,28 @@ module.exports = async (req, res) => {
   // The evening number: what came in today, split by how it was paid.
   if (a === "day") {
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(q.day || "")) ? String(q.day) : istDay();
-    const r = await guard.kvCommand(cfg, ["LRANGE", `bill:day:${day}`, "0", "299"]).catch(() => ({}));
-    const seen = new Set(), rows = [];
-    let collected = 0, billed = 0;
-    const byMode = { cash: 0, upi: 0, card: 0, other: 0 };
-    for (const id of (r.result || [])) {
-      if (seen.has(id)) continue;
-      seen.add(id);
-      const bill = await getBill(cfg, id);
-      if (!bill) continue;
-      const t = totals(bill);
-      if (istDay(bill.ts) === day) billed += t.total;
-      for (const p of (bill.payments || [])) {
-        if (istDay(p.ts) !== day) continue;
-        const amt = money(p.amount);
-        collected += amt;
-        byMode[MODES.includes(p.mode) ? p.mode : "other"] += amt;
-        rows.push({ billId: bill.id, phone: bill.phone, name: bill.name, amount: amt, mode: p.mode, ref: p.ref, by: p.by, ts: p.ts });
-      }
+    const c = await collection(cfg, day);
+    const close = parse(((await guard.kvCommand(cfg, ["GET", `cash:close:${day}`]).catch(() => ({}))) || {}).result || "", null);
+    return json(res, 200, Object.assign({ ok: true, day, close }, c));
+  }
+
+  // Patients who say they have paid by UPI, waiting for somebody to check the bank.
+  if (a === "claims") {
+    const r = await guard.kvCommand(cfg, ["LRANGE", "pay:claims", "0", "99"]).catch(() => ({}));
+    const rows = ((r && r.result) || []).map((x) => parse(x, null)).filter(Boolean);
+    return json(res, 200, { ok: true, rows, upi: !!process.env.UPI_VPA, razorpay: pay.rzpOn() });
+  }
+
+  // The last fortnight of cash counts.
+  if (a === "closes") {
+    const r = await guard.kvCommand(cfg, ["LRANGE", "cash:closes", "0", "13"]).catch(() => ({}));
+    const days = (r && r.result) || [];
+    const rows = [];
+    for (const d of days) {
+      const c = parse(((await guard.kvCommand(cfg, ["GET", `cash:close:${d}`]).catch(() => ({}))) || {}).result || "", null);
+      if (c) rows.push(c);
     }
-    rows.sort((x, y) => y.ts - x.ts);
-    return json(res, 200, { ok: true, day, collected, billed, byMode, payments: rows, count: rows.length });
+    return json(res, 200, { ok: true, rows });
   }
 
   // Everyone who still owes something, biggest first.
@@ -164,6 +166,79 @@ module.exports = async (req, res) => {
   }
 
   if (!allow("money.bill")) return json(res, 403, { error: "Mee role ki bill chese permission ledu" });
+
+  // A link the patient can pay from: the bill, a UPI QR for the balance, and
+  // Razorpay when it is set up. Sent on WhatsApp when asked to.
+  if (a === "paylink") {
+    const bill = await getBill(cfg, clean(b.id, 12));
+    if (!bill) return json(res, 404, { error: "Bill dorakaledu" });
+    const t = totals(bill);
+    if (t.balance <= 0) return json(res, 400, { error: "Ee bill ki baaki emi ledu" });
+    if (!process.env.UPI_VPA && !pay.rzpOn()) return json(res, 501, { error: "UPI ID (UPI_VPA) inka set cheyaledu — Vercel lo pettali" });
+    const url = pay.link(bill.id);
+    let via = null;
+    if (b.send) {
+      const first = String(bill.name || "").trim().split(" ")[0] || "andi";
+      const text = `Namaste ${first} garu 🙏\n\nDermaLuxe bill ${bill.id} — migilinadi *₹${t.balance.toLocaleString("en-IN")}*.\n\nIkkada nundi UPI lo pay cheyochu (GPay / PhonePe / Paytm):\n${url}\n\nDermaLuxe by Medicare, Eluru`;
+      via = (await notify.sendWa(bill.phone, text).catch(() => false)) ? "message" : null;
+      if (!via) {
+        const r = await notify.sendWaTemplate(bill.phone, "clinic_update", [first, `Bill ${bill.id} lo ₹${t.balance.toLocaleString("en-IN")} migilindi. Online pay: ${url}`]).catch(() => ({ ok: false }));
+        via = r && r.ok ? "template" : null;
+      }
+      if (!via) return json(res, 502, { error: "WhatsApp ki vellaledu — link copy chesi pampandi", url });
+      bill.reminders = (bill.reminders || []).concat([{ ts: Date.now(), by: me.name, via: "paylink" }]).slice(-10);
+      await putBill(cfg, bill).catch(() => {});
+    }
+    return json(res, 200, { ok: true, url, via, balance: t.balance });
+  }
+
+  // A patient's "I have paid" checked against the bank: record it, or turn it down.
+  if (a === "claim-ok" || a === "claim-no") {
+    const cid2 = clean(b.claim, 24);
+    const r = await guard.kvCommand(cfg, ["LRANGE", "pay:claims", "0", "199"]).catch(() => ({}));
+    const raw = ((r && r.result) || []).find((x) => (parse(x, {}) || {}).id === cid2);
+    if (!raw) return json(res, 404, { error: "Ee claim dorakaledu — evaro ippatike chusaru" });
+    const c = parse(raw, {});
+    const gone = await guard.kvCommand(cfg, ["LREM", "pay:claims", "1", raw]).catch(() => ({}));
+    if (!gone || !gone.result) return json(res, 409, { error: "Evaro ippatike chusaru" });
+    if (a === "claim-no") {
+      await audit(cfg, me, `UPI claim on ${c.bill} (₹${c.amount}, UTR ${c.ref}) turned down: ${clean(b.why, 80)}`);
+      return json(res, 200, { ok: true });
+    }
+    const bill = await getBill(cfg, c.bill);
+    if (!bill) return json(res, 404, { error: "Bill dorakaledu" });
+    const amt = money(b.amount || c.amount);
+    if (!(amt > 0)) return json(res, 400, { error: "Amount ivvandi" });
+    const out = await recordPayment(cfg, bill, { amount: amt, mode: "upi", ref: clean(c.ref, 40), ts: c.ts, by: me.name });
+    await audit(cfg, me, `UPI claim on ${c.bill} verified: ₹${amt} (UTR ${c.ref})`);
+    return json(res, 200, { ok: true, bill: out });
+  }
+
+  // The day's cash, counted. Expected = what the float started at, plus cash
+  // taken today, minus cash spent from the drawer. Counted is what is there.
+  if (a === "close") {
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : istDay();
+    const counted = Number(b.counted);
+    if (!isFinite(counted) || counted < 0) return json(res, 400, { error: "Drawer lo entha undo ivvandi" });
+    const c = await collection(cfg, day);
+    const float = money(b.float), spent = money(b.spent);
+    const expected = float + c.byMode.cash - spent;
+    const rec = { day, float, cashIn: c.byMode.cash, spent, expected, counted: Math.round(counted), diff: Math.round(counted) - expected,
+      note: clean(b.note, 160), by: me.name, at: Date.now() };
+    const prev = parse(((await guard.kvCommand(cfg, ["GET", `cash:close:${day}`]).catch(() => ({}))) || {}).result || "", null);
+    if (prev) rec.redone = (prev.redone || 0) + 1;
+    await guard.kvCommand(cfg, ["SET", `cash:close:${day}`, JSON.stringify(rec), "EX", String(400 * 86400)]);
+    await guard.kvCommand(cfg, ["LREM", "cash:closes", "0", day]).catch(() => {});
+    await guard.kvCommand(cfg, ["LPUSH", "cash:closes", day]).catch(() => {});
+    await guard.kvCommand(cfg, ["LTRIM", "cash:closes", "0", "399"]).catch(() => {});
+    await audit(cfg, me, `cash close ${day}: expected ₹${expected}, counted ₹${rec.counted}, diff ₹${rec.diff}`);
+    if (rec.diff !== 0) {
+      for (const ph of guard.ownerPhones()) {
+        await notify.sendWa(ph, `💰 *Cash close — ${day}*\n\nUndalsindi ₹${expected.toLocaleString("en-IN")}\nDrawer lo ₹${rec.counted.toLocaleString("en-IN")}\n*Teda ₹${rec.diff.toLocaleString("en-IN")}*${rec.note ? "\n📝 " + rec.note : ""}\n\n— ${me.name}`).catch(() => {});
+      }
+    }
+    return json(res, 200, { ok: true, close: rec });
+  }
 
   // A bill: what was done, and what it costs.
   if (a === "bill") {
@@ -247,10 +322,54 @@ module.exports = async (req, res) => {
   return json(res, 400, { error: "Unknown action" });
 };
 
+// What came in on one day, by how it was paid.
+async function collection(cfg, day) {
+  const r = await guard.kvCommand(cfg, ["LRANGE", `bill:day:${day}`, "0", "299"]).catch(() => ({}));
+  const seen = new Set(), rows = [];
+  let collected = 0, billed = 0;
+  const byMode = { cash: 0, upi: 0, card: 0, other: 0 };
+  for (const id of (r.result || [])) {
+    if (seen.has(id)) continue;
+    seen.add(id);
+    const bill = await getBill(cfg, id);
+    if (!bill) continue;
+    const t = totals(bill);
+    if (istDay(bill.ts) === day) billed += t.total;
+    for (const p of (bill.payments || [])) {
+      if (istDay(p.ts) !== day) continue;
+      const amt = money(p.amount);
+      collected += amt;
+      byMode[MODES.includes(p.mode) ? p.mode : "other"] += amt;
+      rows.push({ billId: bill.id, phone: bill.phone, name: bill.name, amount: amt, mode: p.mode, ref: p.ref, by: p.by, ts: p.ts });
+    }
+  }
+  rows.sort((x, y) => y.ts - x.ts);
+  return { collected, billed, byMode, payments: rows, count: rows.length };
+}
+
+// One payment onto a bill, filed under the day it was paid.
+async function recordPayment(cfg, bill, p) {
+  const ts = p.ts ? guard.stamp(p.ts, 7 * 86400000) : Date.now();
+  bill.payments = (bill.payments || []).concat([{ amount: money(p.amount), mode: MODES.includes(p.mode) ? p.mode : "other", ref: clean(p.ref, 60), ts, by: p.by || "" }]);
+  await putBill(cfg, bill);
+  const day = istDay(ts);
+  await guard.kvCommand(cfg, ["LPUSH", `bill:day:${day}`, bill.id]).catch(() => {});
+  await guard.kvCommand(cfg, ["EXPIRE", `bill:day:${day}`, String(400 * 86400)]).catch(() => {});
+  const t = totals(bill);
+  if (t.balance <= 0) await guard.kvCommand(cfg, ["LREM", "bill:open", "1", bill.id]).catch(() => {});
+  return Object.assign({}, bill, t);
+}
+
+async function audit(cfg, me, what) {
+  await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({ ts: Date.now(), by: me.name, phone: me.phone, what: clean(what, 200) })]).catch(() => {});
+  await guard.kvCommand(cfg, ["LTRIM", "staff:audit", "0", "199"]).catch(() => {});
+}
+
 // One reminder, and the note on the bill that says it went.
 async function remindOne(cfg, bill, t, byName) {
   const first = String(bill.name || "").trim().split(" ")[0] || "andi";
-  const text = `Namaste ${first} garu 🙏\n\nDermaLuxe lo mee bill ${bill.id} — mottam ₹${t.total.toLocaleString("en-IN")}, ippati varaku ₹${t.paid.toLocaleString("en-IN")} chellinchaaru.\n\n*Migilinadi ₹${t.balance.toLocaleString("en-IN")}.*\n\nMeeru clinic ki vachinappudu ivvochu, leda UPI lo kuda pampochu. Emaina doubt unte ee message ki reply cheyandi 😊\n\nDermaLuxe by Medicare, Eluru`;
+  const payUrl = (process.env.UPI_VPA || pay.rzpOn()) ? pay.link(bill.id) : "";
+  const text = `Namaste ${first} garu 🙏\n\nDermaLuxe lo mee bill ${bill.id} — mottam ₹${t.total.toLocaleString("en-IN")}, ippati varaku ₹${t.paid.toLocaleString("en-IN")} chellinchaaru.\n\n*Migilinadi ₹${t.balance.toLocaleString("en-IN")}.*\n\nMeeru clinic ki vachinappudu ivvochu, leda UPI lo kuda pampochu.${payUrl ? "\n\n📲 Online pay: " + payUrl : ""} Emaina doubt unte ee message ki reply cheyandi 😊\n\nDermaLuxe by Medicare, Eluru`;
   let via = "message";
   let sent = await notify.sendWa(bill.phone, text).catch(() => false);
   if (!sent) {
@@ -290,3 +409,5 @@ module.exports.remindOne = remindOne;
 module.exports.dueForReminder = dueForReminder;
 module.exports.istDay = istDay;
 module.exports.totals = totals;
+module.exports.recordPayment = recordPayment;
+module.exports.getBill = getBill;

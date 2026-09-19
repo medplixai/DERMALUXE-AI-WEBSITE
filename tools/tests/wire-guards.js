@@ -16,6 +16,8 @@ const PUBLIC_ON_PURPOSE = {
   "doc.js": "student documents — signed token",
   "chat.js": "the website chat widget — origin allowlist + per-IP and daily caps",
   "reviews.js": "the homepage's Google rating — read-only, cached, rate limited",
+  "pay.js": "the patient's bill link — HMAC-signed per bill, no phone number in it, rate limited",
+  "pay-hook.js": "Razorpay webhook — HMAC signature over the raw body",
 };
 console.log("how each endpoint decides who may call it\n");
 let bad = 0;
