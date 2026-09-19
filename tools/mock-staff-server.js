@@ -339,6 +339,19 @@ http.createServer((req, res) => {
       { id: "DLA003", name: "Sravani", phone: "9876500023", course: "hair", duration: "1 month", fee: 49999, paid: 49999, status: "completed", onboarded: 1, startISO: iso(40), certNo: "DLA-C-0007", created: Date.now() - 50 * 86400000, notes: [] },
     ].map((x) => Object.assign(x, { progress: progressOf(x) }));
     if (a === "students" || a === "list") return send(200, { ok: true, students: st });
+    // The seat board, in the shape api/academy.js returns it (the dashboard
+    // reads deadline.offerDays; without it the tab shows an error the real
+    // server never causes).
+    if (a === "funnel") return send(200, { ok: true,
+      seats: { total: 10, booked: 4, left: 6 }, money: { collected: 139996, pending: 159998 },
+      counts: { reserved: 4, enquiry: 2, lost: 1 },
+      deadline: { offerDays: 11, batchDays: 31, offer: "30 Sep 2026", batch: "20 October 2026" },
+      rows: [
+        { phone: "9876500031", name: "Divya", course: "skin", stage: "enquiry", quietDays: 3, paid: 0, balance: 49999, lastTouch: Date.now() - 3 * 86400000 },
+        { phone: "9876500033", name: "Swathi", course: "hair", stage: "enquiry", quietDays: 0, paid: 0, balance: 49999, lastTouch: Date.now() - 3600000 },
+        { phone: "9876500032", name: "Rekha", course: "both", stage: "reserved", quietDays: null, paid: 9999, balance: 90000, lastTouch: Date.now() - 86400000 },
+        { phone: "9876500034", name: "Anusha", course: "skin", stage: "lost", quietDays: 9, paid: 0, balance: 0, lastTouch: Date.now() - 9 * 86400000 },
+      ] });
     if (a === "reopen") return send(200, { ok: true, url: "https://www.dermaluxe.ai/academy-join.html?t=xyz" });
     if (a === "pay") {
       // mirror the real server: the paid student comes back WITH progress
