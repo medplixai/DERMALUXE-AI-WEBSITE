@@ -337,6 +337,25 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: briefing", e && e.message); }
 
+  // ---- the evening report (9:45 PM) -------------------------------------
+  // The day in one WhatsApp to the owner after closing: money in and out,
+  // who came, new leads, dues, whether the drawer was counted.
+  let closing = 0;
+  try {
+    if (istHour === 21) {
+      const day = new Date(now + 330 * 60000).toISOString().slice(0, 10);
+      const nx = await guard.kvCommand(cfg, ["SET", `close:rep:${day}`, "1", "NX", "EX", "86400"]).catch(() => ({}));
+      if (nx && nx.result) {
+        const rep = await require("./_closing.js").build(cfg, day);
+        for (const ph of guard.ownerPhones()) {
+          if (await notify.sendWa(ph, rep.body)) { closing++; continue; }
+          const t = await notify.sendWaTemplate(ph, "daily_digest_ping", [rep.oneLine]).catch(() => ({ ok: false }));
+          if (t && t.ok) closing++;
+        }
+      }
+    }
+  } catch (e) { console.error("cron: closing report", e && e.message); }
+
   // ---- money already earned, quietly waiting ------------------------------
   // The balances sat on a screen nobody outside the clinic could see. Once a
   // day, at a civil hour, the people who owe something are reminded — nothing
@@ -405,5 +424,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, closing, photosMoved, swept });
 };

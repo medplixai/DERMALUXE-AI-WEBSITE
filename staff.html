@@ -457,6 +457,20 @@
     .pv-card{background:var(--panel)}
     .pv-sk .pv-th,.pv-sk i{background:var(--panel2);animation:pulse 1.6s ease-in-out infinite}
     @media (prefers-reduced-motion:reduce){.sk>div::before,.sk>div::after,.skk::before,.stat b:empty,.pv-sk .pv-th,.pv-sk i{animation:none}}
+    /* ---- P&L ---- */
+    .pnl-head{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+    .pnl-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+    .pnl-cards div{background:var(--panel2);border-radius:12px;padding:10px 12px}
+    .pnl-cards b{display:block;font-size:1.15rem;font-variant-numeric:tabular-nums}
+    .pnl-cards span{font-size:.74rem;color:var(--muted)}
+    .pnl-cards i{font-style:normal;font-size:.72rem;margin-left:4px}
+    .pnl-days{display:flex;align-items:flex-end;gap:2px;height:110px;margin-top:12px;padding-bottom:16px;position:relative;overflow-x:auto}
+    .pnl-days .d{flex:1 0 8px;display:flex;flex-direction:column;justify-content:flex-end;gap:1px;height:100%;position:relative}
+    .pnl-days .d .in{background:var(--ok);border-radius:3px 3px 0 0;min-height:1px}
+    .pnl-days .d .out{background:var(--bad);opacity:.7;border-radius:0 0 3px 3px}
+    .pnl-days .d em{position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);font-size:.6rem;color:var(--muted2);font-style:normal}
+    .pnl-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.86rem}
+    .pnl-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
     /* ---- appointments grid ---- */
     .seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
     .seg button{border:0;background:var(--panel);padding:6px 12px;font:inherit;font-size:.82rem;cursor:pointer;color:var(--muted)}
@@ -686,6 +700,7 @@
           <button data-days="90">90 rojulu</button>
         </div>
         <div id="insBody"><div class="sk"><div></div><div></div><div></div></div></div>
+        <div id="pnlBoard" style="margin-top:14px"></div>
         <div id="adsBoard" style="margin-top:14px"></div>
         <div id="refBoard" style="margin-top:14px"></div>
       </section>
@@ -1922,7 +1937,37 @@
         // Its own request, not chained behind the numbers: one of them failing
         // must not quietly take the other off the screen.
         .then(loadRefBoard)
+        .then(function () { return loadPnl(); })
         .then(loadAds);
+    }
+    // ---- the month's profit and loss --------------------------------------
+    var pnlMonth = null;
+    function loadPnl(month) {
+      var host = $("pnlBoard"); if (!host) return Promise.resolve();
+      if (!state.allow("money.view") || !state.allow("money.expense")) { host.innerHTML = ""; return Promise.resolve(); }
+      pnlMonth = month || pnlMonth || "";
+      return expapi("pnl", null, pnlMonth ? "&month=" + pnlMonth : "").then(function (j) {
+        pnlMonth = j.month;
+        var c = j.cur, ch = j.change || {};
+        var arrow = function (v, goodUp) { if (v === null || v === undefined) return ""; var good = goodUp ? v >= 0 : v <= 0; return '<i style="color:' + (good ? "var(--ok)" : "var(--bad)") + '">' + (v >= 0 ? "▲" : "▼") + Math.abs(v) + "%</i>"; };
+        var label = new Date(j.month + "-01T12:00:00+05:30").toLocaleDateString("en-IN", { month: "long", year: "numeric" });
+        var max = Math.max(1, Math.max.apply(null, c.days.map(function (d) { return Math.max(d.in, d.out); })));
+        host.innerHTML = '<div class="box"><div class="pnl-head"><h2>Nela lekka <span class="te" style="font-size:.85rem;color:var(--g3)">· లాభ నష్టాలు</span></h2>' +
+          '<div style="display:flex;gap:6px;align-items:center"><button class="btn btn--sm" data-act="pnl-m" data-d="-1" aria-label="Previous month">‹</button><b style="font-weight:600;font-size:.9rem">' + esc(label) + '</b><button class="btn btn--sm" data-act="pnl-m" data-d="1" aria-label="Next month">›</button></div></div>' +
+          '<div class="pnl-cards">' +
+          "<div><span>Vachindi</span><b>" + rupee(c.collected) + arrow(ch.collected, true) + "</b></div>" +
+          "<div><span>Kharchu</span><b>" + rupee(c.spent) + arrow(ch.spent, false) + "</b></div>" +
+          '<div><span>Migilindi</span><b style="color:' + (c.profit >= 0 ? "var(--ok)" : "var(--bad)") + '">' + rupee(c.profit) + arrow(ch.profit, true) + "</b></div>" +
+          "<div><span>Margin · patients</span><b>" + (c.margin === null ? "—" : c.margin + "%") + " · " + c.patients + "</b></div></div>" +
+          '<p class="meta" style="margin-top:6px">Last month (' + esc(j.prev) + "): vachindi " + rupee(j.before.collected) + ", kharchu " + rupee(j.before.spent) + ", migilindi " + rupee(j.before.profit) + ". Idi cash lekka — tax, depreciation levu.</p>" +
+          '<div class="pnl-days" aria-label="Daily in and out">' + c.days.map(function (d) {
+            var n = Number(d.day.slice(8));
+            return '<div class="d" title="' + esc(d.day) + ": in " + rupee(d.in) + ", out " + rupee(d.out) + '"><div class="in" style="height:' + (d.in / max * 60) + '%"></div><div class="out" style="height:' + (d.out / max * 35) + '%"></div>' + (n === 1 || n % 5 === 0 ? "<em>" + n + "</em>" : "") + "</div>";
+          }).join("") + "</div>" +
+          '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin-top:10px">' +
+          "<div><h3 style=\"font-size:.9rem;margin:0 0 4px\">Treatment-wise (bill chesinavi)</h3>" + (c.treatments.length ? c.treatments.map(function (t) { return '<div class="pnl-row"><span>' + esc(t.name) + ' <span class="meta">× ' + t.count + "</span></span><span>" + rupee(t.value) + "</span></div>"; }).join("") : '<p class="meta">Inka bills ledu.</p>') + "</div>" +
+          "<div><h3 style=\"font-size:.9rem;margin:0 0 4px\">Kharchu category-wise</h3>" + (c.byCategory.length ? c.byCategory.map(function (x) { return '<div class="pnl-row"><span>' + esc(x.name) + "</span><span>" + rupee(x.amount) + "</span></div>"; }).join("") : '<p class="meta">Kharchulu inka raayaledu.</p>') + "</div></div></div>";
+      }).catch(function (e) { host.innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
     function bar(pct, colour) {
       return '<div style="height:6px;border-radius:100px;background:var(--ink2);overflow:hidden;margin-top:5px">' +
@@ -4173,6 +4218,13 @@
         if (!confirm(el.dataset.name + " raaledu ani mark cheyyanaa?\n\nVaallaki 'malli book chesukondi' ani message veltundi.")) return;
         schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "noshow" }, "Raaledu ani mark chesam — rebook message pampam");
         return;
+      }
+      if (el.dataset.act === "pnl-m") {
+        var pm = (pnlMonth || new Date().toISOString().slice(0, 7)).split("-").map(Number);
+        var dt = new Date(Date.UTC(pm[0], pm[1] - 1 + Number(el.dataset.d), 1));
+        var nextM = dt.toISOString().slice(0, 7);
+        if (nextM > new Date(Date.now() + 19800000).toISOString().slice(0, 7)) { toast("Idi ippati nela"); return; }
+        loadPnl(nextM); return;
       }
       if (el.dataset.act === "sch-view") {
         schView = el.dataset.v === "grid" ? "grid" : "list";

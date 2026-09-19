@@ -411,3 +411,4 @@ module.exports.istDay = istDay;
 module.exports.totals = totals;
 module.exports.recordPayment = recordPayment;
 module.exports.getBill = getBill;
+module.exports.collection = collection;

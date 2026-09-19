@@ -141,6 +141,23 @@ module.exports = async (req, res) => {
     });
   }
 
+  // Profit and loss for a month, beside the month before. Money in is what
+  // was collected (not billed); money out is what was written down as spent.
+  // Treatments are what was billed that month, by line. It is a cash view —
+  // the screen says so — not an accountant's P&L.
+  if (a === "pnl") {
+    if (!allow("money.view")) return json(res, 403, { error: "Mee role ki idi chuse permission ledu" });
+    const rl = await guard.rateLimit(cfg, `rl:pnl:${me.phone}`, 60, 3600);
+    if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
+    const m = /^\d{4}-\d{2}$/.test(String(q.month || "")) ? String(q.month) : istMonth();
+    const [y, mo] = m.split("-").map(Number);
+    const prev = mo === 1 ? `${y - 1}-12` : `${y}-${String(mo - 1).padStart(2, "0")}`;
+    const [cur, before] = await Promise.all([monthPnl(cfg, m, true), monthPnl(cfg, prev, false)]);
+    const pct = (a2, b2) => (b2 ? Math.round(((a2 - b2) / Math.abs(b2)) * 100) : null);
+    return json(res, 200, { ok: true, month: m, prev, cur, before,
+      change: { collected: pct(cur.collected, before.collected), spent: pct(cur.spent, before.spent), profit: pct(cur.profit, before.profit) } });
+  }
+
   if (a === "month") {
     const m = /^\d{4}-\d{2}$/.test(String(q.month || "")) ? String(q.month) : istMonth();
     const ids = (await guard.kvCommand(cfg, ["LRANGE", `exp:m:${m}`, "0", "999"]).catch(() => ({}))).result || [];
@@ -209,6 +226,55 @@ module.exports = async (req, res) => {
 
   return json(res, 400, { error: "Unknown action" });
 };
+async function monthPnl(cfg, m, detail) {
+  const days = daysOfMonth(m);
+  const lists = await guard.kvPipeline(cfg, days.map((d) => ["LRANGE", `bill:day:${d}`, "0", "299"])).catch(() => []);
+  const ids = new Set();
+  for (const l of lists) for (const id of (Array.isArray(l) ? l : [])) ids.add(id);
+  const bills = ids.size ? (await guard.kvPipeline(cfg, [...ids].map((id) => ["GET", `bill:${id}`])).catch(() => [])).map((x) => parse(x, null)).filter(Boolean) : [];
+  const inMonth = new Set(days);
+  let collected = 0, billed = 0;
+  const byMode = {}, byDay = {}, byTreat = {};
+  const payers = new Set();
+  for (const bill of bills) {
+    for (const p of (bill.payments || [])) {
+      const d = istDay(p.ts);
+      if (!inMonth.has(d)) continue;
+      const amt = rupees(p.amount);
+      collected += amt;
+      byMode[p.mode || "other"] = (byMode[p.mode || "other"] || 0) + amt;
+      byDay[d] = byDay[d] || { day: d, in: 0, out: 0 };
+      byDay[d].in += amt;
+      payers.add(bill.phone);
+    }
+    if (inMonth.has(istDay(bill.ts))) {
+      for (const it of (bill.items || [])) {
+        const v = rupees(it.price) * Math.max(1, Number(it.qty || 1));
+        billed += v;
+        const t = byTreat[it.name] || (byTreat[it.name] = { name: it.name, count: 0, value: 0 });
+        t.count += Math.max(1, Number(it.qty || 1)); t.value += v;
+      }
+    }
+  }
+  const eIds = (await guard.kvCommand(cfg, ["LRANGE", `exp:m:${m}`, "0", "999"]).catch(() => ({}))).result || [];
+  const exp = await readMany(cfg, eIds);
+  for (const x of exp) {
+    const d = istDay(x.ts);
+    byDay[d] = byDay[d] || { day: d, in: 0, out: 0 };
+    byDay[d].out += rupees(x.amount);
+  }
+  const spent = sum(exp);
+  const out = { month: m, collected, billed, spent, profit: collected - spent,
+    margin: collected ? Math.round(((collected - spent) / collected) * 100) : null, patients: payers.size };
+  if (detail) Object.assign(out, {
+    byMode, byCategory: byCategory(exp),
+    treatments: Object.values(byTreat).sort((a, b) => b.value - a.value).slice(0, 15),
+    days: days.map((d) => byDay[d] || { day: d, in: 0, out: 0 }),
+  });
+  return out;
+}
+
+module.exports.monthPnl = monthPnl;
 module.exports.istMonth = istMonth;
 module.exports.collectedOver = collectedOver;
 module.exports.daysOfMonth = daysOfMonth;

@@ -380,6 +380,18 @@ http.createServer((req, res) => {
       rows: [{ name: "Sowmya", present: 12, half: 1, leave: 2 }, { name: "Latha", present: 11, half: 0, leave: 3 }] });
     return send(200, { ok: true, at: "9:15 am" });
   }
+  if (u.pathname === "/api/expense" && u.searchParams.get("a") === "pnl") {  // pnl-mock
+    const month = u.searchParams.get("month") || new Date(Date.now() + 19800000).toISOString().slice(0, 7);
+    const days = Array.from({ length: 19 }, (_, i) => ({ day: month + "-" + String(i + 1).padStart(2, "0"), in: [0, 6].includes(i % 7) ? 0 : 8000 + ((i * 3719) % 14000), out: i % 4 === 0 ? 3000 + (i * 911) % 5000 : (i % 3 ? 400 : 0) }));
+    const collected = days.reduce((n, d) => n + d.in, 0), spent = days.reduce((n, d) => n + d.out, 0);
+    return send(200, { ok: true, month, prev: "2026-08",
+      cur: { month, collected, billed: collected + 42000, spent, profit: collected - spent, margin: Math.round((collected - spent) / collected * 100), patients: 64, days,
+        byMode: { cash: 61000, upi: 118000, card: 9000 },
+        byCategory: [{ name: "Salaries", amount: 22000 }, { name: "Consumables", amount: 9800 }, { name: "Marketing & ads", amount: 6100 }, { name: "Electricity & water", amount: 2300 }],
+        treatments: [{ name: "PICO laser", count: 9, value: 54000 }, { name: "Hydrafacial", count: 14, value: 42000 }, { name: "PRP", count: 8, value: 36000 }, { name: "Chemical peel", count: 11, value: 22000 }, { name: "Consultation", count: 40, value: 20000 }] },
+      before: { month: "2026-08", collected: 162000, spent: 51000, profit: 111000, margin: 69, patients: 58 },
+      change: { collected: Math.round((collected - 162000) / 1620), spent: Math.round((spent - 51000) / 510), profit: Math.round((collected - spent - 111000) / 1110) } });
+  }
   if (u.pathname === "/api/expense") {  // expense-mock
     const a = u.searchParams.get("a") || "summary";
     const rows = [
