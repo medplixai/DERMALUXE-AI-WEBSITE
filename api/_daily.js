@@ -687,7 +687,7 @@ async function createDailyPost(cfg, opts = {}) {
     // act of looking at a poster would mark its topic as already used and
     // change what tomorrow posts.
     await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, b64, "EX", opts.preview ? "7200" : "259200"]);
-    if (opts.preview) return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: false, preview: true };
+    if (opts.preview) return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: false, preview: true, doctor: doc ? doc.name : "" };
     if (opts.queue !== false) {
       await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId, caption, due, by, tries: 0, auto: true, topic: topic.key, notify: notifyList })]);
     }

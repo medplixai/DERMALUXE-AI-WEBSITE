@@ -38,6 +38,10 @@
       "maxDuration": 300,
       "includeFiles": "assets/{logo.png,dr-nikhitha.webp,dr-sai-divija.webp,founders/meghana.webp}"
     },
+    "api/poster.js": {
+      "maxDuration": 300,
+      "includeFiles": "assets/{logo.png,dr-nikhitha.webp,dr-sai-divija.webp,founders/meghana.webp}"
+    },
     "api/academy.js": {
       "maxDuration": 300,
       "memory": 2048,

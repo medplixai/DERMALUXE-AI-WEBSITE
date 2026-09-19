@@ -269,7 +269,8 @@
     .switch input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
     .switch input:checked::after{left:19px}
     @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.seats{grid-template-columns:repeat(5,1fr)}}
-  </style>
+  @media (max-width: 640px){ .pv-grid{grid-template-columns:1fr !important} }
+</style>
 </head>
 <body>
   <!-- LOGIN -->
@@ -1988,10 +1989,64 @@
       html += '<div class="box"><h2>Today\'s auto post</h2>' + (t ? '<p><b style="color:var(--g1);font-weight:500">' + esc(t.h1) + '</b><br /><span class="te">' + esc(t.te || "") + '</span><br /><span class="meta">' + (t.page ? 'Page: ' + esc(t.page) : '') + '</span></p>' : '<p>No post generated yet today (7:00 AM build → 8:30 AM publish).</p>') +
         '<p style="margin-top:8px"><a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/dermaluxe.ai/">Instagram ↗</a> <a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61592844155911">Facebook ↗</a>' +
         (state.allow("posts.toggle") ? ' <button class="btn btn--gold btn--sm" id="postNew">+ Kotha post</button>' : "") + '</p></div>';
+      // Build a poster and look at it here, without it going anywhere.
+      if (state.allow("posts.toggle")) {
+        html += '<div class="box" id="pvBox"><h2>Poster preview <span class="te" style="font-size:.85rem;color:var(--g3)">· చూసి చూడండి</span></h2>' +
+          '<p class="meta" style="margin-bottom:10px">Nijamaina poster — Gemini photo, doctor tho. <b>Ekkadiki post avvadu.</b></p>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">' +
+            '<select id="pvTopic" class="inp" style="flex:1;min-width:200px"><option value="">Automatic — repu vachche laaga</option></select>' +
+            '<button class="btn btn--gold btn--sm" id="pvGo">🎨 Poster create cheyyi</button></div>' +
+          '<div id="pvOut" style="margin-top:12px"></div></div>';
+      }
       html += '<div id="postBox"><div class="sk"><div></div><div></div></div></div>';
       $("t-today").innerHTML = html;
       if ($("postNew")) $("postNew").onclick = function () { newPostSheet(); };
+      if ($("pvGo")) wirePreview();
       loadPosts();
+    }
+
+    function posterapi(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/poster?a=" + a, opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; });
+      });
+    }
+
+    var LOOK_TE = { studio: "Chikati studio", daylight: "Kitiki velugu", macro: "Close-up", golden: "Golden hour" };
+    function wirePreview() {
+      var sel = $("pvTopic"), go = $("pvGo"), out = $("pvOut");
+      posterapi("topics").then(function (j) {
+        var groups = { academy: "Academy", tx: "Treatments", edu: "Education", myth: "Myths", trust: "Trust", cta: "Offers", season: "Season", tips: "Tips" };
+        var by = {};
+        (j.topics || []).forEach(function (t) { (by[t.pillar] = by[t.pillar] || []).push(t); });
+        Object.keys(by).forEach(function (p) {
+          var g = document.createElement("optgroup"); g.label = groups[p] || p;
+          by[p].forEach(function (t) { var o = document.createElement("option"); o.value = t.key; o.textContent = t.h1; g.appendChild(o); });
+          sel.appendChild(g);
+        });
+      }).catch(function () {});
+      go.onclick = function () {
+        go.disabled = true; sel.disabled = true;
+        var started = Date.now();
+        out.innerHTML = '<div class="meta" id="pvWait">🎨 Poster tayaru avutondi — photo geeyadam, check cheyyadam… 1–2 nimishalu padutundi.</div>';
+        var tick = setInterval(function () { var w = $("pvWait"); if (w) w.textContent = "🎨 Poster tayaru avutondi… " + Math.round((Date.now() - started) / 1000) + "s"; }, 1000);
+        posterapi("preview", { topic: sel.value }).then(function (j) {
+          clearInterval(tick);
+          var img = ORIGIN + "/api/media?id=" + encodeURIComponent(j.imgId);
+          out.innerHTML =
+            '<div style="display:grid;grid-template-columns:minmax(0,340px) minmax(0,1fr);gap:16px;align-items:start" class="pv-grid">' +
+              '<a href="' + img + '" target="_blank" rel="noopener"><img src="' + img + '" alt="Poster preview" style="width:100%;border-radius:10px;border:1px solid var(--line);display:block" /></a>' +
+              '<div><b style="color:var(--g1)">' + esc(j.h1) + '</b><div class="te">' + esc(j.te || "") + '</div>' +
+                '<div class="meta" style="margin-top:6px">' + esc(LOOK_TE[j.look] || j.look || "") + (j.doctor ? " · " + esc(j.doctor) : "") +
+                  " · " + Math.round((j.ms || 0) / 1000) + "s" + (j.hadImage ? "" : ' · <span style="color:var(--hot)">photo raaledu — background matrame</span>') + '</div>' +
+                '<pre class="meta" style="white-space:pre-wrap;margin-top:10px;font-family:inherit">' + esc(j.caption || "") + '</pre>' +
+                '<div class="meta" style="margin-top:8px">Idi 2 gantala tarvata kanipinchadu. Nachchakapothe malli nokkandi — prathi sari veru photo vastundi.</div></div></div>';
+        }).catch(function (e) {
+          clearInterval(tick);
+          out.innerHTML = '<p class="meta" style="color:var(--bad)">' + esc(e.message) + '</p>';
+        }).then(function () { go.disabled = false; sel.disabled = false; go.textContent = "🎨 Malli create cheyyi"; });
+      };
     }
 
     // Everything the clinic has put out, and everything waiting to go. Until

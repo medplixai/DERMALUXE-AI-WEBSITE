@@ -176,6 +176,21 @@ http.createServer((req, res) => {
       ] });
     let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => send(200, { ok: true }));
   }
+  if (u.pathname === "/api/poster") {  // poster-preview-mock
+    const a = u.searchParams.get("a") || "topics";
+    if (a === "topics") return send(200, { ok: true, topics: [
+      { key: "acad-seats", h1: "Ten seats. One batch.", pillar: "academy" }, { key: "acad-who", h1: "Beautician? Nurse? Fresher?", pillar: "academy" },
+      { key: "hydrafacial", h1: "Hydrafacial glow in 30 minutes", pillar: "tx" }, { key: "hair-fall", h1: "Hair fall? Find the cause first", pillar: "edu" } ] });
+    let body = ""; req.on("data", (c) => (body += c)); return req.on("end", () => setTimeout(() => send(200, {
+      ok: true, imgId: "pv" + Date.now(), topic: "acad-seats", h1: "Ten seats. One batch.", te: "పది సీట్లు మాత్రమే",
+      look: "daylight", doctor: "Dr. Meghana Valeti", hadImage: true, ms: 84000,
+      caption: "Ten seats. One batch.\nపది సీట్లు మాత్రమే\n\nDermaLuxe Academy, Eluru — hands-on training.\n\n📲 WhatsApp *ACADEMY* to 99591 34666",
+    }), 2500));
+  }
+  if (u.pathname === "/api/media" && /^pv/.test(u.searchParams.get("id") || "")) {  // the preview picture
+    res.writeHead(200, { "Content-Type": "image/jpeg" });
+    return res.end(require("fs").readFileSync(require("path").join(__dirname, "fixtures", "poster-sample.jpg")));
+  }
   if (u.pathname === "/api/post") {  // post-mock
     const a = u.searchParams.get("a") || "list";
     if (a === "list") return send(200, { ok: true, canPost: true, account: "@dermaluxe.ai", crossPosts: true,
