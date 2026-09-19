@@ -26,6 +26,8 @@ const CAPS = {
   "leads.view":       "Leads & contact details",
   "leads.edit":       "Lead status + call notes",
   "leads.delete":     "Delete a lead",
+  "inbox.view":       "WhatsApp inbox — patient chats chudadam",
+  "inbox.reply":      "Inbox nundi reply & AI ni aapadam",
   "appts.view":       "Appointments",
   "appts.edit":       "Book, reschedule, cancel",
   "academy.view":     "Academy students & seats",
@@ -54,7 +56,7 @@ const CAPS = {
   "settings.manage":  "Dashboard password & switches",
 };
 const CAP_TE = {
-  "leads.view": "లీడ్స్ చూడటం", "leads.edit": "లీడ్ స్టేటస్ & నోట్స్", "leads.delete": "లీడ్ తొలగించడం",
+  "leads.view": "లీడ్స్ చూడటం", "leads.edit": "లీడ్ స్టేటస్ & నోట్స్", "leads.delete": "లీడ్ తొలగించడం", "inbox.view": "వాట్సాప్ ఇన్‌బాక్స్", "inbox.reply": "ఇన్‌బాక్స్ రిప్లై",
   "appts.view": "అపాయింట్‌మెంట్లు", "appts.edit": "బుక్ / రీషెడ్యూల్", "academy.view": "అకాడమీ స్టూడెంట్స్", "academy.edit": "స్టూడెంట్ యాడ్ / ఎడిట్",
   "academy.seats": "సీట్ల లెక్క మార్చడం", "academy.money": "ఫీజు నమోదు", "academy.docs": "డాక్యుమెంట్లు పంపడం",
   "academy.material": "మెటీరియల్ లింక్", "academy.certify": "సర్టిఫికెట్", "academy.delete": "స్టూడెంట్ తొలగింపు",
@@ -63,7 +65,7 @@ const CAP_TE = {
   "ai.use": "AI ఆఫీస్", "msg.send": "మెసేజ్ పంపడం", "team.manage": "కంట్రోల్ ప్యానెల్", "settings.manage": "సెట్టింగ్స్",
 };
 const CAP_GROUPS = [
-  { key: "leads",   label: "Leads & patients", te: "లీడ్స్",        caps: ["leads.view", "leads.edit", "leads.delete"] },
+  { key: "leads",   label: "Leads & patients", te: "లీడ్స్",        caps: ["leads.view", "leads.edit", "leads.delete", "inbox.view", "inbox.reply"] },
   { key: "appts",   label: "Appointments",     te: "అపాయింట్‌మెంట్లు", caps: ["appts.view", "appts.edit", "pkg.log"] },
   { key: "academy", label: "Academy",          te: "అకాడమీ",        caps: ["academy.view", "academy.edit", "academy.seats", "academy.money", "academy.docs", "academy.material", "academy.certify", "academy.delete"] },
   { key: "money",   label: "Money",             te: "డబ్బు",         caps: ["money.view", "money.bill", "money.expense", "reports.view"] },
@@ -79,11 +81,11 @@ const BUILTIN_ROLES = {
   owner:     { label: "Owner",     te: "ఓనర్",       note: "Anni powers — ee role marchalemu.",
     caps: ["*"] },
   manager:   { label: "Manager",   te: "మేనేజర్",     note: "Clinic mottam nadipevaru. Delete tappa dadapu anni.",
-    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","money.expense","reports.view","stock.view","stock.edit","attend.manage","consent.take","posts.view","posts.toggle","reviews.view","ai.use","msg.send","team.manage"] },
+    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","money.expense","reports.view","stock.view","stock.edit","attend.manage","consent.take","posts.view","posts.toggle","reviews.view","ai.use","msg.send","team.manage"] },
   doctor:    { label: "Doctor",    te: "డాక్టర్",     note: "Consultations + academy training. Money/settings ledu.",
-    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use","msg.send"] },
+    caps: ["inbox.view","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use","msg.send"] },
   reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count.",
-    caps: ["leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use","msg.send"] },
+    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use","msg.send"] },
   accounts:  { label: "Accounts",  te: "అకౌంట్స్",    note: "Fees, receipts, documents. Leads edit cheyaleru.",
     caps: ["leads.view","appts.view","academy.view","academy.money","academy.docs","money.view","money.bill","money.expense","reports.view","stock.view","reviews.view","ai.use"] },
   therapist: { label: "Therapist", te: "థెరపిస్ట్",   note: "Treatments chese vaaru — chudatam matrame.",
@@ -91,7 +93,7 @@ const BUILTIN_ROLES = {
   trainer:   { label: "Trainer",   te: "ట్రైనర్",     note: "Academy batch nadipevaru.",
     caps: ["academy.view","academy.edit","academy.material","academy.docs","appts.view","ai.use"] },
   marketing: { label: "Marketing", te: "మార్కెటింగ్", note: "Posts, campaigns, ratings.",
-    caps: ["leads.view","posts.view","posts.toggle","reviews.view","reports.view","ai.use"] },
+    caps: ["inbox.view","leads.view","posts.view","posts.toggle","reviews.view","reports.view","ai.use"] },
   staff:     { label: "Staff",     te: "స్టాఫ్",      note: "Default role — basic access.",
     caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
 };

@@ -457,6 +457,38 @@
     .pv-card{background:var(--panel)}
     .pv-sk .pv-th,.pv-sk i{background:var(--panel2);animation:pulse 1.6s ease-in-out infinite}
     @media (prefers-reduced-motion:reduce){.sk>div::before,.sk>div::after,.skk::before,.stat b:empty,.pv-sk .pv-th,.pv-sk i{animation:none}}
+    /* ---- WhatsApp inbox ---- */
+    body[data-tab="inbox"] .stats{display:none}
+    #t-inbox{padding-top:14px}
+    .ib{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+    .ib-list{display:flex;flex-direction:column;gap:6px}
+    .ib-row{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font:inherit;color:inherit}
+    .ib-row:hover{border-color:var(--line2)}
+    .ib-row.on{border-color:var(--primary);box-shadow:inset 3px 0 0 var(--primary)}
+    .ib-av{flex:none;width:36px;height:36px;border-radius:50%;background:var(--panel2);display:grid;place-items:center;font-weight:600;color:var(--g2)}
+    .ib-mid{flex:1;min-width:0}
+    .ib-mid b{font-weight:600;font-size:.92rem}
+    .ib-mid p{margin:2px 0 0;color:var(--muted);font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ib-side{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:.72rem;color:var(--muted2)}
+    .ib-un{background:var(--ok);color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size:.72rem;font-weight:600;padding:0 6px}
+    .ib-hum{font-size:.66rem;color:var(--g2);background:#fbf3e3;border-radius:6px;padding:1px 6px}
+    .ib-pane{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:60vh;max-height:calc(100dvh - 190px);overflow:hidden}
+    .ib-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+    .ib-head > div{flex:1;min-width:0}
+    .ib-msgs{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:6px;background:var(--ink2)}
+    .ib-b{max-width:82%;padding:8px 11px;border-radius:12px;font-size:.9rem;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}
+    .ib-b small{display:block;margin-top:3px;font-size:.68rem;color:var(--muted2)}
+    .ib-b.in{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:4px}
+    .ib-b.ai{align-self:flex-end;background:#eef2ff;border-bottom-right-radius:4px}
+    .ib-b.st{align-self:flex-end;background:#fbf3e3;border:1px solid #efdcb4;border-bottom-right-radius:4px}
+    .ib-day{align-self:center;font-size:.7rem;color:var(--muted2);margin:6px 0}
+    .ib-note{font-size:.78rem;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line)}
+    .ib-note.warn{color:#b45309;background:#fffbeb}
+    .ib-compose{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+    .ib-compose textarea{flex:1;resize:none;border:1px solid var(--line2);border-radius:10px;padding:9px 11px;font:inherit;font-size:.92rem;max-height:120px;background:var(--panel);color:var(--text)}
+    .ib-empty{flex:1;display:grid;place-items:center;color:var(--muted2);font-size:.9rem;padding:30px;text-align:center}
+    @media (max-width:899px){ .ib.open .ib-list{display:none} .ib:not(.open) .ib-pane{display:none} .ib-pane{max-height:calc(100dvh - 170px)} }
+    @media (min-width:900px){ .ib{grid-template-columns:320px minmax(0,1fr);align-items:start} .ib-list{max-height:calc(100dvh - 190px);overflow-y:auto;padding-right:2px} #ibBack{display:none} }
 </style>
 </head>
 <body>
@@ -487,6 +519,7 @@
     <a href="index.html" class="side-brand" aria-label="DermaLuxe"><img class="bm-i" src="assets/app/icon-192.png" alt="" /><span class="bm-t"><b>DermaLuxe</b><small>Staff · Eluru</small></span></a>
     <div class="tabs" id="tabs">
         <button class="tab on" data-t="leads"><span>Leads</span><i id="nLeads">0</i></button>
+        <button class="tab hide" data-t="inbox" id="inboxTab"><span>Inbox</span><i id="nInbox">0</i></button>
         <button class="tab" data-t="appts"><span>Appointments</span><i id="nAppts">0</i></button>
         <button class="tab" data-t="academy"><span>Academy</span><i id="nAcad">0</i></button>
         <button class="tab" data-t="patients"><span>Patients</span><i id="nPt">0</i></button>
@@ -531,6 +564,21 @@
         </div>
         <div class="list" id="leadList"></div>
         <div id="leadMore" style="margin-top:10px;text-align:center"></div>
+      </section>
+      <section id="t-inbox" class="hide">
+        <div class="ib" id="ib">
+          <div class="ib-list" id="ibList"><div class="sk"><div></div><div></div><div></div><div></div></div></div>
+          <div class="ib-pane" id="ibPane">
+            <div class="ib-empty" id="ibEmpty">Edaina chat open cheyandi.<br />Patients WhatsApp lo agent tho matladinavanni ikkada kanipistayi.</div>
+            <div class="ib-head hide" id="ibHead"><button class="btn btn--sm" id="ibBack" aria-label="Venakki">‹</button>
+              <div><b id="ibName"></b><div class="meta" id="ibSub"></div></div>
+              <button class="btn btn--sm hide" id="ibPt" title="Patient file">📋</button>
+              <button class="btn btn--sm hide" id="ibTake"></button></div>
+            <div class="ib-msgs hide" id="ibMsgs"></div>
+            <div class="ib-note hide" id="ibNote"></div>
+            <form class="ib-compose hide" id="ibForm"><textarea id="ibText" rows="1" maxlength="1500" placeholder="Reply raayandi…" aria-label="Reply"></textarea><button class="btn btn--gold btn--sm" type="submit" id="ibSend">Send</button></form>
+          </div>
+        </div>
       </section>
       <section id="t-appts" class="hide">
         <div class="daystrip" id="dayStrip"></div>
@@ -924,8 +972,9 @@
       if (allow("team.manage")) $("teamTab").classList.remove("hide");
       if (allow("ai.use")) $("officeTab").classList.remove("hide");
       if (allow("stock.view")) $("stockTab").classList.remove("hide");
+      if (allow("inbox.view")) { $("inboxTab").classList.remove("hide"); if (ib && !ib.loadedOnce) { ib.loadedOnce = true; loadInbox(true); } }
       if (allow("leads.edit")) $("leadAdd").classList.remove("hide");
-      [["leads", "leads.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"], ["stock", "stock.view"]].forEach(function (p) {
+      [["leads", "leads.view"], ["inbox", "inbox.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"], ["stock", "stock.view"]].forEach(function (p) {
         var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
       });
       var firstTab = document.querySelector(".tab:not(.hide)");
@@ -964,7 +1013,7 @@
         (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
         '<div class="acts">' +
-        (l.phone ? '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '" data-phone="' + esc(l.phone) + '" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' : '<span class="meta">No phone (DM lead)</span>') +
+        (l.phone ? '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '" data-phone="' + esc(l.phone) + '" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' + (state.allow("inbox.view") && l.type === "whatsapp" ? '<button class="btn btn--sm" data-act="ib-open" data-phone="' + esc(l.phone) + '">🗨 Chat</button>' : '') : '<span class="meta">No phone (DM lead)</span>') +
         '<select class="s-' + l.status + '" data-act="status" data-key="' + esc(l.key) + '">' + state.data.statuses.map(function (o) { return '<option value="' + o + '"' + (o === l.status ? ' selected' : '') + '>' + o.charAt(0).toUpperCase() + o.slice(1) + '</option>'; }).join("") + '</select>' +
         (NATIVE && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="lead" data-ref="' + esc(l.key) + '" data-who="' + esc(l.name || "") + '">📷 Photo</button>' : '') +
         (state.allow("leads.delete") ? '<button class="btn btn--sm" data-act="delete" data-key="' + esc(l.key) + '" title="Delete lead">🗑</button>' : '') +
@@ -1711,6 +1760,122 @@
     // Nothing counted the consumables, so the way to find out the PRP kits had
     // run out was to reach for one with a patient already in the chair.
     var stkUnits = [];
+    // ---- WhatsApp inbox -----------------------------------------------------
+    // The agent's conversations, where the desk can read them, answer, and
+    // take a chat over when a person should be the one talking.
+    function ibapi(a, body, qs) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+      return fetch(ORIGIN + "/api/inbox?a=" + a + (qs || ""), opt).then(function (r) {
+        return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; throw e; } return j; });
+      });
+    }
+    var ib = { phone: null, canReply: false, timer: null, sending: false, lastCount: -1 };
+    function ibTime(ts) {
+      var d = new Date(ts), now = new Date();
+      if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
+      return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
+    }
+    function loadInbox(quiet) {
+      if (!state.allow || !state.allow("inbox.view")) return Promise.resolve();
+      return ibapi("list").then(function (j) {
+        ib.canReply = !!j.canReply;
+        $("nInbox").textContent = j.unread || 0; syncBadges();
+        $("ibList").innerHTML = j.threads.length ? j.threads.map(function (t) {
+          var nm = t.name || t.phone;
+          return '<button class="ib-row' + (t.phone === ib.phone ? " on" : "") + '" data-act="ib-open" data-phone="' + esc(t.phone) + '">' +
+            '<span class="ib-av">' + esc(String(nm).trim().charAt(0).toUpperCase() || "?") + "</span>" +
+            '<span class="ib-mid"><b>' + esc(nm) + "</b>" + (t.name ? ' <span class="meta">· ' + esc(t.phone) + "</span>" : "") +
+            "<p>" + (t.lastDir === "out" ? (t.lastBy === "ai" ? "🤖 " : "👤 ") : "") + esc(t.last || "") + "</p></span>" +
+            '<span class="ib-side">' + ibTime(t.ts) + (t.unread ? '<span class="ib-un">' + t.unread + "</span>" : "") +
+            (t.human ? '<span class="ib-hum">👤 ' + esc(String(t.human.by || "").split(" ")[0]) + "</span>" : "") + "</span></button>";
+        }).join("") : '<div class="empty">Inka WhatsApp chats levu. Patient message chesthe ikkada kanipistundi.</div>';
+      }).catch(function (e) { if (!quiet) $("ibList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
+    }
+    function paintThread(j) {
+      var nm = (j.meta && j.meta.name) || j.phone;
+      $("ibName").textContent = nm;
+      $("ibSub").textContent = j.phone + (j.human ? " · 👤 " + j.human.by + " chusukuntunnaru — AI aagindi" : " · 🤖 AI agent matladutondi");
+      ["ibHead", "ibMsgs", "ibForm", "ibNote"].forEach(function (id) { $(id).classList.remove("hide"); });
+      $("ibEmpty").classList.add("hide");
+      $("ibPt").classList.toggle("hide", !state.allow("leads.view"));
+      var tk = $("ibTake");
+      tk.classList.toggle("hide", !j.canReply);
+      tk.textContent = j.human ? "🤖 AI ki ivvandi" : "✋ Nenu chusukunta";
+      tk.dataset.on = j.human ? "0" : "1";
+      $("ibForm").classList.toggle("hide", !j.canReply);
+      var note = $("ibNote");
+      note.className = "ib-note" + (j.open ? "" : " warn");
+      note.textContent = j.open
+        ? (j.human ? "Meeru reply chesthe AI 12 gantalu aagi untundi." : "Reply chesthe ee chat meeru teesukuntaru — AI aagipotundi.")
+        : "24 gantala window close ayindi — mee reply 'clinic_update' template ga veltundi (250 letters varaku).";
+      var box = $("ibMsgs"), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60 || ib.lastCount !== j.msgs.length;
+      var lastDay = "";
+      box.innerHTML = j.msgs.map(function (m) {
+        var day = new Date(m.ts).toDateString(), sep = "";
+        if (day !== lastDay) { lastDay = day; sep = '<div class="ib-day">' + new Date(m.ts).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }) + "</div>"; }
+        var cls = m.dir === "in" ? "in" : (m.by === "ai" ? "ai" : "st");
+        var who = m.dir === "in" ? "" : (m.by === "ai" ? "🤖 AI" : "👤 " + m.by) + (m.via === "template" ? " · template" : "") + " · ";
+        return sep + '<div class="ib-b ' + cls + '">' + esc(m.text) + "<small>" + esc(who) + new Date(m.ts).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) + "</small></div>";
+      }).join("") || '<div class="ib-empty">Messages levu.</div>';
+      if (atEnd) box.scrollTop = box.scrollHeight;
+      ib.lastCount = j.msgs.length;
+    }
+    function openThread(phone, quiet) {
+      ib.phone = phone;
+      $("ib").classList.add("open");
+      if (!quiet) { ib.lastCount = -1; $("ibMsgs").innerHTML = '<div class="sk"><div></div><div></div><div></div></div>'; $("ibMsgs").classList.remove("hide"); $("ibEmpty").classList.add("hide"); }
+      document.querySelectorAll(".ib-row").forEach(function (r) { r.classList.toggle("on", r.dataset.phone === phone); });
+      return ibapi("thread", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
+        if (ib.phone !== phone) return;
+        paintThread(j);
+        if (!quiet) loadInbox(true);
+      }).catch(function (e) { if (!quiet) { $("ibMsgs").innerHTML = '<div class="ib-empty">' + esc(e.message) + "</div>"; } });
+    }
+    function closeThread() {
+      ib.phone = null; $("ib").classList.remove("open");
+      ["ibHead", "ibMsgs", "ibForm", "ibNote"].forEach(function (id) { $(id).classList.add("hide"); });
+      $("ibEmpty").classList.remove("hide");
+      loadInbox(true);
+    }
+    // While the inbox is on screen it stays live: the list every 20 seconds,
+    // an open chat every 8.
+    setInterval(function () {
+      var sec = $("t-inbox"); if (!sec || sec.classList.contains("hide") || document.hidden || !tok) return;
+      if (ib.phone) openThread(ib.phone, true);
+    }, 8000);
+    setInterval(function () {
+      if (!tok || document.hidden || !state.allow || !state.allow("inbox.view")) return;
+      loadInbox(true);
+    }, 20000);
+    if ($("ibBack")) $("ibBack").onclick = function () { haptic(); closeThread(); };
+    if ($("ibPt")) $("ibPt").onclick = function () { if (ib.phone) openPatient(ib.phone); };
+    if ($("ibTake")) $("ibTake").onclick = function () {
+      var on = this.dataset.on === "1", btn = this;
+      btn.disabled = true;
+      ibapi("takeover", { phone: ib.phone, on: on }).then(function () {
+        toast(on ? "Ee chat meeru chusukuntunnaru — AI aagindi" : "AI malli matladutundi");
+        loadInbox(true);
+        return openThread(ib.phone, true);
+      }).catch(function (x) { toast(x.message); }).then(function () { btn.disabled = false; });
+    };
+    if ($("ibText")) $("ibText").addEventListener("input", function () { this.style.height = "auto"; this.style.height = Math.min(120, this.scrollHeight) + "px"; });
+    if ($("ibText")) $("ibText").addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $("ibForm").requestSubmit(); } });
+    if ($("ibForm")) $("ibForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+      var text = $("ibText").value.trim();
+      if (!text || ib.sending || !ib.phone) return;
+      ib.sending = true; $("ibSend").disabled = true;
+      ibapi("reply", { phone: ib.phone, text: text }).then(function (j) {
+        $("ibText").value = ""; $("ibText").style.height = "auto";
+        toast(j.via === "template" ? "Template ga pampamu ✅" : "Pampamu ✅");
+        haptic(12);
+        loadInbox(true);
+        return openThread(ib.phone, true);
+      }).catch(function (x) { toast(x.message); })
+        .then(function () { ib.sending = false; $("ibSend").disabled = false; });
+    });
+
     function stkapi(a, body) {
       var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
       if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
@@ -2701,13 +2866,14 @@
       office:'<svg viewBox="0 0 24 24"><path d="M12 3.5 13.7 9l5.3 1.8L13.7 12.6 12 18l-1.7-5.4L5 10.8 10.3 9 12 3.5Z"/><path d="M18.5 16.2l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></svg>',
       today:'<svg viewBox="0 0 24 24"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.8"/><path d="m4.5 17 4.7-4.2a2 2 0 0 1 2.7 0L20 19"/></svg>',
       reviews:'<svg viewBox="0 0 24 24"><path d="m12 4 2.5 5.1 5.6.8-4 3.9 1 5.6-5.1-2.7-5.1 2.7 1-5.6-4-3.9 5.6-.8L12 4Z"/></svg>',
+      inbox:'<svg viewBox="0 0 24 24"><path d="M4.5 6.5A2.5 2.5 0 0 1 7 4h10a2.5 2.5 0 0 1 2.5 2.5v7A2.5 2.5 0 0 1 17 16h-6.5L6 19.5V16H7a2.5 2.5 0 0 1-2.5-2.5v-7Z"/><path d="M8.5 9h7M8.5 12h4.5"/></svg>',
       stock:'<svg viewBox="0 0 24 24"><path d="M3.5 7.5 12 4l8.5 3.5v9L12 20l-8.5-3.5v-9Z"/><path d="M3.5 7.5 12 11l8.5-3.5M12 11v9"/></svg>',
       attend:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
       team:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'
     };
-    var NAV_LABEL = { leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", stock:"Stock", attend:"Haajaru", team:"Panel" };
-    var NAV_PREF = ["leads","appts","patients","money","numbers","attend","stock","academy","students","office","today","reviews","team"];
-    var NAV_BADGE = { leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad", patients:"nPt" };
+    var NAV_LABEL = { inbox:"Inbox", leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", stock:"Stock", attend:"Haajaru", team:"Panel" };
+    var NAV_PREF = ["leads","inbox","appts","patients","money","numbers","attend","stock","academy","students","office","today","reviews","team"];
+    var NAV_BADGE = { inbox:"nInbox", leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad", patients:"nPt" };
 
     function plug(n) { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n]) || null; }
     function haptic(ms) {
@@ -2771,6 +2937,7 @@
       if (document.querySelector(".sheet.open")) return "sheet";
       if (document.querySelector(".viewer")) return "viewer";
       if ($("ptSheet") && $("ptSheet").classList.contains("open")) return "patient";
+      if (ib && ib.phone && $("t-inbox") && !$("t-inbox").classList.contains("hide")) return "thread";
       var first = document.querySelector(".tab:not(.hide)");
       var cur = document.querySelector(".tab.on");
       if (first && cur && first !== cur) return "tab";
@@ -2792,6 +2959,8 @@
         document.querySelector(".viewer").remove();
       } else if (what === "patient") {
         closePatient();
+      } else if (what === "thread") {
+        closeThread();
       } else {
         document.querySelector(".tab:not(.hide)").click();
       }
@@ -3457,6 +3626,7 @@
       $("appbar").querySelectorAll("[data-nav]").forEach(function (n) {
         n.classList.toggle("on", n.dataset.nav === t || (n.dataset.nav === "__more" && !$("appbar").querySelector('[data-nav="' + t + '"]')));
       });
+      document.body.setAttribute("data-tab", t);
       try { history.replaceState(null, "", "#" + t); } catch (x) {}
       var tl = b.querySelector("span"); if ($("pageTitle")) $("pageTitle").textContent = tl ? tl.textContent : (NAV_LABEL[t] || "");
       armSkeletons(t);
@@ -3467,6 +3637,7 @@
       if (t === "patients") loadPatients();
       if (t === "money") { loadMoney(); loadExpenses(); }
       if (t === "stock") loadStock();
+      if (t === "inbox") loadInbox();
       if (t === "attend") loadAttend();
       if (t === "numbers") loadInsights();
       if (t === "appts") loadSchedule();
@@ -3611,6 +3782,7 @@
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
       if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "ib-open") { haptic(); if (ptOpen) closePatient(); goTab("inbox"); openThread(el.dataset.phone); return; }
       if (el.dataset.act === "pkg-drop") {
         if (!confirm(el.dataset.t + " package ni aapeyyanaa?\n\n" + el.dataset.left + " sittings migili unnayi. Aapesaka recall messages pampamu. Malli modalu pettalante kotha package pettandi.")) return;
         el.disabled = true;

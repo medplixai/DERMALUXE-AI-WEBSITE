@@ -83,6 +83,26 @@ function data() {
 }
 
 let mockMoved = 0;
+const M = 60000;
+const mockIb = [
+  { phone: "9876543210", name: "Lakshmi Priya", unread: 2, human: null, open: true, msgs: [
+    { dir: "in", text: "Hi, naaku face meeda pigmentation undi. Treatment undha?", ts: Date.now() - 42 * M },
+    { dir: "out", by: "ai", text: "Namaste Lakshmi garu 🙏 Avunu, PICO laser & peels tho pigmentation ki chala manchi results vastayi. Doctor consultation lo mee skin chusi correct plan chepptaru. Ee week lo eppudu vilu avutundi?", ts: Date.now() - 41 * M },
+    { dir: "in", text: "Price entha avutundi?", ts: Date.now() - 12 * M },
+    { dir: "out", by: "ai", text: "Price doctor mee skin chusina tarvata chepptaru andi — prathi patient ki plan veru. Consultation book cheyamantara? Saturday 5 PM slot undi 😊", ts: Date.now() - 11 * M },
+    { dir: "in", text: "Konchem discount istara? Naa friend kuda vastundi", ts: Date.now() - 3 * M },
+  ] },
+  { phone: "9876500223", name: "Ravi Teja", unread: 0, human: { by: "Sowmya", ts: Date.now() - 50 * M }, open: true, msgs: [
+    { dir: "in", text: "Hair fall ekkuva ga undi, PRP cheyinchukovali", ts: Date.now() - 3 * 60 * M },
+    { dir: "out", by: "ai", text: "PRP gurinchi adiginanduku thanks 🙏 Doctor scalp check chesi enni sittings kavalo chepptaru.", ts: Date.now() - 179 * M },
+    { dir: "out", by: "Sowmya", text: "Ravi garu, nenu Sowmya from DermaLuxe. Repu 11 AM ki Dr. Sai Divija available. Book cheyana?", ts: Date.now() - 50 * M },
+    { dir: "in", text: "Ok book cheyandi 👍", ts: Date.now() - 45 * M },
+  ] },
+  { phone: "9876500311", name: "Anusha", unread: 0, human: null, open: false, msgs: [
+    { dir: "in", text: "Academy course fees entha?", ts: Date.now() - 30 * 60 * M },
+    { dir: "out", by: "ai", text: "Skin Care course ₹49,999 (launch offer). Batch 20 Oct nundi, 10 seats matrame 🎓", ts: Date.now() - 30 * 60 * M + M },
+  ] },
+];
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json", ".json": "application/json" };
 
 http.createServer((req, res) => {
@@ -268,6 +288,30 @@ http.createServer((req, res) => {
         if (c.withdrawn) return send(400, { error: "Idi ippatike venakki teesukunnaru" });
         c.withdrawn = { ts: Date.now(), by: "Owner", reason: String(b.reason || "") };
         return send(200, { ok: true });
+      }
+      return send(400, { error: "Unknown action" });
+    });
+  }
+  if (u.pathname === "/api/inbox") {  // inbox-mock: WhatsApp conversations
+    const a = u.searchParams.get("a") || "list";
+    if (a === "list") return send(200, { ok: true, canReply: true, unread: mockIb.reduce((n, t) => n + t.unread, 0),
+      threads: mockIb.map((t) => ({ phone: t.phone, name: t.name, last: t.msgs[t.msgs.length - 1].text, lastDir: t.msgs[t.msgs.length - 1].dir, lastBy: t.msgs[t.msgs.length - 1].by || "", ts: t.msgs[t.msgs.length - 1].ts, unread: t.unread, human: t.human, open: t.open })) });
+    if (a === "thread") {
+      const t = mockIb.find((x) => x.phone === u.searchParams.get("phone"));
+      if (!t) return send(404, { error: "Ee number tho chat ledu" });
+      t.unread = 0;
+      return send(200, { ok: true, phone: t.phone, msgs: t.msgs, meta: { name: t.name, lastIn: t.msgs.filter((m) => m.dir === "in").pop().ts }, human: t.human, open: t.open, canReply: true });
+    }
+    let raw = ""; req.on("data", (c) => { raw += c; });
+    return req.on("end", () => {
+      let body = {}; try { body = JSON.parse(raw || "{}"); } catch (e) {}
+      const t = mockIb.find((x) => x.phone === body.phone);
+      if (!t) return send(404, { error: "Ee number tho chat ledu" });
+      if (a === "takeover") { t.human = body.on === false ? null : { by: "Owner (mock)", ts: Date.now() }; return send(200, { ok: true, human: t.human }); }
+      if (a === "reply") {
+        t.msgs.push({ dir: "out", by: "Owner (mock)", text: body.text, ts: Date.now(), via: t.open ? "text" : "template" });
+        t.human = { by: "Owner (mock)", ts: Date.now() };
+        return send(200, { ok: true, via: t.open ? "text" : "template", human: t.human });
       }
       return send(400, { error: "Unknown action" });
     });

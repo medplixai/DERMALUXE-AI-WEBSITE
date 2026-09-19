@@ -17,6 +17,7 @@ const crypto = require("crypto");
 const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
 const leadstore = require("./_leadstore.js");
+const inbox = require("./_inbox.js");
 const admin = require("./_admin.js");
 
 const LIST_KEY = "dl_leads";
@@ -957,8 +958,14 @@ module.exports = async (req, res) => {
     profileName = String(b.ProfileName || "").slice(0, 60);
   }
 
+  // The staff inbox keeps every patient conversation; owner commands are not
+  // patient conversations and stay out of it.
+  const patientChat = () => cfg && digits && !admin.isAdmin(digits);
+  const logOut = (t) => (patientChat() ? inbox.log(cfg, digits, { dir: "out", text: t, by: "ai" }).catch(() => {}) : null);
+
   // unified reply transport
   const respond = async (replyText) => {
+    await logOut(replyText);
     if (isMeta) {
       await sendCloud(cloud.phoneNumberId, cloud.to, replyText);
       return res.status(200).json({ ok: true });
@@ -967,6 +974,10 @@ module.exports = async (req, res) => {
   };
 
   if (!digits || (!text && !imageId && !audioId && !videoId && !docId)) return respond(FALLBACK_REPLY);
+  if (patientChat()) {
+    const shown = text || (imageId ? "[📷 photo]" : audioId ? "[🎤 voice note]" : videoId ? "[🎬 video]" : docId ? `[📄 ${docName || "document"}]` : "");
+    await inbox.log(cfg, digits, { dir: "in", text: (imageId || videoId || docId) && text ? `[${imageId ? "📷" : videoId ? "🎬" : "📄"}] ${text}` : shown, name: profileName }).catch(() => {});
+  }
 
   // Owner/admin commands (owner allowlist = ADMIN_PHONES ∪ STAFF_OWNERS;
   // explicit commands only —
@@ -1088,6 +1099,26 @@ module.exports = async (req, res) => {
   if (!perPhone.allowed) return respond("Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.");
   const globalCap = await guard.rateLimit(cfg, `rl:wa:g:${guard.today()}`, 400, 90000);
   if (!globalCap.allowed) return respond(FALLBACK_REPLY);
+
+  // A colleague has taken this conversation over: the agent stays quiet and
+  // the people who can answer are told there is a message waiting.
+  if (patientChat()) {
+    const hum = await inbox.human(cfg, digits);
+    if (hum) {
+      const ping = await guard.kvCommand(cfg, ["SET", `ib:ping:${digits}`, "1", "NX", "EX", "300"]).catch(() => ({}));
+      if (ping && ping.result) {
+        try {
+          const push = require("./_push.js");
+          if (push.enabled()) await push.notifyCap(cfg, "inbox.view", {
+            title: `💬 ${profileName || digits}`,
+            body: String(text || "[media]").slice(0, 140),
+            tab: "inbox", urgent: true, data: { kind: "inbox", phone: digits },
+          });
+        } catch (e) { console.error("push: inbox", e && e.message); }
+      }
+      return isMeta ? res.status(200).json({ ok: true, human: true }) : twiml(res, "");
+    }
+  }
 
   if (process.env.WA_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) {
     return respond(FALLBACK_REPLY);
@@ -1211,6 +1242,7 @@ module.exports = async (req, res) => {
     hist.push({ u: text, a: out.reply });
     await saveHistory(cfg, histKey, hist);
   }
+  await logOut(out.reply);
 
   if (isMeta) {
     // Voice note in → voice note out (text still follows as the readable copy).
