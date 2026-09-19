@@ -291,9 +291,9 @@ async function leadPage(cfg, offset, count) {
   return { leads, leadsTotal, offset: from, more: from + leads.length < leadsTotal };
 }
 
-async function dataPayload(cfg, me, knownRoles, q) {
+async function dataPayload(cfg, me, knownRoles, reqQuery) {
   const br = require("./_branch.js");
-  const sc = br.scope(me, q || {});
+  const sc = br.scope(me, reqQuery || {});
   const roles = knownRoles || await loadRoles(cfg);
   const caps0 = effCaps(roles, me), may = (c) => caps0.includes("*") || caps0.includes(c);
   // The team list used to be fetched after everything else, one more wait for
