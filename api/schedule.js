@@ -155,6 +155,7 @@ async function createAppt(cfg, me, b) {
     staff: digits10(b.staff), staffName: clean(b.staffName, 40),
     room: clean(b.room, 20), status: "booked", cf: false,
     note: clean(b.note, 200), by: me.name, ts: Date.now(),
+    branch: require("./_branch.js").pick(b.branch, me),
   };
   const rows = await readQ(cfg);
   const cl = clash(rows, next, null);
@@ -191,7 +192,8 @@ module.exports = async (req, res) => {
   if (a === "day" || a === "week") {
     const rl = await guard.rateLimit(cfg, `rl:sch:${me.phone}`, 300, 3600);
     if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
-    const rows = (await readQ(cfg)).map((r) => shape(r.a));
+    const brs = require("./_branch.js"), sc = brs.scope(me, q);
+    const rows = (await readQ(cfg)).filter((r) => brs.keep(sc)(r.a)).map((r) => shape(r.a));
 
     // who can be assigned an appointment
     const users = await guard.kvCommand(cfg, ["HGETALL", "staff:users"]).catch(() => ({}));

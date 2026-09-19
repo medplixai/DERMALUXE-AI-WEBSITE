@@ -887,6 +887,9 @@
     function toast(m) { var t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(t._h); t._h = setTimeout(function () { t.classList.remove("show"); }, 2200); }
     // Every write carries a client id, so the server can tell a retry from a
     // second request and never records one payment twice.
+    // Branches: only matters once there is more than one. The owner can look
+    // at one branch at a time; everyone else is pinned to theirs by the server.
+    function branchQs() { var b = ""; try { b = localStorage.getItem("dl_branch") || ""; } catch (e) {} return b ? "&branch=" + encodeURIComponent(b) : ""; }
     function newCid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
     function api(a, body, method) {
       var opt = { method: method || (body ? "POST" : "GET"), headers: {} };
@@ -897,7 +900,7 @@
       // Matching words in an error message is not good enough — CapacitorHttp
       // surfaces Java exceptions whose text we do not control — so the
       // distinction is carried on the error object itself.
-      return fetch(API + "?a=" + a, opt).catch(function (e) {
+      return fetch(API + "?a=" + a + (opt.method === "GET" ? branchQs() : ""), opt).catch(function (e) {
         var err = new Error("Internet andaledu");
         err.net = true; err.cause = e && e.message;
         throw err;
@@ -1048,7 +1051,21 @@
       $("meName").textContent = me.name;
       var caps = (me.caps || []), allow = function (c) { return caps.indexOf("*") > -1 || caps.indexOf(c) > -1; };
       state.allow = allow;
-      $("meRole").textContent = me.roleLabel || me.role;
+      $("meRole").textContent = (me.roleLabel || me.role) + (d.branches ? " · " + ((d.branches.filter(function (x) { return x.id === d.branch; })[0] || {}).name || "Anni branches") : "");
+      if (d.branches && me.role === "owner" && !$("brSel")) {
+        var sel = document.createElement("select");
+        sel.id = "brSel"; sel.className = "sel"; sel.setAttribute("aria-label", "Branch");
+        sel.innerHTML = '<option value="">Anni branches</option>' + d.branches.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.name) + "</option>"; }).join("");
+        try { sel.value = localStorage.getItem("dl_branch") || ""; } catch (e) {}
+        sel.onchange = function () { try { localStorage.setItem("dl_branch", sel.value); } catch (e) {} gClear(); load(true).catch(function () {}); };
+        $("meRole").parentNode.appendChild(sel);
+      }
+      if (d.branches && $("tRole") && !$("tBranch")) {
+        var tb = document.createElement("select");
+        tb.id = "tBranch"; tb.className = "sel"; tb.setAttribute("aria-label", "Branch");
+        tb.innerHTML = '<option value="">Branch…</option>' + d.branches.map(function (x) { return '<option value="' + esc(x.id) + '">' + esc(x.name) + "</option>"; }).join("");
+        $("tRole").insertAdjacentElement("afterend", tb);
+      }
       if (allow("team.manage")) $("teamTab").classList.remove("hide");
       if (allow("ai.use")) $("officeTab").classList.remove("hide");
       if (allow("stock.view")) $("stockTab").classList.remove("hide");
@@ -1207,7 +1224,7 @@
       if (payload && !payload.cid) payload.cid = newCid();
       if (payload) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(payload); }
       var k = body ? null : gKey(path, a, qs);
-      return fetch(ORIGIN + path + "?a=" + a + (qs || ""), opt).then(function (r) {
+      return fetch(ORIGIN + path + "?a=" + a + (qs || "") + (body ? "" : branchQs()), opt).then(function (r) {
         return r.json().catch(function () { return { error: "Server sarigga spandinchaledu (" + r.status + ")" }; }).then(function (j) {
           if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; e.clash = j.clash; throw e; }
           if (k) gSave(k, j);
@@ -5019,7 +5036,7 @@
 
     $("tAdd").onclick = function () {
       var p = $("tPhone").value.replace(/\D/g, ""), n = $("tName").value.trim(); $("teamErr").textContent = "";
-      api("team-add", { phone: p, name: n, role: $("tRole").value }).then(function () { $("tPhone").value = ""; $("tName").value = ""; toast(n + " added"); return loadPanel(); }).catch(function (x) { $("teamErr").textContent = x.message; });
+      api("team-add", { phone: p, name: n, role: $("tRole").value, branch: ($("tBranch") || {}).value || "" }).then(function () { $("tPhone").value = ""; $("tName").value = ""; toast(n + " added"); return loadPanel(); }).catch(function (x) { $("teamErr").textContent = x.message; });
     };
     // ---- AI Office ----
     var officeHist = [];

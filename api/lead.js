@@ -49,6 +49,7 @@ module.exports = async (req, res) => {
     skin_type: String(b.skin_type || "").slice(0, 20),
     treatments: Array.isArray(b.treatments) ? b.treatments.slice(0, 6).map(String) : [],
     page: String(b.page || "").slice(0, 200),
+    branch: require("./_branch.js").pick(b.branch),
   };
 
   // Forward to the clinic platform first (no-op until CLINIC_SYNC_URL is set),

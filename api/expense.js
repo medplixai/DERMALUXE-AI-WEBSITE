@@ -185,6 +185,7 @@ module.exports = async (req, res) => {
       note: clean(b.note, 140), vendor: clean(b.vendor, 60),
       mode: MODES.includes(b.mode) ? b.mode : "cash",
       ts: at, by: me.name, byPhone: me.phone, enteredAt: Date.now(),
+      branch: require("./_branch.js").pick(b.branch, me),
     };
     const day = istDay(at), month = istMonth(at);
     const ok = await guard.kvWrite(cfg, ["SET", `exp:${id}`, JSON.stringify(row)], "expense");

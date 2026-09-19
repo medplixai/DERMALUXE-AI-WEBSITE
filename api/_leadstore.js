@@ -22,22 +22,24 @@ const deskKey = (l) => `${l.ts}|${String(l.phone || "").replace(/\D/g, "").slice
 // Status: the newest one set. Notes: all of them, newest first.
 async function carryDeskState(cfg, oldKeys, newKey) {
   const hget = async (h, k) => ((await guard.kvCommand(cfg, ["HGET", h, k]).catch(() => ({}))) || {}).result || null;
-  let status = null, statusTs = null, notes = [];
+  let status = null, statusTs = null, statusBy = null, notes = [];
   for (const k of oldKeys) {
     const st = await hget("dl_status", k);
-    if (st && !status) { status = st; statusTs = await hget("dl_status_ts", k); }
+    if (st && !status) { status = st; statusTs = await hget("dl_status_ts", k); statusBy = await hget("dl_status_by", k); }
     try { notes = notes.concat(JSON.parse((await hget("dl_notes", k)) || "[]")); } catch (e) {}
   }
   if (status) await guard.kvCommand(cfg, ["HSET", "dl_status", newKey, status]);
   if (statusTs) await guard.kvCommand(cfg, ["HSET", "dl_status_ts", newKey, statusTs]);
+  if (statusBy) await guard.kvCommand(cfg, ["HSET", "dl_status_by", newKey, statusBy]);
   if (notes.length) await guard.kvCommand(cfg, ["HSET", "dl_notes", newKey, JSON.stringify(notes.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 30))]);
-  for (const h of ["dl_status", "dl_status_ts", "dl_notes"]) await guard.kvCommand(cfg, ["HDEL", h].concat(oldKeys)).catch(() => {});
+  for (const h of ["dl_status", "dl_status_ts", "dl_status_by", "dl_notes"]) await guard.kvCommand(cfg, ["HDEL", h].concat(oldKeys)).catch(() => {});
 }
 
 // same(oldLead) → true when oldLead is this conversation's earlier row.
 // Returns whether the new row was stored.
 async function saveLead(cfg, lead, same, scan) {
   if (!cfg) return false;
+  if (!lead.branch) lead.branch = require("./_branch.js").def();
   let before = [];
   try {
     const r = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", String((scan || 50) - 1)]);

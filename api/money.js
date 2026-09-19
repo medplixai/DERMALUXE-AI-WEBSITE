@@ -106,7 +106,7 @@ module.exports = async (req, res) => {
   // The evening number: what came in today, split by how it was paid.
   if (a === "day") {
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(q.day || "")) ? String(q.day) : istDay();
-    const c = await collection(cfg, day);
+    const c = await collection(cfg, day, require("./_branch.js").scope(me, q));
     const close = parse(((await guard.kvCommand(cfg, ["GET", `cash:close:${day}`]).catch(() => ({}))) || {}).result || "", null);
     return json(res, 200, Object.assign({ ok: true, day, close }, c));
   }
@@ -139,6 +139,7 @@ module.exports = async (req, res) => {
       if (!bill) continue;
       const t = totals(bill);
       if (t.balance <= 0) { await guard.kvCommand(cfg, ["LREM", "bill:open", "1", id]).catch(() => {}); continue; }
+      if (!require("./_branch.js").keep(require("./_branch.js").scope(me, q))(bill)) continue;
       const lastRem = (bill.reminders || []).slice(-1)[0];
       rows.push({ id: bill.id, phone: bill.phone, name: bill.name, ts: bill.ts, total: t.total, paid: t.paid, balance: t.balance, reminded: lastRem ? lastRem.ts : 0 });
     }
@@ -254,7 +255,7 @@ module.exports = async (req, res) => {
     const bill = {
       id, phone, name: clean(b.name, 80) || "Patient",
       items, payments: [], ts: Date.now(), by: me.name, byPhone: me.phone,
-      note: clean(b.note, 200),
+      note: clean(b.note, 200), branch: require("./_branch.js").pick(b.branch, me),
     };
     // who did the treatment — the doctor or therapist it is credited to
     const doneBy = digits10(b.doneBy);
@@ -326,7 +327,8 @@ module.exports = async (req, res) => {
 };
 
 // What came in on one day, by how it was paid.
-async function collection(cfg, day) {
+async function collection(cfg, day, branchScope) {
+  const keepB = require("./_branch.js").keep(branchScope || null);
   const r = await guard.kvCommand(cfg, ["LRANGE", `bill:day:${day}`, "0", "299"]).catch(() => ({}));
   const seen = new Set(), rows = [];
   let collected = 0, billed = 0;
@@ -335,7 +337,7 @@ async function collection(cfg, day) {
     if (seen.has(id)) continue;
     seen.add(id);
     const bill = await getBill(cfg, id);
-    if (!bill) continue;
+    if (!bill || !keepB(bill)) continue;
     const t = totals(bill);
     if (istDay(bill.ts) === day) billed += t.total;
     for (const p of (bill.payments || [])) {

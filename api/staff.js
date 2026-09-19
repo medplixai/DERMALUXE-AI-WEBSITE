@@ -123,7 +123,7 @@ function shapeUser(phone, raw, roles) {
   if (ownerPhones().includes(phone)) return { phone, name: "Owner", role: "owner" };
   let u = null; try { u = raw ? JSON.parse(raw) : null; } catch (e) { u = null; }
   if (!u) return null;
-  return { phone, name: u.name || "Staff", role: roleOf(u.role, roles), extra: u.extra || [], revoked: u.revoked || [], off: !!u.off };
+  return { phone, name: u.name || "Staff", role: roleOf(u.role, roles), extra: u.extra || [], revoked: u.revoked || [], off: !!u.off, branch: u.branch || "" };
 }
 const roleOf = (r, roles) => ((roles || BUILTIN_ROLES)[String(r || "staff")] ? String(r) : "staff");
 const capsOf = (r, roles) => ((roles || BUILTIN_ROLES)[roleOf(r, roles)] || BUILTIN_ROLES.staff).caps;
@@ -291,7 +291,9 @@ async function leadPage(cfg, offset, count) {
   return { leads, leadsTotal, offset: from, more: from + leads.length < leadsTotal };
 }
 
-async function dataPayload(cfg, me, knownRoles) {
+async function dataPayload(cfg, me, knownRoles, q) {
+  const br = require("./_branch.js");
+  const sc = br.scope(me, q || {});
   const roles = knownRoles || await loadRoles(cfg);
   const caps0 = effCaps(roles, me), may = (c) => caps0.includes("*") || caps0.includes(c);
   // The team list used to be fetched after everything else, one more wait for
@@ -306,10 +308,12 @@ async function dataPayload(cfg, me, knownRoles) {
     guard.kvCommand(cfg, ["GET", "dp:enabled"]).catch(() => ({})),
     may("team.manage") ? users(cfg).catch(() => ({})) : Promise.resolve(null),
   ]);
+  if (sc) page.leads = page.leads.filter(br.keep(sc));
   const leads = page.leads;
   const now = Date.now();
   const appts = (ar.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } })
     .filter((a) => a && a.at && a.at > now - 12 * 3600000 && a.at < now + 30 * 86400000)
+    .filter(br.keep(sc))
     .sort((a, b) => a.at - b.at);
   const booked = Math.max(0, Math.min(10, Number(bk.result || 0)));
   const academy = leads.filter((l) => /^academy/i.test(String(l.concern || "")));
@@ -326,7 +330,8 @@ async function dataPayload(cfg, me, knownRoles) {
   const seePosts = allow("posts.view");
   if (!seePosts) { today = null; queue.length = 0; }
   const rk = roleOf(me.role, roles);
-  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, leadsTotal: page.leadsTotal, leadsMore: page.more, leadPage: LEAD_PAGE, statuses: STATUSES, appts, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now };
+  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, leadsTotal: page.leadsTotal, leadsMore: page.more, leadPage: LEAD_PAGE, statuses: STATUSES, appts, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now,
+    branches: br.multi() ? br.list() : undefined, branch: sc || undefined };
 }
 
 module.exports = async (req, res) => {
@@ -467,7 +472,7 @@ module.exports = async (req, res) => {
   if (!live) return json(res, 403, { error: "Access removed" });
   if (live.off) return json(res, 403, { error: "Mee access ippudu off lo undi. Owner ni adagandi." });
   if (Number(me.epoch || 0) < Number(epochRaw || 0)) return json(res, 401, { error: "Ee device nunchi logout chesaru. Malli login cheyandi." });
-  me.role = live.role; me.name = live.name; me.extra = live.extra; me.revoked = live.revoked;
+  me.role = live.role; me.name = live.name; me.extra = live.extra; me.revoked = live.revoked; me.branch = live.branch;
   // Powers are recomputed here on every request, so a role edit or a revoked
   // capability takes effect immediately — no re-login, no stale token.
   const allow = (c) => can(me, c, roles);
@@ -481,7 +486,7 @@ module.exports = async (req, res) => {
   }
 
   if (a === "me") return json(res, 200, { ok: true, me: Object.assign({}, me, { caps: effCaps(roles, me) }) });
-  if (a === "data") return json(res, 200, await dataPayload(cfg, me, roles));
+  if (a === "data") return json(res, 200, await dataPayload(cfg, me, roles, q));
   if (req.method === "POST" && ["status", "note", "lead-add"].includes(a) && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
   // The rest of the lead book, a page at a time. The app asks for this when
@@ -492,6 +497,8 @@ module.exports = async (req, res) => {
     const rl = await guard.rateLimit(cfg, `rl:lp:${me.phone}`, 120, 3600);
     if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
     const page = await leadPage(cfg, q.offset, LEAD_PAGE);
+    const brq = require("./_branch.js"), scq = brq.scope(me, q);
+    if (scq) page.leads = page.leads.filter(brq.keep(scq));
     return json(res, 200, Object.assign({ ok: true }, page));
   }
 
@@ -726,7 +733,8 @@ module.exports = async (req, res) => {
     if (role === "owner" && me.role !== "owner") return json(res, 403, { error: "Owner role ivvagaligedi owner matrame" });
     if (ownerPhones().includes(phone)) return json(res, 400, { error: "Ee number already owner — daanini ikkada add cheyakkarledu." });
     const existing = (await users(cfg))[phone];
-    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify({ name, role, extra: [], revoked: [], off: false, added: (existing && existing.added) || Date.now(), by: me.phone })]);
+    const br = require("./_branch.js");
+    await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify({ name, role, extra: [], revoked: [], off: false, added: (existing && existing.added) || Date.now(), by: me.phone, branch: br.valid(b.branch) ? b.branch : ((existing && existing.branch) || "") })]);
     const what = capsOf(role, roles).includes("*") ? "anni" : capsOf(role, roles).map((c) => CAPS[c] || c).join(", ");
     await audit(cfg, me, `${existing ? "Updated" : "Added"} login ${name} (${phone}) — ${roles[role].label}`);
     notify.sendWa(phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki *${roles[role].label}* ga add ayyaru.\n\n🔗 www.dermaluxe.ai/staff.html\n📱 Mee number: ${phone}\n🔐 Password leda OTP tho login cheyandi.\n\n📋 Mee access: ${what}`).catch(() => {});
