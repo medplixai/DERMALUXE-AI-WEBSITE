@@ -411,7 +411,16 @@ http.createServer((req, res) => {
   if (u.pathname === "/api/patient") {  // pt-msg-mock
     const a = u.searchParams.get("a") || "list";
     const p = () => Object.assign({ phone: "9876543210", name: "Sita Rani", since: Date.now() - 86400000 * 40, allergies: "",
-      counts: { visits: 3, booked: 1, photos: 0, upcoming: 0 }, photos: [], visits: [], notes: [], appts: [] }, mockStage);
+      counts: { visits: 2, booked: 1, photos: 3, upcoming: 1, came: 2, noShows: 1 },
+      photos: [{ id: "a".repeat(32), ts: Date.now() - 86400000 * 38, by: "Latha", label: "Before" }, { id: "b".repeat(32), ts: Date.now() - 86400000 * 20, by: "Latha", label: "Sitting 3" }, { id: "c".repeat(32), ts: Date.now() - 86400000 * 2, by: "Latha", label: "After" }],
+      visits: [{ key: "k1", ts: Date.now() - 86400000 * 40, concern: "Acne scars", src: "whatsapp", status: "visited" }, { key: "k2", ts: Date.now() - 86400000 * 5, concern: "Pigmentation", src: "instagram", status: "booked", slot: "Sat 5 PM" }],
+      notes: [{ ts: Date.now() - 86400000 * 39, by: "Sowmya", text: "Called — coming Monday 11 AM" }],
+      appts: [{ at: Date.now() + 86400000 * 2, concern: "PICO sitting 4", cf: true }],
+      past: [{ at: Date.now() - 86400000 * 38, concern: "Consultation" }, { at: Date.now() - 86400000 * 20, concern: "MNRF sitting 3" }, { at: Date.now() - 86400000 * 10, concern: "MNRF sitting 4", noShow: true }],
+      ratings: [{ ts: Date.now() - 86400000 * 18, rating: 5, concern: "MNRF" }],
+      spent: { bills: 2, billed: 32000, paid: 24000, due: 8000 },
+      chat: { count: 14, human: null, last: [{ dir: "in", text: "Repu appointment ki vastanu", ts: Date.now() - 3600000 }, { dir: "out", by: "ai", text: "Super 🙏 Repu 11 AM, see you!", ts: Date.now() - 3500000 }] },
+    }, mockStage);
     if (a === "list") return send(200, { ok: true,
       rows: [Object.assign(p(), { stageLabel: mockStage.stage ? ({consult:"Consultation",plan:"Plan ichcharu",procedure:"Procedure nadustundi",course:"Course ayipoyindi",review:"Review / maintenance",declined:"Vaddannaru"})[mockStage.stage] : "", visits: 3, last: Date.now() - 86400000, concern: "acne" })],
       total: 1, repeats: 1,
@@ -432,6 +441,12 @@ http.createServer((req, res) => {
       });
     }
     return send(200, { ok: true, patient: p(), via: "message" });
+  }
+  if (u.pathname === "/api/photo" && u.searchParams.get("a") === "get") {  // photo-mock: a coloured square per id
+    const id = u.searchParams.get("id") || "";
+    const col = id[0] === "a" ? "#b45309" : id[0] === "b" ? "#d97706" : "#fbbf24";
+    res.writeHead(200, { "Content-Type": "image/svg+xml" });
+    return res.end(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="${col}"/><text x="150" y="210" font-size="40" text-anchor="middle" fill="#fff" font-family="sans-serif">${id[0] === "a" ? "BEFORE" : id[0] === "b" ? "MID" : "AFTER"}</text></svg>`);
   }
   if (u.pathname.startsWith("/api/")) return send(200, { ok: true, rows: [], photos: [], days: [], team: [] });
 

@@ -457,6 +457,30 @@
     .pv-card{background:var(--panel)}
     .pv-sk .pv-th,.pv-sk i{background:var(--panel2);animation:pulse 1.6s ease-in-out infinite}
     @media (prefers-reduced-motion:reduce){.sk>div::before,.sk>div::after,.skk::before,.stat b:empty,.pv-sk .pv-th,.pv-sk i{animation:none}}
+    /* ---- patient file: summary, timeline, compare ---- */
+    .pt-sum{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0 2px}
+    .pt-sum span{font-size:.78rem;background:var(--panel2);border:1px solid var(--line);border-radius:99px;padding:3px 10px;color:var(--text)}
+    .pt-sum span.due{background:#fff7ed;border-color:#fed7aa;color:#9a3412}
+    .tline{position:relative;margin-left:8px;padding-left:18px;border-left:2px solid var(--line)}
+    .tline .ti{position:relative;padding:0 0 12px}
+    .tline .ti::before{content:"";position:absolute;left:-25px;top:4px;width:12px;height:12px;border-radius:50%;background:var(--panel);border:2px solid var(--line2)}
+    .tline .ti.visit::before{border-color:var(--ok);background:#d1fae5}
+    .tline .ti.miss::before{border-color:var(--bad);background:#fee2e2}
+    .tline .ti.next::before{border-color:var(--primary);background:#fbf3e3}
+    .tline .ti.rate::before{border-color:#eab308;background:#fef9c3}
+    .tline .ti b{font-weight:600;font-size:.88rem}
+    .tline .ti .meta{font-size:.76rem}
+    .pt-chat{display:flex;flex-direction:column;gap:5px;background:var(--ink2);border-radius:12px;padding:10px;max-height:320px;overflow-y:auto}
+    .cmp{position:fixed;inset:0;z-index:96;background:rgba(0,0,0,.94);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:16px;padding-top:calc(16px + env(safe-area-inset-top))}
+    .cmp-stage{position:relative;width:min(92vw,560px);aspect-ratio:3/4;max-height:66vh;border-radius:14px;overflow:hidden;background:#111;touch-action:none}
+    .cmp-stage img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+    .cmp-stage .cmp-top{clip-path:inset(0 0 0 var(--cut,50%))}
+    .cmp-line{position:absolute;top:0;bottom:0;left:var(--cut,50%);width:2px;background:#fff;box-shadow:0 0 0 1px rgba(0,0,0,.3);pointer-events:none}
+    .cmp-line::after{content:"⇆";position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:#fff;color:#111;display:grid;place-items:center;font-size:.95rem}
+    .cmp-tag{position:absolute;top:10px;font-size:.72rem;color:#fff;background:rgba(0,0,0,.55);padding:3px 9px;border-radius:99px}
+    .cmp-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(92vw,560px)}
+    .cmp-row select{flex:1;min-width:130px;background:#1c1c1f;color:#fff;border:1px solid #3f3f46;border-radius:10px;padding:8px}
+    .cmp input[type=range]{width:min(92vw,560px)}
     /* ---- WhatsApp inbox ---- */
     body[data-tab="inbox"] .stats{display:none}
     #t-inbox{padding-top:14px}
@@ -2237,22 +2261,90 @@
           '<button class="btn btn--sm" data-act="pt-edit" data-phone="' + esc(p.phone) + '">✎ Details</button>' : "") +
         "</div>" +
 
+        ptSummary(p) +
         stageStrip(p) +
+        (p.chat ? '<div class="pt-sec"><h3>WhatsApp chat <span class="meta">· ' + p.chat.count + ' messages' + (p.chat.human ? " · 👤 " + esc(p.chat.human.by) : " · 🤖 AI") + '</span></h3><div class="pt-chat">' +
+          p.chat.last.map(function (m) {
+            var cls = m.dir === "in" ? "in" : (m.by === "ai" ? "ai" : "st");
+            return '<div class="ib-b ' + cls + '">' + esc(m.text) + "<small>" + (m.dir === "in" ? "" : esc(m.by === "ai" ? "🤖 AI · " : "👤 " + m.by + " · ")) + ago(m.ts) + "</small></div>";
+          }).join("") + '</div><div class="acts" style="margin-top:8px"><button class="btn btn--sm" data-act="ib-open" data-phone="' + esc(p.phone) + '">🗨 Full chat / reply</button></div></div>' : "") +
         '<div class="pt-sec"><h3>Consent <span class="te" style="font-size:.85rem">· అంగీకారం</span></h3><div id="ptCns"><p class="meta">Loading…</p></div></div>' +
         '<div class="pt-sec"><h3>Evarini techcharu <span class="te" style="font-size:.85rem">· రెఫరల్</span></h3><div id="ptRef"><p class="meta">Loading…</p></div></div>' +
         '<div class="pt-sec"><h3>Packages <span class="te" style="font-size:.85rem">· సిట్టింగ్‌లు</span></h3><div id="ptPkgs"><p class="meta">Loading…</p></div></div>' +
         (state.allow("money.view") ? '<div class="pt-sec"><h3>Bills <span class="te" style="font-size:.85rem">· బిల్లులు</span></h3><div id="ptMoney"><p class="meta">Loading…</p></div></div>' : "") +
-        '<div class="pt-sec"><h3>Before / after <span class="te" style="font-size:.85rem">· ఫోటోలు</span></h3>' + tl + "</div>" +
+        '<div class="pt-sec"><h3>Before / after <span class="te" style="font-size:.85rem">· ఫోటోలు</span></h3>' + tl +
+          (p.photos.length > 1 ? '<div class="acts" style="margin-top:8px"><button class="btn btn--sm btn--gold" data-act="pt-compare">⇆ Before / after compare</button></div>' : "") + "</div>" +
         (upcoming.length ? '<div class="pt-sec"><h3>Upcoming</h3>' + upcoming.map(function (a) {
           return '<div class="vrow"><b>' + fmtAt(a.at) + "</b><div class=\"meta\">" + esc(a.concern || "") + "</div></div>";
         }).join("") + "</div>" : "") +
-        '<div class="pt-sec"><h3>Anni enquiries</h3>' + visits + "</div>" +
-        '<div class="pt-sec"><h3>Notes</h3>' + notes + "</div>";
+        '<div class="pt-sec"><h3>Timeline <span class="te" style="font-size:.85rem">· మొత్తం చరిత్ర</span></h3>' + ptTimeline(p) + "</div>";
       paintThumbs($("ptBody"));
       loadPatientPkgs(p.phone);
       loadPatientConsents(p.phone);
       loadPatientRef(p.phone);
       if (state.allow("money.view")) loadPatientMoney(p.phone);
+    }
+    function ptSummary(p) {
+      var bits = [];
+      if (p.counts.came) bits.push("<span>✅ " + p.counts.came + " visit" + (p.counts.came > 1 ? "s" : "") + " vacharu</span>");
+      if (p.counts.noShows) bits.push("<span>❌ " + p.counts.noShows + " raaledu</span>");
+      if (p.spent && p.spent.paid) bits.push("<span>💰 ₹" + p.spent.paid.toLocaleString("en-IN") + " kattaru</span>");
+      if (p.spent && p.spent.due) bits.push('<span class="due">₹' + p.spent.due.toLocaleString("en-IN") + " baaki</span>");
+      if (p.ratings && p.ratings.length) {
+        var avg = p.ratings.reduce(function (n, r) { return n + r.rating; }, 0) / p.ratings.length;
+        bits.push("<span>⭐ " + (Math.round(avg * 10) / 10) + " (" + p.ratings.length + ")</span>");
+      }
+      if (p.tags && p.tags.length) p.tags.forEach(function (t) { bits.push("<span>#" + esc(t) + "</span>"); });
+      return bits.length ? '<div class="pt-sum">' + bits.join("") + "</div>" : "";
+    }
+    // Everything that ever happened with this person, newest first, in one line.
+    function ptTimeline(p) {
+      var ev = [];
+      (p.visits || []).forEach(function (v) { ev.push({ ts: v.ts, cls: "", t: "📩 Enquiry — " + (v.concern || "—"), m: v.src + " · " + v.status + (v.slot ? " · 📅 " + v.slot : "") }); });
+      (p.past || []).forEach(function (a) { ev.push({ ts: a.at, cls: a.noShow ? "miss" : "visit", t: (a.noShow ? "❌ Raaledu — " : "🩺 Visit — ") + (a.concern || "appointment"), m: fmtAt(a.at) }); });
+      (p.appts || []).filter(function (a) { return a.at > Date.now(); }).forEach(function (a) { ev.push({ ts: a.at, cls: "next", t: "📅 Raboye appointment — " + (a.concern || ""), m: fmtAt(a.at) + (a.cf ? " · confirm chesaru ✅" : "") }); });
+      (p.notes || []).forEach(function (n) { ev.push({ ts: n.ts, cls: "", t: "📝 " + n.text, m: (n.by || "") }); });
+      (p.photos || []).forEach(function (ph) { ev.push({ ts: ph.ts, cls: "", t: "📷 Photo" + (ph.label ? " — " + ph.label : ""), m: ph.by || "" }); });
+      (p.ratings || []).forEach(function (r) { ev.push({ ts: r.ts, cls: "rate", t: "⭐ " + r.rating + "/5 rating" + (r.concern ? " — " + r.concern : ""), m: "" }); });
+      var stLabel = {}; PT_STAGES.forEach(function (x) { stLabel[x[0]] = x[1]; });
+      (p.stageLog || []).forEach(function (x) { if (x && x.ts) ev.push({ ts: x.ts, cls: "", t: "➜ " + (stLabel[x.to] || x.to || "Stage teesesaru"), m: (x.by || "") + (x.note ? " · " + x.note : "") }); });
+      if (!ev.length) return '<p class="meta">Inka emi ledu.</p>';
+      ev.sort(function (a, b) { return b.ts - a.ts; });
+      return '<div class="tline">' + ev.slice(0, 80).map(function (e) {
+        return '<div class="ti ' + e.cls + '"><b>' + esc(e.t) + '</b><div class="meta">' + fmtDay(e.ts) + (e.m ? " · " + esc(e.m) : "") + "</div></div>";
+      }).join("") + "</div>";
+    }
+    // Before and after on one picture: drag the line across.
+    function openCompare(photos) {
+      if (!photos || photos.length < 2) return;
+      var v = document.createElement("div");
+      v.className = "cmp";
+      var opts = photos.map(function (ph, i) { return '<option value="' + i + '">' + fmtDay(ph.ts) + (ph.label ? " · " + esc(ph.label) : "") + "</option>"; }).join("");
+      v.innerHTML = '<div class="cmp-row"><select id="cmpA" aria-label="Before">' + opts + '</select><select id="cmpB" aria-label="After">' + opts + "</select>" +
+        '<button class="btn btn--sm" data-cclose="1">Close</button></div>' +
+        '<div class="cmp-stage" id="cmpStage"><img id="cmpImgA" alt="Before" /><img class="cmp-top" id="cmpImgB" alt="After" /><div class="cmp-line"></div>' +
+        '<span class="cmp-tag" style="left:10px" id="cmpTagA"></span><span class="cmp-tag" style="right:10px" id="cmpTagB"></span></div>' +
+        '<input type="range" id="cmpCut" min="0" max="100" value="50" aria-label="Compare" />';
+      document.body.appendChild(v);
+      var a = v.querySelector("#cmpA"), b = v.querySelector("#cmpB"), st = v.querySelector("#cmpStage"), cut = v.querySelector("#cmpCut");
+      a.value = "0"; b.value = String(photos.length - 1);
+      function paint() {
+        var pa = photos[Number(a.value)], pb = photos[Number(b.value)];
+        photoSrc(pa.id).then(function (u) { v.querySelector("#cmpImgA").src = u; }).catch(function () {});
+        photoSrc(pb.id).then(function (u) { v.querySelector("#cmpImgB").src = u; }).catch(function () {});
+        v.querySelector("#cmpTagA").textContent = "Before · " + fmtDay(pa.ts);
+        v.querySelector("#cmpTagB").textContent = "After · " + fmtDay(pb.ts);
+      }
+      function setCut(pc) { pc = Math.max(0, Math.min(100, pc)); st.style.setProperty("--cut", pc + "%"); cut.value = String(Math.round(pc)); }
+      a.onchange = paint; b.onchange = paint;
+      cut.oninput = function () { setCut(Number(cut.value)); };
+      var drag = false;
+      function at(e) { var r = st.getBoundingClientRect(); setCut(((e.clientX - r.left) / r.width) * 100); }
+      st.addEventListener("pointerdown", function (e) { drag = true; st.setPointerCapture(e.pointerId); at(e); });
+      st.addEventListener("pointermove", function (e) { if (drag) at(e); });
+      st.addEventListener("pointerup", function () { drag = false; });
+      v.addEventListener("click", function (e) { if (e.target.closest("[data-cclose]") || e.target === v) v.remove(); });
+      paint(); setCut(50);
     }
     function fmtDay(ts) {
       return new Date(ts).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "2-digit" });
@@ -2936,6 +3028,7 @@
     function backTarget() {
       if (document.querySelector(".sheet.open")) return "sheet";
       if (document.querySelector(".viewer")) return "viewer";
+      if (document.querySelector(".cmp")) return "compare";
       if ($("ptSheet") && $("ptSheet").classList.contains("open")) return "patient";
       if (ib && ib.phone && $("t-inbox") && !$("t-inbox").classList.contains("hide")) return "thread";
       var first = document.querySelector(".tab:not(.hide)");
@@ -2957,6 +3050,8 @@
         }
       } else if (what === "viewer") {
         document.querySelector(".viewer").remove();
+      } else if (what === "compare") {
+        document.querySelector(".cmp").remove();
       } else if (what === "patient") {
         closePatient();
       } else if (what === "thread") {
@@ -3782,6 +3877,7 @@
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
       if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "pt-compare") { haptic(); if (ptOpen) openCompare(ptOpen.photos); return; }
       if (el.dataset.act === "ib-open") { haptic(); if (ptOpen) closePatient(); goTab("inbox"); openThread(el.dataset.phone); return; }
       if (el.dataset.act === "pkg-drop") {
         if (!confirm(el.dataset.t + " package ni aapeyyanaa?\n\n" + el.dataset.left + " sittings migili unnayi. Aapesaka recall messages pampamu. Malli modalu pettalante kotha package pettandi.")) return;

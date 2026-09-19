@@ -57,12 +57,14 @@ async function readLeads(cfg) {
 
 // Everything the clinic knows about this number, in one shape.
 async function build(cfg, phone, opts) {
-  const [all, st, nt, extraR, apptR] = await Promise.all([
+  const [all, st, nt, extraR, apptR, doneR, rvR] = await Promise.all([
     readLeads(cfg),
     guard.kvCommand(cfg, ["HGETALL", STATUS]).catch(() => ({})),
     guard.kvCommand(cfg, ["HGETALL", NOTES]).catch(() => ({})),
     guard.kvCommand(cfg, ["GET", `pt:${phone}`]).catch(() => ({})),
     guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({})),
+    guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "499"]).catch(() => ({})),
+    guard.kvCommand(cfg, ["LRANGE", "rv:log", "0", "499"]).catch(() => ({})),
   ]);
   const statuses = hash(st), notesBy = hash(nt);
   const extra = parse((extraR && extraR.result) || "", {}) || {};
@@ -114,6 +116,36 @@ async function build(cfg, phone, opts) {
     .filter((a) => digits10(a.ph) === phone)
     .sort((a, b) => (a.at || 0) - (b.at || 0));
 
+  // visits that have already happened, and whether they came
+  const past = ((doneR && doneR.result) || []).map((x) => parse(x, null)).filter(Boolean)
+    .filter((a) => digits10(a.ph) === phone)
+    .map((a) => ({ at: a.at, concern: a.concern || a.treatment || "", noShow: !!a.ns, arrived: !!a.arrived, rated: !!a.rv }))
+    .sort((a, b) => (b.at || 0) - (a.at || 0));
+  const ratings = ((rvR && rvR.result) || []).map((x) => parse(x, null)).filter(Boolean)
+    .filter((r) => digits10(r.ph) === phone)
+    .map((r) => ({ ts: r.ts, rating: Number(r.rating) || 0, concern: r.concern || "" }));
+
+  // the WhatsApp conversation, for those allowed to read it
+  let chat = null;
+  if (opts.chat) {
+    const t = await require("./_inbox.js").thread(cfg, phone).catch(() => null);
+    if (t && t.msgs.length) chat = { count: t.msgs.length, last: t.msgs.slice(-8), human: t.human || null };
+  }
+
+  // what they have paid the clinic, for those allowed to see money
+  let spent = null;
+  if (opts.money) {
+    const ids = ((await guard.kvCommand(cfg, ["LRANGE", `bill:of:${phone}`, "0", "99"]).catch(() => ({}))).result) || [];
+    let paid = 0, billed = 0;
+    for (const id of ids) {
+      const bill = parse(((await guard.kvCommand(cfg, ["GET", `bill:${id}`]).catch(() => ({}))) || {}).result || "", null);
+      if (!bill) continue;
+      billed += (bill.items || []).reduce((n, i) => n + (Number(i.price) || 0) * Math.max(1, Number(i.qty || 1)), 0);
+      paid += (bill.payments || []).reduce((n, p) => n + (Number(p.amount) || 0), 0);
+    }
+    spent = { bills: ids.length, billed: Math.round(billed), paid: Math.round(paid), due: Math.max(0, Math.round(billed - paid)) };
+  }
+
   const name = extra.name || (mine.find((l) => l.name) || {}).name || "Patient";
   const first = mine.length ? mine[mine.length - 1].ts : (extra.since || now);
 
@@ -129,12 +161,14 @@ async function build(cfg, phone, opts) {
     stageLog: Array.isArray(extra.stageLog) ? extra.stageLog : [],
     tags: Array.isArray(extra.tags) ? extra.tags : [],
     concerns: Array.from(new Set(visits.map((v) => v.concern).filter(Boolean))).slice(0, 12),
-    visits, notes, photos, appts,
+    visits, notes, photos, appts, past, ratings, chat, spent,
     counts: {
       visits: visits.length,
       photos: photos.length,
       booked: visits.filter((v) => v.status === "booked" || v.status === "visited").length,
       upcoming: appts.filter((a) => a.at > now).length,
+      came: past.filter((a) => !a.noShow).length,
+      noShows: past.filter((a) => a.noShow).length,
     },
     lastTouch: Math.max(notes[0] ? notes[0].ts : 0, visits[0] ? visits[0].ts : 0),
   };
@@ -158,7 +192,7 @@ module.exports = async (req, res) => {
     if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit number ivvandi" });
     const rl = await guard.rateLimit(cfg, `rl:pt:${me.phone}`, 300, 3600);
     if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
-    const p = await build(cfg, phone, { allowEmpty: true });
+    const p = await build(cfg, phone, { allowEmpty: true, chat: allow("inbox.view"), money: allow("money.view") });
     return json(res, 200, { ok: true, patient: p });
   }
 
@@ -235,7 +269,7 @@ module.exports = async (req, res) => {
       by: me.phone,
     });
     await guard.kvCommand(cfg, ["SET", `pt:${phone}`, JSON.stringify(next)]);
-    return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true }) });
+    return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true, chat: allow("inbox.view"), money: allow("money.view") }) });
   }
 
   // Moving somebody along. Every move is written down with who moved them —
@@ -254,7 +288,7 @@ module.exports = async (req, res) => {
     });
     const ok = await guard.kvWrite(cfg, ["SET", `pt:${phone}`, JSON.stringify(next)], "patient stage");
     if (!ok) return json(res, 500, { error: "Save avvaledu — malli try cheyandi" });
-    return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true }) });
+    return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true, chat: allow("inbox.view"), money: allow("money.view") }) });
   }
 
   if (a === "note") {
@@ -263,7 +297,7 @@ module.exports = async (req, res) => {
     const notes = (cur.notes || []).slice(0, 119);
     notes.unshift({ ts: Date.now(), by: me.name, text });
     await guard.kvCommand(cfg, ["SET", `pt:${phone}`, JSON.stringify(Object.assign({}, cur, { notes }))]);
-    return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true }) });
+    return json(res, 200, { ok: true, patient: await build(cfg, phone, { allowEmpty: true, chat: allow("inbox.view"), money: allow("money.view") }) });
   }
 
   // Send this person a message, from here, without leaving for WhatsApp and
@@ -291,7 +325,7 @@ module.exports = async (req, res) => {
     const saved = await guard.kvWrite(cfg, ["SET", `pt:${phone}`, JSON.stringify(Object.assign({}, cur, { notes }))], "patient message note");
     return json(res, 200, { ok: true, via, noteSaved: saved,
       warn: saved ? undefined : "Message vellindi, kaani file lo raayaleka poyam",
-      patient: await build(cfg, phone, { allowEmpty: true }) });
+      patient: await build(cfg, phone, { allowEmpty: true, chat: allow("inbox.view"), money: allow("money.view") }) });
   }
 
   return json(res, 400, { error: "Unknown action" });
