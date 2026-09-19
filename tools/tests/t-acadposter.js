@@ -158,6 +158,24 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   const acadHtml = daily.posterHtml(daily.ACADEMY_TOPICS[0], null, acadDoc);
   is(/Your trainer/.test(acadHtml) && /Meghana Valeti/.test(acadHtml), true, "an academy poster calls her the trainer");
 
+  console.log("\n  — not the same dark room every day —");
+  // Every picture was told "dark charcoal-black background with warm golden
+  // accents", and several briefs were an empty room with a lamp; the feed
+  // became one picture posted five times.
+  const all = daily.TOPICS.concat(daily.ACADEMY_TOPICS);
+  const bare = all.filter((t) => /\bno people\b|\bempty\b/i.test(t.img)).map((t) => t.key);
+  is(bare, [], "no brief asks for an empty room any more");
+  is(/charcoal-black background/.test(daily.imagePrompt(Object.assign({}, clinic, { look: daily.LOOKS[1] }))), false,
+    "and the dark studio is one look among several, not a rule on every picture");
+  is(daily.LOOKS.length >= 4, true, "four looks to choose from");
+  h.run(["DEL", "dp:looks"]); h.run(["LPUSH", "dp:looks", "studio"]); h.run(["LPUSH", "dp:looks", "daylight"]);
+  const drawn = new Set();
+  for (let i = 0; i < 60; i++) drawn.add((await daily.pickLook({ kind: "pg" })).key);
+  is(drawn.has("studio") || drawn.has("daylight"), false, "the last two days' looks are not used today");
+  is(drawn.size, 2, "the other two are: " + [...drawn].join(", "));
+  is(/never show a doctor's or clinician's face/.test(daily.imagePrompt(clinic)), true,
+    "and no invented doctor's face beside the real doctor's photo");
+
   restore();
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe academy campaign behaves");
   process.exit(fails ? 1 : 0);

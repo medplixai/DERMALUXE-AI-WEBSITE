@@ -15,7 +15,28 @@ const docs = require("./_docs.js");
 
 const IST_MS = 330 * 60000;
 const SITE = "https://www.dermaluxe.ai";
-const STYLE = "Premium editorial photograph for a luxury dermatology clinic's Instagram. Cinematic soft lighting, dark charcoal-black background with warm golden accents, shallow depth of field, ultra-realistic, tasteful, South Indian people when a person is shown, no text, no logos, no watermarks, no medical gore, portrait orientation 4:5.";
+// What every picture must be, whatever it looks like.
+const STYLE = "Premium editorial photograph for a luxury dermatology clinic's Instagram. Ultra-realistic, tasteful, South Indian people when a person is shown, no text, no logos, no watermarks, no medical gore, portrait orientation 4:5. The poster already carries a real photograph of the clinic's doctor, so never show a doctor's or clinician's face — if a clinician is in the picture, show only gloved hands or a figure from behind.";
+
+// How it looks, which changes. Every picture used to be told "dark
+// charcoal-black background with warm golden accents", and with several
+// briefs that were an empty room and a lamp the feed became the same dark
+// room day after day. Four looks now, and the one used yesterday or the day
+// before is not used today. The lower part is always allowed to fall dark,
+// because the words sit there.
+const LOOKS = [
+  { key: "studio", text: "Look: dark studio, deep charcoal background, warm golden rim light, cinematic and luxurious." },
+  { key: "daylight", text: "Look: soft natural daylight from a large window, airy warm-neutral tones, fresh and real, like a bright modern clinic in the morning." },
+  { key: "macro", text: "Look: close-up detail, very shallow depth of field, rich warm skin tones and texture, tactile and intimate." },
+  { key: "golden", text: "Look: warm lifestyle photograph, candid real moment, golden-hour sunlight, natural colour." },
+];
+async function pickLook(cfg) {
+  let recent = [];
+  if (cfg) { try { recent = ((await guard.kvCommand(cfg, ["LRANGE", "dp:looks", "0", "1"])).result || []).map(String); } catch (e) {} }
+  const pool = LOOKS.filter((l) => recent.indexOf(l.key) === -1);
+  const from = pool.length ? pool : LOOKS;
+  return from[Math.floor(Math.random() * from.length)];
+}
 
 // pillar: edu (education) · tx (treatment spotlight) · myth · trust (doctors/tech) · cta (free AI analysis / booking) · season · tips
 const TOPICS = [
@@ -46,8 +67,8 @@ const TOPICS = [
   { key: "fungal", pillar: "season", h1: "Ringworm keeps coming back?", te: "తామర మళ్ళీ మళ్ళీ వస్తోందా?", sub: "Steroid creams make it worse — get the right antifungal course", page: "fungal-infection-treatment-eluru.html", img: "Clean folded cotton towels and a bar of soap on a dark surface with warm golden light, hygiene mood, no skin shown." },
   { key: "grey-hair", pillar: "edu", h1: "Grey hair in your 20s?", te: "20ల లోనే తెల్ల జుట్టు?", sub: "B12 · Thyroid · Stress · Genetics — check before you dye", page: "premature-grey-hair-treatment-eluru.html", img: "Close-up of thick glossy dark hair with a few silver strands catching golden light, dark background." },
   { key: "female-hair", pillar: "edu", h1: "Hair thinning after delivery or PCOS", te: "డెలివరీ, PCOS తర్వాత జుట్టు పలుచబడటం", sub: "Very common, very treatable — don't wait a year", page: "female-hair-loss-treatment-eluru.html", img: "South Indian woman gently tying her long thick hair, calm expression, warm golden light, dark background." },
-  { key: "doctor", pillar: "trust", h1: "Every treatment by an MD dermatologist", te: "ప్రతి చికిత్స MD చర్మ వైద్యులచే", sub: "Not a parlour · Medical-grade products · USFDA machines", page: "skin-clinic-eluru.html", img: "Elegant modern dermatology clinic consultation room with a gold-accented desk lamp and soft warm light, empty chair, dark luxurious tones, no people." },
-  { key: "tech", pillar: "trust", h1: "USFDA-approved lasers in Eluru", te: "ఏలూరులో USFDA ఆమోదిత లేజర్లు", sub: "PICO · Diode · Carbon laser · HIFU · MNRF", page: "skin-clinic-eluru.html", img: "Sleek modern aesthetic laser device in a dark luxurious treatment room, soft golden accent lighting, no people, no visible brand names." },
+  { key: "doctor", pillar: "trust", h1: "Every treatment by an MD dermatologist", te: "ప్రతి చికిత్స MD చర్మ వైద్యులచే", sub: "Not a parlour · Medical-grade products · USFDA machines", page: "skin-clinic-eluru.html", img: "Close-up of a dermatologist's gloved hands holding a dermatoscope near a smiling young South Indian woman's cheek, the patient relaxed, the clinician out of frame except the hands." },
+  { key: "tech", pillar: "trust", h1: "USFDA-approved lasers in Eluru", te: "ఏలూరులో USFDA ఆమోదిత లేజర్లు", sub: "PICO · Diode · Carbon laser · HIFU · MNRF", page: "skin-clinic-eluru.html", img: "A gloved hand guiding a sleek laser handpiece that gives off a soft beam of light over a young South Indian woman's forearm, the patient calm, no brand names, clinician's face out of frame." },
   { key: "glutathione", pillar: "tx", h1: "Glutathione skin brightening", te: "గ్లూటాథయోన్ స్కిన్ బ్రైటనింగ్", sub: "Even tone & glow · Doctor-supervised · Honest expectations", page: "glutathione-skin-whitening-eluru.html", img: "Radiant glowing skin close-up of a South Indian woman, soft golden light, dark background, serene beauty." },
   { key: "carbon", pillar: "tx", h1: "Carbon laser facial before the event", te: "ఈవెంట్ ముందు కార్బన్ లేజర్ ఫేషియల్", sub: "Instant glow · Tighter pores · Zero downtime", page: "carbon-laser-facial-eluru.html", img: "Close-up of a South Indian woman's glowing cheek with soft golden light, party-ready look, dark elegant background." },
   { key: "anti-ageing", pillar: "tx", h1: "Fine lines? Start early, stay natural", te: "సన్నని గీతలు — ముందే మొదలుపెట్టండి", sub: "Botox · Fillers · HIFU · Skin boosters — subtle, never overdone", page: "anti-ageing-treatment-eluru.html", img: "Elegant South Indian woman in her late 30s with smooth natural skin, soft smile, golden rim light, dark background." },
@@ -56,9 +77,9 @@ const TOPICS = [
   { key: "warts", pillar: "tx", h1: "Warts, moles & skin tags removal", te: "పులిపిర్లు, పుట్టుమచ్చలు తొలగింపు", sub: "RF / laser · 10 minutes · Minimal marks", page: "warts-moles-skin-tags-removal-eluru.html", img: "Elegant close-up of smooth clear skin on a neck and collarbone in soft golden light, dark background." },
   { key: "weight", pillar: "tx", h1: "Medical weight loss, doctor-supervised", te: "డాక్టర్ పర్యవేక్షణలో బరువు తగ్గడం", sub: "Body contouring · Diet plan · No crash diets", page: "weight-loss-clinic-eluru.html", img: "Fit South Indian woman in elegant dark activewear, confident posture, golden rim light, dark background." },
   { key: "psoriasis", pillar: "edu", h1: "Psoriasis flares can be controlled", te: "సోరియాసిస్ — అదుపులో ఉంచొచ్చు", sub: "Modern treatments · Long remissions · Stop the itch cycle", page: "psoriasis-treatment-eluru.html", img: "Calm South Indian person's relaxed hands resting on a dark surface in warm golden light, serene mood." },
-  { key: "monsoon", pillar: "season", h1: "Monsoon skin & hair care", te: "వర్షాకాలం చర్మం & జుట్టు సంరక్షణ", sub: "Fungal infections · Frizz & hair fall · Sticky skin", page: "fungal-infection-treatment-eluru.html", img: "Rain drops on a dark window with warm golden bokeh lights behind, moody monsoon evening, no people." },
+  { key: "monsoon", pillar: "season", h1: "Monsoon skin & hair care", te: "వర్షాకాలం చర్మం & జుట్టు సంరక్షణ", sub: "Fungal infections · Frizz & hair fall · Sticky skin", page: "fungal-infection-treatment-eluru.html", img: "A young South Indian woman laughing under a big umbrella in light rain, droplets on her glowing skin and glossy hair, warm street lights behind." },
   { key: "festive", pillar: "season", h1: "Festival-ready glow in 2 weeks", te: "పండుగకు 2 వారాల్లో గ్లో", sub: "Hydrafacial · Peel · Carbon laser — plan it early", page: "hydrafacial-eluru.html", img: "Elegant South Indian woman in a silk saree with glowing skin beside warm golden diya lights, dark background." },
-  { key: "review", pillar: "trust", h1: "3 lakh+ happy clients, 10 branches", te: "3 లక్షలకు పైగా సంతృప్త క్లయింట్లు", sub: "Medicare Skin & Hair family · Now in Eluru", page: "index.html", img: "Warm luxurious clinic reception with soft pink sofas and golden accent light, empty, dark elegant tones." },
+  { key: "review", pillar: "trust", h1: "3 lakh+ happy clients, 10 branches", te: "3 లక్షలకు పైగా సంతృప్త క్లయింట్లు", sub: "Medicare Skin & Hair family · Now in Eluru", page: "index.html", img: "A South Indian mother and her grown-up daughter laughing together, both with healthy glowing skin, a warm candid moment at home." },
 ];
 
 const PILLAR_BY_DAY = ["tips", "edu", "tx", "myth", "trust", "cta", "season"]; // Sun..Sat
@@ -82,7 +103,7 @@ const ACADEMY_TOPICS = [
   { key: "acad-seats", pillar: "academy",
     h1: "Ten seats. One batch.", te: "పది సీట్లు మాత్రమే",
     sub: "Batch 1 · Eluru · Skin · Hair · Skin+Hair", page: "academy.html",
-    img: "Elegant empty training classroom in a luxury clinic — a short row of cream chairs facing a treatment couch, warm golden accent light, dark charcoal walls, no people, no text." },
+    img: "A small group of young South Indian women trainees in crisp white coats gathered around a treatment couch, one holding a skin-analysis device, attentive and hands-on, seen mostly from the side and behind." },
   { key: "acad-who", pillar: "academy",
     h1: "Beautician? Nurse? Fresher?", te: "మీరు చేరవచ్చా? — అవును",
     sub: "Cosmetologists · Therapists · Salon & spa · Nursing · Freshers", page: "academy.html",
@@ -98,7 +119,7 @@ const ACADEMY_TOPICS = [
   { key: "acad-trainer", pillar: "academy",
     h1: "Taught by an MD dermatologist", te: "MD డెర్మటాలజిస్ట్ చేత శిక్షణ",
     sub: "Dr. Meghana Valeti · MD DVL, Gold Medalist · Not a parlour course", page: "academy.html",
-    img: "Elegant consultation desk in a dermatology clinic with a gold-accented lamp, a stethoscope and a framed certificate softly out of focus behind, warm golden light, dark luxurious tones, no people." },
+    img: "Over-the-shoulder view of an instructor's gloved hand guiding a young trainee's hand as she positions a laser handpiece, both faces out of frame, focused hands-on teaching." },
 ];
 
 // Whole days between two moments, counted the way a person counts them: by the
@@ -267,7 +288,7 @@ Pick the single best topic key for today (prefer what patients are asking about,
 - h1: English headline, max 34 characters, no emoji, no exclamation
 - te: Telugu line (Telugu script, natural spoken Telugu, max 30 characters)
 - sub: one English support line, max 72 characters, 3-5 fragments separated by " · "
-- img: one-sentence photo brief for an AI image (South Indian subject if a person, tasteful, no text) that matches h1
+- img: one-sentence photo brief for an AI image that illustrates h1 (South Indian subject if a person, tasteful, no text). Prefer a person, a real moment or a close detail — never an empty room, and never a doctor's face (the poster shows the real doctor's photo); a clinician may appear only as gloved hands or from behind
 - why: 10-word reason
 JSON: {"key":"...","h1":"...","te":"...","sub":"...","img":"...","why":"..."}`;
   try {
@@ -370,7 +391,7 @@ async function writeCaption(topic) {
 // bottom, so the photo has to leave those bands empty. Asking is not enough –
 // the model often puts a face right under the logo – so every image is
 // measured by a vision check and redrawn once when a face lands where text goes.
-const COMPOSITION = " Composition (important): one continuous photograph edge to edge – no borders, bands, bars, frames or split panels. Give the subject generous dark headroom: nothing but softly lit background above the top of the head, and the face in the middle third of the frame, never near the top edge. The lower part of the picture falls gently into deep shadow.";
+const COMPOSITION = " Composition (important): one continuous photograph edge to edge – no borders, bands, bars, frames or split panels. Give the subject generous headroom: nothing but plain background above the top of the head, and the face in the middle third of the frame, never near the top edge. The lower third of the picture falls gently into shadow.";
 const IMAGE_MODELS = [process.env.DAILY_IMAGE_MODEL, "gemini-3-pro-image", "gemini-2.5-flash-image"].filter((m, i, a) => m && a.indexOf(m) === i);
 
 async function gemini(model, body, key) {
@@ -391,7 +412,8 @@ function imagePrompt(topic) {
   const says = `This photograph is the background of a poster whose headline reads: "${topic.h1}"` +
     (topic.sub ? ` (supporting line: "${topic.sub}")` : "") +
     ". The picture must illustrate that headline directly, so that anybody seeing the two together connects them at a glance. Do NOT write the headline or any other words, letters or numbers anywhere in the image.";
-  return STYLE + " " + says + " Subject: " + topic.img + COMPOSITION;
+  const look = (topic.look && topic.look.text) || LOOKS[0].text;
+  return STYLE + " " + look + " " + says + " Subject: " + topic.img + COMPOSITION;
 }
 
 async function drawImage(topic, key) {
@@ -649,7 +671,8 @@ async function renderPoster(html) {
 // opts: {topic?: key, dueMs?: epoch ms (default today 8:30 IST), by?: digits}
 // Returns {imgId, caption, topic, due, queued}
 async function createDailyPost(cfg, opts = {}) {
-  const topic = opts.topic ? await pickTopic(cfg, opts.topic) : await planTopic(cfg);
+  const picked = opts.topic ? await pickTopic(cfg, opts.topic) : await planTopic(cfg);
+  const topic = Object.assign({}, picked, { look: await pickLook(cfg).catch(() => LOOKS[0]) });
   const [img, caption] = await Promise.all([genImage(topic), writeCaption(topic)]);
   const doc = await pickDoctor(cfg, topic).catch(() => null);
   const b64 = await renderPoster(posterHtml(topic, img, doc));
@@ -669,6 +692,8 @@ async function createDailyPost(cfg, opts = {}) {
       await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId, caption, due, by, tries: 0, auto: true, topic: topic.key, notify: notifyList })]);
     }
     await guard.kvCommand(cfg, ["LPUSH", "dp:hist", `${topic.key}|${todayIst()}`]);
+    await guard.kvCommand(cfg, ["LPUSH", "dp:looks", topic.look.key]).catch(() => {});
+    await guard.kvCommand(cfg, ["LTRIM", "dp:looks", "0", "13"]).catch(() => {});
     // today's topic → api/r.js prefills the WhatsApp message for /r/insta & /r/story
     await guard.kvCommand(cfg, ["SET", "dp:today", JSON.stringify({ key: topic.key, h1: topic.h1, te: topic.te, page: topic.page, at: Date.now() }), "EX", "172800"]).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", "dp:hist", "0", "59"]);
@@ -676,4 +701,4 @@ async function createDailyPost(cfg, opts = {}) {
   return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
 }
 
-module.exports = { DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
+module.exports = { LOOKS, pickLook, DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
