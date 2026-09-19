@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="robots" content="noindex, nofollow" />
+<meta name="theme-color" content="#ffffff" />
+<title>My DermaLuxe</title>
+<link rel="icon" href="assets/app/icon-192.png" />
+<style>
+  :root{--bg:#f6f5f2;--card:#fff;--ink:#1c1917;--muted:#78716c;--line:#e7e5e4;--gold:#9c7430;--gold2:#7a5a22;--goldbg:#fbf3e3;--ok:#047857;--okbg:#ecfdf5;--warn:#9a3412;--warnbg:#fff7ed;
+    --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans Telugu",sans-serif}
+  *{box-sizing:border-box}
+  html,body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);-webkit-text-size-adjust:100%}
+  main{max-width:520px;margin:0 auto;padding:max(18px,env(safe-area-inset-top)) 16px 48px}
+  .brand{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:4px 0 16px}
+  .brand > div{display:flex;align-items:center;gap:10px}
+  .brand img{width:40px;height:40px;border-radius:10px}
+  .brand b{display:block;font-size:1rem}.brand small{color:var(--muted);font-size:.78rem}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px;margin-bottom:12px}
+  h1{font-size:1.35rem;margin:0 0 4px;text-wrap:balance}
+  h2{font-size:.98rem;margin:0 0 10px;display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+  h2 small{font-weight:400;color:var(--muted);font-size:.78rem}
+  .meta{color:var(--muted);font-size:.84rem;line-height:1.5}
+  input,textarea,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:1rem;margin-top:8px;background:#fff;color:var(--ink)}
+  .btn{display:inline-block;text-align:center;text-decoration:none;border:0;border-radius:12px;padding:12px 16px;font:inherit;font-weight:600;font-size:.92rem;cursor:pointer}
+  .btn.gold{background:var(--gold);color:#fff}.btn.gold:active{background:var(--gold2)}
+  .btn.line{background:#fff;color:var(--ink);border:1px solid var(--line)}
+  .btn.sm{padding:8px 12px;font-size:.82rem;border-radius:10px}
+  .btn.full{display:block;width:100%;margin-top:10px}
+  .row{padding:10px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0;padding-bottom:0}
+  .row b{font-weight:600}
+  .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .due{background:var(--warnbg);border-color:#fed7aa}
+  .due b{color:var(--warn);font-size:1.3rem}
+  .chip{display:inline-block;font-size:.72rem;padding:2px 8px;border-radius:99px;background:var(--okbg);color:var(--ok);margin-left:6px}
+  .chip.no{background:var(--goldbg);color:var(--gold2)}
+  .bar{height:8px;border-radius:99px;background:var(--bg);overflow:hidden;margin-top:6px}.bar i{display:block;height:100%;background:var(--gold);border-radius:99px}
+  .msg{margin-top:10px;font-size:.88rem}.msg.ok{color:var(--ok)}.msg.err{color:#b91c1c}
+  .hide{display:none!important}
+  .foot{text-align:center;color:var(--muted);font-size:.76rem;margin-top:16px;line-height:1.7}
+  .foot a{color:var(--gold)}
+  :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .code{letter-spacing:.4em;text-align:center;font-size:1.3rem}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><div><img src="assets/app/icon-192.png" alt="" /><div><b>My DermaLuxe</b><small>Mee appointments, bills, sittings</small></div></div>
+    <button class="btn line sm hide" id="out" type="button">Logout</button></div>
+
+  <section id="login" class="card hide">
+    <h1>Namaste 🙏</h1>
+    <p class="meta">Mee mobile number ivvandi — WhatsApp lo login code pampistam. <span lang="te">మీ నంబర్ ఇవ్వండి, వాట్సాప్ లో కోడ్ వస్తుంది.</span></p>
+    <form id="f1"><input id="ph" type="tel" inputmode="numeric" maxlength="14" autocomplete="tel" placeholder="98765 43210" aria-label="Mobile number" />
+      <button class="btn gold full" type="submit" id="b1">Code pampandi</button></form>
+    <form id="f2" class="hide"><p class="meta" id="sentTo"></p>
+      <input id="code" class="code" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="••••••" aria-label="Code" />
+      <button class="btn gold full" type="submit" id="b2">Login</button>
+      <button class="btn line full" type="button" id="back">Number marchandi</button></form>
+    <div class="msg" id="m1"></div>
+  </section>
+
+  <div id="home" class="hide"></div>
+
+  <p class="foot">DermaLuxe by Medicare · Rama Mahal, Kasturi Vari Street, R.R. Peta, Eluru<br />
+    WhatsApp <a href="https://wa.me/919959134666">99591 34666</a> · 📞 <a href="tel:+919949134666">99491 34666</a></p>
+</main>
+<script>
+(function () {
+  var TOK = "dl_pt_tok", tok = null;
+  try { tok = localStorage.getItem(TOK); } catch (e) {}
+  var $ = function (id) { return document.getElementById(id); };
+  function esc(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+  function rs(n) { return "₹" + Number(n || 0).toLocaleString("en-IN"); }
+  function when(ts) { return new Date(ts).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); }
+  function day(ts) { return new Date(ts).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" }); }
+  function call(a, body) {
+    var opt = { method: body ? "POST" : "GET", headers: {} };
+    if (tok) opt.headers.Authorization = "Bearer " + tok;
+    if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
+    return fetch("/api/me?a=" + a, opt).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.status === 401 && a !== "verify") { logout(); }
+        if (!r.ok) throw new Error(j.error || "Error"); return j;
+      });
+    });
+  }
+  function logout() { tok = null; try { localStorage.removeItem(TOK); } catch (e) {} show(); }
+  $("out").onclick = logout;
+  var phone = "";
+  $("f1").onsubmit = function (e) {
+    e.preventDefault(); var m = $("m1"); m.className = "msg"; m.textContent = "";
+    phone = $("ph").value.replace(/\D/g, "").slice(-10);
+    if (!/^[6-9]\d{9}$/.test(phone)) { m.className = "msg err"; m.textContent = "10 ankela mobile number ivvandi"; return; }
+    $("b1").disabled = true;
+    call("send", { phone: phone }).then(function (j) {
+      $("f1").classList.add("hide"); $("f2").classList.remove("hide");
+      $("sentTo").textContent = j.msg + " (" + phone + ")"; $("code").focus();
+    }).catch(function (x) { m.className = "msg err"; m.textContent = x.message; }).then(function () { $("b1").disabled = false; });
+  };
+  $("back").onclick = function () { $("f2").classList.add("hide"); $("f1").classList.remove("hide"); $("m1").textContent = ""; };
+  $("f2").onsubmit = function (e) {
+    e.preventDefault(); var m = $("m1"); m.className = "msg"; m.textContent = "";
+    $("b2").disabled = true;
+    call("verify", { phone: phone, code: $("code").value.trim() }).then(function (j) {
+      tok = j.token; try { localStorage.setItem(TOK, tok); } catch (x) {}
+      show();
+    }).catch(function (x) { m.className = "msg err"; m.textContent = x.message; }).then(function () { $("b2").disabled = false; });
+  };
+
+  function show() {
+    $("login").classList.toggle("hide", !!tok); $("home").classList.toggle("hide", !tok); $("out").classList.toggle("hide", !tok);
+    if (!tok) return;
+    $("home").innerHTML = '<div class="card"><p class="meta">Teestunnam…</p></div>';
+    call("home").then(render).catch(function (x) { $("home").innerHTML = '<div class="card"><p class="meta">' + esc(x.message) + "</p></div>"; });
+  }
+  function render(d) {
+    var h = '<div class="card"><h1>Namaste' + (d.name ? " " + esc(d.name) + " garu" : "") + ' 🙏</h1><p class="meta">Mee DermaLuxe vivaralu anni ikkade.</p></div>';
+    if (d.due > 0) {
+      var first = d.bills.filter(function (b) { return b.balance > 0 && b.pay; })[0];
+      h += '<div class="card due"><h2>Migilina bill <small>' + d.bills.filter(function (b) { return b.balance > 0; }).length + " bill(s)</small></h2><b>" + rs(d.due) + "</b>" +
+        (first ? '<a class="btn gold full" href="' + esc(first.pay) + '">📲 Online lo pay cheyandi</a>' : '<p class="meta">Clinic lo ivvochu.</p>') + "</div>";
+    }
+    h += '<div class="card"><h2>Raboye appointments</h2>' + (d.upcoming.length ? d.upcoming.map(function (a) {
+      return '<div class="row"><b>' + esc(when(a.at)) + "</b>" + (a.confirmed ? '<span class="chip">confirm ✓</span>' : '<span class="chip no">confirm cheyyaledu</span>') +
+        '<div class="meta">' + esc(a.concern || "Appointment") + (a.doctor ? " · " + esc(a.doctor) : "") + "</div>" +
+        '<div class="acts">' + (a.confirmed ? "" : '<button class="btn gold sm" data-cf="' + a.at + '">✅ Vastanu</button>') +
+        '<button class="btn line sm" data-rq="reschedule" data-at="' + a.at + '">🔁 Time marchali</button><button class="btn line sm" data-rq="cancel" data-at="' + a.at + '">✖ Cancel</button></div></div>';
+    }).join("") : '<p class="meta">Ippudu appointments emi levu.</p>') +
+      '<button class="btn line full" data-rq="book">📅 Kotha appointment adagandi</button><div id="rqBox"></div></div>';
+    if (d.packages.length) h += '<div class="card"><h2>Mee sittings</h2>' + d.packages.map(function (p) {
+      return '<div class="row"><b>' + esc(p.treatment) + '</b> <span class="meta">· ' + p.done + "/" + p.total + "</span>" +
+        '<div class="bar"><i style="width:' + Math.round(p.done / Math.max(1, p.total) * 100) + '%"></i></div>' +
+        '<div class="meta" style="margin-top:4px">' + (p.left === 0 ? "Anni sittings ayipoyayi 🎉" : p.status === "dropped" ? "Aapesaru" : p.left + " migilunnayi" + (p.nextDue ? " · next " + esc(day(p.nextDue)) : "")) + "</div></div>";
+    }).join("") + "</div>";
+    if (d.bills.length) h += '<div class="card"><h2>Bills</h2>' + d.bills.map(function (b) {
+      return '<div class="row"><b>' + esc(b.id) + " · " + rs(b.total) + '</b> <span class="meta">· ' + esc(day(b.date)) + "</span>" +
+        '<div class="meta">' + esc(b.items.join(", ")) + " · " + (b.balance > 0 ? '<span style="color:var(--warn)">' + rs(b.balance) + " baaki</span>" : "paid ✓") + "</div>" +
+        '<div class="acts">' + (b.pay ? '<a class="btn gold sm" href="' + esc(b.pay) + '">Pay</a>' : "") + '<a class="btn line sm" href="' + esc(b.receipt) + '">🧾 Receipt</a></div></div>';
+    }).join("") + "</div>";
+    if (d.visits.length) h += '<div class="card"><h2>Mee visits</h2>' + d.visits.map(function (v) {
+      return '<div class="row"><b>' + esc(day(v.at)) + '</b><div class="meta">' + esc(v.concern || "Visit") + "</div></div>";
+    }).join("") + "</div>";
+    $("home").innerHTML = h;
+  }
+  $("home").addEventListener("click", function (e) {
+    var cf = e.target.closest("[data-cf]");
+    if (cf) { cf.disabled = true; call("confirm", { at: Number(cf.dataset.cf) }).then(show).catch(function (x) { alert(x.message); cf.disabled = false; }); return; }
+    var rq = e.target.closest("[data-rq]");
+    if (!rq) return;
+    var kind = rq.dataset.rq, at = Number(rq.dataset.at || 0);
+    var box = $("rqBox");
+    var title = { book: "Kotha appointment", reschedule: "Time marchali", cancel: "Cancel cheyyali" }[kind];
+    box.innerHTML = '<form id="rqf" style="margin-top:12px"><b>' + esc(title) + "</b>" +
+      (kind !== "cancel" ? '<input id="rqWhen" maxlength="60" placeholder="E roju / time bagundi? (ex: Saturday evening)" aria-label="Preferred time" />' : "") +
+      '<textarea id="rqNote" rows="2" maxlength="200" placeholder="' + (kind === "book" ? "Emi treatment / samasya?" : "Emaina cheppalante (optional)") + '" aria-label="Note"></textarea>' +
+      '<button class="btn gold full" type="submit">Clinic ki pampandi</button><div class="msg" id="rqm"></div></form>';
+    box.scrollIntoView({ behavior: "smooth", block: "center" });
+    $("rqf").onsubmit = function (ev) {
+      ev.preventDefault();
+      var m = $("rqm");
+      call("request", { kind: kind, at: at, when: ($("rqWhen") || {}).value || "", note: $("rqNote").value })
+        .then(function (j) { box.innerHTML = '<p class="msg ok">' + esc(j.msg) + "</p>"; })
+        .catch(function (x) { m.className = "msg err"; m.textContent = x.message; });
+    };
+  });
+  show();
+})();
+</script>
+</body>
+</html>

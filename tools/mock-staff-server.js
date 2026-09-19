@@ -321,6 +321,15 @@ http.createServer((req, res) => {
       return send(200, { ok: true });
     });
   }
+  if (u.pathname === "/api/me") {  // portal-mock: the patient's own page
+    const a = u.searchParams.get("a") || "home";
+    if (a === "home") return send(200, { ok: true, phone: "9876543210", name: "Sita", due: 3000,
+      upcoming: [{ at: Date.now() + 2 * 86400000, concern: "PICO laser — sitting 3", confirmed: false, doctor: "Dr. Nikhitha" }],
+      visits: [{ at: Date.now() - 20 * 86400000, concern: "PICO laser — sitting 2" }, { at: Date.now() - 50 * 86400000, concern: "Consultation" }],
+      bills: [{ id: "B1001", date: Date.now() - 20 * 86400000, items: ["PICO laser × 6"], total: 30000, paid: 27000, balance: 3000, pay: "/pay.html?b=B1001&t=x", receipt: "/pay.html?b=B1001&t=x" }],
+      packages: [{ treatment: "PICO laser", done: 2, total: 6, left: 4, nextDue: Date.now() + 2 * 86400000, status: "active" }] });
+    return send(200, { ok: true, msg: "Ee number clinic records lo unte, WhatsApp lo code vastundi.", token: "mock" });
+  }
   if (u.pathname === "/api/pay") {  // pay-mock: the patient's bill link
     if (req.method === "POST") return send(200, { ok: true, msg: "Thank you 🙏 Clinic bank lo check chesi confirm chestundi." });
     const url = "upi://pay?pa=dermaluxe%40okaxis&pn=DermaLuxe%20by%20Medicare&am=3000&cu=INR&tn=DermaLuxe%20bill%20B1001";
