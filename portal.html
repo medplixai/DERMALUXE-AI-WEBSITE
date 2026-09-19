@@ -97,13 +97,14 @@
           open.hidden = false;
           wa.style.display = "none";
         } else {
-          wa.style.display = "inline-flex";
-          note.hidden = false;
+          // our own portal: appointments, bills, sittings — signed in with a WhatsApp code
+          open.href = "my.html"; open.removeAttribute("target"); open.hidden = false;
+          wa.style.display = "none";
         }
       })
       .catch(function () {
-        wa.style.display = "inline-flex";
-        note.hidden = false;
+        open.href = "my.html"; open.removeAttribute("target"); open.hidden = false;
+        wa.style.display = "none";
       });
   })();
   </script>
