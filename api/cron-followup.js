@@ -40,6 +40,24 @@ module.exports = async (req, res) => {
 
   const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "99"]);
   const now = Date.now();
+
+  // Who must not be nudged to book, whichever touch it is: somebody who said
+  // STOP, somebody already on the appointment list, somebody the desk has
+  // already dealt with (contacted is still open; booked, visited and closed
+  // are not — closed is usually "not interested"), and academy enquiries,
+  // which have their own follow-up and are not looking for a consultation.
+  // The touches below used to check some of these and not others.
+  const optSet = new Set(((await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}))).result) || []);
+  const booked = new Set();
+  for (const key of ["appt:q", "appt:done"]) {
+    const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
+    for (const s of (q.result || [])) { try { booked.add(JSON.parse(s).ph); } catch (e) {} }
+  }
+  const deskStatus = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result) || {};
+  const leadKey = (l) => `${l.ts}|${String(l.phone || "").replace(/\D/g, "").slice(-10) || l.src_id || ""}`;
+  const leaveAlone = (l, ph) => optSet.has(ph) || booked.has(ph)
+    || ["booked", "visited", "closed"].includes(deskStatus[leadKey(l)])
+    || /^\s*academy/i.test(String(l.concern || ""));
   // The hour of the day in Eluru, worked out once. Every timed block below
   // compares against this; a block that computed its own copy inside a try
   // was invisible to the blocks after it, and one of them had been silently
@@ -56,6 +74,7 @@ module.exports = async (req, res) => {
     const phone = String(l.phone || "").replace(/\D/g, "").slice(-10);
     if (phone.length !== 10 || !l.name) continue;
     if (l.slot && l.date) continue;                               // booking already complete
+    if (leaveAlone(l, phone)) continue;
     checked++;
     try {
       const nx = await guard.kvCommand(cfg, ["SET", `ntf:fu:${phone}`, "1", "NX", "EX", "604800"]);
@@ -73,13 +92,6 @@ module.exports = async (req, res) => {
   let day3 = 0;
   try {
     if (istHour === 11) {
-      const booked = new Set();
-      for (const key of ["appt:q", "appt:done"]) {
-        const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
-        for (const s of (q.result || [])) { try { booked.add(JSON.parse(s).ph); } catch (e) {} }
-      }
-      const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
-      const optSet = new Set(opt.result || []);
       const r2 = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]);
       for (const raw of (r2.result || [])) {
         if (day3 >= 8) break;
@@ -88,7 +100,7 @@ module.exports = async (req, res) => {
         const age = now - (l.ts || 0);
         if (age < 60 * 3600000 || age > 84 * 3600000) continue; // ~day 3
         const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
-        if (ph.length !== 10 || booked.has(ph) || optSet.has(ph)) continue;
+        if (ph.length !== 10 || leaveAlone(l, ph)) continue;
         try {
           const nx = await guard.kvCommand(cfg, ["SET", `ntf:fu3:${ph}`, "1", "NX", "EX", "2592000"]);
           if (!nx.result) continue; // already pushed this lead
@@ -110,13 +122,6 @@ module.exports = async (req, res) => {
   // lead per marker window, small daily cap. Each is a paid template.
   async function leadTouch(minH, maxH, tpl, marker, ttl, cap, line) {
     let n = 0;
-    const booked = new Set();
-    for (const key of ["appt:q", "appt:done"]) {
-      const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "199"]).catch(() => ({}));
-      for (const s of (q.result || [])) { try { booked.add(JSON.parse(s).ph); } catch (e) {} }
-    }
-    const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
-    const optSet = new Set(opt.result || []);
     const rows = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]);
     for (const raw of (rows.result || [])) {
       if (n >= cap) break;
@@ -125,7 +130,7 @@ module.exports = async (req, res) => {
       const age = now - (l.ts || 0);
       if (age < minH * 3600000 || age > maxH * 3600000) continue;
       const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
-      if (ph.length !== 10 || booked.has(ph) || optSet.has(ph)) continue;
+      if (ph.length !== 10 || leaveAlone(l, ph)) continue;
       try {
         const nx = await guard.kvCommand(cfg, ["SET", `${marker}:${ph}`, "1", "NX", "EX", String(ttl)]);
         if (!nx.result) continue;

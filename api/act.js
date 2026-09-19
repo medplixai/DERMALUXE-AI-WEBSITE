@@ -121,6 +121,7 @@ module.exports = async (req, res) => {
     const pkg = require("./package.js");
     const before = pkg.shape(p);
     if (before.left === 0) return json(res, 400, { error: "Ee package already ayipoyindi" });
+    if (before.status === "dropped") return json(res, 400, { error: "Ee package aapesaru — sitting log cheyyalemu" });
     p.sessions = (p.sessions || []).concat([{ n: before.done + 1, at: Date.now(), by: me.name, note: clean(b.text, 200) }]);
     await guard.kvCommand(cfg, ["SET", `pkg:${id}`, JSON.stringify(p)]);
     const after = pkg.shape(p);

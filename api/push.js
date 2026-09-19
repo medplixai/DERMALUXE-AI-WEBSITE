@@ -42,6 +42,14 @@ module.exports = async (req, res) => {
     });
   }
 
+  // The Control panel reads the device list with a GET. It sat behind the
+  // POST-only line below, so the list never loaded and no phone could be
+  // blocked from the app.
+  if (a === "devices") {
+    if (!allow("team.manage")) return json(res, 403, { error: "Idi control panel access unna vallake" });
+    return json(res, 200, { ok: true, configured: push.enabled(), devices: await push.allDevices(cfg) });
+  }
+
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
   const rl = await guard.rateLimit(cfg, `rl:push:${me.phone}`, 120, 3600);
   if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
@@ -95,9 +103,6 @@ module.exports = async (req, res) => {
   // ---- Control panel ----
   if (!allow("team.manage")) return json(res, 403, { error: "Idi control panel access unna vallake" });
 
-  if (a === "devices") {
-    return json(res, 200, { ok: true, configured: push.enabled(), devices: await push.allDevices(cfg) });
-  }
   if (a === "revoke") {
     const token = String(b.token || "").trim(), phone = digits10(b.phone);
     if (token) await push.dropDevice(cfg, token);

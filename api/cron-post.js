@@ -109,10 +109,14 @@ module.exports = async (req, res) => {
       if (!p || !p.result) break;
       let b;
       try { b = JSON.parse(p.result); } catch (e) { continue; }
+      processed++;
+      // A big broadcast drains over hours; somebody who replied STOP after
+      // it was queued must not still get it.
+      const out0 = await guard.kvCommand(cfg, ["SISMEMBER", "optout", String(b.ph)]).catch(() => ({}));
+      if (out0 && Number(out0.result) === 1) continue;
       const btpl = b.tpl || "clinic_update";
       const out = await notify.sendWaTemplate(b.ph, btpl, admin.promoParams(btpl, b.name || "friend", b.text, b.p2));
       if (out.ok) bsent++;
-      processed++;
     }
     if (processed) {
       const done = await guard.kvCommand(cfg, ["INCRBY", "bc:done", String(processed)]).catch(() => ({}));

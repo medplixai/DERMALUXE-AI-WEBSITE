@@ -13,6 +13,7 @@
 //   ANTHROPIC_API_KEY, AI_MODEL, GEMINI_API_KEY – same as the WhatsApp agent
 const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
+const leadstore = require("./_leadstore.js");
 const facts = require("./_facts.js");
 const notify = require("./_notify.js");
 const voice = require("./_voice.js"); // shared STT/TTS stack
@@ -275,28 +276,11 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
     if (cfg) await guard.kvCommand(cfg, ["SET", `ig:p:${igsid}`,
       JSON.stringify({ name: lead.name, concern: lead.concern, ts: Date.now() }), "EX", String(PROFILE_TTL)]);
   } catch (e) {}
-  // One lead per patient per 6h conversation window (replace, don't stack).
-  if (cfg) {
-    try {
-      const recent = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "49"]);
-      for (const s of (recent.result || [])) {
-        try {
-          const l = JSON.parse(s);
-          if (l.src_id === igsid && l.type === "instagram" && lead.ts - l.ts < 21600000) {
-            await guard.kvCommand(cfg, ["LREM", LIST_KEY, "1", s]);
-          }
-        } catch (e) {}
-      }
-    } catch (e) {}
-  }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
-  if (cfg) {
-    try {
-      await guard.kvWrite(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)], "new lead");
-      await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
-    } catch (e) {}
-  }
+  // One lead per conversation: replaces the earlier row, keeping the desk's
+  // status and notes.
+  await leadstore.saveLead(cfg, lead, (l) => l.src_id === igsid && l.type === "instagram" && lead.ts - l.ts < 21600000, 50);
   await notify.leadAlert(cfg, lead);
   // hand the patient to the WhatsApp agent (approved template, once per week)
   try { await notify.waHandoff(cfg, lead, "Instagram"); } catch (e) { console.error("handoff", e && e.message); }
@@ -434,7 +418,8 @@ module.exports = async (req, res) => {
     return res.status(403).send("Forbidden");
   }
   if (req.method !== "POST") return res.status(405).json({ error: "Method not allowed" });
-  if (tok && !guard.safeEqual((req.query || {}).token, tok)) {
+  // No token configured means refuse, not stand open.
+  if (!tok || !guard.safeEqual((req.query || {}).token, tok)) {
     return res.status(403).json({ error: "Forbidden" });
   }
 

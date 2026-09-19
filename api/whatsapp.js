@@ -16,6 +16,7 @@
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
+const leadstore = require("./_leadstore.js");
 const admin = require("./_admin.js");
 
 const LIST_KEY = "dl_leads";
@@ -761,24 +762,6 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx) {
   return { reply: facts.salvageReply(text) || FALLBACK_REPLY, lead: null };
 }
 
-// Moves the desk's status and notes from replaced lead rows (newest first) to
-// the row that replaced them. Status: the newest one set. Notes: all of them.
-// The staff app's key for a lead (staff.js leadKey) — must match it exactly.
-const deskKey = (l) => `${l.ts}|${String(l.phone || "").replace(/\D/g, "").slice(-10) || l.src_id || ""}`;
-async function carryDeskState(cfg, oldKeys, newKey) {
-  const hget = async (h, k) => ((await guard.kvCommand(cfg, ["HGET", h, k]).catch(() => ({}))) || {}).result || null;
-  let status = null, statusTs = null, notes = [];
-  for (const k of oldKeys) {
-    const st = await hget("dl_status", k);
-    if (st && !status) { status = st; statusTs = await hget("dl_status_ts", k); }
-    try { notes = notes.concat(JSON.parse((await hget("dl_notes", k)) || "[]")); } catch (e) {}
-  }
-  if (status) await guard.kvCommand(cfg, ["HSET", "dl_status", newKey, status]);
-  if (statusTs) await guard.kvCommand(cfg, ["HSET", "dl_status_ts", newKey, statusTs]);
-  if (notes.length) await guard.kvCommand(cfg, ["HSET", "dl_notes", newKey, JSON.stringify(notes.sort((a, b) => (b.ts || 0) - (a.ts || 0)).slice(0, 30))]);
-  for (const h of ["dl_status", "dl_status_ts", "dl_notes"]) await guard.kvCommand(cfg, ["HDEL", h].concat(oldKeys)).catch(() => {});
-}
-
 async function storeLead(cfg, leadInfo, phone, lastMsg) {
   const lead = {
     ts: Date.now(),
@@ -802,34 +785,11 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
   lead.src_id = phone;
   await saveProfile(cfg, phone, lead.name, lead.concern); // long-term greeting memory
   // One lead per patient per 6h conversation window — as the chat progresses,
-  // replace the earlier row with this enriched one instead of stacking dupes.
-  // The desk's status and call notes are keyed "<ts>|<phone>", so they are
-  // carried to the new row's key — or a lead already called goes back to New
-  // and its notes are orphaned.
-  const replaced = [];
-  if (cfg) {
-    try {
-      const recent = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "49"]);
-      for (const s of (recent.result || [])) {
-        try {
-          const l = JSON.parse(s);
-          if ((l.src_id || l.phone) === phone && l.type === lead.type && lead.ts - l.ts < 21600000) {
-            const r = await guard.kvCommand(cfg, ["LREM", LIST_KEY, "1", s]);
-            if (r && r.result) replaced.push(deskKey(l));
-          }
-        } catch (e) {}
-      }
-    } catch (e) {}
-  }
+  // the earlier row is replaced by this enriched one (and keeps the desk's
+  // status and notes).
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
-  if (cfg) {
-    try {
-      await guard.kvWrite(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)], "new lead");
-      await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
-      if (replaced.length) await carryDeskState(cfg, replaced, deskKey(lead));
-    } catch (e) {}
-  }
+  await leadstore.saveLead(cfg, lead, (l) => (l.src_id || l.phone) === phone && l.type === lead.type && lead.ts - l.ts < 21600000);
   // Confirmed slot with a machine-readable time → appointment-reminder queue.
   // cron-digest (9AM IST) sends the same-day template reminder, cron-post the
   // ~2h-before nudge. Latest booking per patient wins (reschedules replace).

@@ -18,6 +18,7 @@ const facts = require("./_facts.js");
 const voice = require("./_voice.js");
 const notify = require("./_notify.js");
 const clinic = require("./_clinic.js");
+const leadstore = require("./_leadstore.js");
 
 const HIST_TTL = 3600;
 const MAX_TURNS = 6;
@@ -100,27 +101,11 @@ async function storeCallLead(cfg, info, from, said) {
     call_prep: String(info.call_prep || "").slice(0, 220),
     src_id: phone,
   };
-  if (cfg) {
-    try {
-      const recent = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "29"]);
-      for (const s of (recent.result || [])) {
-        try {
-          const l = JSON.parse(s);
-          if (l.type === "phone_call" && l.phone === phone && lead.ts - l.ts < 21600000) {
-            await guard.kvCommand(cfg, ["LREM", "dl_leads", "1", s]);
-          }
-        } catch (e) {}
-      }
-    } catch (e) {}
-  }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
-  if (cfg) {
-    try {
-      await guard.kvWrite(cfg, ["LPUSH", "dl_leads", JSON.stringify(lead)], "new lead");
-      await guard.kvCommand(cfg, ["LTRIM", "dl_leads", "0", "4999"]);
-    } catch (e) {}
-  }
+  // One lead per caller per 6h: replaces the earlier row, keeping the desk's
+  // status and notes.
+  await leadstore.saveLead(cfg, lead, (l) => l.type === "phone_call" && l.phone === phone && lead.ts - l.ts < 21600000, 30);
   await notify.leadAlert(cfg, lead);
 }
 

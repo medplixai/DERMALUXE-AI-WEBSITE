@@ -6,6 +6,7 @@
 // results instead of failing the whole call.
 const WABA = process.env.WA_WABA_ID || "872031789098601";
 const notify = require("./_notify.js");
+const guard = require("./_guard.js");
 
 const TEMPLATES = [
   {
@@ -411,7 +412,7 @@ function errText(d) {
 
 module.exports = async (req, res) => {
   const key = String((req.query && req.query.key) || "");
-  if (!process.env.ADMIN_KEY || key !== process.env.ADMIN_KEY) {
+  if (!process.env.ADMIN_KEY || !guard.safeEqual(key, process.env.ADMIN_KEY)) {
     return res.status(401).json({ error: "unauthorized" });
   }
   const token = process.env.WA_CLOUD_TOKEN;

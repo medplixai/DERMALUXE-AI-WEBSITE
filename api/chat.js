@@ -9,6 +9,7 @@
 const guard = require("./_guard.js");
 const facts = require("./_facts.js");
 const clinic = require("./_clinic.js");
+const leadstore = require("./_leadstore.js");
 const notify = require("./_notify.js");
 
 const LIST_KEY = "dl_leads";
@@ -60,25 +61,11 @@ async function storeLead(cfg, info, sid, lastMsg) {
     call_prep: String(info.call_prep || "").slice(0, 220),
     src_id: sid,
   };
-  if (cfg) {
-    try { // one lead per session — replace the earlier, thinner copy
-      const recent = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "29"]);
-      for (const s of (recent.result || [])) {
-        try {
-          const l = JSON.parse(s);
-          if (l.type === "website_chat" && l.src_id === sid) await guard.kvCommand(cfg, ["LREM", LIST_KEY, "1", s]);
-        } catch (e) {}
-      }
-    } catch (e) {}
-  }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
-  if (cfg) {
-    try {
-      await guard.kvWrite(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)], "new lead");
-      await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
-    } catch (e) {}
-  }
+  // One lead per conversation: replaces the earlier row, keeping the desk's
+  // status and notes.
+  await leadstore.saveLead(cfg, lead, (l) => l.type === "website_chat" && l.src_id === sid, 30);
   await notify.leadAlert(cfg, lead);
   return true;
 }

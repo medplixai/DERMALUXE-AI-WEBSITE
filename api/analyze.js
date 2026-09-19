@@ -12,7 +12,7 @@ function verifyToken(tok, secret) {
     const [phone, exp, sig] = raw.split(".");
     if (!phone || !exp || !sig) return null;
     const expect = crypto.createHmac("sha256", secret).update(`${phone}.${exp}`).digest("hex");
-    if (sig !== expect) return null;
+    if (!guard.safeEqual(sig, expect)) return null;
     if (Date.now() > Number(exp)) return null;
     return phone;
   } catch {
@@ -131,7 +131,10 @@ module.exports = async (req, res) => {
 
     const data = await resp.json();
     if (!resp.ok) {
-      return res.status(502).json({ error: (data.error && data.error.message) || "AI analysis failed" });
+      // The provider's own message (billing, org ids, limits) is for our logs,
+      // not for a visitor's screen.
+      console.error("analyze: model refused", resp.status, String((data.error && data.error.message) || "").slice(0, 200));
+      return res.status(502).json({ error: "AI analysis ippudu avvaledu — konchem sepu tarvata try cheyandi, leda WhatsApp 99591 34666 lo photo pampandi. · AI analysis failed, please try again shortly." });
     }
 
     const text = (data.content || []).map((b) => b.text || "").join("");

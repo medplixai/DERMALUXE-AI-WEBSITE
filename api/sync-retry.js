@@ -24,9 +24,12 @@ module.exports = async (req, res) => {
 
   try {
     const data = await guard.kvCommand(cfg, ["LRANGE", clinic.PENDING_KEY, "0", "199"]);
-    const items = (data.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
-    // Clear the slice we are processing; failures get re-parked by forwardLead.
-    await guard.kvCommand(cfg, ["DEL", clinic.PENDING_KEY]);
+    const raw = data.result || [];
+    const items = raw.map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);
+    // Take off only the slice being processed — a DEL here threw away
+    // everything past the first two hundred. Failures are re-parked at the
+    // head by forwardLead, after this trim.
+    if (raw.length) await guard.kvCommand(cfg, ["LTRIM", clinic.PENDING_KEY, String(raw.length), "-1"]);
 
     let synced = 0;
     for (const lead of items) {

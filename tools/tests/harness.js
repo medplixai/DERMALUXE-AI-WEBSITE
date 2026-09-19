@@ -41,6 +41,10 @@ function run(c) {
       if (a < 0) a = Math.max(0, l.length + a); if (b < 0) b = l.length + b;
       return l.slice(a, b + 1); }
     case "LLEN": return L(k).length;
+    case "RPOP": { const l = L(k); return l.length ? l.pop() : null; }
+    case "LPOP": { const l = L(k); return l.length ? l.shift() : null; }
+    case "MGET": return c.slice(1).map((key) => (alive(key) && S.str.has(key) ? S.str.get(key) : null));
+    case "DBSIZE": return new Set([...S.str.keys(), ...S.list.keys(), ...S.hash.keys(), ...S.set.keys()].filter(alive)).size;
     case "LTRIM": { const l = L(k); let a = Number(c[2]), b = Number(c[3]); if (b < 0) b = l.length + b;
       S.list.set(k, l.slice(a, b + 1)); return "OK"; }
     case "LREM": { const l = L(k); const want = String(c[3]); let n = Math.abs(Number(c[2])) || l.length, out = [], removed = 0;
@@ -88,7 +92,7 @@ stub("_guard.js", Object.assign(Object.create(Object.getPrototypeOf(real)), real
   kvWrite: async (cfg, c) => { run(c); return true; },
 }));
 stub("_notify.js", {
-  sendWa: async (...a) => { sent.push(["wa", ...a]); return { ok: true }; },
+  sendWa: async (...a) => { sent.push(["wa", ...a]); return true; },   // the real one returns a boolean
   sendWaAuthCode: async (...a) => { sent.push(["otp", ...a]); return { ok: true }; },
   sendWaDocLink: async (...a) => { sent.push(["doc", ...a]); return { ok: true }; },
   leadAlert: async (...a) => { sent.push(["lead", ...a]); return true; },
@@ -103,7 +107,7 @@ const realStore = require(path.join(API, "_photo-store.js"));
 stub("_photo-store.js", (() => {
   const blobs = new Map();
   return {
-    put: async (cfg, id, buf, opts) => { const r = realStore.encrypt(Buffer.from(buf)); blobs.set(id, r); return Object.assign({ id, bytes: r.buf.length }, r, { buf: undefined }); },
+    put: async (cfg, id, buf, opts) => { const r = realStore.encrypt(Buffer.from(buf)); blobs.set(id, r); return Object.assign({ store: "blob", path: "mem/" + id, id, bytes: r.buf.length }, r, { buf: undefined }); },
     get: async (cfg, id, rec) => { if (!blobs.has(id)) throw new Error("gone"); const r = blobs.get(id); return realStore.decrypt(r.buf, r); },
     del: async (cfg, id) => blobs.delete(id),
     encrypt: realStore.encrypt, decrypt: realStore.decrypt,
@@ -118,12 +122,15 @@ stub("staff.js", {
 });
 
 const load = (n) => require(path.join(API, n + ".js"));
-const call = (mod, q, body) => new Promise((resolve) => {
-  const res = { _c: 200, _h: {}, setHeader(k, v) { this._h[k] = v; }, status(c) { this._c = c; return this; },
-    json(o) { resolve({ code: this._c, body: o }); return this; },
-    send(x) { resolve({ code: this._c, bin: x }); return this; },
-    end() { resolve({ code: this._c }); return this; } };
-  mod({ method: body ? "POST" : "GET", headers: {}, query: q || {}, body: body || {} }, res);
+// req: optional extra request fields — headers, method, url.
+const call = (mod, q, body, req) => new Promise((resolve) => {
+  const res = { _c: 200, _h: {}, statusCode: 200, setHeader(k, v) { this._h[k] = v; }, getHeader(k) { return this._h[k]; },
+    status(c) { this._c = c; this.statusCode = c; return this; },
+    json(o) { resolve({ code: this._c, body: o, headers: this._h }); return this; },
+    send(x) { resolve({ code: this._c, bin: x, headers: this._h }); return this; },
+    write() { return true; },
+    end(x) { resolve({ code: this.statusCode !== 200 ? this.statusCode : this._c, bin: x, headers: this._h }); return this; } };
+  mod(Object.assign({ method: body ? "POST" : "GET", headers: {}, query: q || {}, body: body || {} }, req || {}), res);
 });
 const as = (caps, me) => { CAPS = caps; if (me) ME = me; };
 module.exports = { run, load, call, as, sent, S, store: require(path.join(API, "_photo-store.js")) };

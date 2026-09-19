@@ -172,22 +172,27 @@ module.exports = async (req, res) => {
   const rl = await guard.rateLimit(cfg, `rl:ins:${me.phone}`, 60, 3600);
   if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
 
+  // Money figures are not for everyone with reports.view — strip them if the
+  // person cannot see collection anyway. On the cached copy too: the cache is
+  // built with the money in, and handing it back untouched showed the
+  // clinic's takings to anyone who opened Insights after the owner.
+  const forThem = (out) => {
+    if (allow("money.view")) return out;
+    return Object.assign({}, out, {
+      money: { collected: null, billed: null, outstanding: null, openCount: null, byMode: null, spark: [], payers: out.money.payers },
+      sources: out.sources.map((s) => Object.assign({}, s, { revenue: null })),
+      treatments: out.treatments.map((t) => Object.assign({}, t, { value: null })),
+    });
+  };
+
   // Reading the lead book and every bill is not a per-tap operation.
   const ck = `ins:${days}`;
   const hit = await guard.kvCommand(cfg, ["GET", ck]).catch(() => ({}));
   if (hit && hit.result && q.fresh !== "1") {
     const cached = parse(hit.result, null);
-    if (cached) return json(res, 200, Object.assign({ ok: true, cached: true }, cached));
+    if (cached) return json(res, 200, Object.assign({ ok: true, cached: true }, forThem(cached)));
   }
   const out = await build(cfg, days);
   await guard.kvCommand(cfg, ["SET", ck, JSON.stringify(out), "EX", "600"]).catch(() => {});
-
-  // Money figures are not for everyone with reports.view — strip them if the
-  // person cannot see collection anyway.
-  if (!allow("money.view")) {
-    out.money = { collected: null, billed: null, outstanding: null, openCount: null, byMode: null, spark: [], payers: out.money.payers };
-    out.sources = out.sources.map((s) => Object.assign({}, s, { revenue: null }));
-    out.treatments = out.treatments.map((t) => Object.assign({}, t, { value: null }));
-  }
-  return json(res, 200, Object.assign({ ok: true, cached: false }, out));
+  return json(res, 200, Object.assign({ ok: true, cached: false }, forThem(out)));
 };

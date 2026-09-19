@@ -21,7 +21,7 @@ module.exports = async (req, res) => {
   if (!rl.allowed) return res.status(429).json({ error: "Too many requests" });
 
   const ts = Number(b.ts);
-  const phone = String(b.phone || "").replace(/\D/g, "");
+  const phone = String(b.phone || "").replace(/\D/g, "").slice(-10);   // the staff app's key uses ten digits
   const status = String(b.status || "").toLowerCase();
   if (!ts || !phone) return res.status(400).json({ error: "ts and phone required" });
   if (ALLOWED.indexOf(status) === -1) return res.status(400).json({ error: "Invalid status" });

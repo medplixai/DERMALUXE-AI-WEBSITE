@@ -21,7 +21,11 @@ module.exports = async (req, res) => {
   if (!rl.allowed) return res.status(429).json({ error: "Too many requests" });
 
   const b = req.body || {};
-  const phone = String(b.phone || "").replace(/\D/g, "");
+  // The booking form accepts "+91 98765 43210" and "098765 43210"; both are
+  // the same mobile. Rejecting them lost the enquiry without a word.
+  let phone = String(b.phone || "").replace(/\D/g, "");
+  if (phone.length === 12 && phone.startsWith("91")) phone = phone.slice(2);
+  else if (phone.length === 11 && phone.startsWith("0")) phone = phone.slice(1);
   const name = String(b.name || "").slice(0, 80).trim();
   if (!name || !/^[6-9]\d{9}$/.test(phone)) {
     return res.status(400).json({ error: "Invalid lead" });
@@ -55,10 +59,11 @@ module.exports = async (req, res) => {
   if (!cfg) return res.status(200).json({ ok: true, stored: false, synced: sync.synced, reason: "storage not configured" });
 
   try {
-    await guard.kvWrite(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)], "new lead");
-    await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
+    const stored = await guard.kvWrite(cfg, ["LPUSH", LIST_KEY, JSON.stringify(lead)], "new lead");
+    if (stored) await guard.kvCommand(cfg, ["LTRIM", LIST_KEY, "0", "4999"]);
+    // the team hears either way — a lead the database dropped still has a person
     await notify.leadAlert(cfg, lead);
-    return res.status(200).json({ ok: true, stored: true, synced: sync.synced });
+    return res.status(200).json({ ok: true, stored, synced: sync.synced });
   } catch (e) {
     return res.status(200).json({ ok: true, stored: false, synced: sync.synced });
   }
