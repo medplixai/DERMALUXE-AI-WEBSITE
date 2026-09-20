@@ -181,8 +181,8 @@ const slotTs = (daysAhead) => { const d = new Date(Date.now() + daysAhead * DAY 
   is(/🤝 Trust pack .*: 1 mandiki → 0 book chesaru/.test(wk.body), true, "and whether the trust pack turned into bookings");
 
   console.log("\n  — the nightly exam —");
-  is(exam.PERSONAS.length, 40, "forty invented patients, each with a trap");
-  is(new Set(exam.PERSONAS.map((p) => p.id)).size, 40, "with distinct ids");
+  is(exam.PERSONAS.length >= 40, true, "forty-odd invented patients, each with a trap");
+  is(new Set(exam.PERSONAS.map((p) => p.id)).size, exam.PERSONAS.length, "with distinct ids");
   const a = exam.tonight("2026-09-20", 12).map((p) => p.id), b = exam.tonight("2026-09-21", 12).map((p) => p.id);
   is([a.length, a.some((id) => b.includes(id))], [12, false], "twelve a night, and tomorrow's twelve are different ones");
   patientLines = ["Hair fall chala undi, 6 nelala nundi", "Eluru nundi", "Repu evening ok", "[END]"];

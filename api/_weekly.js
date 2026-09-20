@@ -139,6 +139,13 @@ async function buildWeekly(cfg) {
       }
       lines.push(`🔁 Treatment due recalls: ${cyc.length} mandiki → ${bk2} book chesaru`);
     }
+    // how long a patient waited for the agent's reply
+    const lat = (((await guard.kvCommand(cfg, ["LRANGE", "wa:lat", "0", "1999"]).catch(() => ({}))).result) || []).map(parse).filter((x) => x && x.ts >= since && x.ms >= 0);
+    if (lat.length) {
+      const med = (arr) => { const s = arr.map((x) => x.ms).sort((a, b) => a - b); return s.length ? (s[Math.floor(s.length / 2)] / 1000).toFixed(1) : "–"; };
+      const fastN = lat.filter((x) => x.fast).length;
+      lines.push(`⏱ Agent reply time: ${med(lat)} s median (${lat.length} replies${fastN ? ` · ${fastN} quick turns ${med(lat.filter((x) => x.fast))} s` : ""})`);
+    }
     const cmps = (await require("./_campaign.js").list(cfg, 10).catch(() => [])).filter((c) => c.ts >= since);
     for (const c of cmps) lines.push(`📣 ${c.name}: ${c.sent}/${c.n} vellindi · ${c.replied} reply · ${c.booked} booked`);
   } catch (e) { console.error("weekly: scoreboard", e && e.message); }

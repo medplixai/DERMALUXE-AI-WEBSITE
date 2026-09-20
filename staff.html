@@ -1440,7 +1440,7 @@
           (r.staffName ? " · 👩‍⚕️ " + esc(r.staffName) : ' · <span style="color:var(--hot)">doctor assign cheyyaledu</span>') +
           (r.room ? " · " + esc(r.room) : "") + "</div></div>" +
           "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') +
-          (r.adv ? ' <span class="chip ok">💳 ₹' + r.adv + ' advance</span>' : "") + (r.lc && r.status === "booked" ? ' <span class="chip">vastunnara adigam</span>' : "") +
+          (r.pax > 1 ? ' <span class="chip" title="' + esc(r.with || "") + '">👥 ' + r.pax + " mandi</span>" : "") + (r.adv ? ' <span class="chip ok">💳 ₹' + r.adv + ' advance</span>' : "") + (r.lc && r.status === "booked" ? ' <span class="chip">vastunnara adigam</span>' : "") +
           (r.status !== "booked" ? ' <span class="chip">' + esc(r.status) + "</span>" : "") + "</div></div>" +
           (r.note ? '<div class="meta" style="margin-top:5px">📝 ' + esc(r.note) + "</div>" : "") +
           '<div class="acts">' +

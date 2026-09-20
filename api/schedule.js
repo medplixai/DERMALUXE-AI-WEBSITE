@@ -50,6 +50,7 @@ const shape = (a) => ({
   room: a.room || "", status: STATUS.includes(a.status) ? a.status : "booked",
   cf: !!a.cf, note: a.note || "", day: istDay(a.at), time: istTime(a.at),
   adv: Number(a.adv) || 0, lc: !!a.lc,
+  pax: Number(a.pax) > 1 ? Number(a.pax) : 1, with: a.with || "",
 });
 
 async function replace(cfg, rawOld, next) {

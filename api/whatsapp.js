@@ -69,7 +69,7 @@ or when booking info is ready:
 heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
 slot_ts: when the patient CONFIRMS a specific day + time, ALSO add "slot_ts":"YYYY-MM-DD HH:mm" (24-hour, IST) inside lead — compute the real calendar date from the current IST date/time given in context (e.g. if today is Sun Aug 10 2026 and they pick "Repu 6:30 PM" → "2026-08-11 18:30"). Omit until a specific time is fixed — our reminder system auto-messages the patient from this.
 cancel: if the patient wants to CANCEL their appointment (and is not picking a new time), add "cancel":true inside lead. For reschedule just output the new slot_ts — old booking auto-replace avutundi. The context shows this patient's upcoming appointment if any — confirm that time with them before cancelling, and be warm about rebooking later.
-Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, "send_catalog":true when someone asks about the DermaLuxe Academy / training courses (the course catalog PDF is sent automatically with your reply — mention "Course catalog PDF ikkada pampistunnanu 📄"), "trust":true when the patient hesitates (asks who the doctor is / whether results come / is it safe / will think about it) — the doctor card, Google rating and before/after go out after your reply, and "urgent":"<one line>" for medical emergencies.`;
+Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, "send_catalog":true when someone asks about the DermaLuxe Academy / training courses (the course catalog PDF is sent automatically with your reply — mention "Course catalog PDF ikkada pampistunnanu 📄"), "trust":true when the patient hesitates (asks who the doctor is / whether results come / is it safe / will think about it) — the doctor card, Google rating and before/after go out after your reply, "family":[{"name":"…","concern":"…"}] inside lead when more than one person is coming in the same slot (amma + koothuru), "voice":true when the patient would clearly rather listen than read (asks for voice, says they cannot read well, elderly writing with difficulty) — your reply is also sent as a voice note from then on, and "urgent":"<one line>" for medical emergencies.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
 const PHOTO_RULES = facts.photoRules("WhatsApp");
@@ -117,7 +117,16 @@ async function saveHistory(cfg, key, hist) {
   } catch (e) {}
 }
 
-async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra) {
+// Greetings, thanks, a tapped slot: turns with no medicine in them. They do
+// not need the big model, and the patient notices the seconds.
+const SIMPLE_TURN = /^(hi+|hello+|hai|hey|namaste|namaskaram|good (morning|evening|afternoon)|ok+|okay|sure|thanks?( you)?|thank u|dhanyavadalu|yes|no|ha|avunu|kaadu|ledu|👍|🙏|😊|❤️)[\s!.,🙏😊👍❤️]*$/i;
+const SLOT_TAP = /^(ivala|repu|today|tomorrow|mon|tue|wed|thu|fri|sat)[a-z]*\s+\d{1,2}(:\d{2})?\s*(am|pm)$/i;
+const isSimpleTurn = (t) => { const s = String(t || "").trim(); return s.length <= 40 && (SIMPLE_TURN.test(s) || SLOT_TAP.test(s)); };
+const FAST_MODEL = () => process.env.AI_FAST_MODEL || "claude-sonnet-5";
+// "Voice lo cheppandi" — somebody who would rather listen than read.
+const VOICE_ASK = /(voice\s*(lo|note|message)|audio\s*(lo|message)|vinipinch|chadav(a)?len|chadavadam kashtam|kallu\s*(kanapad|sarigga)|record\s*chesi|వాయిస్|ఆడియో|వినిపించ)/i;
+
+async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
   const messages = [];
   hist.forEach((t) => {
     messages.push({ role: "user", content: t.u });
@@ -133,7 +142,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra) {
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify({
-      model: process.env.AI_MODEL || "claude-opus-5",
+      model: (opts && opts.model) || process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 1000,
       system: CLINIC_FACTS + (sysExtra || ""),
       messages,
@@ -854,6 +863,9 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
     call_prep: String(leadInfo.call_prep || "").slice(0, 220),
   };
   if (!lead.name) return;
+  // Amma + koothuru in one slot: the others ride on the same booking.
+  const family = (Array.isArray(leadInfo.family) ? leadInfo.family : []).map((f) => ({ name: String((f && f.name) || "").slice(0, 40).trim(), concern: String((f && f.concern) || "").slice(0, 60).trim() })).filter((f) => f.name).slice(0, 4);
+  if (family.length) lead.concern = (lead.concern + " + " + family.map((f) => `${f.name}${f.concern ? " (" + f.concern + ")" : ""}`).join(", ")).slice(0, 160);
   lead.src_id = phone;
   Object.assign(lead, qualify.stamp(await qualify.read(cfg, phone)));   // grade, score, km, why — for the desk
   await saveProfile(cfg, phone, lead.name, lead.concern); // long-term greeting memory
@@ -891,9 +903,9 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
           } catch (e) {}
         }
         if (!hadSame) {
-          await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify({
-            ph: phone, name: lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 40),
-          })]);
+          await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(Object.assign({
+            ph: phone, name: lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 60),
+          }, family.length ? { pax: family.length + 1, with: family.map((f) => f.name).join(", ") } : {}))]);
           bookedNow = at; // advance ask only on a NEW/changed slot
         }
       }
@@ -1280,6 +1292,15 @@ module.exports = async (req, res) => {
     : "[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish and ask what concern they have] ";
 
   const ownerRules = cfg ? await rules.block(cfg).catch(() => "") : "";
+  // Would they rather listen? A voice note in, a request in words, or a
+  // preference they set earlier (a month) — then the reply is spoken too.
+  let speak = !!audioId;
+  if (cfg && !audioId) {
+    if (VOICE_ASK.test(text)) { speak = true; await guard.kvCommand(cfg, ["SET", `wa:voice:${digits}`, "1", "EX", String(30 * 86400)]).catch(() => {}); }
+    else { const vp = await guard.kvCommand(cfg, ["GET", `wa:voice:${digits}`]).catch(() => ({})); speak = !!(vp && vp.result); }
+  }
+  const fast = !imageId && !audioId && isSimpleTurn(text);
+  const t0 = Date.now();
   let out;
   let voiceScript = "";
   try {
@@ -1307,16 +1328,18 @@ module.exports = async (req, res) => {
         }
         text = String(heard).slice(0, 1000).trim();
       }
-      out = await askClaude(hist, text, profileName, audioId ? extraCtx + VOICE_CTX : extraCtx, ownerRules);
-      if (audioId) {
+      out = await askClaude(hist, text, profileName, speak ? extraCtx + VOICE_CTX : extraCtx, ownerRules, fast ? { model: FAST_MODEL() } : undefined);
+      if (speak) {
         // Pull the TTS script line out of the visible reply.
         const vm = String(out.reply || "").match(/\n?\s*VOICE_SCRIPT\s*:\s*([\s\S]+?)\s*$/);
         if (vm) {
           voiceScript = vm[1].trim().slice(0, 450);
           out.reply = String(out.reply).slice(0, vm.index).trim() || FALLBACK_REPLY;
         }
-        text = "[🎤] " + text;
       }
+      if (audioId) text = "[🎤] " + text;
+      // The model itself noticed they would rather listen.
+      if (out.voice === true && cfg && !speak) { speak = true; await guard.kvCommand(cfg, ["SET", `wa:voice:${digits}`, "1", "EX", String(30 * 86400)]).catch(() => {}); }
     }
   } catch (e) {
     console.error("wa: ai error", e && e.message);
@@ -1393,8 +1416,13 @@ module.exports = async (req, res) => {
   await logOut(out.reply);
 
   if (isMeta) {
-    // Voice note in → voice note out (text still follows as the readable copy).
-    if (audioId) {
+    // How long they waited, for the weekly (fast turns and full ones apart).
+    if (cfg) {
+      await guard.kvCommand(cfg, ["LPUSH", "wa:lat", JSON.stringify({ ts: Date.now(), ms: Date.now() - t0, fast })]).catch(() => {});
+      await guard.kvCommand(cfg, ["LTRIM", "wa:lat", "0", "1999"]).catch(() => {});
+    }
+    // Voice note in → voice note out; and whoever asked to listen (text still follows as the readable copy).
+    if (speak) {
       try {
         const mp3 = await synthesizeVoice(voiceScript || stripForTts(out.reply).slice(0, 350));
         if (mp3) await sendCloudVoice(cloud.phoneNumberId, cloud.to, mp3);
