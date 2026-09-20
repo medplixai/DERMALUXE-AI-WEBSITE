@@ -36,6 +36,36 @@ async function sendWa(digits, text) {
   }
 }
 
+// Free text with up to three tappable reply buttons. Inside the 24-hour
+// window only, like sendWa; a body over WhatsApp's 1024-character cap goes
+// as plain text first, the buttons after it. Falls back to plain text if
+// the interactive message is refused.
+async function sendWaButtons(digits, text, titles) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
+  const to = String(digits || "").replace(/\D/g, "").slice(-10);
+  const btns = Array.from(new Set((titles || []).map((s) => String(s || "").trim().slice(0, 20)).filter(Boolean))).slice(0, 3);
+  if (!token || !phoneId || to.length !== 10) return false;
+  if (!btns.length) return sendWa(to, text);
+  let body = String(text || "");
+  if (body.length > 1000) { if (!(await sendWa(to, body))) return false; body = "👇"; }
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: `91${to}`, type: "interactive", interactive: {
+        type: "button", body: { text: body },
+        action: { buttons: btns.map((t, i) => ({ type: "reply", reply: { id: `b${i + 1}`, title: t } })) },
+      } }),
+    });
+    if (r.ok) return true;
+    let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+    console.error("notify: buttons failed", to, r.status, d);
+    if (/131047|re-engagement/i.test(d)) return false;      // window closed — text would fail too
+    return sendWa(to, text);
+  } catch (e) { console.error("notify: buttons error", to, e && e.message); return false; }
+}
+
 // Template message send (works OUTSIDE the 24h window — reminders/broadcasts).
 // params = array of strings for {{1}}, {{2}}... in the template body.
 // params: body variables. opts.urlSuffix: value for a dynamic URL button ({{1}} at the end of the link).
@@ -284,4 +314,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, sendWa, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
+module.exports = { leadAlert, sendWa, sendWaButtons, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };

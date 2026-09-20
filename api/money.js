@@ -264,6 +264,18 @@ module.exports = async (req, res) => {
     // as part of the same action rather than a second step someone can forget
     const adv = money(b.paid);
     if (adv > 0) bill.payments.push({ amount: adv, mode: MODES.includes(b.mode) ? b.mode : "cash", ref: clean(b.ref, 40), ts: Date.now(), by: me.name, byPhone: me.phone });
+    // An advance paid on WhatsApp to lock the slot (pay-hook) is part of this
+    // bill — credited here, once, so the desk never has to remember it.
+    try {
+      const rows = ((await guard.kvCommand(cfg, ["LRANGE", `adv:${phone}`, "0", "19"]).catch(() => ({}))).result) || [];
+      for (const raw of rows) {
+        const a = parse(raw, null);
+        if (!a || a.used || !(Number(a.amount) > 0)) continue;
+        bill.payments.push({ amount: money(a.amount), mode: "upi", ref: `advance razorpay ${a.ref || ""}`.trim().slice(0, 40), ts: Number(a.ts) || Date.now(), by: "Razorpay", advance: true });
+        await guard.kvCommand(cfg, ["LREM", `adv:${phone}`, "1", raw]).catch(() => {});
+        await guard.kvCommand(cfg, ["LPUSH", `adv:${phone}`, JSON.stringify(Object.assign(a, { used: 1, bill: id }))]).catch(() => {});
+      }
+    } catch (e) { console.error("bill: advance", e && e.message); }
     await putBill(cfg, bill);
     const day = istDay();
     await guard.kvCommand(cfg, ["LPUSH", `bill:of:${phone}`, id]).catch(() => {});
@@ -279,6 +291,11 @@ module.exports = async (req, res) => {
       const pkg = require("./package.js");
       packages = await pkg.fromBill(cfg, bill, await rates(cfg));
     } catch (e) { console.error("bill: package", e && e.message); }
+    try { await require("./_memory.js").forget(cfg, phone); } catch (e) {}
+    // Somebody who paid is the person the ads should be finding.
+    try {
+      require("./_capi.js").send("Purchase", { phone, eventId: "bill-" + id, custom: { value: t.total, currency: "INR", content_name: items.map((i) => i.name).join(", ").slice(0, 80) } }).catch(() => {});
+    } catch (e) {}
     return json(res, 200, { ok: true, bill: Object.assign({}, bill, t), packages: packages.length });
   }
 

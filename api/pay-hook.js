@@ -28,8 +28,44 @@ module.exports = async (req, res) => {
   if (!cfg) return res.status(501).json({ error: "Storage not configured" });
   const p = ((ev.payload || {}).payment || {}).entity || {};
   const plink = ((ev.payload || {}).payment_link || {}).entity || {};
-  const billId = String(((plink.notes || {}).bill) || ((p.notes || {}).bill) || "").slice(0, 12);
+  const notes = Object.assign({}, p.notes || {}, plink.notes || {});
+  const billId = String(notes.bill || "").slice(0, 12);
   const pid = String(p.id || "").slice(0, 40);
+  // An advance on a booked slot: the appointment is confirmed and locked, the
+  // patient is told, the desk sees 💳 on the day's list. The money is kept
+  // against the phone so the visit bill can adjust it.
+  const appt = String(notes.appt || "").match(/^(\d{10})\|(\d{10,})$/);
+  if (appt && pid) {
+    const first = await guard.kvCommand(cfg, ["SET", `rzp:paid:${pid}`, "adv", "NX", "EX", String(400 * 86400)]).catch(() => ({}));
+    if (!first || !first.result) return res.status(200).json({ ok: true, dup: true });
+    const ph = appt[1], at = Number(appt[2]);
+    const amount = Math.round(Number(p.amount || 0) / 100);
+    let name = "", found = false;
+    const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({}));
+    for (const raw of ((q && q.result) || [])) {
+      let a; try { a = JSON.parse(raw); } catch (e) { continue; }
+      if (!a || a.ph !== ph) continue;
+      name = a.name || name;
+      if (a.at !== at) continue;
+      a.adv = (Number(a.adv) || 0) + amount; a.cf = 1; a.advRef = pid;
+      await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+      await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
+      found = true;
+    }
+    await guard.kvCommand(cfg, ["LPUSH", `adv:${ph}`, JSON.stringify({ amount, at, ref: pid, ts: Date.now(), used: 0 })]).catch(() => {});
+    await guard.kvCommand(cfg, ["LTRIM", `adv:${ph}`, "0", "19"]).catch(() => {});
+    const when = new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(at));
+    const firstName = String(name || "").trim().split(" ")[0] || "andi";
+    const notify = require("./_notify.js");
+    const text = `✅ ₹${amount} advance vachindi — thank you ${firstName} garu! 🙏\n\n📅 Mee appointment *${when}* CONFIRMED & locked.\nEe amount mee bill lo adjust avutundi.\n\n📍 Rama Mahal, Kasturi Vari Street, Opp. Happy Mobiles, Eluru\nTime marchali ante ikkade reply cheyandi.`;
+    if (!(await notify.sendWa(ph, text).catch(() => false))) await notify.sendWaTemplate(ph, "payment_confirmed", [firstName, String(amount), when]).catch(() => {});
+    try { await require("./_inbox.js").log(cfg, ph, { dir: "out", text, by: "ai", via: "advance" }); } catch (e) {}
+    try {
+      const push = require("./_push.js");
+      if (push.enabled()) await push.notifyCap(cfg, "appts.view", { title: `💳 ₹${amount} advance — ${name || ph}`, body: `${when} slot locked${found ? "" : " (appointment list lo dorakaledu — chudandi)"}`, tab: "sch", data: { kind: "advance", phone: ph } });
+    } catch (e) {}
+    return res.status(200).json({ ok: true, advance: amount, locked: found });
+  }
   if (!billId || !pid) return res.status(200).json({ ok: true, ignored: "no bill" });
   const first = await guard.kvCommand(cfg, ["SET", `rzp:paid:${pid}`, billId, "NX", "EX", String(400 * 86400)]).catch(() => ({}));
   if (!first || !first.result) return res.status(200).json({ ok: true, dup: true });

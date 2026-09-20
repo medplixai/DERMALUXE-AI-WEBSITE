@@ -49,6 +49,7 @@ const shape = (a) => ({
   staff: digits10(a.staff) || "", staffName: a.staffName || "",
   room: a.room || "", status: STATUS.includes(a.status) ? a.status : "booked",
   cf: !!a.cf, note: a.note || "", day: istDay(a.at), time: istTime(a.at),
+  adv: Number(a.adv) || 0, lc: !!a.lc,
 });
 
 async function replace(cfg, rawOld, next) {
@@ -322,6 +323,7 @@ module.exports = async (req, res) => {
       await tellPatient(cur.ph, `${cur.name || "Hi"}, mee appointment cancel chesamu. Kotha time kavalante ee message ki reply cheyandi 🙏`);
       return json(res, 200, { ok: true, cancelled: true, freed: { at: cur.at, mins: cur.mins || 30 }, waitMatches: cur.at > Date.now() ? await freedSlot(cfg, cur) : [] });
     }
+    try { await require("./_memory.js").forget(cfg, cur.ph); } catch (e) {}
     if (st === "done" || st === "noshow") {
       // Marking a no-show over WhatsApp has always invited the patient to
       // rebook. Marking the same thing here did not — it just filed them away

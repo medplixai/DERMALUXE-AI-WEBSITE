@@ -76,6 +76,61 @@ async function buildWeekly(cfg) {
   lines.push(`✅ Vachharu: *${arrived}* · ❌ Raaledu: *${noshow}* · ⏳ Upcoming: *${upcoming}*${upcoming ? ` (${confirmed} confirmed)` : ""}`);
   lines.push(`📈 Enquiry → chair: *${pct(arrived, enq)}%*`);
 
+  // ---- the scoreboard: per source, enquiries → A → booked → came ---------
+  // The same leads, cut by where they came from, with the grade the qualifier
+  // gave them and where the desk moved them. Then the things Stage 1 changed:
+  // how many replies a booking took, advances paid, no-shows, and whether the
+  // trust pack turned hesitation into a slot.
+  try {
+    const st = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result) || {};
+    const grades = await require("./_qualify.js").forPhones(cfg, leads.map((l) => l.phone)).catch(() => ({}));
+    const keyOf = (l) => `${l.ts}|${ph10(l.phone) || l.src_id || ""}`;
+    const srcOf = (l) => l.ad_id ? "Meta ads" : ({ whatsapp: "WhatsApp", instagram: "Instagram", facebook: "Facebook", messenger: "Facebook", web: "Website", website: "Website", phone_call: "Phone", missed_call: "Missed call", exotel: "Missed call", walkin: "Walk-in" })[String(l.type || l.src || "").toLowerCase()] || "Other";
+    const rows = {};
+    for (const l of leads) {
+      const r = rows[srcOf(l)] || (rows[srcOf(l)] = { enq: new Set(), a: new Set(), booked: new Set(), came: new Set() });
+      const p = ph10(l.phone) || l.src_id || String(l.ts);
+      r.enq.add(p);
+      const g = grades[ph10(l.phone)];
+      if (g && g.grade === "A") r.a.add(p);
+      const s = st[keyOf(l)] || "";
+      if (s === "booked" || s === "visited" || (l.slot && l.date)) r.booked.add(p);
+      if (s === "visited") r.came.add(p);
+    }
+    const order = Object.keys(rows).sort((x, y) => rows[y].enq.size - rows[x].enq.size);
+    if (order.length) {
+      lines.push("", "🏁 *Scoreboard — source → enquiries · A · booked · vachharu*");
+      for (const k of order) { const r = rows[k]; lines.push(`   ${k}: ${r.enq.size} · ${r.a.size} · ${r.booked.size} · ${r.came.size}`); }
+      const ads = rows["Meta ads"];
+      if (ads) {
+        const spend = await require("./ads.js").spend(cfg, 7).catch(() => null);
+        if (spend != null) lines.push(`   Meta kharchu ₹${spend.toLocaleString("en-IN")}${ads.came.size ? ` → ₹${Math.round(spend / ads.came.size).toLocaleString("en-IN")} per patient vachchina` : ads.booked.size ? ` → ₹${Math.round(spend / ads.booked.size).toLocaleString("en-IN")} per booking` : " — inka evaru raaledu"}`);
+      }
+    }
+    // replies to a booking, ad vs organic, this week
+    const ttb = (((await guard.kvCommand(cfg, ["LRANGE", "ttb:log", "0", "499"]).catch(() => ({}))).result) || []).map(parse).filter((x) => x && x.ts >= since);
+    const med = (arr) => { if (!arr.length) return 0; const s = arr.map((x) => x.turns).sort((a, b) => a - b); return s[Math.floor(s.length / 2)]; };
+    const adT = ttb.filter((x) => x.ad), orT = ttb.filter((x) => !x.ad);
+    if (ttb.length) lines.push(`⚡ Booking ki replies: ${adT.length ? `ads ${med(adT)}` : ""}${adT.length && orT.length ? " · " : ""}${orT.length ? `organic ${med(orT)}` : ""} (median, target 3)${ttb.filter((x) => x.known).length ? ` · ${ttb.filter((x) => x.known).length} paata patients malli book chesaru` : ""}`);
+    // advances and no-shows among this week's visits
+    let adv = 0, advCame = 0, advNs = 0, total = 0;
+    for (const key of ["appt:done", "appt:q"]) {
+      const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "299"]).catch(() => ({}));
+      for (const s of (q.result || [])) {
+        const a = parse(s); if (!a || !a.at || a.at < since || a.at > now + 7 * 86400000) continue;   // this week's slots, past and coming
+        total++;
+        if (a.adv) { adv++; if (a.v || a.arrived || a.status === "done" || a.status === "arrived") advCame++; if (a.ns || a.status === "noshow") advNs++; }
+      }
+    }
+    if (adv) lines.push(`💳 Advance pay chesina slots: ${adv}/${total} · vachharu ${advCame} · raaledu ${advNs}`);
+    // the trust pack: sent → booked afterwards
+    const tl = (((await guard.kvCommand(cfg, ["LRANGE", "trust:log", "0", "499"]).catch(() => ({}))).result) || []).map(parse).filter((x) => x && x.ts >= since && x.n);
+    if (tl.length) {
+      const bookedAfter = tl.filter((x) => leads.some((l) => ph10(l.phone) === x.phone && (["booked", "visited"].includes(st[keyOf(l)] || "") || (l.slot && l.date)))).length;
+      lines.push(`🤝 Trust pack (doctor + rating + results): ${tl.length} mandiki → ${bookedAfter} book chesaru`);
+    }
+  } catch (e) { console.error("weekly: scoreboard", e && e.message); }
+
   // Smart-link clicks by placement (last 7 full days), with last-week trend
   try {
     const tags = Object.keys(TAGS);

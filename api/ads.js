@@ -355,5 +355,19 @@ module.exports = async (req, res) => {
 
   return json(res, 400, { error: "Unknown action" });
 };
+// What Meta charged over the last N days, or null when nothing is connected.
+// One insights call; the scoreboard shows "cost per visit" only when it has this.
+async function spend(cfg, days) {
+  try {
+    const conn = await connect(cfg);
+    if (!conn.ok) return null;
+    const until = new Date(Date.now() - 86400000), since = new Date(until.getTime() - ((Number(days) || 7) - 1) * 86400000);
+    const d = (x) => x.toISOString().slice(0, 10);
+    const r = await graph(`/act_${conn.accountId}/insights`, tokenOf(conn.tokenName), { fields: "spend", time_range: JSON.stringify({ since: d(since), until: d(until) }) });
+    const row = ((r && r.data) || [])[0];
+    return row ? Math.round(Number(row.spend) || 0) : 0;
+  } catch (e) { return null; }
+}
+module.exports.spend = spend;
 module.exports.verdict = verdict;
 module.exports.ourSide = ourSide;

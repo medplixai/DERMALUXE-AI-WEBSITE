@@ -844,6 +844,11 @@
             <div class="noteform" style="margin-top:10px"><input id="ruleText" maxlength="300" placeholder="Agent em cheyyali / cheyyakudadu?" /><button class="btn btn--gold btn--sm" id="ruleAdd">Add</button></div>
             <div class="err" id="ruleErr"></div>
             <div id="ruleList" style="margin-top:10px"></div></div>
+          <div class="box"><h2>Agent exam <span class="te" style="font-size:.9rem;color:var(--g3)">· రాత్రి పరీక్ష</span></h2>
+            <p>Roju raatri 3 AM ki 12 test patients (price shopper, Telugu-only, dooram, emergency, job seeker…) agent tho matladi score vastundi — meeku WhatsApp lo. Ippude chinna test cheyyalante:</p>
+            <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="examRun">3 patients tho ippudu test cheyyi</button></div>
+            <div class="err" id="examErr"></div>
+            <div id="examOut" style="margin-top:10px"></div></div>
           <div class="box"><h2>WhatsApp templates <span class="te" style="font-size:.9rem;color:var(--g3)">· మెటా అప్రూవల్</span></h2>
             <p>24 gantalu daatina tarvata patient ki message vellalante Meta approve chesina template kavali. Ivi anni mana code vaadutunnavi — status ikkada kanipistundi.</p>
             <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn--sm" id="tplLoad">Status chudu</button><button class="btn btn--gold btn--sm" id="tplCreate">Anni approval ki pampu</button></div>
@@ -1405,6 +1410,7 @@
           (r.staffName ? " · 👩‍⚕️ " + esc(r.staffName) : ' · <span style="color:var(--hot)">doctor assign cheyyaledu</span>') +
           (r.room ? " · " + esc(r.room) : "") + "</div></div>" +
           "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') +
+          (r.adv ? ' <span class="chip ok">💳 ₹' + r.adv + ' advance</span>' : "") + (r.lc && r.status === "booked" ? ' <span class="chip">vastunnara adigam</span>' : "") +
           (r.status !== "booked" ? ' <span class="chip">' + esc(r.status) + "</span>" : "") + "</div></div>" +
           (r.note ? '<div class="meta" style="margin-top:5px">📝 ' + esc(r.note) + "</div>" : "") +
           '<div class="acts">' +
@@ -2192,6 +2198,10 @@
         if (rvh) rvh.innerHTML = rv && rv.checked ? '<div class="rvcard"><h3><span>🧐 Agent review · ' + esc(rv.day) + '</span><b style="color:' + (rv.score >= 75 ? "var(--ok)" : rv.score >= 50 ? "var(--hot)" : "var(--bad)") + '">' + rv.score + '/100</b></h3>' +
           '<p class="meta" style="margin:0 0 4px">' + esc(rv.summary) + " · " + rv.checked + " chats" + (rv.lint && rv.lint.checked ? " · editor " + rv.lint.rewritten + "/" + rv.lint.checked + " replies sari chesindi" : "") + "</p>" +
           (rv.findings || []).slice(0, 4).map(function (f) { return '<div class="f">' + (f.severity === "high" ? "🔴" : f.severity === "medium" ? "🟠" : "🟡") + " <b>" + esc(f.who || "…" + f.phone) + "</b> — " + esc(f.issue) + "<small>↳ " + esc(f.fix) + "</small></div>"; }).join("") + "</div>" : "";
+        var ex = j.exam;
+        if (rvh && ex && ex.n) rvh.innerHTML += '<div class="rvcard"><h3><span>🎓 Raatri exam · ' + esc(ex.day) + '</span><b style="color:' + (ex.score >= 75 ? "var(--ok)" : ex.score >= 50 ? "var(--hot)" : "var(--bad)") + '">' + ex.score + "/100" + (ex.drop ? " ⚠️" : "") + "</b></h3>" +
+          '<p class="meta" style="margin:0 0 4px">' + ex.n + " test patients · " + ex.booked + " booked · traps " + esc(ex.traps) + (ex.avg7 != null ? " · 7-night avg " + ex.avg7 : "") + "</p>" +
+          (ex.worst || []).filter(function (w) { return w.score < 75; }).slice(0, 2).map(function (w) { return '<div class="f">' + (w.score < 50 ? "🔴" : "🟠") + " <b>" + esc(w.who) + "</b> " + w.score + " — " + esc(w.note) + "</div>"; }).join("") + "</div>";
         $("ibList").innerHTML = j.threads.length ? j.threads.map(function (t) {
           var nm = t.name || t.phone;
           return '<button class="ib-row' + (t.phone === ib.phone ? " on" : "") + '" data-act="ib-open" data-phone="' + esc(t.phone) + '">' +
@@ -2592,6 +2602,18 @@
               '</span><span style="color:' + (by[t.status] || "var(--muted)") + '">' + esc(t.status) + "</span></div>";
           }).join("") : '<p class="meta">Meta nundi templates raaledu.</p>');
     }
+    if ($("examRun")) $("examRun").onclick = function () {
+      var b = this; b.disabled = true; $("examErr").textContent = ""; $("examOut").innerHTML = '<div class="sk"><div></div><div></div><div></div></div><p class="meta">3 chats nadustunnayi — 1-2 nimishalu…</p>';
+      fetch(ORIGIN + "/api/cron-exam?n=3&dry=1&keep=1", { headers: { Authorization: "Bearer " + tok } })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); })
+        .then(function (j) {
+          $("examOut").innerHTML = '<p><b>Score ' + j.score + '/100</b> · ' + j.booked + " booked · traps " + esc(j.traps) + "</p>" + (j.rows || []).map(function (r) {
+            return '<div class="vrow"><b>' + esc(r.who) + " — " + r.score + "</b>" + (r.trap ? '<div class="meta">Trap: ' + esc(r.trap) + (r.trapPassed ? " ✅" : " ❌") + "</div>" : "") + '<div class="meta">' + esc(r.note) + (r.faults && r.faults.length ? " · " + esc(r.faults.join(", ")) : "") + "</div>" +
+              (r.transcript || []).map(function (t) { return '<div class="meta" style="margin-top:4px">🧑 ' + esc(t.u) + "<br>🤖 " + esc(t.a).replace(/\n/g, "<br>") + "</div>"; }).join("") + "</div>";
+          }).join("");
+        })
+        .catch(function (x) { $("examErr").textContent = x.message; $("examOut").innerHTML = ""; }).then(function () { b.disabled = false; });
+    };
     if ($("tplLoad")) $("tplLoad").onclick = function () {
       var b = this; b.disabled = true; $("tplList").innerHTML = '<div class="sk"><div></div><div></div></div>';
       tplapi().then(paintTemplates).catch(function (x) { $("tplErr").textContent = x.message; $("tplList").innerHTML = ""; }).then(function () { b.disabled = false; });

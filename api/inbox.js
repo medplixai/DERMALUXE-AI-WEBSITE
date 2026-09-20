@@ -46,7 +46,8 @@ module.exports = async (req, res) => {
     const unread = rows.reduce((n, t) => n + (t.unread || 0), 0);
     // yesterday's agent review rides along, for the card at the top of the screen
     let review = null; try { review = await require("./_review.js").latest(cfg); } catch (e) {}
-    return json(res, 200, { ok: true, threads: rows.map((t) => Object.assign(t, { open: inbox.windowOpen(t) })), unread, canReply, review });
+    let exam = null; try { exam = await require("./_exam.js").latest(cfg); } catch (e) {}
+    return json(res, 200, { ok: true, threads: rows.map((t) => Object.assign(t, { open: inbox.windowOpen(t) })), unread, canReply, review, exam });
   }
 
   if (a === "thread") {
@@ -89,7 +90,8 @@ module.exports = async (req, res) => {
     const ask = clean(b.ask, 200);
     const qualify = require("./_qualify.js");
     const qrec = await qualify.read(cfg, ph).catch(() => null);
-    const ctx = `[You are writing for ${me.name} at the DermaLuxe desk to send by hand — not for the agent. ${qrec ? qualify.contextLine(qrec) : ""}${ask ? `The colleague wants this reply to: ${ask}. ` : ""}Answer the patient's own last message, 2-5 short lines, one next step. "lead" must be null.] `;
+    const known = await require("./_memory.js").contextLine(cfg, ph).catch(() => "");
+    const ctx = `[You are writing for ${me.name} at the DermaLuxe desk to send by hand — not for the agent. ${known}${qrec ? qualify.contextLine(qrec) : ""}${ask ? `The colleague wants this reply to: ${ask}. ` : ""}Answer the patient's own last message, 2-5 short lines, one next step. "lead" must be null.] `;
     let out;
     try {
       out = await require("./whatsapp.js").askClaude(hist, lastIn ? lastIn.text : "hi", (t.meta && t.meta.name) || "", ctx, await require("./_rules.js").block(cfg).catch(() => ""));

@@ -98,6 +98,8 @@ stub("_notify.js", {
   sendWaDocLink: async (...a) => { sent.push(["doc", ...a]); return { ok: true }; },
   leadAlert: async (...a) => { sent.push(["lead", ...a]); return true; },
   sendWaTemplate: async (...a) => { sent.push(["tpl", ...a]); return { ok: true }; },
+  sendWaButtons: async (...a) => { sent.push(["btn", ...a]); return true; },       // boolean, like sendWa
+  sendWaImageLink: async (...a) => { sent.push(["img", ...a]); return true; },
   notifyOwner: async (...a) => { sent.push(["owner", ...a]); return { ok: true }; },
   waOwner: async (...a) => { sent.push(["owner", ...a]); return { ok: true }; },
 });

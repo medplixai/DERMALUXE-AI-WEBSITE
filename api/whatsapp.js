@@ -37,6 +37,21 @@ const synthesizeVoice = voice.synthesize;
 const transcribeVoice = (b64, mime) => voice.transcribe(b64, mime, "WhatsApp");
 const hr = require("./_hr.js");
 const referral = require("./_referral.js");
+const memory = require("./_memory.js");
+const trust = require("./_trust.js");
+const capi = require("./_capi.js");
+
+// What an ad was about, from its headline — so a person who tapped "Hair
+// fall? PRP therapy" is not asked what their concern is.
+const AD_CONCERNS = [
+  [/hair\s*transplant|fue|dhi|bald/i, "hair transplant"], [/hair\s*(fall|loss)|prp|gfc|thinning|dandruff|scalp/i, "hair fall"],
+  [/pigment|melasma|dark\s*spot|tan|pico|glow|bright/i, "pigmentation"], [/acne|pimple|scar/i, "acne"],
+  [/laser\s*hair|hair\s*removal|unwanted\s*hair/i, "laser hair removal"], [/hydra|facial/i, "Hydrafacial"],
+  [/wrinkle|botox|filler|anti[-\s]*ag|hifu|thread|tight/i, "anti-ageing"], [/weight|fat|slim|body/i, "weight loss"],
+  [/eczema|psoriasis|vitiligo|fungal|allerg|rash|itch/i, "skin disease"], [/wart|mole|skin\s*tag/i, "wart / mole removal"],
+  [/academy|course|training/i, "academy"],
+];
+const adConcern = (headline) => { const h = String(headline || ""); for (const [re, c] of AD_CONCERNS) if (re.test(h)) return c; return ""; };
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
 const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. Clinic visit or video consultation both possible.
@@ -54,7 +69,7 @@ or when booking info is ready:
 heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
 slot_ts: when the patient CONFIRMS a specific day + time, ALSO add "slot_ts":"YYYY-MM-DD HH:mm" (24-hour, IST) inside lead — compute the real calendar date from the current IST date/time given in context (e.g. if today is Sun Aug 10 2026 and they pick "Repu 6:30 PM" → "2026-08-11 18:30"). Omit until a specific time is fixed — our reminder system auto-messages the patient from this.
 cancel: if the patient wants to CANCEL their appointment (and is not picking a new time), add "cancel":true inside lead. For reschedule just output the new slot_ts — old booking auto-replace avutundi. The context shows this patient's upcoming appointment if any — confirm that time with them before cancelling, and be warm about rebooking later.
-Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, "send_catalog":true when someone asks about the DermaLuxe Academy / training courses (the course catalog PDF is sent automatically with your reply — mention "Course catalog PDF ikkada pampistunnanu 📄"), and "urgent":"<one line>" for medical emergencies.`;
+Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, "send_catalog":true when someone asks about the DermaLuxe Academy / training courses (the course catalog PDF is sent automatically with your reply — mention "Course catalog PDF ikkada pampistunnanu 📄"), "trust":true when the patient hesitates (asks who the doctor is / whether results come / is it safe / will think about it) — the doctor card, Google rating and before/after go out after your reply, and "urgent":"<one line>" for medical emergencies.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
 const PHOTO_RULES = facts.photoRules("WhatsApp");
@@ -914,7 +929,13 @@ module.exports = async (req, res) => {
     if (cfg && msg.referral && (msg.referral.source_type === "ad" || msg.referral.source_id)) {
       const rph = String(msg.from || "").replace(/\D/g, "").slice(-10);
       const ref = { ad: String(msg.referral.source_id || "").slice(0, 40), headline: String(msg.referral.headline || "").slice(0, 120), ts: Date.now() };
-      if (rph.length === 10 && ref.ad) await guard.kvCommand(cfg, ["SET", `ad:ref:${rph}`, JSON.stringify(ref), "EX", String(30 * 86400)]).catch(() => {});
+      if (rph.length === 10 && ref.ad) {
+        await guard.kvCommand(cfg, ["SET", `ad:ref:${rph}`, JSON.stringify(ref), "EX", String(30 * 86400)]).catch(() => {});
+        // The ad already told us the concern: the grade starts from it, and the
+        // agent will not ask it again.
+        const c = adConcern(ref.headline);
+        if (c && c !== "academy") await qualify.absorb(cfg, rph, { problem: c }, { channel: "whatsapp" }).catch(() => {});
+      }
     }
 
     const fromFull = String(msg.from || "").replace(/\D/g, "");
@@ -1175,13 +1196,27 @@ module.exports = async (req, res) => {
   // What the qualifier already knows (how far they are, what is still unasked),
   // where the chat came from, and whether this "message" is Meta's ad prefill
   // rather than the patient's own words.
+  let known = "", adLead = "";
   if (cfg) {
+    // Somebody the clinic has already treated is not a stranger.
+    known = await memory.contextLine(cfg, digits).catch(() => "");
+    extraCtx += known;
     const qrec0 = await qualify.read(cfg, digits);
     if (qrec0) extraCtx += qualify.contextLine(qrec0);
     const ar0 = await guard.kvCommand(cfg, ["GET", `ad:ref:${digits}`]).catch(() => ({}));
-    try { const ref0 = ar0 && ar0.result ? JSON.parse(ar0.result) : null; if (ref0 && ref0.headline) extraCtx += `[came from our ad: "${ref0.headline}"] `; } catch (e) {}
+    try {
+      const ref0 = ar0 && ar0.result ? JSON.parse(ar0.result) : null;
+      if (ref0 && ref0.headline) {
+        extraCtx += `[came from our ad: "${ref0.headline}"] `;
+        adLead = adConcern(ref0.headline);
+        // The first replies of an ad conversation: the concern is known, go for the slot.
+        if (adLead && adLead !== "academy" && hist.length < 3) extraCtx += `[AD LEAD — concern from the ad: ${adLead}. Do not ask what concern; confirm it in one line and ask how long / offer slots. A slot within 3 replies.] `;
+      }
+    } catch (e) {}
   }
-  if (lint.isMetaPrefill(text)) extraCtx += "[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish and ask what concern they have] ";
+  if (lint.isMetaPrefill(text)) extraCtx += adLead && adLead !== "academy"
+    ? `[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish, own the concern "${adLead}" from the ad in one warm line, do not ask what concern they have] `
+    : "[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish and ask what concern they have] ";
 
   const ownerRules = cfg ? await rules.block(cfg).catch(() => "") : "";
   let out;
@@ -1233,7 +1268,8 @@ module.exports = async (req, res) => {
     try {
       const im = await inbox.meta(cfg, digits);
       const oo = await guard.kvCommand(cfg, ["SISMEMBER", "optout", digits]).catch(() => ({}));
-      qrec = await qualify.absorb(cfg, digits, out.qual || {}, { inboundCount: (im && im.inCount) || hist.length + 1, photo_sent: !!imageId, opted_out: !!(oo && Number(oo.result) === 1), channel: "whatsapp" });
+      qrec = await qualify.absorb(cfg, digits, out.qual || {}, { inboundCount: (im && im.inCount) || hist.length + 1, photo_sent: !!imageId, opted_out: !!(oo && Number(oo.result) === 1), channel: "whatsapp",
+        status: /last visit|came \d+ times/.test(known) ? "visited" : undefined });   // a patient who has been here is graded as one
       await qualify.react(cfg, digits, qrec, { name: (out.lead && out.lead.name) || profileName });
     } catch (e) { console.error("wa: qualify", e && e.message); }
     // The editor: a deterministic read of the reply before it goes out.
@@ -1247,6 +1283,14 @@ module.exports = async (req, res) => {
       const st = await storeLead(cfg, out.lead, digits, text);
       justBooked = (st && st.bookedAt) || 0;
     } catch (e) {}
+  }
+  if (justBooked && cfg) {
+    // Meta learns who actually fixes a slot, not who merely says hello — and
+    // the scoreboard learns how many replies a booking took, ad vs organic.
+    const eventId = "sch-" + crypto.createHash("sha256").update(`${digits}|${justBooked}`).digest("hex").slice(0, 24);
+    capi.send("Schedule", { phone: digits, eventId, custom: { content_name: String((out.lead && out.lead.concern) || "").slice(0, 60), source: adLead ? "ad" : "organic" } }).catch(() => {});
+    await guard.kvCommand(cfg, ["LPUSH", "ttb:log", JSON.stringify({ ts: Date.now(), ph: digits.slice(-4), turns: hist.length + 1, ad: !!adLead, known: !!known, at: justBooked })]).catch(() => {});
+    await guard.kvCommand(cfg, ["LTRIM", "ttb:log", "0", "999"]).catch(() => {});
   }
   // Cancellation works even when the lead JSON came without a name.
   if (out.lead && out.lead.cancel === true) {
@@ -1303,7 +1347,22 @@ module.exports = async (req, res) => {
     else await sendCloud(cloud.phoneNumberId, cloud.to, out.reply);
     // Fresh booking + UPI configured → optional advance ask (cuts no-shows).
     // Off until UPI_VPA env is set; amount via ADVANCE_AMOUNT (default 200).
-    if (justBooked && process.env.UPI_VPA && Number(process.env.ADVANCE_AMOUNT || 200) > 0) {
+    // With Razorpay set up the link locks the slot by itself when it is paid
+    // (pay-hook); the UPI text below is the fallback that needs a "PAID" reply.
+    let advLink = null;
+    if (justBooked && Number(process.env.ADVANCE_AMOUNT || 200) > 0 && require("./_pay.js").rzpOn()) {
+      const amt = Number(process.env.ADVANCE_AMOUNT || 200);
+      advLink = await require("./_pay.js").advanceLink(cfg, { phone: digits, name: (out.lead && out.lead.name) || profileName, at: justBooked, amount: amt }).catch(() => null);
+      if (advLink) {
+        await sendCloud(cloud.phoneNumberId, cloud.to,
+          `💳 *Slot lock cheyalante (optional):*\n₹${amt} advance — mee visit bill lo adjust avutundi 👍\n\n👉 ${advLink}\n(GPay / PhonePe / card — 1 nimisham)\n\nPay ayina ventane mee slot automatic ga CONFIRM avutundi ✅`);
+        if (cfg && hist.length) {
+          hist[hist.length - 1].a += "\n[Advance payment link pampanu — pay chesthe slot automatic ga confirm avutundi ani cheppu; PAID ani adagakkarledu]";
+          await saveHistory(cfg, histKey, hist);
+        }
+      }
+    }
+    if (justBooked && !advLink && process.env.UPI_VPA && Number(process.env.ADVANCE_AMOUNT || 200) > 0) {
       const amt = Number(process.env.ADVANCE_AMOUNT || 200);
       const vpa = process.env.UPI_VPA.trim();
       const payee = encodeURIComponent(process.env.UPI_PAYEE || "DermaLuxe by Medicare");
@@ -1328,6 +1387,18 @@ module.exports = async (req, res) => {
         }
       } catch (e) { console.error("wa: gallery send", e && e.message); }
     }
+    // The patient hesitated: the doctor, the rating and real results, once a week.
+    if (cfg && (out.trust === true || trust.hesitant(text)) && !imageId) {
+      try {
+        const base = `https://${String(req.headers["x-forwarded-host"] || req.headers.host || "www.dermaluxe.ai")}`;
+        const want = (out.qual && out.qual.problem) || (out.lead && out.lead.concern) || (profile && profile.concern) || adLead || "";
+        const tp = await trust.send(cfg, digits, { concern: want, gallery: async (c) => (await galleryFor(cfg, c)).map((it) => ({ url: `${base}/api/media?id=${it.imgId}`, caption: it.caption })) });
+        if (tp.sent && hist.length) {
+          hist[hist.length - 1].a += "\n[Doctor card + Google rating + results photos pampanu — malli describe cheyyaku, slot question meeda focus]";
+          await saveHistory(cfg, histKey, hist);
+        }
+      } catch (e) { console.error("wa: trust pack", e && e.message); }
+    }
     // Academy enquiry → course catalog PDF (once per number).
     try { await maybeSendCatalog(cfg, cloud, out, text); } catch (e) { console.error("wa: catalog send", e && e.message); }
     // Enrolled student wrote to us → hand over any material we could not deliver earlier.
@@ -1339,3 +1410,4 @@ module.exports = async (req, res) => {
 module.exports.confirmAppt = confirmAppt;
 module.exports.askClaude = askClaude;
 module.exports.recordRating = recordRating;
+module.exports.nowIstCtx = nowIstCtx;

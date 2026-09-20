@@ -64,6 +64,37 @@ async function razorpayLink(cfg, bill, balance) {
   } catch (e) { console.error("razorpay link", e && e.message); return null; }
 }
 
+// A payment link for the advance on a booked slot. Paid → the webhook marks
+// the appointment confirmed and locked; nobody has to read a "PAID" reply.
+// One link per booking (the same slot re-confirmed mid-chat reuses it).
+async function advanceLink(cfg, o) {
+  const amount = Math.round(Number(o.amount || 0));
+  if (!rzpOn() || !(amount > 0) || !o.phone || !o.at) return null;
+  const key = `adv:link:${o.phone}`;
+  const prev = JSON.parse(((await guard.kvCommand(cfg, ["GET", key]).catch(() => ({}))) || {}).result || "null");
+  if (prev && prev.at === o.at && prev.amount === amount && prev.url) return prev.url;
+  const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString("base64");
+  try {
+    const r = await fetch("https://api.razorpay.com/v1/payment_links", {
+      method: "POST",
+      headers: { Authorization: `Basic ${auth}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        amount: amount * 100, currency: "INR",
+        reference_id: `adv-${o.phone}-${Date.now().toString(36)}`,
+        description: "DermaLuxe appointment advance (adjusted in your bill)",
+        customer: { name: String(o.name || "Patient").slice(0, 50), contact: "+91" + o.phone },
+        notify: { sms: false, email: false }, reminder_enable: false,
+        notes: { appt: `${o.phone}|${o.at}`, kind: "advance" },
+        expire_by: Math.floor(Math.min(o.at, Date.now() + 2 * 86400000) / 1000),
+      }),
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.short_url) { console.error("razorpay advance", r.status, JSON.stringify(d).slice(0, 200)); return null; }
+    await guard.kvCommand(cfg, ["SET", key, JSON.stringify({ id: d.id, url: d.short_url, at: o.at, amount, ts: Date.now() }), "EX", "172800"]).catch(() => {});
+    return d.short_url;
+  } catch (e) { console.error("razorpay advance", e && e.message); return null; }
+}
+
 function webhookOk(raw, signature) {
   const s = process.env.RAZORPAY_WEBHOOK_SECRET;
   if (!s || !raw || !signature) return false;
@@ -71,4 +102,4 @@ function webhookOk(raw, signature) {
   return guard.safeEqual(String(signature), want);
 }
 
-module.exports = { sig, okSig, link, upi, rzpOn, razorpayLink, webhookOk };
+module.exports = { sig, okSig, link, upi, rzpOn, razorpayLink, advanceLink, webhookOk };

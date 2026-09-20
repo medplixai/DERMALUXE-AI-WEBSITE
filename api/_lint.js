@@ -135,7 +135,7 @@ async function check(cfg, out, patientText, recent, opts) {
   const res = await rewrite(out, faults, patientText, o);
   try {
     const guard = require("./_guard.js");
-    if (cfg) {
+    if (cfg && !o.exam) {      // the nightly exam's chats are not the day's record
       await guard.kvCommand(cfg, ["LPUSH", "lint:log", JSON.stringify({ ts: Date.now(), ch: o.channel || "wa", faults: faults.map((f) => f.code), rewritten: res.rewritten, left: res.faults.map((f) => f.code) })]);
       await guard.kvCommand(cfg, ["LTRIM", "lint:log", "0", "999"]);
     }

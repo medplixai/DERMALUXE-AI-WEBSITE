@@ -43,6 +43,7 @@ const OK = {
   "staff:lastlogin": "read through hashAll() in staff.js (the panel)",
   "lead:owner": "read through hashOf() in _queue.js and hashSome() in staff.js (the lead card shows the colleague)",
   "lead:oat": "read through hashOf() in _queue.js (each caller's day)",
+  "gplace:reviews:v1": "written by reviews.js through its CACHE_KEY constant; _trust.js reads the same copy",
   // records kept for looking back, deliberately not on a screen
   "office:log": "what staff asked AI Office — kept for the record, 500 entries",
   "acad:dl": "which student opened which material — kept for the record",

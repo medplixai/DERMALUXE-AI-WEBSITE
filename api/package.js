@@ -171,6 +171,7 @@ module.exports = async (req, res) => {
       n: s0.done + 1, at: Date.now(), by: me.name, note: clean(b.note, 200),
     }]);
     await put(cfg, p);
+    try { await require("./_memory.js").forget(cfg, p.phone); } catch (e) {}
     const s = shape(p);
     if (s.left === 0) await guard.kvCommand(cfg, ["LREM", "pkg:open", "1", p.id]).catch(() => {});
     return json(res, 200, { ok: true, pkg: s });

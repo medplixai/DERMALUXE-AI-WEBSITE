@@ -21,6 +21,10 @@ const API = process.env.DL_API;
 const calls = [];
 global.fetch = async (u) => { calls.push(String(u)); return { ok: true, status: 200, json: async () => ({}), text: async () => "" }; };
 
+// The real staff module: cron-exam also lets a manager's login start it from
+// the app, and the harness's stand-in would wave any bearer through.
+delete require.cache[path.join(API, "staff.js")];
+require(path.join(API, "staff.js"));
 const CRONS = fs.readdirSync(API).filter((f) => /^cron-.*\.js$/.test(f)).map((f) => f.replace(/\.js$/, "")).sort();
 
 const call = (mod, q, headers) => new Promise((resolve) => {

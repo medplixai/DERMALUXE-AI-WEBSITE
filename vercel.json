@@ -100,6 +100,9 @@
     "api/cron-backup.js": {
       "maxDuration": 300
     },
+    "api/cron-exam.js": {
+      "maxDuration": 300
+    },
     "api/kvrestore.js": {
       "maxDuration": 300
     }
@@ -132,6 +135,10 @@
     {
       "path": "/api/cron-backup",
       "schedule": "20 20 * * *"
+    },
+    {
+      "path": "/api/cron-exam",
+      "schedule": "30 21 * * *"
     }
   ],
   "rewrites": [

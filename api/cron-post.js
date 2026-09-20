@@ -67,7 +67,7 @@ module.exports = async (req, res) => {
   // ---- Appointment reminders: ~2h-before nudge via template ---------------
   // (Same-day 9AM reminder lives in cron-digest; if that one already covered
   // a near appointment it sets r2 too, so patients never get double-pinged.)
-  let reminded = 0;
+  let reminded = 0, lateAsked = 0;
   try {
     const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
     for (const raw of (aq.result || [])) {
@@ -88,6 +88,21 @@ module.exports = async (req, res) => {
             await notify.sendWa(to, `🩺 ${a.name || "?"} (${a.ph}) — ${admin.fmtIst(a.at)} appointment time daatindi.\nVachhara? — *arrived ${a.ph}* pampandi ✅\nRaakapothe — *noshow ${a.ph}* pampandi (rebook nudge veltundi)`).catch(() => {});
           }
         }
+        continue;
+      }
+      // Thirty minutes past the slot and not marked arrived: ask the patient
+      // themselves, once, with the three answers that matter. A "Reschedule"
+      // tap lands with the agent, which offers new slots; the desk sees the
+      // rest on the day's list.
+      const late = (now - a.at) / 60000;
+      if (late >= 30 && late <= 90 && !a.lc && (!a.status || a.status === "booked")) {
+        const first = String(a.name || "").trim().split(" ")[0] || "andi";
+        let ok = await notify.sendWaButtons(a.ph, `${first} garu 🙏 mee ${admin.fmtIst(a.at)} DermaLuxe appointment ki vastunnara?`, ["✅ Vastunnanu", "⏰ Late avutundi", "📅 Reschedule"]).catch(() => false);
+        if (!ok) ok = !!(await notify.sendWaTemplate(a.ph, "appointment_reminder", [first, `${admin.fmtIst(a.at)} — vastunnara? Late ayite / time marchali ante ee message ki reply cheyandi 🙏`]).catch(() => null) || {}).ok;
+        a.lc = 1;
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
+        if (ok) lateAsked++;
         continue;
       }
       const mins = (a.at - now) / 60000;
@@ -142,5 +157,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: broadcast drain", e && e.message); }
 
-  return res.status(200).json({ ok: true, published, kept, dropped, reminded, bsent, graded, rescued });
+  return res.status(200).json({ ok: true, published, kept, dropped, reminded, lateAsked, bsent, graded, rescued });
 };
