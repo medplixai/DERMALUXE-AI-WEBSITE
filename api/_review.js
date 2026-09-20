@@ -67,7 +67,7 @@ async function run(cfg, day) {
     const editor = lint.checked ? `\n\nEDITOR (automatic reply check) YESTERDAY: ${lint.checked} replies had a fault, ${lint.rewritten} were fixed before sending — ${Object.entries(byFault).map(([k, v]) => `${k}×${v}`).join(", ")}. What you read is what was sent.` : "";
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST", headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: process.env.REVIEW_MODEL || process.env.AI_MODEL || "claude-opus-5", max_tokens: 3000, system: RUBRIC, messages: [{ role: "user", content: transcripts + editor }] }),
+      body: JSON.stringify({ model: process.env.REVIEW_MODEL || process.env.AI_MODEL || "claude-opus-5", max_tokens: 3000, system: RUBRIC + require("./_prices.js").judgeNote(await require("./_prices.js").load(cfg).catch(() => null)), messages: [{ role: "user", content: transcripts + editor }] }),
     });
     if (!r.ok) throw new Error("review: claude HTTP " + r.status);
     const data = await r.json();

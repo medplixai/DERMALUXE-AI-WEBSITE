@@ -184,6 +184,59 @@ async function sendCloudButtons(phoneNumberId, to, bodyText) {
   }
 }
 
+// The treatment menu: ten rows a patient can tap, in three sections. A tap
+// sends the row's title back, and the agent explains that treatment. Row
+// descriptions carry the owner's "starts from" band when the policy allows.
+const MENU = [
+  { s: "Skin", t: "Acne & scars", d: "Pimples, marks, scars — peels, MNRF, CO2" },
+  { s: "Skin", t: "Pigmentation", d: "Dark spots, melasma, tan — PICO, peels" },
+  { s: "Skin", t: "Hydrafacial", d: "Instant glow, zero downtime, 45 min" },
+  { s: "Skin", t: "Laser hair removal", d: "Diode laser, safe for Indian skin" },
+  { s: "Skin", t: "Skin diseases", d: "Eczema, psoriasis, vitiligo, fungal, warts" },
+  { s: "Hair", t: "Hair fall / PRP", d: "PRP, GFC, mesotherapy — hair roots ki" },
+  { s: "Hair", t: "Hair transplant", d: "FUE / DHI / Bio-FUE, natural hairline" },
+  { s: "Anti-ageing", t: "Botox & fillers", d: "Lines, volume, jawline — MD dermatologist" },
+  { s: "Anti-ageing", t: "HIFU / skin tightening", d: "Non-surgical lift, single session" },
+  { s: "Anti-ageing", t: "Weight loss", d: "Doctor-supervised, body contouring" },
+];
+const MENU_ASK = /^(💆 services|services|menu|treatments?|treatment list|price list|rates|list)\s*\??$/i;
+async function sendCloudMenu(phoneNumberId, to, cfg) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  if (!token || !phoneNumberId || !to) return false;
+  let bands = [];
+  try { const p = await require("./_prices.js").load(cfg); if (p.mode === "bands") bands = p.bands; } catch (e) {}
+  const desc = (row) => {
+    const b = bands.find((x) => new RegExp(x.name.split(/\s+/)[0], "i").test(row.t));
+    return (b ? `₹${b.from.toLocaleString("en-IN")}+ · ` : "") + row.d;
+  };
+  const sections = [];
+  for (const row of MENU) {
+    let sec = sections.find((x) => x.title === row.s);
+    if (!sec) { sec = { title: row.s, rows: [] }; sections.push(sec); }
+    sec.rows.push({ id: "m" + (sec.rows.length + 1) + row.s.slice(0, 2), title: row.t.slice(0, 24), description: desc(row).slice(0, 72) });
+  }
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneNumberId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({
+        messaging_product: "whatsapp", to, type: "interactive",
+        interactive: {
+          type: "list",
+          header: { type: "text", text: "DermaLuxe treatments" },
+          body: { text: "Mana treatments 👇 okati tap cheyandi — details cheptam. Anni MD dermatologists supervision lo, USFDA machines tho." },
+          footer: { text: "Exact plan & cost — doctor consultation lo" },
+          action: { button: "🗂 Treatments", sections },
+        },
+      }),
+    });
+    if (r.ok) return true;
+    let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+    console.error("wa: menu send failed", r.status, d);
+  } catch (e) { console.error("wa: menu send error", e && e.message); }
+  return sendCloud(phoneNumberId, to, "Mana treatments:\n" + MENU.map((m) => "• " + m.t + " — " + m.d).join("\n") + "\n\nE concern gurinchi cheppamantaru?");
+}
+
 // Generic tap-to-select list message (careers roles etc.).
 async function sendCloudList(phoneNumberId, to, bodyText, buttonLabel, sectionTitle, rows) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -1186,6 +1239,14 @@ module.exports = async (req, res) => {
         }
       } catch (e) {}
     }
+  }
+  // "Services" / "menu": the treatment list, tappable — no model turn needed.
+  if (isMeta && cfg && !imageId && !audioId && MENU_ASK.test(text)) {
+    await sendCloudMenu(cloud.phoneNumberId, cloud.to, cfg);
+    hist.push({ u: text, a: "[Treatment menu list pampanu — patient okati tap chesthe aa treatment gurinchi explain cheyi, tarvata concern/slot ki move avvu]" });
+    await saveHistory(cfg, histKey, hist);
+    await logOut("🗂 Treatments list");
+    return res.status(200).json({ ok: true, menu: true });
   }
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;

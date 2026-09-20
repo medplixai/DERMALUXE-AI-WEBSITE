@@ -129,6 +129,18 @@ async function buildWeekly(cfg) {
       const bookedAfter = tl.filter((x) => leads.some((l) => ph10(l.phone) === x.phone && (["booked", "visited"].includes(st[keyOf(l)] || "") || (l.slot && l.date)))).length;
       lines.push(`🤝 Trust pack (doctor + rating + results): ${tl.length} mandiki → ${bookedAfter} book chesaru`);
     }
+    // recalls (treatment due) → booked after; campaigns → replied / booked
+    const cyc = (((await guard.kvCommand(cfg, ["LRANGE", "cyc:log", "0", "499"]).catch(() => ({}))).result) || []).map(parse).filter((x) => x && x.ts >= since);
+    if (cyc.length) {
+      let bk2 = 0;
+      for (const key of ["appt:q", "appt:done"]) {
+        const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "399"]).catch(() => ({}));
+        for (const s of (q.result || [])) { const a = parse(s); if (a && a.at > since && cyc.some((c) => c.phone === ph10(a.ph) && a.at > c.ts)) bk2++; }
+      }
+      lines.push(`🔁 Treatment due recalls: ${cyc.length} mandiki → ${bk2} book chesaru`);
+    }
+    const cmps = (await require("./_campaign.js").list(cfg, 10).catch(() => [])).filter((c) => c.ts >= since);
+    for (const c of cmps) lines.push(`📣 ${c.name}: ${c.sent}/${c.n} vellindi · ${c.replied} reply · ${c.booked} booked`);
   } catch (e) { console.error("weekly: scoreboard", e && e.message); }
 
   // Smart-link clicks by placement (last 7 full days), with last-week trend

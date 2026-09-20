@@ -44,7 +44,7 @@ function lintReply(out, patientText, recent, opts) {
 
   // Prices: the site never quotes treatment prices; the academy's fees are published.
   const rupees = [...prose.matchAll(/₹\s?([\d,]{3,})|(?:rs\.?|inr)\s?([\d,]{3,})/gi)].map((m) => Number((m[1] || m[2]).replace(/,/g, ""))).filter((n) => n >= 100);
-  const odd = [...new Set(rupees.filter((n) => !ALLOWED_RUPEES.has(n)))];
+  const odd = [...new Set(rupees.filter((n) => !ALLOWED_RUPEES.has(n) && !(o.allow && o.allow.has(n))))];
   if (odd.length) faults.push({ code: "price_quoted", note: `₹${odd.join(", ₹")} cheppav — treatment prices eppudu cheppakudadu; "consultation lo doctor exact plan istaru" ani cheppi slot adugu (academy fees ₹9,999/₹49,999/₹99,999 matrame allowed)` });
 
   if (MEDICINE.test(prose)) faults.push({ code: "medicine", note: "medicine peru / dose cheppav — receptionist medicines cheppadu; lifestyle tips matrame, medicines doctor consultation lo" });
@@ -128,8 +128,15 @@ async function rewrite(out, faults, patientText, opts) {
 }
 
 // Lint, rewrite if needed, and write the editor's log line. Returns the reply to send.
+let allowCache = { at: 0, set: null };
 async function check(cfg, out, patientText, recent, opts) {
   const o = Object.assign({}, opts || {}, { recent });
+  // The owner's price policy: numbers it permits are not faults. Read once a
+  // few minutes, not once a reply.
+  if (cfg && !o.allow) {
+    if (Date.now() - allowCache.at > 300000) { allowCache = { at: Date.now(), set: await require("./_prices.js").allowed(cfg).catch(() => null) }; }
+    if (allowCache.set) o.allow = allowCache.set;
+  }
   const faults = lintReply(out, patientText, recent, o);
   if (!faults.length) return out;
   const res = await rewrite(out, faults, patientText, o);

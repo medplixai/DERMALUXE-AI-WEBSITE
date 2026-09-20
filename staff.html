@@ -844,6 +844,36 @@
             <div class="noteform" style="margin-top:10px"><input id="ruleText" maxlength="300" placeholder="Agent em cheyyali / cheyyakudadu?" /><button class="btn btn--gold btn--sm" id="ruleAdd">Add</button></div>
             <div class="err" id="ruleErr"></div>
             <div id="ruleList" style="margin-top:10px"></div></div>
+          <div class="box"><h2>Price policy <span class="te" style="font-size:.9rem;color:var(--g3)">· ధరల నియమం</span></h2>
+            <p>Patient "entha avutundi?" ani adigithe agent em cheppali — mee decision. Default: emi cheppadu (consultation lo doctor cheptaru).</p>
+            <div style="margin-top:10px;display:grid;gap:8px">
+              <label class="meta"><input type="radio" name="pmode" value="none"> Emi cheppaku (paata rule)</label>
+              <label class="meta"><input type="radio" name="pmode" value="consult"> Consultation fee matrame cheppu — ₹ <input id="pConsult" inputmode="numeric" style="width:90px" placeholder="500"></label>
+              <label class="meta"><input type="radio" name="pmode" value="bands"> Consultation fee + ee treatments ki "starts from" range:</label>
+              <div id="pBands" style="display:grid;gap:6px"></div>
+              <div><button class="btn btn--sm" id="pBandAdd" type="button">+ Treatment</button> <button class="btn btn--gold btn--sm" id="pSave" type="button">Save</button></div>
+              <div class="err" id="pErr"></div><div class="meta" id="pInfo"></div>
+            </div></div>
+          <div class="box"><h2>Treatment cycles <span class="te" style="font-size:.9rem;color:var(--g3)">· మళ్ళీ ఎప్పుడు</span></h2>
+            <p>Bill lo unna treatment ki "next time" enni rojulaki? Aa roju patient ki automatic ga slots tho message veltundi (10:45 AM). 0 pedithe aa treatment ki recall veladu.</p>
+            <div id="cycList" style="margin-top:10px;display:grid;gap:6px"></div>
+            <div style="margin-top:8px"><button class="btn btn--gold btn--sm" id="cycSave" type="button">Save</button> <span class="meta" id="cycInfo"></span></div></div>
+          <div class="box"><h2>Campaigns <span class="te" style="font-size:.9rem;color:var(--g3)">· సీజన్ ఆఫర్లు</span></h2>
+            <p>Ee nela ki ready drafts kinda unnayi — audience select chesi, preview chusi, pampandi. Okka manishiki 14 rojulaki okka campaign matrame veltundi; STOP annavaallu skip. Tarvata ikkade kanipistundi: enni vellayi, enni reply ichcharu, enni book chesaru.</p>
+            <div id="cmpSuggest" style="margin-top:10px"></div>
+            <div id="cmpForm" style="margin-top:10px;display:grid;gap:8px">
+              <input id="cmpName" maxlength="60" placeholder="Campaign peru (ex. Sankranti glow)">
+              <textarea id="cmpText" rows="4" maxlength="550" placeholder="Message (Hi <name>! ✨ … ani template lo veltundi)"></textarea>
+              <div class="noteform" style="flex-wrap:wrap">
+                <select id="cmpTpl"><option value="clinic_update">Clinic update</option><option value="festival_offer">Festival offer</option><option value="flash_offer">Flash offer</option><option value="seasonal_tips">Seasonal tips</option><option value="new_service">New service</option></select>
+                <input id="cmpP2" maxlength="40" placeholder="Panduga / deadline (festival/flash ki)" style="min-width:160px">
+                <select id="cmpAud"><option value="all">Andariki (leads)</option><option value="visited">Vachchina patients</option><option value="cold">Cold leads (7–90 rojulu)</option><option value="seg">Concern word →</option></select>
+                <input id="cmpSeg" maxlength="20" placeholder="hair / skin / laser" style="width:120px">
+              </div>
+              <div class="noteform"><button class="btn btn--sm" id="cmpPreview" type="button">Preview — enni mandiki?</button><button class="btn btn--gold btn--sm" id="cmpSend" type="button" disabled>Pampu</button></div>
+              <div class="err" id="cmpErr"></div><div class="meta" id="cmpInfo"></div>
+            </div>
+            <div id="cmpList" style="margin-top:12px"></div></div>
           <div class="box"><h2>Agent exam <span class="te" style="font-size:.9rem;color:var(--g3)">· రాత్రి పరీక్ష</span></h2>
             <p>Roju podduna 8 AM ki 12 test patients (price shopper, Telugu-only, dooram, emergency, job seeker…) agent tho matladi score vastundi — meeku WhatsApp lo. Ippude chinna test cheyyalante:</p>
             <div class="noteform" style="margin-top:10px"><button class="btn btn--sm" id="examRun">3 patients tho ippudu test cheyyi</button></div>
@@ -3334,6 +3364,87 @@
           ' <button class="btn btn--sm" data-act="rule-del" data-id="' + esc(r.id) + '" style="margin-left:8px">Teesey</button></div></div>';
       }).join("") : '<p class="meta">Inka rules ledu — agent standard prompt ne follow avutundi.</p>';
     }
+    // What the agent may say about money.
+    function renderPrices() {
+      var p = (panel && panel.prices) || { mode: "none", consult: 0, bands: [] };
+      var r = document.querySelector('input[name="pmode"][value="' + p.mode + '"]'); if (r) r.checked = true;
+      if ($("pConsult")) $("pConsult").value = p.consult || "";
+      var host = $("pBands"); if (!host) return;
+      var bands = (p.bands && p.bands.length) ? p.bands : [{ name: "", from: "", to: "" }];
+      host.innerHTML = bands.map(function (b) { return bandRow(b); }).join("");
+      if ($("pInfo")) $("pInfo").textContent = p.ts ? "Last set: " + esc(p.by || "") + " · " + ago(p.ts) : "";
+    }
+    function bandRow(b) {
+      return '<div class="noteform pband" style="flex-wrap:wrap"><input class="pb-name" maxlength="40" placeholder="Treatment (ex. Hydrafacial)" value="' + esc(b.name || "") + '" style="min-width:150px"><span class="meta">₹</span><input class="pb-from" inputmode="numeric" placeholder="from" value="' + esc(b.from || "") + '" style="width:80px"><span class="meta">–</span><input class="pb-to" inputmode="numeric" placeholder="to" value="' + esc(b.to || "") + '" style="width:80px"><button type="button" class="btn btn--sm pb-del">✖</button></div>';
+    }
+    if ($("pBandAdd")) $("pBandAdd").onclick = function () { $("pBands").insertAdjacentHTML("beforeend", bandRow({})); };
+    if ($("pBands")) $("pBands").addEventListener("click", function (e) { var b = e.target.closest(".pb-del"); if (b) b.closest(".pband").remove(); });
+    if ($("pSave")) $("pSave").onclick = function () {
+      var mode = (document.querySelector('input[name="pmode"]:checked') || {}).value || "none";
+      var bands = Array.prototype.map.call(document.querySelectorAll("#pBands .pband"), function (row) {
+        return { name: row.querySelector(".pb-name").value.trim(), from: row.querySelector(".pb-from").value, to: row.querySelector(".pb-to").value };
+      }).filter(function (b) { return b.name; });
+      var btn = this; btn.disabled = true; $("pErr").textContent = "";
+      api("prices-set", { mode: mode, consult: $("pConsult").value, bands: bands })
+        .then(function (j) { panel.prices = j.prices; renderPrices(); toast("Price policy set ✅ — agent next message nundi follow avutundi"); })
+        .catch(function (x) { $("pErr").textContent = x.message; }).then(function () { btn.disabled = false; });
+    };
+    // When each treatment is due again.
+    function renderCycles() {
+      var host = $("cycList"); if (!host) return;
+      var rows = (panel && panel.cycles) || [];
+      host.innerHTML = rows.length ? rows.map(function (c) {
+        return '<div class="noteform"><span style="flex:1">' + esc(c.label) + '</span><input class="cyc-days" data-key="' + esc(c.key) + '" inputmode="numeric" value="' + c.days + '" style="width:70px"><span class="meta">rojulu' + (c.days !== c.dflt ? ' (default ' + c.dflt + ')' : "") + "</span></div>";
+      }).join("") : '<p class="meta">—</p>';
+    }
+    if ($("cycSave")) $("cycSave").onclick = function () {
+      var days = {};
+      document.querySelectorAll("#cycList .cyc-days").forEach(function (i) { days[i.dataset.key] = Number(i.value) || 0; });
+      var btn = this; btn.disabled = true;
+      api("cycles-set", { days: days }).then(function (j) { panel.cycles = j.cycles; renderCycles(); toast("Cycles save ayyayi ✅"); })
+        .catch(function (x) { toast(x.message); }).then(function () { btn.disabled = false; });
+    };
+    // Campaigns: this month's drafts, the form, and what past ones did.
+    function cmpapi(a, body) {
+      var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
+      if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a, cid: newCid() }, body)); }
+      return fetch(ORIGIN + "/api/campaign?a=" + a, opt).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+    }
+    var cmpPreviewOk = false;
+    function loadCampaigns() {
+      if (!$("cmpList") || !state.allow("msg.send")) return;
+      cmpapi("list").then(function (j) {
+        $("cmpSuggest").innerHTML = (j.suggest || []).length ? '<div class="meta" style="margin-bottom:6px">Ee nela ki ready drafts — tap chesthe form lo padutundi:</div>' + j.suggest.map(function (sg, i) {
+          return '<button type="button" class="btn btn--sm" data-cmp-sg="' + i + '" style="margin:0 6px 6px 0">' + esc(sg.name) + "</button>";
+        }).join("") : "";
+        $("cmpSuggest").dataset.sg = JSON.stringify(j.suggest || []);
+        $("cmpList").innerHTML = (j.campaigns || []).length ? '<h3 style="margin:0 0 6px">Ippativaraku</h3>' + j.campaigns.map(function (c) {
+          return '<div class="pnl-row"><span><b style="font-weight:600">' + esc(c.name) + '</b> <span class="meta">· ' + ago(c.ts) + " · " + esc(c.aud) + (c.seg ? " " + esc(c.seg) : "") + "</span><br><span class=\"meta\">" + c.sent + "/" + c.n + " vellindi" + (c.pending ? " · " + c.pending + " queue lo" : "") + "</span></span>" +
+            "<span><b>" + c.replied + "</b> reply · <b style=\"color:var(--ok)\">" + c.booked + "</b> booked</span></div>";
+        }).join("") : '<p class="meta">Inka campaigns pampaledu.</p>';
+      }).catch(function (x) { $("cmpList").innerHTML = '<p class="meta">' + esc(x.message) + "</p>"; });
+    }
+    if ($("cmpSuggest")) $("cmpSuggest").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-cmp-sg]"); if (!b) return;
+      var sg = JSON.parse($("cmpSuggest").dataset.sg || "[]")[Number(b.dataset.cmpSg)]; if (!sg) return;
+      $("cmpName").value = sg.name; $("cmpText").value = sg.text; $("cmpTpl").value = sg.tpl || "clinic_update"; $("cmpP2").value = sg.p2 || "";
+      $("cmpAud").value = sg.seg ? "seg" : "all"; $("cmpSeg").value = sg.seg || ""; cmpPreviewOk = false; $("cmpSend").disabled = true; $("cmpInfo").textContent = "";
+    });
+    if ($("cmpPreview")) $("cmpPreview").onclick = function () {
+      var btn = this; btn.disabled = true; $("cmpErr").textContent = "";
+      cmpapi("preview", { aud: $("cmpAud").value, seg: $("cmpSeg").value }).then(function (j) {
+        $("cmpInfo").textContent = j.count + " mandiki veltundi" + (j.rested ? " (" + j.rested + " mandiki 14 rojullo already vellindi — skip)" : "") + (j.sample.length ? " — ex. " + j.sample.join(", ") : "") + " · approx ₹" + Math.ceil(j.count * 0.8);
+        cmpPreviewOk = j.count > 0; $("cmpSend").disabled = !cmpPreviewOk || !state.allow("settings.manage");
+      }).catch(function (x) { $("cmpErr").textContent = x.message; }).then(function () { btn.disabled = false; });
+    };
+    if ($("cmpSend")) $("cmpSend").onclick = function () {
+      if (!cmpPreviewOk) return;
+      if (!confirm("Ee campaign pampanaa? Paid templates — approx cost preview lo undi.")) return;
+      var btn = this; btn.disabled = true; $("cmpErr").textContent = "";
+      cmpapi("send", { name: $("cmpName").value.trim(), text: $("cmpText").value.trim(), tpl: $("cmpTpl").value, p2: $("cmpP2").value.trim(), aud: $("cmpAud").value, seg: $("cmpSeg").value.trim() })
+        .then(function (j) { toast(j.queued + " mandiki queue lo pettam — ~" + j.minutes + " nimishallo anni veltayi"); cmpPreviewOk = false; $("cmpText").value = ""; $("cmpName").value = ""; loadCampaigns(); })
+        .catch(function (x) { $("cmpErr").textContent = x.message; btn.disabled = false; });
+    };
     // Who was dealt which calls today, and who has not made them.
     function renderCallTeam() {
       var host = $("callTeam"); if (!host) return;
@@ -3382,7 +3493,7 @@
     function renderPanel() {
       if (!panel) return;
       paintHealth(panel.health);
-      renderRules(); renderCallTeam();
+      renderRules(); renderCallTeam(); renderPrices(); renderCycles(); loadCampaigns();
       var R = panel.roles || {}, amOwner = panel.me && panel.me.role === "owner";
 
       // --- logins

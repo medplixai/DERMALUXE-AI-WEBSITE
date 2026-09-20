@@ -521,6 +521,17 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, rules: out.rules });
   }
 
+  // What the agent may say about money, and when a treatment is due again —
+  // both the owner's to change from the control panel.
+  if (a === "prices-set" || a === "cycles-set") {
+    if (req.method !== "POST") return json(res, 405, { error: "POST" });
+    if (!allow("settings.manage")) return json(res, 403, { error: "Idi owner/manager ki matrame" });
+    const out = a === "prices-set" ? await require("./_prices.js").save(cfg, b, me.name) : await require("./_cycles.js").setDays(cfg, b.days || {}, me.name);
+    if (!out.ok) return json(res, 400, { error: out.error });
+    await audit(cfg, me, a === "prices-set" ? `Price policy: ${out.prices.mode}${out.prices.consult ? " · consult ₹" + out.prices.consult : ""}` : "Treatment cycle days maarcharu");
+    return json(res, 200, out);
+  }
+
   // The rest of the lead book, a page at a time. The app asks for this when
   // someone searches, opens Patients, or widens the date filter — not on the
   // way in, which is the whole point.
@@ -615,13 +626,15 @@ module.exports = async (req, res) => {
     }).sort((x, y) => (y.lastLogin || 0) - (x.lastLogin || 0));
     const audit = (log.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
     // The owner's own rules for the agent, and who is behind on calls today.
-    const [agentRules, team2] = await Promise.all([
+    const [agentRules, team2, prices, cycles] = await Promise.all([
       require("./_rules.js").load(cfg).catch(() => []),
       require("./_queue.js").teamDay(cfg).catch(() => []),
+      require("./_prices.js").load(cfg).catch(() => null),
+      require("./_cycles.js").table(cfg).catch(() => []),
     ]);
     return json(res, 200, {
       ok: true, roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, people, health,
-      agentRules, callTeam: team2,
+      agentRules, callTeam: team2, prices, cycles,
       owners: ownerPhones().map((ph) => ({ phone: ph, lastLogin: Number(last[ph] || 0) || null })),
       passwordSet: !!(pwd && pwd.result),
       audit, me: Object.assign({}, me, { caps: effCaps(roles, me) }),

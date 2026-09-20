@@ -498,14 +498,25 @@ function promoParams(tpl, name, text, p2) {
 
 // Distinct opted-in patient phones from the lead book (job applicants out,
 // optional concern/treatments segment filter).
-async function bcTargets(cfg, seg) {
+async function bcTargets(cfg, seg, opts) {
   const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]);
   const opt = await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}));
   const optSet = new Set(opt.result || []);
+  // cold: enquiries 7–90 days old that never fixed a slot (the campaigns screen)
+  const cold = !!(opts && opts.cold);
+  const booked = new Set();
+  if (cold) for (const key of ["appt:q", "appt:done"]) {
+    const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "299"]).catch(() => ({}));
+    for (const s of (q.result || [])) { try { booked.add(String(JSON.parse(s).ph)); } catch (e) {} }
+  }
   const seen = new Set(); const targets = [];
   for (const s of (r.result || [])) {
     let l; try { l = JSON.parse(s); } catch (e) { continue; }
     if (!l || l.type === "job") continue;
+    if (cold) {
+      const age = Date.now() - (l.ts || 0);
+      if (age < 7 * 86400000 || age > 90 * 86400000 || (l.slot && l.date) || booked.has(String(l.phone || "").replace(/\D/g, "").slice(-10))) continue;
+    }
     if (seg) {
       const hay = (String(l.concern || "") + " " + (Array.isArray(l.treatments) ? l.treatments.join(" ") : "")).toLowerCase();
       if (hay.indexOf(seg) === -1) continue;
@@ -1721,4 +1732,4 @@ async function handle(cfg, digits, text, photo, video) {
   return null; // not an admin command → normal patient flow
 }
 
-module.exports = { isAdmin, handle, publishNow, fmtIst, promoParams };
+module.exports = { isAdmin, handle, publishNow, fmtIst, promoParams, bcTargets };

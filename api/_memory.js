@@ -59,13 +59,14 @@ async function facts(cfg, phone) {
   }
   const ratings = ((rvR && rvR.result) || []).map((x) => parse(x, null)).filter((r) => r && ten(r.ph) === ph && Number(r.rating));
   const name = pt.name || (prof && prof.name) || (past[0] && past[0].name) || "";
-  if (!name && !past.length && !packages.length && !(prof && prof.concern)) return null;
+  const cycle = await require("./_cycles.js").dueLine(cfg, ph).catch(() => "");
+  if (!name && !past.length && !packages.length && !cycle && !(prof && prof.concern)) return null;
   return {
     name, stage: pt.stage || "",
     lastConcern: (prof && prof.concern) || (past[0] && (past[0].concern || past[0].treatment)) || "",
     came: came.length, missed: missed.length,
     last: came[0] ? { at: came[0].at, concern: came[0].concern || came[0].treatment || "", doctor: came[0].staffName || "" } : null,
-    packages, lastRating: ratings.length ? Number(ratings[0].rating) : 0,
+    packages, cycle, lastRating: ratings.length ? Number(ratings[0].rating) : 0,
     tags: Array.isArray(pt.tags) ? pt.tags.slice(0, 4) : [],
   };
 }
@@ -83,6 +84,7 @@ function line(f) {
     const due = p.nextDue < Date.now() ? `due since ${fmt(p.nextDue)} (OVERDUE — offer slots for it now)` : `next due ${fmt(p.nextDue)}`;
     bits.push(`package ${p.treatment}: ${p.done}/${p.total} sittings done, ${due}`);
   }
+  if (f.cycle) bits.push(f.cycle);
   if (f.lastRating) bits.push(`rated us ${f.lastRating}★ last time`);
   if (f.stage) bits.push(`treatment stage: ${f.stage}`);
   if (f.tags.length) bits.push(`desk tags: ${f.tags.join(", ")}`);

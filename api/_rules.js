@@ -40,8 +40,9 @@ async function remove(cfg, id) {
 // they are the clinic changing its mind about something the prompt still says.
 async function block(cfg) {
   const rules = await load(cfg);
-  if (!rules.length) return "";
-  return `\n\nOWNER RULES — the clinic's own instructions, added after this prompt was written. They win over anything above that disagrees with them:\n${rules.map((r, i) => `${i + 1}. ${r.text}`).join("\n")}`;
+  const prices = await require("./_prices.js").blockFor(cfg).catch(() => "");
+  if (!rules.length) return prices;
+  return `\n\nOWNER RULES — the clinic's own instructions, added after this prompt was written. They win over anything above that disagrees with them:\n${rules.map((r, i) => `${i + 1}. ${r.text}`).join("\n")}` + prices;
 }
 
 module.exports = { load, add, remove, block, KEY };

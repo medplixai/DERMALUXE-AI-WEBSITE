@@ -292,6 +292,7 @@ module.exports = async (req, res) => {
       packages = await pkg.fromBill(cfg, bill, await rates(cfg));
     } catch (e) { console.error("bill: package", e && e.message); }
     try { await require("./_memory.js").forget(cfg, phone); } catch (e) {}
+    try { await require("./_cycles.js").touchBill(cfg, bill, await rates(cfg)); } catch (e) { console.error("bill: cycles", e && e.message); }
     // Somebody who paid is the person the ads should be finding.
     try {
       require("./_capi.js").send("Purchase", { phone, eventId: "bill-" + id, custom: { value: t.total, currency: "INR", content_name: items.map((i) => i.name).join(", ").slice(0, 80) } }).catch(() => {});
@@ -434,3 +435,4 @@ module.exports.totals = totals;
 module.exports.recordPayment = recordPayment;
 module.exports.getBill = getBill;
 module.exports.collection = collection;
+module.exports.rates = rates;

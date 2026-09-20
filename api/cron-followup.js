@@ -242,6 +242,11 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: visit followup", e && e.message); }
 
+  // ---- a treatment's natural next time (Hydrafacial monthly, peel at three
+  // weeks…) for single treatments on a bill; packages are the block below.
+  let cycled = null;
+  try { if (istHour === 10) cycled = await require("./_cycles.js").run(cfg, 25); } catch (e) { console.error("cron: cycles", e && e.message); }
+
   // ---- next sitting is due -------------------------------------------------
   // Once a day, tell anyone whose multi-sitting treatment is due. This is what
   // the approved session_reminder template was always for; until packages
@@ -508,5 +513,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
 };

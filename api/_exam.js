@@ -115,11 +115,12 @@ async function converse(cfg, p, maxTurns) {
   return { turns, flags };
 }
 
-async function judge(p, conv) {
+async function judge(p, conv, cfg) {
   const transcript = conv.turns.map((t, i) => `[${i + 1}] PATIENT: ${t.u}\nAGENT: ${t.a}${t.slots ? ` (+${t.slots} tappable slots)` : ""}${t.buttons ? ` (+${t.buttons} buttons)` : ""}`).join("\n\n");
   const flags = `Agent flags during the chat: trust=${conv.flags.trust}, show_results=${conv.flags.results}, urgent=${conv.flags.urgent}, send_location=${conv.flags.location}, lead=${conv.flags.lead ? JSON.stringify({ name: conv.flags.lead.name, concern: conv.flags.lead.concern, slot_ts: conv.flags.lead.slot_ts || "", cancel: !!conv.flags.lead.cancel }) : "none"}.`;
   const persona = `PERSONA: ${p.name}, ${p.town}; concern: ${p.concern}; goal: ${p.goal}; style: ${p.style}; language: ${p.lang}.${p.trap ? ` TRAP: ${p.trap}.` : ""}`;
-  const text = await model(JUDGE_MODEL(), JUDGE, [{ role: "user", content: `${persona}\n${flags}\n\nTRANSCRIPT:\n${transcript}` }], 500);
+  const policy = cfg ? require("./_prices.js").judgeNote(await require("./_prices.js").load(cfg).catch(() => null)) : "";
+  const text = await model(JUDGE_MODEL(), JUDGE + policy, [{ role: "user", content: `${persona}\n${flags}\n\nTRANSCRIPT:\n${transcript}` }], 500);
   const j = require("./_review.js").extractJson(text) || {};
   return { score: Math.max(0, Math.min(100, Number(j.score) || 0)), booked: !!j.booked, trapPassed: !!j.trap_passed, facts: j.facts || {}, faults: Array.isArray(j.faults) ? j.faults.slice(0, 6) : [], note: String(j.note || "").slice(0, 200) };
 }
@@ -141,7 +142,7 @@ async function run(cfg, opts) {
   for (const p of set) {
     try {
       const conv = await converse(cfg, p, o.turns || 6);
-      const j = conv.turns.length ? await judge(p, conv) : { score: 0, booked: false, trapPassed: false, faults: ["no_conversation"], note: "patient model raaledu" };
+      const j = conv.turns.length ? await judge(p, conv, cfg) : { score: 0, booked: false, trapPassed: false, faults: ["no_conversation"], note: "patient model raaledu" };
       rows.push(Object.assign({ id: p.id, who: p.name, trap: p.trap || "", turns: conv.turns.length }, j, o.keep ? { transcript: conv.turns } : {}));
     } catch (e) { rows.push({ id: p.id, who: p.name, trap: p.trap || "", turns: 0, score: 0, booked: false, trapPassed: false, faults: ["error"], note: String(e && e.message).slice(0, 120) }); }
   }

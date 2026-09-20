@@ -142,6 +142,7 @@ module.exports = async (req, res) => {
       const btpl = b.tpl || "clinic_update";
       const out = await notify.sendWaTemplate(b.ph, btpl, admin.promoParams(btpl, b.name || "friend", b.text, b.p2));
       if (out.ok) bsent++;
+      if (out.ok && b.cmp) await guard.kvCommand(cfg, ["INCR", `cmp:stat:${b.cmp}`]).catch(() => {});   // the campaigns screen's "sent"
     }
     if (processed) {
       const done = await guard.kvCommand(cfg, ["INCRBY", "bc:done", String(processed)]).catch(() => ({}));

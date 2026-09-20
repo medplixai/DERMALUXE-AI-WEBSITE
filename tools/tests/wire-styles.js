@@ -25,6 +25,9 @@ const HOOK = {
   "s-": "prefix of s-<status> built at run time; each status is styled as .acts select.s-new … s-closed",
   phwrap: "where a lead's photos are mounted; found by the script, drawn by what goes inside",
   native: "put on <html> inside the phone app so the script can tell; no look of its own",
+  pband: "one price-band row — a styled .noteform; the class is how Save reads the rows back",
+  "pb-name": "inputs inside the .noteform row (styled there); the class is how Save reads them", "pb-from": "same", "pb-to": "same", "pb-del": "the row's remove button, a styled .btn",
+  "cyc-days": "the days input inside a styled .noteform row; the class is how Save reads them",
 };
 const missing = [...used.keys()].filter((c) => !styled.has(c) && !HOOK[c]).sort();
 missing.forEach((c) => console.log(`  ✗  .${c}  (${used.get(c)}×) has no style`));
