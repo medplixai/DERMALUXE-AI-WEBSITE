@@ -282,11 +282,15 @@ async function leadPage(cfg, offset, count) {
   const raw = (lr.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
   const keys = raw.map(leadKey);
   const qual = require("./_qualify.js");
-  const [st, notes, stTs, grades, optOut] = await Promise.all([
+  const [st, notes, stTs, grades, optOut, owner, users] = await Promise.all([
     hashSome(cfg, STATUS, keys), hashSome(cfg, NOTES, keys), hashSome(cfg, STATUS_TS, keys),
     qual.forPhones(cfg, raw.map((l) => l.phone)),
     guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({})),
+    hashSome(cfg, "lead:owner", keys),
+    hashAll(cfg, USERS),
   ]);
+  // Who this lead was dealt to, by name — so a colleague can see "naavi".
+  const nameOf = (ph) => { try { return (JSON.parse(users[ph] || "{}").name) || ph; } catch (e) { return ph; } };
   const off = new Set(((optOut && optOut.result) || []));
   const leads = raw.map((l) => {
     const k = leadKey(l); let n = [];
@@ -294,6 +298,7 @@ async function leadPage(cfg, offset, count) {
     const ph = digits10(l.phone);
     const status = STATUSES.includes(st[k]) ? st[k] : "new";
     const base = Object.assign(trimLead(l), { key: k, status, notes: n, phone: ph, optedOut: off.has(ph) });
+    if (owner[k]) { base.owner = owner[k]; base.ownerName = nameOf(owner[k]); }
     // The grade and, from it, the one thing to do next — and how long this
     // person has been waiting for somebody to do it.
     const rec = grades[ph];
@@ -505,6 +510,17 @@ module.exports = async (req, res) => {
   if (a === "data") return json(res, 200, await dataPayload(cfg, me, roles, q));
   if (req.method === "POST" && ["status", "note", "lead-add"].includes(a) && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
+  // The owner's own rules for the agent — added and removed without a deploy.
+  if (a === "rule-add" || a === "rule-del") {
+    if (req.method !== "POST") return json(res, 405, { error: "POST" });
+    if (!allow("settings.manage")) return json(res, 403, { error: "Agent rules owner ki matrame" });
+    const rulesMod = require("./_rules.js");
+    const out = a === "rule-add" ? await rulesMod.add(cfg, b.text, me.name) : await rulesMod.remove(cfg, b.id);
+    if (!out.ok) return json(res, 400, { error: out.error });
+    await audit(cfg, me, a === "rule-add" ? `Agent rule pettaru: ${String(b.text).slice(0, 120)}` : "Agent rule teesesaru");
+    return json(res, 200, { ok: true, rules: out.rules });
+  }
+
   // The rest of the lead book, a page at a time. The app asks for this when
   // someone searches, opens Patients, or widens the date filter — not on the
   // way in, which is the whole point.
@@ -598,8 +614,14 @@ module.exports = async (req, res) => {
       return u;
     }).sort((x, y) => (y.lastLogin || 0) - (x.lastLogin || 0));
     const audit = (log.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+    // The owner's own rules for the agent, and who is behind on calls today.
+    const [agentRules, team2] = await Promise.all([
+      require("./_rules.js").load(cfg).catch(() => []),
+      require("./_queue.js").teamDay(cfg).catch(() => []),
+    ]);
     return json(res, 200, {
       ok: true, roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, people, health,
+      agentRules, callTeam: team2,
       owners: ownerPhones().map((ph) => ({ phone: ph, lastLogin: Number(last[ph] || 0) || null })),
       passwordSet: !!(pwd && pwd.result),
       audit, me: Object.assign({}, me, { caps: effCaps(roles, me) }),

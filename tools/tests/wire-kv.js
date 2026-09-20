@@ -41,6 +41,8 @@ const OK = {
   "utm:": "r.js builds the key in a variable (utm:<tag>:<day>) and INCRs it",
   "push:ph:": "read through setMembers() in _push.js",
   "staff:lastlogin": "read through hashAll() in staff.js (the panel)",
+  "lead:owner": "read through hashOf() in _queue.js and hashSome() in staff.js (the lead card shows the colleague)",
+  "lead:oat": "read through hashOf() in _queue.js (each caller's day)",
   // records kept for looking back, deliberately not on a screen
   "office:log": "what staff asked AI Office — kept for the record, 500 entries",
   "acad:dl": "which student opened which material — kept for the record",

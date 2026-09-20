@@ -61,7 +61,11 @@ const student = (id, o) => h.run(["SET", `acad:st:${id}`, JSON.stringify(Object.
 
   console.log("\n  — the WhatsApp templates —");
   process.env.WA_CLOUD_TOKEN = "cloud";
-  is((await h.call(waSetup, { key: "guess" })).code, 401, "the template tool needs the admin key");
+  h.as(["leads.view"]);
+  is((await h.call(waSetup, { key: "guess" })).code, 401, "the template tool refuses a wrong key — and a colleague who does not run the settings");
+  h.as(["settings.manage"]);
+  is((await h.call(waSetup, { action: "test", to: "123" })).code, 400, "but a manager gets in from the app, with no key in the link");
+  h.as(["*"]);
   is((await h.call(waSetup, { key: "local-admin", action: "test", to: "123" })).code, 400, "a test send needs a real number");
   await h.call(waSetup, { key: "local-admin", action: "create" });
   is(submitted.length > 5, true, "every template in the source is submitted");

@@ -572,6 +572,9 @@
     .ib-day{align-self:center;font-size:.7rem;color:var(--muted2);margin:6px 0}
     .ib-note{font-size:.78rem;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line)}
     .ib-note.warn{color:#b45309;background:#fffbeb}
+    .ib-quick{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 0}
+    .ib-quick button{flex:none;border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 10px;font:inherit;font-size:.78rem;cursor:pointer;color:var(--muted);white-space:nowrap}
+    .ib-quick button:hover{border-color:var(--primary);color:var(--text)}
     .ib-compose{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
     .ib-compose textarea{flex:1;resize:none;border:1px solid var(--line2);border-radius:10px;padding:9px 11px;font:inherit;font-size:.92rem;max-height:120px;background:var(--panel);color:var(--text)}
     .ib-empty{flex:1;display:grid;place-items:center;color:var(--muted2);font-size:.9rem;padding:30px;text-align:center}
@@ -654,6 +657,7 @@
           <button data-seg="call" class="on">🔥 Ippude call<i id="segN0"></i></button>
           <button data-seg="today">Ee roju<i id="segN1"></i></button>
           <button data-seg="open">Book kaanivi<i id="segN2"></i></button>
+          <button data-seg="mine">🙋 Naavi<i id="segN3"></i></button>
           <button data-seg="all">Anni</button>
         </div>
         <div class="list" id="leadList"></div>
@@ -670,7 +674,8 @@
               <button class="btn btn--sm hide" id="ibTake"></button></div>
             <div class="ib-msgs hide" id="ibMsgs"></div>
             <div class="ib-note hide" id="ibNote"></div>
-            <form class="ib-compose hide" id="ibForm"><textarea id="ibText" rows="1" maxlength="1500" placeholder="Reply raayandi…" aria-label="Reply"></textarea><button class="btn btn--gold btn--sm" type="submit" id="ibSend">Send</button></form>
+            <div class="ib-quick hide" id="ibQuick"></div>
+            <form class="ib-compose hide" id="ibForm"><textarea id="ibText" rows="1" maxlength="1500" placeholder="Reply raayandi…" aria-label="Reply"></textarea><button class="btn btn--sm" type="button" id="ibDraft" title="AI draft">✍️</button><button class="btn btn--gold btn--sm" type="submit" id="ibSend">Send</button></form>
           </div>
         </div>
       </section>
@@ -834,10 +839,23 @@
         <div id="cp-controls" class="hide">
           <div class="box"><h2>System health <span class="te" style="font-size:.9rem;color:var(--g3)">· సిస్టమ్</span></h2>
             <div id="healthBox" class="meta">—</div></div>
+          <div class="box"><h2>Agent rules <span class="te" style="font-size:.9rem;color:var(--g3)">· ఏజెంట్‌కి మీ నియమాలు</span></h2>
+            <p>Ikkada meeru raasina maata agent ki <b style="color:var(--g2);font-weight:500">next message nundi</b> vartistundi — anni channels lo. Ex: "Ee nela laser offer cheppaku", "Academy fees adiginappudu mundu batch date cheppu".</p>
+            <div class="noteform" style="margin-top:10px"><input id="ruleText" maxlength="300" placeholder="Agent em cheyyali / cheyyakudadu?" /><button class="btn btn--gold btn--sm" id="ruleAdd">Add</button></div>
+            <div class="err" id="ruleErr"></div>
+            <div id="ruleList" style="margin-top:10px"></div></div>
+          <div class="box"><h2>WhatsApp templates <span class="te" style="font-size:.9rem;color:var(--g3)">· మెటా అప్రూవల్</span></h2>
+            <p>24 gantalu daatina tarvata patient ki message vellalante Meta approve chesina template kavali. Ivi anni mana code vaadutunnavi — status ikkada kanipistundi.</p>
+            <div class="noteform" style="margin-top:10px;flex-wrap:wrap"><button class="btn btn--sm" id="tplLoad">Status chudu</button><button class="btn btn--gold btn--sm" id="tplCreate">Anni approval ki pampu</button></div>
+            <div class="err" id="tplErr"></div>
+            <div id="tplList" style="margin-top:10px"></div></div>
           <div class="box"><h2>Mee password <span class="te" style="font-size:.9rem;color:var(--g3)">· మీ పాస్‌వర్డ్</span></h2><p>Idi <b style="color:var(--g2);font-weight:500">mee sonta</b> password — mee number tho matrame pani chestundi. Prati okkaru vaalla sonta di pettukovali. Password vaddante OTP tho login avvochu.</p>
             <div class="noteform" style="margin-top:10px"><input id="newPwd" type="password" placeholder="Kotha password (8+ characters)" autocomplete="new-password" /><button class="btn btn--gold btn--sm" id="pwdSave">Save</button><button class="btn btn--sm" id="pwdOff" title="Password teesi OTP matrame">OTP only</button></div>
             <div class="meta" id="pwdState" style="margin-top:8px"></div>
             <div class="err" id="pwdErr"></div></div>
+          <div class="box"><h2>Calls — evaru entha chesaru <span class="te" style="font-size:.9rem;color:var(--g3)">· ఈరోజు</span></h2>
+            <p>A-grade leads automatic ga okkokkariki ivvabadatayi. Call chesi note raasthe "call chesaru" ani lekka — note lekapothe kaadu. Roju 11, 3, 6 ki pending unna vaalliki gurthu veltundi.</p>
+            <div id="callTeam" style="margin-top:10px"></div></div>
           <div class="box"><h2>Notifications <span class="te" style="font-size:.9rem;color:var(--g3)">· నోటిఫికేషన్లు</span></h2>
             <p>Kotha lead vachina, urgent patient unna, fee vachina — app unna phones ki ventane veltundi. Evari role batti vaariki sambandhinchinavi matrame.</p>
             <div class="meta" id="pushState" style="margin-top:8px"></div>
@@ -1141,7 +1159,7 @@
       var heat = l.heat || "", s = srcLabel(l);
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
-        '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + '</div></div>' +
+        '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
         '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
         '<div class="concern">' + esc(l.concern || l.message || "") + '</div>' +
         (l.grade ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +
@@ -1248,12 +1266,15 @@
       var isHotLead = function (l) { return (l.grade ? l.grade === "A" : l.heat === "hot") && (l.status === "new" || l.status === "contacted"); };
       var t00 = new Date(); t00.setHours(0, 0, 0, 0);
       var base = d.leads.filter(function (l) { return !/^academy/i.test(String(l.concern || "")); });
-      var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length, base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length];
+      var myPhone = (d.me && d.me.phone) || "";
+      var isMine = function (l) { return l.owner && l.owner === myPhone && (l.status === "new" || l.status === "contacted"); };
+      var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length, base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length];
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
       var list = d.leads.filter(function (l) {
         if (seg === "call" && !isHotLead(l)) return false;
         if (seg === "today" && l.ts < t00.getTime()) return false;
         if (seg === "open" && !(l.status === "new" || l.status === "contacted")) return false;
+        if (seg === "mine" && !isMine(l)) return false;
         if (seg !== "call" && l.ts < since) return false;
         if (fs && l.status !== fs) return false;
         if (fsrc && src(l) !== fsrc) return false;
@@ -1267,7 +1288,7 @@
         var ga = a.grade ? gr[a.grade] : (heatRank[a.heat || ""] || 0) + 0.5, gb = b.grade ? gr[b.grade] : (heatRank[b.heat || ""] || 0) + 0.5; if (ga !== gb) return ga - gb;
         return b.ts - a.ts;
       });
-      $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : '<div class="empty">' + (seg === "call" ? "Ippudu call cheyyalsina A-grade leads levu 👍" : "No leads for this filter.") + "</div>";
+      $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : '<div class="empty">' + (seg === "call" ? "Ippudu call cheyyalsina A-grade leads levu 👍" : seg === "mine" ? "Mee peru meeda leads emi ledu 👍" : "No leads for this filter.") + "</div>";
       paintMore();
     }
     // ---- the clinic day --------------------------------------------------
@@ -2147,6 +2168,16 @@
       });
     }
     var ib = { phone: null, canReply: false, timer: null, sending: false, lastCount: -1 };
+    // The lines the desk sends again and again — one tap into the composer.
+    var CANNED = [
+      { label: "⏰ Timings", text: "Namaste 🙏 DermaLuxe by Medicare, Eluru.\n🕘 Monday–Saturday 9 AM – 9 PM (Sunday closed)\n📞 +91 99491 34666" },
+      { label: "📍 Address", text: "📍 DermaLuxe by Medicare\nRama Mahal, Kasturi Vari Street, R.R. Peta, Opp. Happy Mobiles, Eluru – 534002\n🗺 https://www.dermaluxe.ai/r/clinic" },
+      { label: "📅 Slot adagu", text: "Mee ki eppudu convenient andi? 😊\nEe roju / repu — morning (9–1) leda evening (5–9) lo slot pettochu." },
+      { label: "💰 Price", text: "Consultation lo doctor mee skin/hair chusi exact plan & cost cheptaru andi 🙏 Mundu cheppadam kudaradu — prathi okkariki different. First step consultation ne — book cheyyamantara?" },
+      { label: "📸 Photo adagu", text: "Oka clear photo pampandi andi (natural light lo, close-up) — doctor ki chupinchi cheptam 📸" },
+      { label: "🎥 Video consult", text: "Meeru dooram unnaru kabatti *video consultation* kuda undi andi — doctor tho direct ga matladavachu, prescription WhatsApp lo vastundi. Eppudu set cheyyamantaru?" },
+      { label: "🙏 Thanks", text: "Thank you andi 🙏 Emaina doubts unte ikkade message cheyandi — mee kosam eppudaina unnam 😊" },
+    ];
     function ibTime(ts) {
       var d = new Date(ts), now = new Date();
       if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
@@ -2177,6 +2208,8 @@
       $("ibName").textContent = nm;
       $("ibSub").textContent = j.phone + (j.human ? " · 👤 " + j.human.by + " chusukuntunnaru — AI aagindi" : " · 🤖 AI agent matladutondi");
       ["ibHead", "ibMsgs", "ibForm", "ibNote"].forEach(function (id) { $(id).classList.remove("hide"); });
+      $("ibQuick").classList.toggle("hide", !j.canReply);
+      $("ibQuick").innerHTML = CANNED.map(function (c, i) { return '<button type="button" data-canned="' + i + '">' + esc(c.label) + "</button>"; }).join("");
       $("ibEmpty").classList.add("hide");
       $("ibPt").classList.toggle("hide", !state.allow("leads.view"));
       var tk = $("ibTake");
@@ -2214,7 +2247,7 @@
     }
     function closeThread() {
       ib.phone = null; $("ib").classList.remove("open");
-      ["ibHead", "ibMsgs", "ibForm", "ibNote"].forEach(function (id) { $(id).classList.add("hide"); });
+      ["ibHead", "ibMsgs", "ibForm", "ibNote", "ibQuick"].forEach(function (id) { $(id).classList.add("hide"); });
       $("ibEmpty").classList.remove("hide");
       loadInbox(true);
     }
@@ -2230,6 +2263,25 @@
     }, 20000);
     if ($("ibBack")) $("ibBack").onclick = function () { haptic(); closeThread(); };
     if ($("ibPt")) $("ibPt").onclick = function () { if (ib.phone) openPatient(ib.phone); };
+    if ($("ibQuick")) $("ibQuick").addEventListener("click", function (e) {
+      var b = e.target.closest("[data-canned]"); if (!b) return;
+      var t = $("ibText");
+      t.value = (t.value ? t.value.trim() + "\n" : "") + CANNED[Number(b.dataset.canned)].text;
+      t.focus(); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px";
+    });
+    if ($("ibDraft")) $("ibDraft").onclick = function () {
+      if (!ib.phone) return;
+      var b = this; b.disabled = true; b.textContent = "…";
+      var ask = $("ibText").value.trim();
+      ibapi("draft", { phone: ib.phone, ask: ask })
+        .then(function (j) {
+          var t = $("ibText");
+          t.value = j.text; t.focus(); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px";
+          toast("Draft vachindi — chadivi send cheyandi");
+        })
+        .catch(function (x) { toast(x.message); })
+        .then(function () { b.disabled = false; b.textContent = "✍️"; });
+    };
     if ($("ibTake")) $("ibTake").onclick = function () {
       var on = this.dataset.on === "1", btn = this;
       btn.disabled = true;
@@ -2508,6 +2560,48 @@
         }).join("") : "";
       }).catch(function () {});
     }
+    if ($("ruleAdd")) $("ruleAdd").onclick = function () {
+      var t = $("ruleText").value.trim(); $("ruleErr").textContent = "";
+      if (t.length < 5) { $("ruleErr").textContent = "Konchem vivaram ga raayandi"; return; }
+      var b = this; b.disabled = true;
+      api("rule-add", { text: t }).then(function (j) { panel.agentRules = j.rules; $("ruleText").value = ""; renderRules(); toast("Agent ki cheppam ✅"); })
+        .catch(function (x) { $("ruleErr").textContent = x.message; }).then(function () { b.disabled = false; });
+    };
+    // Meta templates: status, and submitting the ones Meta does not have yet.
+    function tplapi(qs) {
+      return fetch(ORIGIN + "/api/wa-setup" + (qs || ""), { headers: { Authorization: "Bearer " + tok } })
+        .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
+    }
+    function paintTemplates(j) {
+      var host = $("tplList");
+      if (j.created) {
+        host.innerHTML = '<p class="meta">' + j.created.filter(function (x) { return x.ok; }).length + " kotha templates Meta ki pampam. Approval ki konni gantalu padutundi." +
+          "</p>" + j.created.map(function (x) {
+            return '<div class="vrow"><b>' + (x.ok ? "✅" : x.skipped ? "•" : "⚠️") + " " + esc(x.name) + '</b><div class="meta">' + esc(typeof x.resp === "string" ? x.resp : x.skipped ? "already Meta lo undi" : "pampam") + "</div></div>";
+          }).join("");
+        return;
+      }
+      var rows = j.templates || [];
+      var by = { APPROVED: "var(--ok)", PENDING: "var(--hot)", REJECTED: "var(--bad)" };
+      $("tplErr").textContent = j.error ? j.error : "";
+      host.innerHTML = (j.account ? '<p class="meta">WABA: ' + esc(j.account.name || j.waba) + (j.account.account_review_status ? " · review: " + esc(j.account.account_review_status) : "") + "</p>" : "") +
+        (rows.length ? '<div class="meta" style="margin:6px 0">' + rows.filter(function (t) { return t.status === "APPROVED"; }).length + " / " + rows.length + " approved</div>" +
+          rows.sort(function (a, b) { return (a.status === "APPROVED") - (b.status === "APPROVED"); }).map(function (t) {
+            return '<div class="pnl-row"><span>' + esc(t.name) + ' <span class="meta">· ' + esc(t.category || "") + "</span>" +
+              (t.rejected_reason && t.rejected_reason !== "NONE" ? '<br><span class="meta" style="color:var(--bad)">' + esc(t.rejected_reason) + "</span>" : "") +
+              '</span><span style="color:' + (by[t.status] || "var(--muted)") + '">' + esc(t.status) + "</span></div>";
+          }).join("") : '<p class="meta">Meta nundi templates raaledu.</p>');
+    }
+    if ($("tplLoad")) $("tplLoad").onclick = function () {
+      var b = this; b.disabled = true; $("tplList").innerHTML = '<div class="sk"><div></div><div></div></div>';
+      tplapi().then(paintTemplates).catch(function (x) { $("tplErr").textContent = x.message; $("tplList").innerHTML = ""; }).then(function () { b.disabled = false; });
+    };
+    if ($("tplCreate")) $("tplCreate").onclick = function () {
+      if (!confirm("Mana templates anni Meta approval ki pampanaa?\n\nMeta lo already unnavi skip avutayi. Approval ki konni gantalu padutundi.")) return;
+      var b = this; b.disabled = true; $("tplList").innerHTML = '<div class="sk"><div></div><div></div></div>';
+      tplapi("?action=create").then(function (j) { paintTemplates(j); toast("Meta ki pampam"); })
+        .catch(function (x) { $("tplErr").textContent = x.message; $("tplList").innerHTML = ""; }).then(function () { b.disabled = false; });
+    };
     if ($("cashGo")) $("cashGo").onclick = function () {
       var counted = $("cashCounted").value.trim();
       $("cashErr").textContent = "";
@@ -3208,6 +3302,26 @@
       return api("panel").then(function (j) { panel = j; renderPanel(); })
         .catch(function (e) { toast(e.message); });
     }
+    // The owner's own instructions to the agent.
+    function renderRules() {
+      var host = $("ruleList"); if (!host) return;
+      var rs = (panel && panel.agentRules) || [];
+      host.innerHTML = rs.length ? rs.map(function (r) {
+        return '<div class="vrow"><b style="font-weight:500">' + esc(r.text) + "</b>" +
+          '<div class="meta">' + esc(r.by || "") + " · " + ago(r.ts) +
+          ' <button class="btn btn--sm" data-act="rule-del" data-id="' + esc(r.id) + '" style="margin-left:8px">Teesey</button></div></div>';
+      }).join("") : '<p class="meta">Inka rules ledu — agent standard prompt ne follow avutundi.</p>';
+    }
+    // Who was dealt which calls today, and who has not made them.
+    function renderCallTeam() {
+      var host = $("callTeam"); if (!host) return;
+      var rows = (panel && panel.callTeam) || [];
+      host.innerHTML = rows.length ? rows.map(function (t) {
+        return '<div class="pnl-row"><span><b style="font-weight:600">' + esc(t.name) + '</b> <span class="meta">· ' + esc(t.role) + "</span>" +
+          '<br><span class="meta">' + t.assigned + " ichcharu · " + t.called + " call chesaru · " + t.booked + " book ayyayi</span></span>" +
+          '<span><b style="color:' + (t.untouched ? "var(--bad)" : "var(--ok)") + '">' + (t.untouched ? t.untouched + " pending" : "clear ✅") + "</b></span></div>";
+      }).join("") : '<p class="meta">Calls ivvadaniki staff logins ledu — Logins tab lo add cheyandi.</p>';
+    }
     // Powers, grouped by area so a long list stays readable.
     function capChips(roleCaps, checked, attrs) {
       var all = panel.capList || {}, te = panel.capTe || {};
@@ -3246,6 +3360,7 @@
     function renderPanel() {
       if (!panel) return;
       paintHealth(panel.health);
+      renderRules(); renderCallTeam();
       var R = panel.roles || {}, amOwner = panel.me && panel.me.role === "owner";
 
       // --- logins
@@ -4338,6 +4453,13 @@
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
       if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "rule-del") {
+        if (!confirm("Ee rule teesesaalaa? Agent ika daanni follow avvadu.")) return;
+        el.disabled = true;
+        api("rule-del", { id: el.dataset.id }).then(function (j) { panel.agentRules = j.rules; renderRules(); toast("Teesesam"); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "gr-why") {
         haptic();
         var lw = (state.data.leads || []).filter(function (x) { return x.key === el.dataset.key; })[0];

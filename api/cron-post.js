@@ -100,6 +100,10 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: appt reminders", e && e.message); }
 
+  // ---- a patient waiting on a colleague who has not answered --------------
+  let rescued = null;
+  try { rescued = await require("./_rescue.js").run(cfg, 3); } catch (e) { console.error("cron: rescue", e && e.message); }
+
   // ---- grade whatever is still ungraded, a few at a time -------------------
   // The hourly job does this too; every ten minutes means a clinic that has
   // been running for months has its whole lead book graded by this evening.
@@ -138,5 +142,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: broadcast drain", e && e.message); }
 
-  return res.status(200).json({ ok: true, published, kept, dropped, reminded, bsent, graded });
+  return res.status(200).json({ ok: true, published, kept, dropped, reminded, bsent, graded, rescued });
 };

@@ -4,6 +4,7 @@
 //   GET  ?a=thread&phone=…          one conversation (marks it read)
 //   POST {a:"reply", phone, text}   a colleague answers the patient
 //   POST {a:"takeover", phone, on}  a person takes the chat from the agent, or hands it back
+//   POST {a:"draft", phone, ask?}   the agent writes the next reply FOR the colleague to send
 //
 // Replying takes the conversation over automatically: the agent stays quiet
 // for that patient until it is handed back, or twelve hours pass. Outside
@@ -69,6 +70,34 @@ module.exports = async (req, res) => {
     await inbox.setHuman(cfg, ph, on, me.name);
     await audit(cfg, me, `${on ? "took over" : "handed back"} WhatsApp chat ${ph}`);
     return json(res, 200, { ok: true, human: on ? { by: me.name, ts: Date.now() } : null });
+  }
+
+  // Typing Telugu on a phone while a patient waits is why chats are left to
+  // the agent even when a person should answer. This writes the reply; a
+  // person reads it, changes a word if they want, and presses send. Nothing
+  // is sent from here.
+  if (a === "draft") {
+    if (process.env.WA_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) return json(res, 501, { error: "AI inka configure cheyyaledu" });
+    const t = await inbox.thread(cfg, ph);
+    if (!t.msgs.length) return json(res, 404, { error: "Ee number tho chat ledu" });
+    const rl2 = await guard.rateLimit(cfg, `rl:ibd:${me.phone}`, 60, 3600);
+    if (!rl2.allowed) return json(res, 429, { error: "Konchem aagandi" });
+    const msgs = t.msgs.slice(-12);
+    const hist = [];
+    for (let i = 0; i < msgs.length - 1; i++) if (msgs[i].dir === "in" && msgs[i + 1].dir === "out") { hist.push({ u: msgs[i].text, a: msgs[i + 1].text }); i++; }
+    const lastIn = [...msgs].reverse().find((m) => m.dir === "in");
+    const ask = clean(b.ask, 200);
+    const qualify = require("./_qualify.js");
+    const qrec = await qualify.read(cfg, ph).catch(() => null);
+    const ctx = `[You are writing for ${me.name} at the DermaLuxe desk to send by hand — not for the agent. ${qrec ? qualify.contextLine(qrec) : ""}${ask ? `The colleague wants this reply to: ${ask}. ` : ""}Answer the patient's own last message, 2-5 short lines, one next step. "lead" must be null.] `;
+    let out;
+    try {
+      out = await require("./whatsapp.js").askClaude(hist, lastIn ? lastIn.text : "hi", (t.meta && t.meta.name) || "", ctx, await require("./_rules.js").block(cfg).catch(() => ""));
+      out = await require("./_lint.js").check(cfg, out, lastIn ? lastIn.text : "", msgs.filter((m) => m.dir === "out").map((m) => m.text), { channel: "draft", profileName: (t.meta && t.meta.name) || "" });
+    } catch (e) { return json(res, 502, { error: "Draft raayaleka poyam — malli try cheyandi" }); }
+    const text = String((out && out.reply) || "").trim();
+    if (!text) return json(res, 502, { error: "Draft raayaleka poyam" });
+    return json(res, 200, { ok: true, text });
   }
 
   if (a === "reply") {

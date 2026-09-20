@@ -4,6 +4,9 @@
     "api/whatsapp.js": {
       "maxDuration": 60
     },
+    "api/inbox.js": {
+      "maxDuration": 60
+    },
     "api/instagram.js": {
       "maxDuration": 60
     },

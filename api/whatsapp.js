@@ -20,6 +20,7 @@ const leadstore = require("./_leadstore.js");
 const inbox = require("./_inbox.js");
 const qualify = require("./_qualify.js");
 const lint = require("./_lint.js");
+const rules = require("./_rules.js");
 const admin = require("./_admin.js");
 
 const LIST_KEY = "dl_leads";
@@ -101,7 +102,7 @@ async function saveHistory(cfg, key, hist) {
   } catch (e) {}
 }
 
-async function askClaude(hist, userMsg, profileName, extraCtx) {
+async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra) {
   const messages = [];
   hist.forEach((t) => {
     messages.push({ role: "user", content: t.u });
@@ -119,7 +120,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx) {
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 1000,
-      system: CLINIC_FACTS,
+      system: CLINIC_FACTS + (sysExtra || ""),
       messages,
     }),
   });
@@ -726,7 +727,7 @@ async function sendCloudVoice(phoneNumberId, to, mp3) {
 
 
 // Claude vision — quick skin/hair pre-assessment of a WhatsApp photo.
-async function askClaudeVision(hist, media, caption, profileName, extraCtx) {
+async function askClaudeVision(hist, media, caption, profileName, extraCtx, sysExtra) {
   const mime = ["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(media.mime) !== -1 ? media.mime : "image/jpeg";
   const messages = [];
   hist.forEach((t) => {
@@ -750,7 +751,7 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx) {
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 1000,
-      system: CLINIC_FACTS + "\n\n" + PHOTO_RULES,
+      system: CLINIC_FACTS + (sysExtra || "") + "\n\n" + PHOTO_RULES,
       messages,
     }),
   });
@@ -1182,6 +1183,7 @@ module.exports = async (req, res) => {
   }
   if (lint.isMetaPrefill(text)) extraCtx += "[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish and ask what concern they have] ";
 
+  const ownerRules = cfg ? await rules.block(cfg).catch(() => "") : "";
   let out;
   let voiceScript = "";
   try {
@@ -1195,7 +1197,7 @@ module.exports = async (req, res) => {
       const media = await fetchMedia(imageId);
       if (media && media.tooBig) return respond("Photo chala pedda undi 🙏 — normal quality photo malli pampandi.\n· ఫోటో చాలా పెద్దగా ఉంది — మామూలు క్వాలిటీలో పంపండి.");
       if (!media) return respond("Photo download avvaledu 🙏 — konchem sepu agi malli pampandi, leda text type cheyandi.\n· ఫోటో డౌన్‌లోడ్ కాలేదు — మళ్ళీ ప్రయత్నించండి.");
-      out = await askClaudeVision(hist, media, text, profileName, extraCtx);
+      out = await askClaudeVision(hist, media, text, profileName, extraCtx, ownerRules);
       text = "[📷 photo]" + (text ? " " + text : "");
     } else {
       if (audioId) {
@@ -1209,7 +1211,7 @@ module.exports = async (req, res) => {
         }
         text = String(heard).slice(0, 1000).trim();
       }
-      out = await askClaude(hist, text, profileName, audioId ? extraCtx + VOICE_CTX : extraCtx);
+      out = await askClaude(hist, text, profileName, audioId ? extraCtx + VOICE_CTX : extraCtx, ownerRules);
       if (audioId) {
         // Pull the TTS script line out of the visible reply.
         const vm = String(out.reply || "").match(/\n?\s*VOICE_SCRIPT\s*:\s*([\s\S]+?)\s*$/);

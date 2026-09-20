@@ -57,7 +57,14 @@ module.exports = async (req, res) => {
   const leadKey = (l) => `${l.ts}|${String(l.phone || "").replace(/\D/g, "").slice(-10) || l.src_id || ""}`;
   // Grade D (not a patient, said stop, very far) gets no chasing at all.
   const qualify = require("./_qualify.js");
-  const gradeD = async (ph) => { const r = await qualify.read(cfg, ph).catch(() => null); return !!(r && r.grade === "D"); };
+  const gradeOf = async (ph) => { const r = await qualify.read(cfg, ph).catch(() => null); return (r && r.grade) || "C"; };
+  const gradeD = async (ph) => (await gradeOf(ph)) === "D";
+  // The paid template ladder is for the grades worth paying for: A and B get
+  // days 3, 7 and 21; C gets day 3 only; D gets nothing.
+  const paidOk = async (ph, rung) => {
+    const c = qualify.cadenceOf(await gradeOf(ph));
+    return c.paid === true || (c.paid === "day3" && rung === 3);
+  };
   const leaveAlone = (l, ph) => optSet.has(ph) || booked.has(ph)
     || ["booked", "visited", "closed"].includes(deskStatus[leadKey(l)])
     || /^\s*academy/i.test(String(l.concern || ""));
@@ -103,7 +110,7 @@ module.exports = async (req, res) => {
         const age = now - (l.ts || 0);
         if (age < 60 * 3600000 || age > 84 * 3600000) continue; // ~day 3
         const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
-        if (ph.length !== 10 || leaveAlone(l, ph) || await gradeD(ph)) continue;
+        if (ph.length !== 10 || leaveAlone(l, ph) || !(await paidOk(ph, 3))) continue;
         try {
           const nx = await guard.kvCommand(cfg, ["SET", `ntf:fu3:${ph}`, "1", "NX", "EX", "2592000"]);
           if (!nx.result) continue; // already pushed this lead
@@ -123,7 +130,7 @@ module.exports = async (req, res) => {
   // ---- Later lead touches: day 7 check-in (11:45 IST) and day 21 hello
   // (12:45 IST). Same guards as day 3: unbooked, not opted out, one send per
   // lead per marker window, small daily cap. Each is a paid template.
-  async function leadTouch(minH, maxH, tpl, marker, ttl, cap, line) {
+  async function leadTouch(minH, maxH, tpl, marker, ttl, cap, line, rung) {
     let n = 0;
     const rows = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]);
     for (const raw of (rows.result || [])) {
@@ -133,7 +140,7 @@ module.exports = async (req, res) => {
       const age = now - (l.ts || 0);
       if (age < minH * 3600000 || age > maxH * 3600000) continue;
       const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
-      if (ph.length !== 10 || leaveAlone(l, ph) || await gradeD(ph)) continue;
+      if (ph.length !== 10 || leaveAlone(l, ph) || !(await paidOk(ph, rung))) continue;
       try {
         const nx = await guard.kvCommand(cfg, ["SET", `${marker}:${ph}`, "1", "NX", "EX", String(ttl)]);
         if (!nx.result) continue;
@@ -148,8 +155,8 @@ module.exports = async (req, res) => {
   let day7 = 0, day21 = 0;
   try {
     const concern = (l) => String(l.concern || "skin/hair treatment").slice(0, 40);
-    if (istHour === 11) day7 = await leadTouch(156, 180, "lead_checkin", "ntf:fu7", 2592000, 8, concern);
-    if (istHour === 12) day21 = await leadTouch(492, 516, "we_miss_you", "ntf:fu21", 5184000, 6, concern);
+    if (istHour === 11) day7 = await leadTouch(156, 180, "lead_checkin", "ntf:fu7", 2592000, 8, concern, 7);
+    if (istHour === 12) day21 = await leadTouch(492, 516, "we_miss_you", "ntf:fu21", 5184000, 6, concern, 21);
   } catch (e) { console.error("cron: lead touches", e && e.message); }
 
   // ---- Day-before confirmation (6:15 PM IST): appointment_confirm template
@@ -340,6 +347,39 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: briefing", e && e.message); }
 
+  // ---- a hot lead deserves an answer sooner than twenty hours --------------
+  // A's are nudged two hours after they went quiet, B's after four — inside
+  // WhatsApp's free window, so it costs nothing and lands as a normal message.
+  let early = 0;
+  try {
+    for (const raw of (r.result || [])) {
+      if (early >= 8) break;
+      let l; try { l = JSON.parse(raw); } catch (e) { continue; }
+      const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+      if (ph.length !== 10 || l.type === "job" || (l.slot && l.date)) continue;
+      const age = (now - (l.ts || 0)) / 3600000;
+      if (age < 2 || age > 18) continue;                       // the 18-23h rung below covers the rest
+      if (leaveAlone(l, ph)) continue;
+      const cad = qualify.cadenceOf(await gradeOf(ph));
+      if (!cad.early || age < cad.early) continue;
+      const nx = await guard.kvCommand(cfg, ["SET", `ntf:early:${ph}`, "1", "NX", "EX", "604800"]).catch(() => ({}));
+      if (!nx || !nx.result) continue;
+      const first = String(l.name || "").trim().split(" ")[0] || "andi";
+      const ok = await notify.sendWa(ph, `Hi ${first}! 🙏 Meeru adigina *${String(l.concern || "treatment").slice(0, 40)}* gurinchi — mee doubts emaina unte ikkade adagandi 😊\nDoctor consultation ki ee roju/repu slots khaali unnayi. Eppudu convenient?`);
+      if (ok) early++;
+    }
+  } catch (e) { console.error("cron: early nudge", e && e.message); }
+
+  // ---- chats that went quiet, and colleagues who went quiet ---------------
+  let reengaged = 0, rescued = null;
+  try { reengaged = (await require("./_reengage.js").run(cfg, 10)).sent; } catch (e) { console.error("cron: reengage", e && e.message); }
+  try { rescued = await require("./_rescue.js").run(cfg, 5); } catch (e) { console.error("cron: rescue", e && e.message); }
+
+  // ---- who calls whom, and who has not called -----------------------------
+  let assigned = 0, overdue = null;
+  try { assigned = (await require("./_queue.js").assign(cfg, { max: 20 })).assigned; } catch (e) { console.error("cron: assign", e && e.message); }
+  try { overdue = await require("./_queue.js").alertOverdue(cfg); } catch (e) { console.error("cron: call alerts", e && e.message); }
+
   // ---- grade the leads that came in before any of this existed -------------
   let backfilled = 0;
   try { backfilled = (await qualify.backfill(cfg, 25)).graded; } catch (e) { console.error("cron: qualify backfill", e && e.message); }
@@ -468,5 +508,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
 };

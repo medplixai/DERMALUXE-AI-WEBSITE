@@ -363,11 +363,20 @@ const stamp = (rec) => (rec ? { grade: rec.grade, score: rec.score, km: rec.km =
   since: (rec.facts || {}).problem_since || undefined, prefers: (rec.facts || {}).prefers || undefined, intent: (rec.facts || {}).intent || undefined,
   why: (rec.signals || []).filter((s) => s.points > 0).sort((a, b) => b.points - a.points).slice(0, 3).map((s) => s.why) } : {});
 
-// How hard the follow-ups chase, by grade. D is left alone.
-const CADENCE = { A: { nudges: true, call: true }, B: { nudges: true, call: false }, C: { nudges: true, call: false }, D: { nudges: false, call: false } };
+// How hard we chase, by grade — the whole point of grading.
+//  early:  hours after the enquiry for the first free-window nudge
+//  paid:   whether the paid template ladder (day 3, 7, 21) applies
+//  call:   whether a person should be dealt the call
+const CADENCE = {
+  A: { early: 2, paid: true, call: true, label: "A — ippude call + anni follow-ups" },
+  B: { early: 4, paid: true, call: false, label: "B — nudges + day 3/7/21 templates" },
+  C: { early: 20, paid: "day3", call: false, label: "C — okka nudge + day 3 matrame" },
+  D: { early: 0, paid: false, call: false, label: "D — emi pampamu" },
+};
+const cadenceOf = (grade) => CADENCE[grade] || CADENCE.C;
 async function chase(cfg, phone) {
   const rec = await read(cfg, phone);
-  return CADENCE[(rec && rec.grade) || "C"];
+  return cadenceOf(rec && rec.grade);
 }
 
-module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, nextAction, forPhones, backfill, read, absorb, react, stamp, chase, contextLine, INTENTS, URGENCY, GRADE_OF };
+module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, nextAction, forPhones, backfill, read, absorb, react, stamp, chase, cadenceOf, CADENCE, contextLine, INTENTS, URGENCY, GRADE_OF };

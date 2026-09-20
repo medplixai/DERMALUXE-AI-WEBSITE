@@ -35,6 +35,18 @@ const TEMPLATES = [
     ],
   },
   {
+    name: "staff_calls_pending",
+    category: "UTILITY",
+    language: "en",
+    components: [
+      {
+        type: "BODY",
+        text: "📞 Calls pending — {{1}}\n\n{{2}}\n\nMottam {{3}} calls inka cheyyaledu. App → Leads lo call chesi, result note cheyandi.",
+        example: { body_text: [["19 Sep, 3 PM", "Sowmya – 4 hot leads", "4"]] },
+      },
+    ],
+  },
+  {
     name: "visit_followup",
     category: "UTILITY",
     language: "en",
@@ -411,9 +423,15 @@ function errText(d) {
 }
 
 module.exports = async (req, res) => {
+  // Two ways in: the owner's ADMIN_KEY in the URL (how this was always used),
+  // or a live staff session with settings.manage — so the templates can be
+  // submitted from a button in the app instead of a key in a link.
   const key = String((req.query && req.query.key) || "");
-  if (!process.env.ADMIN_KEY || !guard.safeEqual(key, process.env.ADMIN_KEY)) {
-    return res.status(401).json({ error: "unauthorized" });
+  const byKey = !!process.env.ADMIN_KEY && guard.safeEqual(key, process.env.ADMIN_KEY);
+  if (!byKey) {
+    const cfg = guard.kvConfig();
+    const auth = cfg ? await require("./staff.js").requireStaff(cfg, req).catch(() => ({ ok: false })) : { ok: false };
+    if (!auth.ok || !auth.allow("settings.manage")) return res.status(401).json({ error: "unauthorized" });
   }
   const token = process.env.WA_CLOUD_TOKEN;
   if (!token) return res.status(500).json({ error: "WA_CLOUD_TOKEN missing" });
