@@ -6,8 +6,8 @@
 // with a town, a problem, a way of writing and one thing that trips a weak
 // receptionist (a price shopper, a mother asking for her son, a job seeker,
 // somebody 300 km away, an emergency, somebody who only writes in Telugu
-// script), twelve of them a night so the whole set is sat every three or
-// four nights. A second model plays the patient; the real agent (the same
+// script), twelve of them every morning at eight so the whole set is sat
+// every three or four days. A second model plays the patient; the real agent (the same
 // prompt, the same owner rules, the same editor) answers; a third judges the
 // transcript. The score is kept, trended, and the owner is told when it
 // drops — before a real patient meets the regression.

@@ -1,5 +1,5 @@
-// GET /api/cron-exam — Vercel Cron, 21:30 UTC = 03:00 IST, when the agent is
-// not busy with real patients. Twelve invented patients talk to the real
+// GET /api/cron-exam — Vercel Cron, 02:30 UTC = 08:00 IST, before the clinic
+// opens, so the score reaches the owner with the morning and not at 3 AM. Twelve invented patients talk to the real
 // agent; a judge scores each chat; the owner hears the score and the two
 // worst chats. See _exam.js.
 //
