@@ -28,6 +28,10 @@ for (let i = 0; i < TOTAL; i++) {
     heat: i % 5 === 0 ? "hot" : i % 3 === 0 ? "warm" : "",
     type: ["whatsapp", "instagram", "web", "messenger"][i % 4],
     key: `${ts}|${phone}`,
+    grade: ["A", "B", "C", "D", "B"][i % 5], score: [82, 58, 33, 12, 51][i % 5],
+    village: ["Eluru", "Bhimavaram", "Vijayawada", "Hyderabad", "Tadepalligudem"][i % 5], km: [0, 60, 60, 330, 35][i % 5],
+    since: i % 3 ? "6 nelalu" : "", prefers: i % 5 === 0 ? "Saturday evening" : "",
+    why: [["Eluru — 0 km, daggare", "raavadaniki ready", "entakalam nundo chepparu: 6 nelalu"], ["Bhimavaram — 60 km", "alochistunnaru"], ["price matrame adigaru"], ["patient kaadu (job / sales / wrong number)"], ["ee vaaram lo"]][i % 5],
     status: ["new", "contacted", "booked", "visited", "closed"][i % 5],
     notes: i % 4 === 0 ? [{ ts: ts + 600000, by: "Reception", text: "Called, asked to ring back" }] : [],
   });
@@ -340,6 +344,8 @@ http.createServer((req, res) => {
   if (u.pathname === "/api/inbox") {  // inbox-mock: WhatsApp conversations
     const a = u.searchParams.get("a") || "list";
     if (a === "list") return send(200, { ok: true, canReply: true, unread: mockIb.reduce((n, t) => n + t.unread, 0),
+      review: { day: "2026-09-19", checked: 12, score: 78, summary: "Chala chats lo slots baaga offer chesindi · Okka chat lo price cheppesindi · Price rule lint lo undi, ippudu rewrite avutundi", lint: { checked: 4, rewritten: 3 },
+        findings: [{ phone: "3210", who: "Lakshmi Priya", severity: "high", issue: "PICO laser ki ₹8,000 ani price cheppindi", fix: "Consultation lo doctor exact plan istaru ani cheppi slot adagali" }, { phone: "0223", who: "Ravi Teja", severity: "medium", issue: "Rendu questions okate message lo", fix: "Okka question, migilinavi statements" }] },
       threads: mockIb.map((t) => ({ phone: t.phone, name: t.name, last: t.msgs[t.msgs.length - 1].text, lastDir: t.msgs[t.msgs.length - 1].dir, lastBy: t.msgs[t.msgs.length - 1].by || "", ts: t.msgs[t.msgs.length - 1].ts, unread: t.unread, human: t.human, open: t.open })) });
     if (a === "thread") {
       const t = mockIb.find((x) => x.phone === u.searchParams.get("phone"));

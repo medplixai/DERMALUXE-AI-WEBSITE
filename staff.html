@@ -517,6 +517,20 @@
     .cmp-row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;width:min(92vw,560px)}
     .cmp-row select{flex:1;min-width:130px;background:#1c1c1f;color:#fff;border:1px solid #3f3f46;border-radius:10px;padding:8px}
     .cmp input[type=range]{width:min(92vw,560px)}
+    /* ---- lead grade ---- */
+    .gr{display:inline-flex;align-items:center;gap:4px;font-size:.7rem;font-weight:700;border-radius:8px;padding:2px 7px;letter-spacing:.02em;vertical-align:middle}
+    .gr.A{background:#fee2e2;color:#991b1b}.gr.B{background:#fef3c7;color:#92400e}.gr.C{background:#e0f2fe;color:#075985}.gr.D{background:var(--panel2);color:var(--muted2)}
+    .gr small{font-weight:500;opacity:.8}
+    .why{font-size:.76rem;color:var(--muted);margin-top:4px;line-height:1.45}
+    .why b{font-weight:500;color:var(--text)}
+    .segs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
+    .segs button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 11px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
+    .segs button.on{background:var(--g1);color:#fff;border-color:var(--g1)}
+    .segs button i{font-style:normal;margin-left:4px;opacity:.8}
+    .rvcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
+    .rvcard h3{margin:0 0 4px;font-size:.92rem;display:flex;justify-content:space-between;gap:8px}
+    .rvcard .f{font-size:.82rem;padding:5px 0;border-top:1px solid var(--line)}
+    .rvcard .f small{display:block;color:var(--muted)}
     /* ---- WhatsApp inbox ---- */
     body[data-tab="inbox"] .stats{display:none}
     #t-inbox{padding-top:14px}
@@ -622,12 +636,18 @@
           <select id="fDays"><option value="7">Last 7 days</option><option value="1">Today</option><option value="30">Last 30 days</option><option value="365" selected>All</option></select>
           <button class="btn btn--sm btn--gold hide" id="leadAdd">+ Kotha lead</button>
         </div>
+        <div class="segs" id="segs" role="tablist" aria-label="Lead groups">
+          <button data-seg="call" class="on">🔥 Ippude call<i id="segN0"></i></button>
+          <button data-seg="today">Ee roju<i id="segN1"></i></button>
+          <button data-seg="open">Book kaanivi<i id="segN2"></i></button>
+          <button data-seg="all">Anni</button>
+        </div>
         <div class="list" id="leadList"></div>
         <div id="leadMore" style="margin-top:10px;text-align:center"></div>
       </section>
       <section id="t-inbox" class="hide">
         <div class="ib" id="ib">
-          <div class="ib-list" id="ibList"><div class="sk"><div></div><div></div><div></div><div></div></div></div>
+          <div class="ib-list"><div id="ibReview"></div><div id="ibList"><div class="sk"><div></div><div></div><div></div><div></div></div></div></div>
           <div class="ib-pane" id="ibPane">
             <div class="ib-empty" id="ibEmpty">Edaina chat open cheyandi.<br />Patients WhatsApp lo agent tho matladinavanni ikkada kanipistayi.</div>
             <div class="ib-head hide" id="ibHead"><button class="btn btn--sm" id="ibBack" aria-label="Venakki">‹</button>
@@ -1108,8 +1128,10 @@
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + '</div></div>' +
-        '<div>' + (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '') + '<span class="badge src">' + s + '</span></div></div>' +
+        '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" title="Lead grade">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
         '<div class="concern">' + esc(l.concern || l.message || "") + '</div>' +
+        (l.grade ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +
+          ((l.why || []).length ? (l.village || l.since || l.prefers ? '<br>' : '') + esc((l.why || []).slice(0, 3).join(" · ")) : '') + '</div>' : '') +
         (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
         '<div class="acts">' +
@@ -1173,8 +1195,17 @@
     function renderLeads() {
       var d = state.data, q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fsrc = $("fSrc").value, days = Number($("fDays").value);
       var since = Date.now() - days * 86400000; if (days === 1) { var t0 = new Date(); t0.setHours(0, 0, 0, 0); since = t0.getTime(); }
+      var seg = (document.querySelector("#segs button.on") || {}).dataset; seg = seg ? seg.seg : "all";
+      var isHotLead = function (l) { return (l.grade ? l.grade === "A" : l.heat === "hot") && (l.status === "new" || l.status === "contacted"); };
+      var t00 = new Date(); t00.setHours(0, 0, 0, 0);
+      var base = d.leads.filter(function (l) { return !/^academy/i.test(String(l.concern || "")); });
+      var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length, base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length];
+      counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
       var list = d.leads.filter(function (l) {
-        if (l.ts < since) return false;
+        if (seg === "call" && !isHotLead(l)) return false;
+        if (seg === "today" && l.ts < t00.getTime()) return false;
+        if (seg === "open" && !(l.status === "new" || l.status === "contacted")) return false;
+        if (seg !== "call" && l.ts < since) return false;
         if (fs && l.status !== fs) return false;
         if (fsrc && src(l) !== fsrc) return false;
         if (/^academy/i.test(String(l.concern || ""))) return false;
@@ -1183,10 +1214,11 @@
       }).sort(function (a, b) {
         var sa = a.status === "new" || a.status === "contacted" ? 0 : 1, sb = b.status === "new" || b.status === "contacted" ? 0 : 1;
         if (sa !== sb) return sa - sb;
-        var ha = heatRank[a.heat || ""] || 0, hb = heatRank[b.heat || ""] || 0; if (ha !== hb) return ha - hb;
+        var gr = { A: 0, B: 1, C: 2, D: 3 };
+        var ga = a.grade ? gr[a.grade] : (heatRank[a.heat || ""] || 0) + 0.5, gb = b.grade ? gr[b.grade] : (heatRank[b.heat || ""] || 0) + 0.5; if (ga !== gb) return ga - gb;
         return b.ts - a.ts;
       });
-      $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : '<div class="empty">No leads for this filter.</div>';
+      $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : '<div class="empty">' + (seg === "call" ? "Ippudu call cheyyalsina A-grade leads levu 👍" : "No leads for this filter.") + "</div>";
       paintMore();
     }
     // ---- the clinic day --------------------------------------------------
@@ -2076,6 +2108,10 @@
       return ibapi("list").then(function (j) {
         ib.canReply = !!j.canReply;
         $("nInbox").textContent = j.unread || 0; syncBadges();
+        var rv = j.review, rvh = $("ibReview");
+        if (rvh) rvh.innerHTML = rv && rv.checked ? '<div class="rvcard"><h3><span>🧐 Agent review · ' + esc(rv.day) + '</span><b style="color:' + (rv.score >= 75 ? "var(--ok)" : rv.score >= 50 ? "var(--hot)" : "var(--bad)") + '">' + rv.score + '/100</b></h3>' +
+          '<p class="meta" style="margin:0 0 4px">' + esc(rv.summary) + " · " + rv.checked + " chats" + (rv.lint && rv.lint.checked ? " · editor " + rv.lint.rewritten + "/" + rv.lint.checked + " replies sari chesindi" : "") + "</p>" +
+          (rv.findings || []).slice(0, 4).map(function (f) { return '<div class="f">' + (f.severity === "high" ? "🔴" : f.severity === "medium" ? "🟠" : "🟡") + " <b>" + esc(f.who || "…" + f.phone) + "</b> — " + esc(f.issue) + "<small>↳ " + esc(f.fix) + "</small></div>"; }).join("") + "</div>" : "";
         $("ibList").innerHTML = j.threads.length ? j.threads.map(function (t) {
           var nm = t.name || t.phone;
           return '<button class="ib-row' + (t.phone === ib.phone ? " on" : "") + '" data-act="ib-open" data-phone="' + esc(t.phone) + '">' +
@@ -4221,6 +4257,8 @@
       });
     });
     document.addEventListener("click", function (e) {
+      var sg = e.target.closest("#segs button");
+      if (sg) { document.querySelectorAll("#segs button").forEach(function (b) { b.classList.toggle("on", b === sg); }); renderLeads(); return; }
       var el = e.target.closest("[data-act]"); if (!el || el.tagName === "SELECT" || el.tagName === "FORM") return;
       if (el.dataset.act === "delete") { if (!confirm("Delete this lead?")) return; api("delete", { key: el.dataset.key }).then(function () { state.data.leads = state.data.leads.filter(function (x) { return x.key !== el.dataset.key; }); state.data.academy.leads = state.data.academy.leads.filter(function (x) { return x.key !== el.dataset.key; }); render(); toast("Deleted"); }).catch(function (x) { toast(x.message); }); }
       if (el.dataset.act === "p-pwd") {

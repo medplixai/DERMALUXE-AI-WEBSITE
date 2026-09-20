@@ -10,6 +10,8 @@ const guard = require("./_guard.js");
 const facts = require("./_facts.js");
 const clinic = require("./_clinic.js");
 const leadstore = require("./_leadstore.js");
+const qualify = require("./_qualify.js");
+const lint = require("./_lint.js");
 const notify = require("./_notify.js");
 
 const LIST_KEY = "dl_leads";
@@ -61,6 +63,7 @@ async function storeLead(cfg, info, sid, lastMsg) {
     call_prep: String(info.call_prep || "").slice(0, 220),
     src_id: sid,
   };
+  Object.assign(lead, qualify.stamp(await qualify.read(cfg, phone)));
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
   // One lead per conversation: replaces the earlier row, keeping the desk's
@@ -134,7 +137,11 @@ module.exports = async (req, res) => {
     return res.status(200).json({ reply: facts.FALLBACK_REPLY });
   }
 
+  try { out = await lint.check(cfg, out, message, hist.slice(-3).map((t) => t.a), { channel: "web" }); } catch (e) {}
   let captured = false;
+  if (out.lead && out.lead.phone && cfg) {
+    try { const q = await qualify.absorb(cfg, out.lead.phone, out.qual || {}, { inboundCount: hist.length + 1, channel: "web" }); await qualify.react(cfg, out.lead.phone, q, { name: out.lead.name }); } catch (e) {}
+  }
   if (out.lead && out.lead.name && out.lead.phone) {
     try { captured = await storeLead(cfg, out.lead, sid, message); } catch (e) {}
   }

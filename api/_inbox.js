@@ -41,7 +41,7 @@ async function log(cfg, phone, m) {
   meta.lastDir = rec.dir;
   meta.lastBy = rec.by || "";
   meta.ts = now;
-  if (rec.dir === "in") { meta.unread = (meta.unread || 0) + 1; meta.lastIn = now; }
+  if (rec.dir === "in") { meta.unread = (meta.unread || 0) + 1; meta.lastIn = now; meta.inCount = (meta.inCount || 0) + 1; }
   else if (rec.by !== "ai") meta.unread = 0;          // a person answered, so somebody has read it
   await guard.kvCommand(cfg, ["SET", `ib:t:${ph}`, JSON.stringify(meta), "EX", String(KEEP)]).catch(() => {});
   await guard.kvCommand(cfg, ["LREM", "ib:list", "0", ph]).catch(() => {});
@@ -82,6 +82,10 @@ async function thread(cfg, phone) {
   return { phone: ph, msgs, meta, human: await human(cfg, ph) };
 }
 
+async function meta(cfg, phone) {
+  return parse(((await guard.kvCommand(cfg, ["GET", `ib:t:${ten(phone)}`]).catch(() => ({}))) || {}).result || "", null);
+}
+
 async function markRead(cfg, phone) {
   const ph = ten(phone);
   const meta = parse(((await guard.kvCommand(cfg, ["GET", `ib:t:${ph}`]).catch(() => ({}))) || {}).result || "", null);
@@ -94,4 +98,4 @@ async function markRead(cfg, phone) {
 // patient's last message; after that it has to be an approved template.
 const windowOpen = (meta) => !!(meta && meta.lastIn && Date.now() - meta.lastIn < 24 * 3600000 - 60000);
 
-module.exports = { log, human, setHuman, threads, thread, markRead, windowOpen, HUMAN_SEC };
+module.exports = { log, human, setHuman, threads, thread, meta, markRead, windowOpen, HUMAN_SEC };

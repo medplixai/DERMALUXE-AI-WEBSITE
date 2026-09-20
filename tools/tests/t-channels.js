@@ -25,6 +25,7 @@ const dms = [], comments = [];
 global.fetch = async (url, opt) => {
   const u = String(url);
   if (u.includes("api.anthropic.com")) {
+    if (/You fix one WhatsApp reply/.test(String((opt && opt.body) || ""))) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.parse(opt.body).messages[0].content.split("\n")[1] || "ok" }] }) };   // the editor's rewrite is not a patient turn
     claudeCalls++;
     const next = claude.length ? claude.shift() : { reply: "Namaste 🙏", lead: null };
     return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(next) }] }) };

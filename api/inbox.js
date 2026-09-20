@@ -43,7 +43,9 @@ module.exports = async (req, res) => {
   if (a === "list") {
     const rows = await inbox.threads(cfg, 150);
     const unread = rows.reduce((n, t) => n + (t.unread || 0), 0);
-    return json(res, 200, { ok: true, threads: rows.map((t) => Object.assign(t, { open: inbox.windowOpen(t) })), unread, canReply });
+    // yesterday's agent review rides along, for the card at the top of the screen
+    let review = null; try { review = await require("./_review.js").latest(cfg); } catch (e) {}
+    return json(res, 200, { ok: true, threads: rows.map((t) => Object.assign(t, { open: inbox.windowOpen(t) })), unread, canReply, review });
   }
 
   if (a === "thread") {

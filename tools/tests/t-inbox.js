@@ -28,8 +28,10 @@ stub("_clinic.js", { forwardLead: async () => ({ attempted: false }) });
 stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () => null, transcribe: async () => null });
 
 let claudeCalls = 0;
-global.fetch = async (url) => {
-  if (String(url).includes("api.anthropic.com")) { claudeCalls++; return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify({ reply: "Namaste 🙏 Saturday ok na?", lead: null }) }] }) }; }
+global.fetch = async (url, opt) => {
+  if (String(url).includes("api.anthropic.com")) {
+    if (/You fix one WhatsApp reply/.test(String((opt && opt.body) || ""))) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.parse(opt.body).messages[0].content.split("\n")[1] || "ok" }] }) };   // the editor's rewrite is not a patient turn
+    claudeCalls++; return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify({ reply: "Namaste 🙏 Saturday ok na?", lead: null }) }] }) }; }
   return { ok: true, status: 200, json: async () => ({}), text: async () => "" };
 };
 

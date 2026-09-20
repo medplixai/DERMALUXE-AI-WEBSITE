@@ -55,6 +55,9 @@ module.exports = async (req, res) => {
   }
   const deskStatus = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result) || {};
   const leadKey = (l) => `${l.ts}|${String(l.phone || "").replace(/\D/g, "").slice(-10) || l.src_id || ""}`;
+  // Grade D (not a patient, said stop, very far) gets no chasing at all.
+  const qualify = require("./_qualify.js");
+  const gradeD = async (ph) => { const r = await qualify.read(cfg, ph).catch(() => null); return !!(r && r.grade === "D"); };
   const leaveAlone = (l, ph) => optSet.has(ph) || booked.has(ph)
     || ["booked", "visited", "closed"].includes(deskStatus[leadKey(l)])
     || /^\s*academy/i.test(String(l.concern || ""));
@@ -74,7 +77,7 @@ module.exports = async (req, res) => {
     const phone = String(l.phone || "").replace(/\D/g, "").slice(-10);
     if (phone.length !== 10 || !l.name) continue;
     if (l.slot && l.date) continue;                               // booking already complete
-    if (leaveAlone(l, phone)) continue;
+    if (leaveAlone(l, phone) || await gradeD(phone)) continue;
     checked++;
     try {
       const nx = await guard.kvCommand(cfg, ["SET", `ntf:fu:${phone}`, "1", "NX", "EX", "604800"]);
@@ -100,7 +103,7 @@ module.exports = async (req, res) => {
         const age = now - (l.ts || 0);
         if (age < 60 * 3600000 || age > 84 * 3600000) continue; // ~day 3
         const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
-        if (ph.length !== 10 || leaveAlone(l, ph)) continue;
+        if (ph.length !== 10 || leaveAlone(l, ph) || await gradeD(ph)) continue;
         try {
           const nx = await guard.kvCommand(cfg, ["SET", `ntf:fu3:${ph}`, "1", "NX", "EX", "2592000"]);
           if (!nx.result) continue; // already pushed this lead
@@ -130,7 +133,7 @@ module.exports = async (req, res) => {
       const age = now - (l.ts || 0);
       if (age < minH * 3600000 || age > maxH * 3600000) continue;
       const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
-      if (ph.length !== 10 || leaveAlone(l, ph)) continue;
+      if (ph.length !== 10 || leaveAlone(l, ph) || await gradeD(ph)) continue;
       try {
         const nx = await guard.kvCommand(cfg, ["SET", `${marker}:${ph}`, "1", "NX", "EX", String(ttl)]);
         if (!nx.result) continue;
@@ -337,6 +340,43 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: briefing", e && e.message); }
 
+  // ---- an A-grade lead the desk has not booked in two hours ----------------
+  let callNags = 0;
+  try {
+    const rows = ((await guard.kvCommand(cfg, ["LRANGE", "qual:calls", "0", "-1"]).catch(() => ({}))).result) || [];
+    for (const raw of rows) {
+      let c; try { c = JSON.parse(raw); } catch (e) { await guard.kvCommand(cfg, ["LREM", "qual:calls", "1", raw]).catch(() => {}); continue; }
+      if (now - c.ts < 2 * 3600000) continue;
+      await guard.kvCommand(cfg, ["LREM", "qual:calls", "1", raw]).catch(() => {});
+      if (booked.has(c.ph)) continue;
+      const stOf = Object.entries(deskStatus).filter(([k]) => k.endsWith("|" + c.ph)).map(([, v]) => v);
+      if (stOf.some((v) => ["booked", "visited", "closed"].includes(v))) continue;
+      try {
+        const push = require("./_push.js");
+        if (push.enabled()) await push.notifyCap(cfg, "leads.edit", {
+          title: `⏰ A-grade inka book kaledu — ${c.name || c.ph}`,
+          body: "2 gantalu ayindi. Call chesi slot pettandi — Leads → Ippude call.",
+          tab: "leads", urgent: true, data: { kind: "hot", phone: c.ph },
+        });
+      } catch (e) {}
+      callNags++;
+    }
+  } catch (e) { console.error("cron: call nags", e && e.message); }
+
+  // ---- stranded chats: the people the agent could not answer ---------------
+  let recovered = 0;
+  try { recovered = (await require("./_recover.js").run(cfg, 20)).answered; } catch (e) { console.error("cron: recover", e && e.message); }
+
+  // ---- yesterday's agent, reviewed (8:15 AM) ------------------------------
+  let reviewed = 0;
+  try {
+    if (istHour === 8) {
+      const day = new Date(now + 330 * 60000 - 86400000).toISOString().slice(0, 10);
+      const nx = await guard.kvCommand(cfg, ["SET", `review:done:${day}`, "1", "NX", "EX", "172800"]).catch(() => ({}));
+      if (nx && nx.result) { const rv = await require("./_review.js").run(cfg, day); reviewed = rv ? rv.checked : 0; }
+    }
+  } catch (e) { console.error("cron: review", e && e.message); }
+
   // ---- the evening report (9:45 PM) -------------------------------------
   // The day in one WhatsApp to the owner after closing: money in and out,
   // who came, new leads, dues, whether the drawer was counted.
@@ -424,5 +464,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, closing, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, closing, callNags, recovered, reviewed, photosMoved, swept });
 };

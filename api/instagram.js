@@ -14,6 +14,8 @@
 const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
 const leadstore = require("./_leadstore.js");
+const qualify = require("./_qualify.js");
+const lint = require("./_lint.js");
 const facts = require("./_facts.js");
 const notify = require("./_notify.js");
 const voice = require("./_voice.js"); // shared STT/TTS stack
@@ -272,6 +274,7 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
   };
   if (!lead.name) return;
   lead.src_id = igsid;
+  if (phone) Object.assign(lead, qualify.stamp(await qualify.read(cfg, phone)));
   try {
     if (cfg) await guard.kvCommand(cfg, ["SET", `ig:p:${igsid}`,
       JSON.stringify({ name: lead.name, concern: lead.concern, ts: Date.now() }), "EX", String(PROFILE_TTL)]);
@@ -551,6 +554,10 @@ module.exports = async (req, res) => {
     return res.status(200).json({ ok: true });
   }
 
+  try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName: igName, channel: "ig", analysis: !!imageUrl }); } catch (e) {}
+  if (out.lead && out.lead.phone && cfg) {
+    try { const q = await qualify.absorb(cfg, out.lead.phone, out.qual || {}, { inboundCount: hist.length + 1, photo_sent: !!imageUrl, channel: "instagram" }); await qualify.react(cfg, out.lead.phone, q, { name: out.lead.name }); } catch (e) {}
+  }
   if (out.lead && out.lead.name) {
     try { await storeLead(cfg, out.lead, igsid, igName, text); } catch (e) {}
   }

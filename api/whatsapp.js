@@ -18,6 +18,8 @@ const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
 const leadstore = require("./_leadstore.js");
 const inbox = require("./_inbox.js");
+const qualify = require("./_qualify.js");
+const lint = require("./_lint.js");
 const admin = require("./_admin.js");
 
 const LIST_KEY = "dl_leads";
@@ -784,6 +786,7 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
   };
   if (!lead.name) return;
   lead.src_id = phone;
+  Object.assign(lead, qualify.stamp(await qualify.read(cfg, phone)));   // grade, score, km, why — for the desk
   await saveProfile(cfg, phone, lead.name, lead.concern); // long-term greeting memory
   // One lead per patient per 6h conversation window — as the chat progresses,
   // the earlier row is replaced by this enriched one (and keeps the desk's
@@ -1164,9 +1167,20 @@ module.exports = async (req, res) => {
   }
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;
-  const extraCtx = nowIstCtx() + (await apptCtx(cfg, digits)) + (await academyCtx(cfg, hist, text)) + (profile && profile.name
+  const apptLine = await apptCtx(cfg, digits);
+  let extraCtx = nowIstCtx() + apptLine + (await academyCtx(cfg, hist, text)) + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
     : "");
+  // What the qualifier already knows (how far they are, what is still unasked),
+  // where the chat came from, and whether this "message" is Meta's ad prefill
+  // rather than the patient's own words.
+  if (cfg) {
+    const qrec0 = await qualify.read(cfg, digits);
+    if (qrec0) extraCtx += qualify.contextLine(qrec0);
+    const ar0 = await guard.kvCommand(cfg, ["GET", `ad:ref:${digits}`]).catch(() => ({}));
+    try { const ref0 = ar0 && ar0.result ? JSON.parse(ar0.result) : null; if (ref0 && ref0.headline) extraCtx += `[came from our ad: "${ref0.headline}"] `; } catch (e) {}
+  }
+  if (lint.isMetaPrefill(text)) extraCtx += "[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish and ask what concern they have] ";
 
   let out;
   let voiceScript = "";
@@ -1209,6 +1223,20 @@ module.exports = async (req, res) => {
   } catch (e) {
     console.error("wa: ai error", e && e.message);
     return respond(FALLBACK_REPLY);
+  }
+
+  // Save what the agent learned, re-score, tell the desk if it just became an A.
+  let qrec = null;
+  if (cfg) {
+    try {
+      const im = await inbox.meta(cfg, digits);
+      const oo = await guard.kvCommand(cfg, ["SISMEMBER", "optout", digits]).catch(() => ({}));
+      qrec = await qualify.absorb(cfg, digits, out.qual || {}, { inboundCount: (im && im.inCount) || hist.length + 1, photo_sent: !!imageId, opted_out: !!(oo && Number(oo.result) === 1), channel: "whatsapp" });
+      await qualify.react(cfg, digits, qrec, { name: (out.lead && out.lead.name) || profileName });
+    } catch (e) { console.error("wa: qualify", e && e.message); }
+    // The editor: a deterministic read of the reply before it goes out.
+    try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName, channel: "wa", analysis: !!imageId, booked: /appointment/i.test(apptLine) }); }
+    catch (e) { console.error("wa: lint", e && e.message); }
   }
 
   let justBooked = 0;
@@ -1307,4 +1335,5 @@ module.exports = async (req, res) => {
   return twiml(res, out.reply);
 };
 module.exports.confirmAppt = confirmAppt;
+module.exports.askClaude = askClaude;
 module.exports.recordRating = recordRating;
