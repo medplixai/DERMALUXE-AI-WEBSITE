@@ -23,7 +23,7 @@
       "maxDuration": 60
     },
     "api/cron-followup.js": {
-      "maxDuration": 60
+      "maxDuration": 180
     },
     "api/cron-digest.js": {
       "maxDuration": 60

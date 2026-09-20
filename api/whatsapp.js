@@ -1351,8 +1351,8 @@ module.exports = async (req, res) => {
   if (cfg) {
     try {
       const im = await inbox.meta(cfg, digits);
-      const oo = await guard.kvCommand(cfg, ["SISMEMBER", "optout", digits]).catch(() => ({}));
-      qrec = await qualify.absorb(cfg, digits, out.qual || {}, { inboundCount: (im && im.inCount) || hist.length + 1, photo_sent: !!imageId, opted_out: !!(oo && Number(oo.result) === 1), channel: "whatsapp",
+      const oo = await guard.setHas(cfg, "optout", digits);
+      qrec = await qualify.absorb(cfg, digits, out.qual || {}, { inboundCount: (im && im.inCount) || hist.length + 1, photo_sent: !!imageId, opted_out: oo, channel: "whatsapp",
         status: /last visit|came \d+ times/.test(known) ? "visited" : undefined });   // a patient who has been here is graded as one
       await qualify.react(cfg, digits, qrec, { name: (out.lead && out.lead.name) || profileName });
     } catch (e) { console.error("wa: qualify", e && e.message); }

@@ -33,8 +33,7 @@ async function candidates(cfg) {
     if (st.lastIn && st.lastIn !== t.lastIn) { st.n = 0; }         // they wrote again: start over
     const since = Date.now() - Math.max(Number(t.ts) || 0, Number(st.at) || 0);
     if (since < GAPS_MIN[st.n] * 60000) continue;
-    const opt = await guard.kvCommand(cfg, ["SISMEMBER", "optout", t.phone]).catch(() => ({}));
-    if (opt && Number(opt.result) === 1) continue;
+    if (await guard.setHas(cfg, "optout", t.phone)) continue;
     const q = await qualify.read(cfg, t.phone).catch(() => null);
     if (q && (q.grade === "D" || ["booked", "visited", "closed"].includes(q.status))) continue;
     out.push({ phone: t.phone, name: t.name || "", n: st.n, lastIn: t.lastIn, grade: (q && q.grade) || "" });

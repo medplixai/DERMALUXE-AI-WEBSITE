@@ -253,4 +253,14 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-module.exports = { idem, stamp, cronAuth, kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };
+// "Is this member in the set?" The Postgres-backed store answers
+// "unsupported command SISMEMBER" (it did so silently, as {error}, and every
+// caller read that as "not opted out"). SMEMBERS it does support.
+async function setHas(cfg, key, member) {
+  const kv = (this && this.kvCommand) || kvCommand;   // the tests swap kvCommand on the exports, like idem()
+  const r = await kv(cfg, ["SMEMBERS", key]).catch(() => ({}));
+  const list = (r && Array.isArray(r.result)) ? r.result : [];
+  return list.includes(String(member));
+}
+
+module.exports = { idem, stamp, cronAuth, kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, setHas, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };

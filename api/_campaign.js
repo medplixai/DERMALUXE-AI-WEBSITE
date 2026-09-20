@@ -55,8 +55,8 @@ async function preview(cfg, o) {
   const list = await audience(cfg, o.aud, o.seg);
   const fresh = [];
   for (const t of list) {
-    const touched = await guard.kvCommand(cfg, ["EXISTS", `cmp:touch:${t.ph}`]).catch(() => ({}));
-    if (!(touched && Number(touched.result) === 1)) fresh.push(t);
+    const touched = await guard.kvCommand(cfg, ["GET", `cmp:touch:${t.ph}`]).catch(() => ({}));
+    if (!(touched && touched.result)) fresh.push(t);
   }
   return { count: fresh.length, rested: list.length - fresh.length, sample: fresh.slice(0, 5).map((t) => t.name) };
 }

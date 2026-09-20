@@ -62,7 +62,11 @@ function run(c) {
     case "SADD": { const s = T(k); let n = 0; for (const v of c.slice(2)) { if (!s.has(String(v))) n++; s.add(String(v)); } return n; }
     case "SREM": { const s = T(k); let n = 0; for (const v of c.slice(2)) if (s.delete(String(v))) n++; return n; }
     case "SMEMBERS": return [...T(k)];
-    case "SISMEMBER": return T(k).has(String(c[2])) ? 1 : 0;
+    // The real store (Redis-shaped over Postgres) answers this with
+    // {"message":"unsupported command SISMEMBER"} — it went unnoticed in
+    // production for a day because every caller read the error as "no".
+    // Use guard.setHas (SMEMBERS) instead.
+    case "SISMEMBER": throw new Error("unsupported command SISMEMBER — use guard.setHas()");
     case "SCARD": return T(k).size;
     case "SCAN": { const keys = [...new Set([...S.str.keys(), ...S.list.keys(), ...S.hash.keys(), ...S.set.keys()])].filter(alive);
       const mi = c.findIndex((x) => String(x).toUpperCase() === "MATCH");

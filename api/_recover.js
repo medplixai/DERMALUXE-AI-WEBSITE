@@ -31,8 +31,7 @@ async function findStranded(cfg, hoursBack) {
     const after = msgs.slice(li + 1).filter((m) => m.dir === "out");
     // answered by anything that was not the holding line — the desk, or the agent once it recovered
     if (!after.length || after.some((m) => !isHold(m.text))) continue;
-    const opt = await guard.kvCommand(cfg, ["SISMEMBER", "optout", t.phone]).catch(() => ({}));
-    if (opt && Number(opt.result) === 1) continue;
+    if (await guard.setHas(cfg, "optout", t.phone)) continue;
     out.push({ phone: t.phone, name: t.name || "", lastIn, msgs, windowOpen: Date.now() - lastIn.ts < 24 * 3600000 - 120000 });
   }
   return out.sort((a, b) => a.lastIn.ts - b.lastIn.ts);
