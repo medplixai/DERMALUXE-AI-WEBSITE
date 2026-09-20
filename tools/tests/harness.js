@@ -54,6 +54,7 @@ function run(c) {
       for (let i = 2; i < c.length; i += 2) { if (!h.has(String(c[i]))) added++; h.set(String(c[i]), String(c[i + 1])); }
       return added; }
     case "HGET": { const h = H(k); return h.has(String(c[2])) ? h.get(String(c[2])) : null; }
+    case "HMGET": { const h = H(k); return c.slice(2).map((f) => (h.has(String(f)) ? h.get(String(f)) : null)); }
     case "HGETALL": { const h = H(k); const out = []; for (const [f, v] of h) out.push(f, v); return out; }
     case "HDEL": { const h = H(k); let n = 0; for (const f of c.slice(2)) if (h.delete(String(f))) n++; return n; }
     case "HLEN": return H(k).size;

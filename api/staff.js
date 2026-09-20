@@ -281,11 +281,27 @@ async function leadPage(cfg, offset, count) {
   ]);
   const raw = (lr.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
   const keys = raw.map(leadKey);
-  const [st, notes] = await Promise.all([hashSome(cfg, STATUS, keys), hashSome(cfg, NOTES, keys)]);
+  const qual = require("./_qualify.js");
+  const [st, notes, stTs, grades, optOut] = await Promise.all([
+    hashSome(cfg, STATUS, keys), hashSome(cfg, NOTES, keys), hashSome(cfg, STATUS_TS, keys),
+    qual.forPhones(cfg, raw.map((l) => l.phone)),
+    guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({})),
+  ]);
+  const off = new Set(((optOut && optOut.result) || []));
   const leads = raw.map((l) => {
     const k = leadKey(l); let n = [];
     try { n = JSON.parse(notes[k] || "[]"); } catch (e) {}
-    return Object.assign(trimLead(l), { key: k, status: STATUSES.includes(st[k]) ? st[k] : "new", notes: n, phone: digits10(l.phone) });
+    const ph = digits10(l.phone);
+    const status = STATUSES.includes(st[k]) ? st[k] : "new";
+    const base = Object.assign(trimLead(l), { key: k, status, notes: n, phone: ph, optedOut: off.has(ph) });
+    // The grade and, from it, the one thing to do next — and how long this
+    // person has been waiting for somebody to do it.
+    const rec = grades[ph];
+    if (rec) Object.assign(base, qual.stamp(rec));
+    base.next = qual.nextAction(rec, base);
+    const touched = Number(stTs[k] || 0) || (n.length ? Math.max(...n.map((x) => Number(x.ts) || 0)) : 0);
+    if (status === "new" && !touched) base.waiting = Math.max(0, Date.now() - Number(l.ts || 0));
+    return base;
   });
   const leadsTotal = Number((total && total.result) || 0) || (from + leads.length);
   return { leads, leadsTotal, offset: from, more: from + leads.length < leadsTotal };

@@ -32,6 +32,9 @@ for (let i = 0; i < TOTAL; i++) {
     village: ["Eluru", "Bhimavaram", "Vijayawada", "Hyderabad", "Tadepalligudem"][i % 5], km: [0, 60, 60, 330, 35][i % 5],
     since: i % 3 ? "6 nelalu" : "", prefers: i % 5 === 0 ? "Saturday evening" : "",
     why: [["Eluru — 0 km, daggare", "raavadaniki ready", "entakalam nundo chepparu: 6 nelalu"], ["Bhimavaram — 60 km", "alochistunnaru"], ["price matrame adigaru"], ["patient kaadu (job / sales / wrong number)"], ["ee vaaram lo"]][i % 5],
+    intent: ["book_now", "considering", "price_only", "not_patient", "considering"][i % 5],
+    next: [{ kind: "call", text: "Ippude call cheyandi 🔥" }, { kind: "ask", text: "Adagandi: eppudu raagalaru?" }, { kind: "video", text: "330 km — video consultation offer cheyandi" }, { kind: "skip", text: "Patient kaadu — vadileyandi" }, { kind: "book", text: "Slot pettandi — Saturday evening" }][i % 5],
+    waiting: [42 * 60000, 5 * 3600000, 12 * 60000, 0, 26 * 3600000][i % 5],
     status: ["new", "contacted", "booked", "visited", "closed"][i % 5],
     notes: i % 4 === 0 ? [{ ts: ts + 600000, by: "Reception", text: "Called, asked to ring back" }] : [],
   });

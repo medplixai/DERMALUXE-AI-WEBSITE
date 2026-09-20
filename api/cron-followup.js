@@ -340,6 +340,10 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: briefing", e && e.message); }
 
+  // ---- grade the leads that came in before any of this existed -------------
+  let backfilled = 0;
+  try { backfilled = (await qualify.backfill(cfg, 25)).graded; } catch (e) { console.error("cron: qualify backfill", e && e.message); }
+
   // ---- an A-grade lead the desk has not booked in two hours ----------------
   let callNags = 0;
   try {
@@ -464,5 +468,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, closing, callNags, recovered, reviewed, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, photosMoved, swept });
 };

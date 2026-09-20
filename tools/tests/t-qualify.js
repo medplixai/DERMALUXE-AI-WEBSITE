@@ -166,6 +166,42 @@ const cfg = { kind: "pg" };
   is(!!owner && /72\/100/.test(owner[2]) && /price cheppindi/.test(owner[2]), true, "and the owner gets it on WhatsApp");
   is((await review.latest(cfg)).day, today, "and the app can show the latest one");
 
+  console.log("\n  — the leads that came before any of this —");
+  h.run(["DEL", "dl_leads"]);
+  const old1 = Date.now() - 3 * 86400000, old2 = Date.now() - 2 * 86400000;
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: old1, name: "Padma", phone: "9876501910", type: "whatsapp", concern: "Hair fall", message: "Hair fall 8 nelalu nundi undi, Eluru nunchi, entha avutundi? repu vastanu", call_prep: "" })]);
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: old2, name: "Job Man", phone: "9876501911", type: "whatsapp", concern: "job kavali", message: "sir naaku job kavali, resume pampana?" })]);
+  const bf = await Q.backfill(cfg, 25);
+  is(bf.graded, 2, "the old leads are graded from what they actually typed");
+  const g1 = await Q.read(cfg, "9876501910"), g2 = await Q.read(cfg, "9876501911");
+  is([g1.grade, g1.facts.village, g1.facts.problem_since, g1.facts.asked_price], ["A", "Eluru", "8 nelalu", true], "the town, how long and the price question are read out of the words");
+  is(g2.grade, "D", "and a job seeker is a D without anybody reading it");
+  is((await Q.backfill(cfg, 25)).graded, 0, "a second pass does not re-grade what it already did");
+
+  console.log("\n  — what to do next —");
+  const A = { status: "new", notes: [] };
+  is(Q.nextAction(g1, A).kind, "call", "an A nobody has called yet says: call now");
+  is(Q.nextAction(g1, { status: "booked" }).kind, "done", "a booked lead says the reminder is handled");
+  is(Q.nextAction(g2, A).kind, "skip", "a D says leave it");
+  const far = await Q.absorb(cfg, "9876501912", { village: "Hyderabad", problem: "PICO", problem_since: "1 year", intent: "considering" }, {});
+  is([Q.nextAction(far, A).kind, /video/.test(Q.nextAction(far, A).text)], ["video", true], "somebody 330 km away is offered a video consultation");
+  const half = await Q.absorb(cfg, "9876501913", { problem: "acne", village: "Eluru" }, {});
+  is(Q.nextAction(half, A).text, "Adagandi: entakalam nundi undi?", "and a half-known lead says which question is missing");
+
+  console.log("\n  — the desk's screen —");
+  // the real staff module, with a real session token, so the join is tested
+  delete require.cache[path.join(API, "staff.js")];
+  const staffApi = require(path.join(API, "staff.js"));
+  const crypto = require("crypto");
+  const payload = Buffer.from(JSON.stringify({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: Date.now() + 3600000 })).toString("base64url");
+  const bearer = { headers: { authorization: "Bearer " + payload + "." + crypto.createHmac("sha256", process.env.STAFF_SECRET).update(payload).digest("hex") } };
+  h.run(["HSET", "dl_status", `${old2}|9876501911`, "closed"]);
+  const page = (await h.call(staffApi, { a: "data" }, null, bearer)).body;
+  const row = page.leads.find((l) => l.phone === "9876501910");
+  is([row.grade, row.village, row.since, row.next.kind], ["A", "Eluru", "8 nelalu", "call"], "the lead card carries the grade, the facts and the next step");
+  is(row.waiting > 0, true, "and how long they have been waiting for somebody to touch it");
+  is(page.leads.find((l) => l.phone === "9876501911").next.kind, "done", "a lead the desk closed says so");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nqualification behaves");
   process.exit(fails ? 1 : 0);
 })();

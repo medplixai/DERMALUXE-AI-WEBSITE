@@ -522,6 +522,20 @@
     .gr.A{background:#fee2e2;color:#991b1b}.gr.B{background:#fef3c7;color:#92400e}.gr.C{background:#e0f2fe;color:#075985}.gr.D{background:var(--panel2);color:var(--muted2)}
     .gr small{font-weight:500;opacity:.8}
     .why{font-size:.76rem;color:var(--muted);margin-top:4px;line-height:1.45}
+    .nxt{display:flex;align-items:center;gap:6px;font-size:.82rem;font-weight:500;margin-top:8px;padding:7px 10px;border-radius:10px;background:var(--panel2);color:var(--text)}
+    .nxt.call{background:#fff1f2;color:#9f1239}
+    .nxt.ask{background:#eff6ff;color:#1e40af}
+    .nxt.book{background:#fbf3e3;color:var(--gold2,#7a5a22)}
+    .nxt.video{background:#f5f3ff;color:#5b21b6}
+    .nxt.skip,.nxt.done{background:var(--panel2);color:var(--muted)}
+    .wait{font-weight:600}
+    .wait.warn{color:var(--hot)}.wait.bad{color:var(--bad)}
+    .gr{cursor:pointer}
+    .brk{display:flex;justify-content:space-between;gap:10px;font-size:.86rem;padding:6px 0;border-bottom:1px solid var(--line)}
+    .brk b{font-variant-numeric:tabular-nums}
+    .brk.minus b{color:var(--bad)}
+    .meter{height:8px;border-radius:99px;background:var(--ink2);overflow:hidden;margin:8px 0 2px}
+    .meter i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f59e0b,#dc2626)}
     .why b{font-weight:500;color:var(--text)}
     .segs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
     .segs button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 11px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
@@ -1128,10 +1142,12 @@
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + '</div></div>' +
-        '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" title="Lead grade">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
+        '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
         '<div class="concern">' + esc(l.concern || l.message || "") + '</div>' +
         (l.grade ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +
           ((l.why || []).length ? (l.village || l.since || l.prefers ? '<br>' : '') + esc((l.why || []).slice(0, 3).join(" · ")) : '') + '</div>' : '') +
+        (l.next && l.status !== "closed" ? '<div class="nxt ' + esc(l.next.kind) + '">' + esc(l.next.text) +
+          (l.waiting != null && l.next.kind !== "skip" && l.next.kind !== "done" ? ' <span class="wait' + (l.waiting > 3 * 3600000 ? " bad" : l.waiting > 30 * 60000 ? " warn" : "") + '">· ' + waitFor(l.waiting) + ' nundi waiting</span>' : "") + '</div>' : "") +
         (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
         '<div class="acts">' +
@@ -1143,6 +1159,39 @@
         '<div class="phwrap" data-kind="lead" data-ref="' + esc(l.key) + '"></div>' +
         '<div class="notes">' + notes + '<form class="noteform" data-act="note" data-key="' + esc(l.key) + '"><input placeholder="Call note… (e.g. spoke, coming Sat 5 PM)" maxlength="400" /><button class="btn btn--sm btn--gold" type="submit">Add</button></form></div>' +
         '</article>';
+    }
+    function waitFor(ms) {
+      var m = Math.round(ms / 60000);
+      if (m < 60) return m + " nimishalu";
+      var hrs = Math.round(m / 60);
+      return hrs < 24 ? hrs + " gantalu" : Math.round(hrs / 24) + " rojulu";
+    }
+    // Why this grade — the same sentences the score was built from.
+    function gradeWhy(l) {
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      var pos = (l.why || []);
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
+        '<h2>' + esc(l.name || "Lead") + ' <span class="gr ' + esc(l.grade || "C") + '">' + esc(l.grade || "?") + " " + (l.score || 0) + "/100</span></h2>" +
+        '<div class="meter"><i style="width:' + Math.max(4, Math.min(100, l.score || 0)) + '%"></i></div>' +
+        '<p class="meta">Grade patient cheppina vishayaala batti lekkistam — prathi point ki kaaranam kinda undi.</p>' +
+        '<div style="margin-top:10px">' +
+        [["📍 Ooru", (l.village || "—") + (l.km != null ? " · " + l.km + " km" : "")],
+         ["⏳ Entakalam nundi", l.since || "inka cheppaledu"],
+         ["📅 Eppudu raagalaru", l.prefers || "inka cheppaledu"],
+         ["🎯 Uddesam", { book_now: "Vastanu annaru", considering: "Alochistunnaru", price_only: "Price matrame", info_only: "Details matrame", not_patient: "Patient kaadu" }[l.intent] || "inka cheppaledu"]]
+          .map(function (r) { return '<div class="brk"><span>' + r[0] + "</span><b>" + esc(r[1]) + "</b></div>"; }).join("") + "</div>" +
+        (pos.length ? '<h3 style="font-size:.9rem;margin:14px 0 4px">Points ela vachhayi</h3>' + pos.map(function (w) { return '<div class="brk"><span>' + esc(w) + "</span><b>+</b></div>"; }).join("") : "") +
+        (l.next ? '<div class="nxt ' + esc(l.next.kind) + '" style="margin-top:14px">' + esc(l.next.text) + "</div>" : "") +
+        '<div class="acts" style="margin-top:12px">' +
+        (l.phone ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(l.phone) + '">📞 Call</a>' +
+          (state.allow("inbox.view") && l.type === "whatsapp" ? '<button class="btn btn--sm" data-act="ib-open" data-phone="' + esc(l.phone) + '">🗨 Chat</button>' : "") +
+          '<button class="btn btn--sm" data-act="pt-open" data-phone="' + esc(l.phone) + '">📋 Patient file</button>' : "") +
+        '<button class="btn btn--sm btn--gold" data-close="1" style="flex:1">Close</button></div></div>';
+      wrap.addEventListener("click", function (e) {
+        if (e.target.classList.contains("sheet-bg") || e.target.closest("[data-close]") || e.target.closest("[data-act]")) wrap.remove();
+      });
+      document.body.appendChild(wrap);
     }
     function fillThumbs() {
       if (!NATIVE) return;
@@ -4289,6 +4338,12 @@
       }
       if (el.dataset.act === "photo-open") { openPhoto(el.dataset.pid); return; }
       if (el.dataset.act === "pt-open") { haptic(); openPatient(el.dataset.phone); return; }
+      if (el.dataset.act === "gr-why") {
+        haptic();
+        var lw = (state.data.leads || []).filter(function (x) { return x.key === el.dataset.key; })[0];
+        if (lw) gradeWhy(lw);
+        return;
+      }
       if (el.dataset.act === "pt-compare") { haptic(); if (ptOpen) openCompare(ptOpen.photos); return; }
       if (el.dataset.act === "ib-open") { haptic(); if (ptOpen) closePatient(); goTab("inbox"); openThread(el.dataset.phone); return; }
       if (el.dataset.act === "pkg-drop") {

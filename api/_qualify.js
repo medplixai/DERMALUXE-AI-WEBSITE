@@ -129,6 +129,125 @@ function scoreLead(q) {
   return { score, grade: GRADE_OF(score), signals, km, ring, place: place.known ? place.label : "" };
 }
 
+// ---- reading facts out of what was actually typed ---------------------------
+// The model fills "qual" most of the time. A deterministic pass over the raw
+// words catches what it forgets, and is the only thing that can grade the
+// leads that came in before any of this existed.
+const DURATION = /(\d+\s*(?:\+\s*)?(?:nela(?:lu|llu)?|months?|mnths?|years?|yrs?|sam+vatsara(?:lu|alu)?|rojulu|days?|weeks?|vaaram|varam|వారం|నెల(?:లు)?|సంవత్సర(?:ం|ాలు)?|రోజులు)|(?:chaala|చాలా|many|several)\s*(?:years?|nelalu|సంవత్సరాలు|నెలలు))/i;
+const PRICE_ASK = /(entha|enta\b|ento|ఎంత|how much|price|cost|fee|charge|rate|ఖర్చు|ఫీజు|free na|ఉచిత|budget)/i;
+const BOOK_NOW = /(book|slot|vasta(?:nu|m|ru)?|వస్తాను|వస్తాం|appointment kavali|raavali|confirm cheyandi|ready|ఇప్పుడే|ventane rand)/i;
+const CONSIDER = /(alochi|ఆలోచి|thinking|later chuda|maatladi cheptanu|intlo adigi|discuss)/i;
+const NOT_PATIENT = /(\bjob\b|ఉద్యోగ|udyoga|vacancy|resume|\bcv\b|hiring|salary entha|marketing executive|\bsales\b|medical rep|business proposal|partnership|promote your|seo|website design)/i;
+const EMERGENCY = /(emergency|అత్యవసర|ventane|bleeding|raktam|chemu|swelling ekkuva|burn|కాలిన|allergy ekkuva|severe)/i;
+const THIS_WEEK = /(ee vaaram|this week|repu|tomorrow|ee roju|today|రేపు|ఈరోజు|ఈ వారం|saturday|sunday|monday|tuesday|wednesday|thursday|friday)/i;
+const THIS_MONTH = /(ee nela|this month|ఈ నెల|next week|vachche vaaram)/i;
+const LATER = /(tarvata|later|next month|vachche nela|తర్వాత|konchem time|after \d)/i;
+const FAMILY = /(intlo|ఇంట్లో|amma|nanna|husband|wife|family ni adigi|వాళ్ళని అడిగి)/i;
+
+// A town named in the middle of a sentence. Short aliases ("undi", "kalla" are
+// ordinary Telugu words) only count next to a "from" word.
+function placeIn(text) {
+  const t = norm(text);
+  if (!t) return null;
+  for (const p of PLACES) {
+    for (const a of p.aliases) {
+      const al = norm(a);
+      if (!al) continue;
+      const rx = new RegExp(`(^|[^\\p{L}\\p{M}])${al.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}([^\\p{L}\\p{M}]|$)`, "u");
+      if (!rx.test(t)) continue;
+      if (al.length < 5) {
+        const near = new RegExp(`${al}\\s*(nunchi|nundi|nunci|lo\\b|నుంచి|నుండి|లో)`, "u");
+        if (!near.test(t)) continue;
+      }
+      return { village: p.en, km: p.km };
+    }
+  }
+  return null;
+}
+
+// Facts a person can read out of the words themselves.
+function extract(text) {
+  const t = String(text || "");
+  if (!t.trim()) return {};
+  const f = {};
+  const place = placeIn(t);
+  if (place) f.village = place.village;
+  const d = t.match(DURATION);
+  if (d) f.problem_since = d[0].trim().slice(0, 40);
+  if (PRICE_ASK.test(t)) f.asked_price = true;
+  if (NOT_PATIENT.test(t)) f.intent = "not_patient";
+  else if (BOOK_NOW.test(t)) f.intent = "book_now";
+  else if (CONSIDER.test(t)) f.intent = "considering";
+  else if (PRICE_ASK.test(t)) f.intent = "price_only";
+  if (EMERGENCY.test(t)) f.urgency = "emergency";
+  else if (THIS_WEEK.test(t)) f.urgency = "this_week";
+  else if (THIS_MONTH.test(t)) f.urgency = "this_month";
+  else if (LATER.test(t)) f.urgency = "later";
+  if (FAMILY.test(t)) f.decision_maker = "family";
+  return f;
+}
+
+// What the desk should do with this lead next, in one line.
+function nextAction(rec, lead) {
+  const l = lead || {}, f = (rec && rec.facts) || {};
+  const st = l.status || "new";
+  if (st === "booked" || st === "visited") return { kind: "done", text: st === "visited" ? "Vachcharu ✅" : "Book ayindi — reminder veltundi" };
+  if (st === "closed") return { kind: "done", text: "Close chesaru" };
+  if (rec && rec.grade === "D") return { kind: "skip", text: (f.intent === "not_patient" ? "Patient kaadu" : rec.km > 150 ? "Chala dooram" : "Cold") + " — vadileyandi" };
+  if (l.optedOut) return { kind: "skip", text: "STOP chesaru — messages vaddu" };
+  const noteCount = (l.notes || []).length;
+  if (rec && rec.grade === "A" && !noteCount) return { kind: "call", text: "Ippude call cheyandi 🔥" };
+  if (rec && rec.km != null && rec.km > 80) return { kind: "video", text: `${rec.km} km — video consultation offer cheyandi` };
+  if (!f.problem_since) return { kind: "ask", text: "Adagandi: entakalam nundi undi?" };
+  if (!f.village) return { kind: "ask", text: "Adagandi: e ooru nundi?" };
+  if (f.prefers && st === "new") return { kind: "book", text: `Slot pettandi — ${String(f.prefers).slice(0, 24)}` };
+  if (!f.prefers) return { kind: "ask", text: "Adagandi: eppudu raagalaru?" };
+  if (st === "contacted") return { kind: "call", text: "Malli follow-up cheyandi" };
+  return { kind: "call", text: "Call chesi slot pettandi" };
+}
+
+// Every qual record for a page of leads, in one trip.
+async function forPhones(cfg, phones) {
+  const list = [...new Set((phones || []).map(ten).filter((p) => p.length === 10))];
+  if (!cfg || !list.length) return {};
+  const r = await guard.kvCommand(cfg, ["MGET"].concat(list.map((p) => `qual:${p}`))).catch(() => ({}));
+  const out = {};
+  ((r && r.result) || []).forEach((v, i) => { const rec = parse(v || "", null); if (rec) out[list[i]] = rec; });
+  return out;
+}
+
+// Grade the leads that came in before any of this existed, a batch at a time.
+// Their facts come from what they typed — the enquiry text, the call prep, and
+// their WhatsApp thread — never from a guess.
+async function backfill(cfg, limit) {
+  if (!cfg) return { scanned: 0, graded: 0 };
+  const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]).catch(() => ({}));
+  const rows = ((r && r.result) || []).map((x) => parse(x, null)).filter((l) => l && ten(l.phone).length === 10);
+  const have = await forPhones(cfg, rows.map((l) => l.phone));
+  const st = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result) || {};
+  const out = { scanned: 0, graded: 0 };
+  for (const l of rows) {
+    const ph = ten(l.phone);
+    if (have[ph]) continue;
+    out.scanned++;
+    if (out.graded >= (limit || 25)) break;
+    const inb = await require("./_inbox.js").thread(cfg, ph).catch(() => null);
+    const chat = inb ? (inb.msgs || []).filter((m) => m.dir === "in").map((m) => m.text).join(" \n ") : "";
+    const text = [l.concern, l.message, l.call_prep, chat].filter(Boolean).join(" \n ");
+    const f = extract(text);
+    if (l.name) f.name = l.name;
+    if (l.slot || l.date) f.prefers = [l.date, l.slot].filter(Boolean).join(" ").slice(0, 40);
+    if (/^academy/i.test(String(l.concern || ""))) f.problem = f.problem || String(l.concern).slice(0, 120);
+    else if (l.concern) f.problem = String(l.concern).slice(0, 120);
+    if (/\[📷|photo/i.test(text)) f.photo_sent = true;
+    const status = st[`${l.ts}|${ph}`] || "new";
+    const inbound = inb ? (inb.msgs || []).filter((m) => m.dir === "in").length : (l.type === "web" || l.type === "lead" ? 1 : 2);
+    await absorb(cfg, ph, f, { inboundCount: inbound, status, channel: l.type || "", photo_sent: f.photo_sent });
+    out.graded++;
+  }
+  return out;
+}
+
 // ---- the record --------------------------------------------------------------
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
 const ten = (p) => String(p || "").replace(/\D/g, "").slice(-10);
@@ -251,4 +370,4 @@ async function chase(cfg, phone) {
   return CADENCE[(rec && rec.grade) || "C"];
 }
 
-module.exports = { PLACES, placeOf, ringOf, scoreLead, read, absorb, react, stamp, chase, contextLine, INTENTS, URGENCY, GRADE_OF };
+module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, nextAction, forPhones, backfill, read, absorb, react, stamp, chase, contextLine, INTENTS, URGENCY, GRADE_OF };
