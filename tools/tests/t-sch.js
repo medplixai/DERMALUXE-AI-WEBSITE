@@ -89,6 +89,46 @@ const tomorrow11 = () => {
   is(w.body.days.length, 7, "seven days ahead");
   is(w.body.days.some((x) => x.total > 0), true, "with the counts on them");
 
+  // ---- the day as a plan, not a list -------------------------------------
+  // An empty morning is not "nothing to do": it is a morning nobody filled.
+  console.log("\n  — the day as a plan —");
+  const path2 = require("path");
+  const Q2 = require(path2.join(process.env.DL_API, "_qualify.js"));
+  const dayOf = (t) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t));
+  const tomDay = dayOf(Date.now() + 86400000);
+  const plan1 = (await S({ a: "day", day: tomDay })).body.plan;
+  is([plan1.slots, plan1.per], [24, 2], "the clinic's day is 24 half-hours, two patients to a slot");
+  is([plan1.free.some((f) => /am$/.test(f.time)), plan1.free.some((f) => /[5-8]:\d\d pm$/.test(f.time))], [true, true],
+    "and the times offered are spread across the day — a morning and an evening, not twelve nine-o'clocks");
+  // a slot filled to capacity is not offered again
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500081", name: "One", at: Date.parse(tomDay + "T16:00:00+05:30") })]);
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500082", name: "Two", at: Date.parse(tomDay + "T16:00:00+05:30") })]);
+  h.run(["LPUSH", "blk:q", JSON.stringify({ from: Date.parse(tomDay + "T13:00:00+05:30"), to: Date.parse(tomDay + "T15:00:00+05:30"), note: "doctor leave" })]);
+  const plan2 = (await S({ a: "day", day: tomDay })).body.plan;
+  is(plan2.free.some((f) => f.time === "4:00 pm"), false, "a slot that is full is not offered");
+  is(plan2.free.length <= 12, true, "and the desk is offered a handful, not the whole day");
+  is(plan2.free.some((f) => f.time === "1:30 pm" || f.time === "2:00 pm"), false, "nor a time the doctor is away");
+  // who the records say to ring
+  h.run(["RPUSH", "dl_leads", JSON.stringify({ ts: Date.now() - 3600000, type: "whatsapp", phone: "9876500091", name: "Hot Anu", concern: "Hair fall" })]);
+  await Q2.absorb({ kind: "pg" }, "9876500091", { village: "Eluru", intent: "book_now", problem: "hair fall", problem_since: "6 nelalu" }, { inboundCount: 3 });
+  h.run(["LPUSH", "appt:done", JSON.stringify({ ph: "9876500092", name: "Missed Ravi", at: Date.now() - 5 * 86400000, ns: 1, status: "noshow" })]);
+  const plan3 = (await S({ a: "day", day: tomDay })).body.plan;
+  const kinds = plan3.fill.map((f) => f.kind);
+  is([kinds.includes("lead"), kinds.includes("noshow")], [true, true], "the hot enquiry nobody booked, and the patient who never came back, are both on the list");
+  is(plan3.fill.find((f) => f.kind === "lead").why, "A grade · Hair fall", "each line says why this person, in a few words");
+  is(plan3.fill.filter((f) => f.phone === "9876500091").length, 1, "and nobody appears twice");
+  // somebody already booked is not suggested again
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500091", name: "Hot Anu", at: Date.parse(tomDay + "T17:00:00+05:30") })]);
+  is((await S({ a: "day", day: tomDay })).body.plan.fill.some((f) => f.phone === "9876500091"), false, "once they are booked they drop off it");
+  // what could go wrong with the ones that are booked
+  const risky = (await S({ a: "day", day: tomDay })).body.rows.find((r) => r.ph === "9876500091");
+  is(risky.risk.some((x) => /confirm cheyyandi/.test(x)), true, "an unconfirmed appointment inside the next day is flagged — the ones further out are not");
+  h.run(["LPUSH", "appt:done", JSON.stringify({ ph: "9876500091", name: "Hot Anu", at: Date.now() - 12 * 86400000, ns: 1, status: "noshow" })]);
+  const twice = (await S({ a: "day", day: tomDay })).body.rows.find((r) => r.ph === "9876500091");
+  is(twice.risk.includes("mundu 1 sari raaledu"), true, "and a patient who has not turned up before is flagged, in the desk's own words");
+  const sun = (await S({ a: "day", day: (function () { for (let i = 0; i < 8; i++) { const d = dayOf(Date.now() + i * 86400000); if (new Date(d + "T12:00:00+05:30").getUTCDay() === 0) return d; } })() })).body.plan;
+  is([sun.closed, sun.free.length], [true, 0], "and Sunday is closed — no times are offered at all");
+
   h.as(["appts.view"]);
   const ro = await S({ a: "create" }, { a: "create", ph: "9876500075", at });
   is(ro.code, 403, "somebody who can only look cannot book");

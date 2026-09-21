@@ -64,6 +64,20 @@
     .who b{color:var(--g1);font-weight:500;display:block}
     .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
     .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 10px}
+    .plan{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-top:12px}
+    .plan-load{display:flex;align-items:center;gap:10px;font-size:.86rem;color:var(--muted);flex-wrap:wrap}
+    .plan-load b{color:var(--text);font-weight:700}
+    .plan-load .bar{flex:1;min-width:90px;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
+    .plan-load .bar i{display:block;height:100%;background:var(--g1)}
+    .plan-free{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .plan-free button{border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:5px 9px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
+    .plan-free button:hover:not(:disabled){border-color:var(--primary);color:var(--text)}
+    .plan-free button:disabled{opacity:.55;cursor:default}
+    .plan-h{font-size:.9rem;margin:14px 0 6px}
+    .plan-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
+    .plan-row b{font-weight:600}
+    .plan-row .acts{display:flex;gap:6px}
+    .dayStrip i em,.day i em{font-style:normal;color:var(--hot);margin-left:2px}
     .stat[data-act]{cursor:pointer}
     .stat[data-act]:hover{border-color:var(--primary)}
     .stat b{display:block;font-family:var(--sans);font-weight:800;letter-spacing:-.015em;font-size:1.9rem;font-weight:600;color:var(--g1);line-height:1}
@@ -717,6 +731,7 @@
         </div>
         <div id="schList"><div class="sk"><div></div><div></div><div></div><div></div></div></div>
         <div id="schGrid" class="hide"></div>
+        <div id="schPlan"></div>
         <div class="grp hide" id="waitWrap"><div class="grp-h"><h2>Waitlist <span class="te" style="font-size:.85rem">· ముందు స్లాట్ కావాలి</span></h2><i id="waitCount"></i></div><div id="waitList"></div></div>
         <div class="grp"><div class="grp-h"><h2>Next sitting due <span class="te" style="font-size:.85rem">· రీకాల్</span></h2><i id="dueCount"></i></div><div id="dueList"><div class="sk"><div></div><div></div></div></div></div>
       </section>
@@ -1407,6 +1422,38 @@
     }
     // ---- the clinic day --------------------------------------------------
     var schDay = null, schData = null, schWeek = null, schMine = false;
+    // The day as a plan, not a list: how full it is, which times are really
+    // free, and who the records say is worth ringing to fill them.
+    function paintDayPlan(p) {
+      var host = $("schPlan"); if (!host) return;
+      if (!p) { host.innerHTML = ""; return; }
+      var canEdit = state.allow("appts.edit");
+      if (p.closed) { host.innerHTML = '<div class="plan"><p class="meta">Aadivaaram — clinic close.</p></div>'; return; }
+      var free = p.free || [], fill = p.fill || [];
+      var pct = p.slots ? Math.round((p.used / (p.slots * (p.per || 1))) * 100) : 0;
+      var out = '<div class="plan"><div class="plan-load"><b>' + p.used + "/" + (p.slots * (p.per || 1)) + "</b> slots"
+        + '<span class="bar"><i style="width:' + Math.max(2, Math.min(100, pct)) + '%"></i></span>'
+        + (free.length ? "<span>" + free.length + "+ khaali</span>" : "<span>ika khaali ledu</span>") + "</div>";
+      if (free.length) {
+        out += '<div class="plan-free">' + free.map(function (f) {
+          return '<button type="button" data-act="sch-slot" data-at="' + f.at + '"' + (canEdit ? "" : " disabled") + ">" + esc(f.time) + "</button>";
+        }).join("") + "</div>";
+      }
+      if (fill.length) {
+        var LBL = { sitting: "🔁", lead: "🔥", cycle: "📅", noshow: "↩️", wait: "⏳" };
+        out += '<h3 class="plan-h">Ee slots lo evarini pettochu — <span class="meta">records batti</span></h3>' +
+          fill.map(function (f) {
+            return '<div class="plan-row"><span><b>' + (LBL[f.kind] || "•") + " " + esc(f.name || f.phone) + "</b>" +
+              '<div class="meta">' + esc(f.why) + (f.sub ? " · " + esc(f.sub) : "") + "</div></span>" +
+              '<span class="acts"><a class="btn btn--sm btn--call" href="tel:+91' + esc(f.phone) + '">📞</a>' +
+              '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(f.phone) + '">💬</a>' +
+              (canEdit ? '<button class="btn btn--sm btn--gold" data-act="sch-book" data-ph="' + esc(f.phone) + '" data-name="' + esc(f.name || "") + '" data-why="' + esc(f.why) + '">Book</button>' : "") +
+              "</span></div>";
+          }).join("");
+      } else if (!free.length) { out += '<p class="meta">' + (p.over ? "Ee roju clinic time aipoyindi — repati roju chudandi." : "Roju nindipoyindi 👏") + "</p>"; }
+      else { out += '<p class="meta">Ippudu evarini pilavalsina avasaram ledu 👍</p>'; }
+      host.innerHTML = out + "</div>";
+    }
     // ---- one way to talk to every screen's API --------------------------
     // Reads: the last good answer is kept on the phone, and shown (marked as
     // old) when there is no network — so Appointments, Money, Stock and the
@@ -1501,12 +1548,13 @@
         var dt = new Date(w.day + "T00:00:00+05:30");
         return '<button data-act="sch-day" data-day="' + esc(w.day) + '"' + (w.day === schDay ? ' class="on"' : "") + ">" +
           "<b>" + dt.getDate() + "</b>" + dt.toLocaleDateString("en-IN", { weekday: "short" }) +
-          "<i>" + (w.total || "—") + "</i></button>";
+          "<i>" + (w.total || "—") + (w.unconfirmed ? '<em title="confirm kaaleedu">•</em>' : "") + "</i></button>";
       }).join("");
       $("schHead").className = "countdown";
       $("schHead").innerHTML = "<div><b>" + d.counts.total + "</b><span>Ee roju</span></div>" +
         "<div><b>" + d.counts.unconfirmed + "</b><span>Confirm avvanivi</span></div>";
       $("schNew").classList.toggle("hide", !state.allow("appts.edit"));
+      paintDayPlan(d.plan);
 
       var rows = schMine ? d.rows.filter(function (r) { return r.staff === state.data.me.phone; }) : d.rows;
       $("schList").innerHTML = rows.length ? rows.map(function (r) {
@@ -1521,6 +1569,7 @@
           "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') +
           (r.pax > 1 ? ' <span class="chip" title="' + esc(r.with || "") + '">👥 ' + r.pax + " mandi</span>" : "") + (r.adv ? ' <span class="chip ok">💳 ₹' + r.adv + ' advance</span>' : "") + (r.lc && r.status === "booked" ? ' <span class="chip">vastunnara adigam</span>' : "") +
           (r.status !== "booked" ? ' <span class="chip">' + esc(r.status) + "</span>" : "") + "</div></div>" +
+          ((r.risk || []).length ? '<div class="meta" style="margin-top:5px">' + r.risk.map(function (x) { return '<span class="chip hot">⚠️ ' + esc(x) + "</span>"; }).join(" ") + "</div>" : "") +
           (r.note ? '<div class="meta" style="margin-top:5px">📝 ' + esc(r.note) + "</div>" : "") +
           '<div class="acts">' +
           '<a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name) + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞</a>' +
@@ -4773,6 +4822,23 @@
         return;
       }
       // A tile or an empty group's button takes the desk straight to that group.
+      // A free time, or a person the records say to ring: both end in the same
+      // booking, so neither is a dead end.
+      if (el.dataset.act === "sch-slot") {
+        var at3 = Number(el.dataset.at);
+        var ph3 = (prompt("Ee time ki evaru? Patient number (10 digits):", "") || "").replace(/\D/g, "").slice(-10);
+        if (!/^[6-9]\d{9}$/.test(ph3)) { if (ph3) toast("Number sarigga ledu"); return; }
+        var nm3 = prompt("Peru:", "") || "Patient";
+        var cn3 = prompt("Enduku? (treatment / concern)", "") || "";
+        schSend("create", { ph: ph3, name: nm3, concern: cn3, at: at3, mins: 30 }, "Book ayindi, patient ki cheppamu");
+        return;
+      }
+      if (el.dataset.act === "sch-book") {
+        var at4 = askTime(schDay, "Eppudu? (e.g. 3:30 pm) — " + schDay);
+        if (!at4) return;
+        schSend("create", { ph: el.dataset.ph, name: el.dataset.name || "Patient", concern: el.dataset.why || "", at: at4, mins: 30 }, "Book ayindi, patient ki cheppamu");
+        return;
+      }
       if (el.dataset.act === "seg-go") {
         var want = el.dataset.seg;
         if (state.tab !== "leads") goTab("leads");

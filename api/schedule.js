@@ -31,6 +31,141 @@ const STATUS = ["booked", "arrived", "done", "cancelled", "noshow"];
 const istDay = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
 const istTime = (ts) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(ts));
 
+// ---- the day, read as a plan instead of a list ------------------------------
+// An empty Appointments screen used to say "Ee roju appointments ledu" and
+// stop there. The clinic's problem on that morning is not that the list is
+// empty — it is that nobody knows who should have been in it. So the day now
+// carries: how full it is, which times are actually free, and who is worth
+// ringing to fill them, from the records the clinic already keeps.
+const DAY_MS = 86400000;
+const OPEN_H = 9, CLOSE_H = 21, SLOT_MIN = 30;
+
+// Every half hour the clinic is open that day, minus what is booked to
+// capacity and minus the windows the team blocked out.
+async function freeSlots(cfg, day, rows) {
+  // Midday, not midnight: at 00:00 +05:30 the instant is still the previous
+  // day in UTC, so getUTCDay() called a Monday a Sunday and closed the clinic.
+  const d = new Date(day + "T12:00:00+05:30");
+  if (d.getUTCDay() === 0) return { slots: 0, free: [], closed: true };   // Sunday
+  const per = Math.max(1, Number(process.env.APPT_PER_SLOT || 2));
+  const taken = {};
+  for (const r of rows) {
+    if (["cancelled", "noshow"].includes(r.status)) continue;
+    taken[istTime(r.at)] = (taken[istTime(r.at)] || 0) + 1;
+  }
+  let blocks = [];
+  try {
+    const b = await guard.kvCommand(cfg, ["LRANGE", "blk:q", "0", "49"]).catch(() => ({}));
+    blocks = ((b && b.result) || []).map((x) => parse(x, null)).filter((x) => x && x.from && x.to);
+  } catch (e) {}
+  const out = [];
+  let slots = 0;
+  const base = Date.parse(day + "T00:00:00+05:30");
+  for (let m = OPEN_H * 60; m < CLOSE_H * 60; m += SLOT_MIN) {
+    const at = base + m * 60000;
+    slots++;
+    if (at < Date.now()) continue;                                  // a time that has passed is not free
+    if (blocks.some((x) => at >= x.from && at < x.to)) continue;
+    if ((taken[istTime(at)] || 0) >= per) continue;
+    out.push({ at, time: istTime(at) });
+  }
+  return { slots, per, free: out, closed: false };
+}
+
+// Who the desk could ring to fill them, newest problem first. Each line says
+// why this person and nothing more, so it can be acted on without thinking.
+async function whoToBook(cfg, day) {
+  const seen = new Set(), out = [];
+  const add = (row) => {
+    const ph = digits10(row.phone);
+    if (ph.length !== 10 || seen.has(ph)) return;
+    seen.add(ph); out.push(Object.assign({}, row, { phone: ph }));
+  };
+  const booked = new Set();
+  try {
+    const q = await guard.kvCommand(cfg, ["LRANGE", Q, "0", "299"]).catch(() => ({}));
+    for (const s of ((q && q.result) || [])) { const a = parse(s, null); if (a && a.at > Date.now() - DAY_MS) booked.add(digits10(a.ph)); }
+  } catch (e) {}
+  // 1. a course of treatment that has stopped part way
+  try {
+    const rows = await require("./package.js").due(cfg, 3);
+    for (const p of rows.slice(0, 6)) {
+      if (booked.has(digits10(p.phone))) continue;
+      add({ phone: p.phone, name: p.name, kind: "sitting", why: `${p.treatment} ${p.done + 1}/${p.total} sitting`, sub: p.overdueDays ? `${p.overdueDays} rojulu late` : "ippudu due", urgent: p.overdueDays > 7 });
+    }
+  } catch (e) { console.error("plan: sittings", e && e.message); }
+  // 2. a treatment whose next time has come round
+  try {
+    const rows = await require("./_cycles.js").due(cfg);
+    for (const c of rows.slice(0, 6)) {
+      if (booked.has(c.phone)) continue;
+      add({ phone: c.phone, name: c.name, kind: "cycle", why: `${c.treatment} malli cheyinchukovali`, sub: c.overdueDays ? `${c.overdueDays} rojulu late` : "ee vaaram due" });
+    }
+  } catch (e) { console.error("plan: cycles", e && e.message); }
+  // 3. the hot enquiries nobody has booked
+  try {
+    const qualify = require("./_qualify.js");
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}));
+    const leads = ((r && r.result) || []).map((x) => parse(x, null)).filter((l) => l && l.ts > Date.now() - 21 * DAY_MS);
+    const st = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result) || {};
+    const grades = await qualify.forPhones(cfg, leads.map((l) => l.phone));
+    const off = new Set((((await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}))) || {}).result) || []);
+    for (const l of leads) {
+      const ph = digits10(l.phone);
+      const status = st[`${l.ts}|${ph || l.src_id || ""}`] || "new";
+      if (!["new", "contacted"].includes(status) || booked.has(ph) || off.has(ph)) continue;
+      // The same rule the Leads screen uses: the grade when there is one, the
+      // agent's hot flag until the qualifier has caught up — otherwise a lead
+      // the desk wrote down two minutes ago is invisible here for an hour.
+      const g = grades[ph];
+      const worth = g ? (g.grade === "A" || g.grade === "B") : l.heat === "hot";
+      if (!worth) continue;
+      add({ phone: ph, name: l.name || "", kind: "lead", why: `${g ? g.grade + " grade" : "hot"} · ${String(l.concern || "").slice(0, 28)}`, sub: (g && g.facts && g.facts.village) || "", urgent: g ? g.grade === "A" : true });
+    }
+  } catch (e) { console.error("plan: leads", e && e.message); }
+  // 4. somebody who did not turn up and was never rebooked
+  try {
+    const dq = await guard.kvCommand(cfg, ["LRANGE", DONE, "0", "299"]).catch(() => ({}));
+    const rows = ((dq && dq.result) || []).map((x) => parse(x, null)).filter(Boolean);
+    const came = new Set(rows.filter((a) => !a.ns && a.status !== "noshow").map((a) => digits10(a.ph)));
+    for (const a of rows) {
+      if (!(a.ns || a.status === "noshow") || !a.at || a.at < Date.now() - 30 * DAY_MS) continue;
+      const ph = digits10(a.ph);
+      if (booked.has(ph) || came.has(ph)) continue;
+      add({ phone: ph, name: a.name || "", kind: "noshow", why: "raaledu — malli book cheyyandi", sub: istDay(a.at) });
+    }
+  } catch (e) { console.error("plan: no-shows", e && e.message); }
+  // 5. the people who asked to be told when a slot opens
+  try {
+    for (const w of await waitlist(cfg)) {
+      add({ phone: w.ph, name: w.name, kind: "wait", why: "waitlist lo unnaru", sub: w.want || "" });
+    }
+  } catch (e) {}
+  const order = { sitting: 0, lead: 1, cycle: 2, noshow: 3, wait: 4 };
+  return out.sort((a, b) => (b.urgent ? 1 : 0) - (a.urgent ? 1 : 0) || order[a.kind] - order[b.kind]).slice(0, 8);
+}
+
+// Up to n of them, evenly spaced over what is free.
+function spread(list, n) {
+  if (list.length <= n) return list;
+  const out = [], step = (list.length - 1) / (n - 1);
+  for (let i = 0; i < n; i++) out.push(list[Math.round(i * step)]);
+  return out.filter((x, i, a2) => a2.indexOf(x) === i);
+}
+
+// What could go wrong with the ones that ARE booked.
+// Only what the row does not already say. "confirm kaledu" and "doctor
+// assign cheyyaledu" are on every row already; repeating them as warnings
+// made three chips out of one fact and hid the one that matters.
+function riskOf(a, noShowsBy) {
+  const out = [];
+  const hrs = (a.at - Date.now()) / 3600000;
+  if (a.status === "booked" && !a.cf && hrs > 0 && hrs < 24) out.push("konni gantallo — confirm cheyyandi");
+  const n = noShowsBy[digits10(a.ph)] || 0;
+  if (n) out.push(`mundu ${n} sari${n > 1 ? "lu" : ""} raaledu`);
+  return out;
+}
+
 // Read the queue with the raw string kept, because editing a record means
 // removing that exact string and pushing the new one.
 async function readQ(cfg) {
@@ -208,8 +343,32 @@ module.exports = async (req, res) => {
       const day = /^\d{4}-\d{2}-\d{2}$/.test(String(q.day || "")) ? String(q.day) : istDay(Date.now());
       let list = rows.filter((r) => r.day === day).sort((x, y) => x.at - y.at);
       const mine = list.filter((r) => r.staff === me.phone);
+      // How full the day is, which times are free, and who is worth ringing
+      // to fill them — with what could go wrong on the ones already booked.
+      let plan = null;
+      try {
+        const cap = await freeSlots(cfg, day, list);
+        const noShowsBy = {};
+        const dq = await guard.kvCommand(cfg, ["LRANGE", DONE, "0", "299"]).catch(() => ({}));
+        for (const x of (((dq && dq.result) || []))) {
+          const a2 = parse(x, null);
+          if (a2 && (a2.ns || a2.status === "noshow")) noShowsBy[digits10(a2.ph)] = (noShowsBy[digits10(a2.ph)] || 0) + 1;
+        }
+        list = list.map((r) => Object.assign({}, r, { risk: riskOf(r, noShowsBy) }));
+        plan = {
+          slots: cap.slots, per: cap.per || 0, closed: cap.closed,
+          // no free times can mean two different things, and the screen should
+          // not congratulate the clinic for a day that has simply ended
+          over: !cap.closed && !cap.free.length && day <= istDay(Date.now()),
+          used: list.filter((r) => !["cancelled", "noshow"].includes(r.status)).length,
+          // Spread across the day, not the first twelve: a desk offering times
+          // needs a morning, an afternoon and an evening, not four 9 o'clocks.
+          free: spread(cap.free, 12),
+          fill: day >= istDay(Date.now()) ? await whoToBook(cfg, day) : [],
+        };
+      } catch (e) { console.error("schedule: plan", e && e.message); }
       return json(res, 200, {
-        ok: true, day, rows: list, mine: mine.length, team,
+        ok: true, day, rows: list, mine: mine.length, team, plan,
         rooms: await rooms(cfg),
         wait: (await waitlist(cfg)).map(({ raw, ...w }) => w),
         counts: {
@@ -226,7 +385,8 @@ module.exports = async (req, res) => {
     for (let i = 0; i < 7; i++) {
       const d = istDay(Date.now() + i * 86400000);
       const list = rows.filter((r) => r.day === d);
-      days.push({ day: d, total: list.length, mine: list.filter((r) => r.staff === me.phone).length });
+      days.push({ day: d, total: list.length, mine: list.filter((r) => r.staff === me.phone).length,
+        unconfirmed: list.filter((r) => r.status === "booked" && !r.cf).length });
     }
     return json(res, 200, { ok: true, days, team });
   }
