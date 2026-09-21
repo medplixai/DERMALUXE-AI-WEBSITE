@@ -48,6 +48,21 @@ global.fetch = async (url, opt) => {
       : { reply: "Namaste 🙏 Hair fall ki manam baga help cheyagalam.\n\n🌿 Mild shampoo week ki 2-3 sarlu\n💧 Roju 3L neellu\n\nEntakalam nundi undi andi?", lead: null, buttons: ["6 nelala lopu", "1 year+", "Chala kalam"], qual: { problem: "hair fall" } };
     return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(reply) }] }) };
   }
+  // Meta's Graph API, answering the way the clinic's WABA would: some
+  // templates approved, one waiting, one refused. DL_FAKE_META=0 turns it off.
+  if (u.includes("graph.facebook.com") && u.includes("message_templates") && (!opt || opt.method !== "POST")) {
+    const src = require("fs").readFileSync(require("path").join(ROOT, "api", "wa-setup.js"), "utf8");
+    const names = [...src.matchAll(/name: "([a-z_]+)"/g)].map((m) => m[1]);
+    const data = names.map((name, i) => ({
+      name, id: String(1000 + i), category: /offer|update|tips|camp|miss|wish/.test(name) ? "MARKETING" : "UTILITY",
+      status: i === 2 ? "PENDING" : i === 5 ? "REJECTED" : "APPROVED",
+      rejected_reason: i === 5 ? "INVALID_FORMAT" : "NONE",
+    })).slice(0, process.env.DL_META_MISSING ? -3 : undefined);
+    return { ok: true, status: 200, json: async () => ({ data }) };
+  }
+  if (u.includes("graph.facebook.com") && /\d{6,}$/.test(u.split("?")[0])) {
+    return { ok: true, status: 200, json: async () => ({ name: "DermaLuxe by Medicare", account_review_status: "APPROVED" }) };
+  }
   return { ok: true, status: 200, json: async () => ({ data: [], id: "x" }), text: async () => "" };
 };
 
