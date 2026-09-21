@@ -127,7 +127,11 @@ const hook = { token: "hook" };
   const busy = await h.call(exotel, { token: "exo", event: "passthru", CallFrom: "09876500404", DialCallStatus: "busy" });
   is(busy.body.sent, true, "a busy line does");
   const ivr = await h.call(exotel, { token: "exo", event: "ivr", CallFrom: "09876500405", d: "2" });
-  is(/Kasturi Vari Street/.test((h.sent.find((s) => s[1] === "9876500405") || [])[2] || ""), true, "pressing 2 sends the address");
+  const addr = (h.sent.find((s) => s[1] === "9876500405") || [])[2] || "";
+  is(/Kasturi Vari Street/.test(addr), true, "pressing 2 sends the address");
+  // /r/clinic is a smart link that opens WhatsApp: somebody who rang for the
+  // address and tapped "Maps" was sent back into the chat they came from.
+  is([/maps\?cid=/.test(addr), /\/r\/clinic/.test(addr)], [true, false], "and a map link that opens a map, not the WhatsApp chat again");
 
   console.log("\n  — the phone receptionist (Twilio) —");
   delete process.env.TWILIO_AUTH_TOKEN;

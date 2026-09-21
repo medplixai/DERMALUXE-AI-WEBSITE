@@ -20,7 +20,7 @@ const RESCUE = "Namaste! 🙏 Meeru DermaLuxe ki call chesaru — miss ayindi, s
 
 const IVR = {
   book: "Namaste! 🙏 Appointment kosam call chesaru kada — ikkade book chesukovachu!\n\nMee peru mariyu em problem ani cheppandi, ventane slot fix chestam 😊",
-  address: "📍 *DermaLuxe by Medicare*\nRama Mahal, Door No. 3-12, Ground Floor,\nKasturi Vari Street, R.R. Peta,\nOpposite Happy Mobiles, Eluru - 534002\n\n⏰ Mon-Sat, 9 AM - 9 PM (Sunday closed)\n\nMaps: https://www.dermaluxe.ai/r/clinic",
+  address: "📍 *DermaLuxe by Medicare*\nRama Mahal, Door No. 3-12, Ground Floor,\nKasturi Vari Street, R.R. Peta,\nOpposite Happy Mobiles, Eluru - 534002\n\n⏰ Mon-Sat, 9 AM - 9 PM (Sunday closed)\n\nMaps: https://www.google.com/maps?cid=6720707313608974554",
   services: "✨ *DermaLuxe treatments:*\n\n💆‍♀️ Hair fall, PRP/GFC, hair transplant\n🌿 Acne, pigmentation, anti-aging\n⚡ Laser hair removal, Hydrafacial\n🩺 Medical dermatology (all skin problems)\n\nEe vishayam gurinchi adagandi — MD doctors tho consultation book chestam 😊",
 };
 
