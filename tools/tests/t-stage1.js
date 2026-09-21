@@ -197,6 +197,10 @@ const slotTs = (daysAhead) => { const d = new Date(Date.now() + daysAhead * DAY 
   const ex2 = await exam.run(cfg, { ids: ["p05"], turns: 6 });
   is([ex2.rows[0].booked, ex2.rows[0].faults], [false, ["no_next_step"]], "a chat that goes wrong is scored low with the fault named");
   is(/Agent exam — .*: \*40\/100\*/.test(exam.summary(ex2)) && /Suresh \(40\): slot adagaledu/.test(exam.summary(ex2)), true, "and the owner's line names the worst chat");
+  const ex3 = await exam.run(cfg, { ids: ["p01", "p05"], budgetMs: 0, dry: true });
+  is([ex3.n, ex3.skipped, ex3.score], [0, 2, 0], "when the time budget is gone, the rest are skipped rather than the function dying at 300 s");
+  h.run(["SET", `exam:${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())}`, JSON.stringify({ score: 80 })]);
+  is((await h.call(cronExam, { key: "local-admin" })).body.skipped, "already sat today", "the 08:45 retry does nothing on a day that already has its score");
   is((await h.call(cronExam, {})).code, 401, "the exam cannot be started by a stranger");
   h.as(["settings.manage"]);
   is((await h.call(cronExam, { n: "1", ids: "p05", dry: "1" }, null, { headers: { authorization: "Bearer session" } })).code, 200, "but the manager can run it from the app");

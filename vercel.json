@@ -139,6 +139,10 @@
     {
       "path": "/api/cron-exam",
       "schedule": "30 2 * * *"
+    },
+    {
+      "path": "/api/cron-exam",
+      "schedule": "15 3 * * *"
     }
   ],
   "rewrites": [

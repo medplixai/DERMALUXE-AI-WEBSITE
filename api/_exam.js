@@ -137,27 +137,45 @@ function tonight(day, n) {
   return out;
 }
 
+// One persona, start to finish: the conversation, then the verdict.
+async function sit(cfg, p, o) {
+  try {
+    const conv = await converse(cfg, p, o.turns || 5);
+    const j = conv.turns.length ? await judge(p, conv, cfg) : { score: 0, booked: false, trapPassed: false, faults: ["no_conversation"], note: "patient model raaledu" };
+    return Object.assign({ id: p.id, who: p.name, trap: p.trap || "", turns: conv.turns.length }, j, o.keep ? { transcript: conv.turns } : {});
+  } catch (e) { return { id: p.id, who: p.name, trap: p.trap || "", turns: 0, score: 0, booked: false, trapPassed: false, faults: ["error"], note: String(e && e.message).slice(0, 120) }; }
+}
+
+// Twelve conversations one after another, each six turns of the full model
+// plus the editor and the judge, is more than a function's five minutes: the
+// first night it timed out and nobody got a score. So they sit in parallel
+// (six at a time) inside a time budget; whoever has not started when the
+// budget is gone is marked skipped and the score is over those who sat.
 async function run(cfg, opts) {
   const o = opts || {};
   if (!cfg || !process.env.ANTHROPIC_API_KEY) return null;
   const day = o.day || istDay();
   const set = o.ids ? PERSONAS.filter((p) => o.ids.includes(p.id)) : tonight(day, o.n || 12);
+  const started = Date.now(), budget = o.budgetMs != null ? o.budgetMs : 200000, width = Math.max(1, o.width || 6);
   const rows = [];
-  for (const p of set) {
-    try {
-      const conv = await converse(cfg, p, o.turns || 6);
-      const j = conv.turns.length ? await judge(p, conv, cfg) : { score: 0, booked: false, trapPassed: false, faults: ["no_conversation"], note: "patient model raaledu" };
-      rows.push(Object.assign({ id: p.id, who: p.name, trap: p.trap || "", turns: conv.turns.length }, j, o.keep ? { transcript: conv.turns } : {}));
-    } catch (e) { rows.push({ id: p.id, who: p.name, trap: p.trap || "", turns: 0, score: 0, booked: false, trapPassed: false, faults: ["error"], note: String(e && e.message).slice(0, 120) }); }
-  }
+  const queue = set.slice();
+  const worker = async () => {
+    while (queue.length) {
+      const p = queue.shift();
+      if (Date.now() - started >= budget) { rows.push({ id: p.id, who: p.name, trap: p.trap || "", turns: 0, skipped: true, score: 0, booked: false, trapPassed: false, faults: [], note: "time ayipoyindi — repu" }); continue; }
+      rows.push(await sit(cfg, p, o));
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(width, set.length) }, worker));
+  rows.sort((a, b) => set.findIndex((p) => p.id === a.id) - set.findIndex((p) => p.id === b.id));
   const scored = rows.filter((r) => r.turns);
   const score = scored.length ? Math.round(scored.reduce((n, r) => n + r.score, 0) / scored.length) : 0;
   const faults = {};
   for (const r of rows) for (const f of r.faults) faults[f] = (faults[f] || 0) + 1;
   const result = {
-    day, n: rows.length, score,
+    day, n: scored.length, skipped: rows.filter((r) => r.skipped).length, score, secs: Math.round((Date.now() - started) / 1000),
     booked: rows.filter((r) => r.booked).length, traps: `${rows.filter((r) => r.trapPassed).length}/${rows.filter((r) => r.trap).length}`,
-    faults, worst: rows.slice().sort((a, b) => a.score - b.score).slice(0, 3).map((r) => ({ who: r.who, score: r.score, note: r.note, faults: r.faults })),
+    faults, worst: scored.slice().sort((a, b) => a.score - b.score).slice(0, 3).map((r) => ({ who: r.who, score: r.score, note: r.note, faults: r.faults })),
     rows: rows.map((r) => (o.keep ? r : Object.assign({}, r, { transcript: undefined }))), at: Date.now(),
   };
   // trend: the last seven nights
@@ -165,7 +183,7 @@ async function run(cfg, opts) {
   const avg = log.length ? Math.round(log.reduce((n, x) => n + x.score, 0) / log.length) : null;
   result.avg7 = avg;
   result.drop = avg != null && score < avg - 10;
-  if (!o.dry) {
+  if (!o.dry && scored.length) {
     await guard.kvCommand(cfg, ["SET", `exam:${day}`, JSON.stringify(result), "EX", String(120 * 86400)]).catch(() => {});
     await guard.kvCommand(cfg, ["SET", "exam:latest", JSON.stringify(result)]).catch(() => {});
     await guard.kvCommand(cfg, ["LPUSH", "exam:log", JSON.stringify({ day, score, n: rows.length, booked: result.booked })]).catch(() => {});
@@ -180,7 +198,7 @@ function summary(r) {
   const top = Object.keys(r.faults).sort((a, b) => r.faults[b] - r.faults[a]).slice(0, 3).map((k) => `${k} ${r.faults[k]}`).join(" · ");
   return [
     `🎓 *Agent exam — ${r.day}*: *${r.score}/100*${r.avg7 != null ? ` (7-night avg ${r.avg7})` : ""}${r.drop ? " ⚠️ PADIPOYINDI" : ""}`,
-    `${r.n} test patients · ${r.booked} booked · traps ${r.traps}`,
+    `${r.n} test patients${r.skipped ? ` (${r.skipped} time lekapoyayi)` : ""} · ${r.booked} booked · traps ${r.traps}`,
     top ? `Faults: ${top}` : "Faults: emi levu 👏",
     ...r.worst.filter((w) => w.score < 75).slice(0, 2).map((w) => `• ${w.who} (${w.score}): ${w.note}`),
   ].join("\n");

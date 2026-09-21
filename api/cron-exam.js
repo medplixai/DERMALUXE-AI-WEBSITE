@@ -21,7 +21,14 @@ module.exports = async (req, res) => {
   if (!process.env.ANTHROPIC_API_KEY) return res.status(200).json({ ok: true, note: "no model key" });
   const n = Math.max(1, Math.min(40, Number(q.n) || 12));
   const ids = String(q.ids || "").split(",").map((s) => s.trim()).filter(Boolean);
-  const r = await exam.run(cfg, { n, ids: ids.length ? ids : undefined, dry: q.dry === "1", keep: q.keep === "1", turns: Math.max(2, Math.min(8, Number(q.turns) || 6)) });
+  // The cron fires twice a morning (08:00 and a retry at 08:45): a day that
+  // already has its result is not sat again.
+  if (!ids.length && q.dry !== "1" && q.force !== "1") {
+    const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+    const had = await guard.kvCommand(cfg, ["GET", `exam:${day}`]).catch(() => ({}));
+    if (had && had.result) return res.status(200).json({ ok: true, skipped: "already sat today", day });
+  }
+  const r = await exam.run(cfg, { n, ids: ids.length ? ids : undefined, dry: q.dry === "1", keep: q.keep === "1", turns: Math.max(2, Math.min(8, Number(q.turns) || 5)), budgetMs: 200000 });
   if (!r) return res.status(200).json({ ok: false });
   if (q.dry !== "1" && !ids.length) {
     const notify = require("./_notify.js");
