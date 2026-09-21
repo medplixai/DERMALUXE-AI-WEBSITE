@@ -146,6 +146,14 @@ async function buildWeekly(cfg) {
       const fastN = lat.filter((x) => x.fast).length;
       lines.push(`⏱ Agent reply time: ${med(lat)} s median (${lat.length} replies${fastN ? ` · ${fastN} quick turns ${med(lat.filter((x) => x.fast))} s` : ""})`);
     }
+    // the money behind the daily posters
+    const bl = (((await guard.kvCommand(cfg, ["LRANGE", "boost:log", "0", "99"]).catch(() => ({}))).result) || []).map(parse).filter((x) => x && x.ts >= since);
+    if (bl.length) {
+      const okRows = bl.filter((x) => x.ok);
+      const spend = okRows.reduce((n, x) => n + (Number(x.rupees) || 0), 0);
+      const failed = bl.length - okRows.length;
+      lines.push(`📣 Poster ads: ${okRows.length} posters · ₹${spend.toLocaleString("en-IN")} pettam${failed ? ` · ⚠️ ${failed} padaledu` : ""}`);
+    }
     const cmps = (await require("./_campaign.js").list(cfg, 10).catch(() => [])).filter((c) => c.ts >= since);
     for (const c of cmps) lines.push(`📣 ${c.name}: ${c.sent}/${c.n} vellindi · ${c.replied} reply · ${c.booked} booked`);
   } catch (e) { console.error("weekly: scoreboard", e && e.message); }

@@ -858,6 +858,21 @@
             <p>Bill lo unna treatment ki "next time" enni rojulaki? Aa roju patient ki automatic ga slots tho message veltundi (10:45 AM). 0 pedithe aa treatment ki recall veladu.</p>
             <div id="cycList" style="margin-top:10px;display:grid;gap:6px"></div>
             <div style="margin-top:8px"><button class="btn btn--gold btn--sm" id="cycSave" type="button">Save</button> <span class="meta" id="cycInfo"></span></div></div>
+          <div class="box"><h2>Ads boost — roju poster ki <span class="te" style="font-size:.9rem;color:var(--g3)">· రోజువారీ ప్రకటన</span></h2>
+            <p>Roju podduna poster publish ayina ventane, ade poster ki Meta lo ad pedatam — tap chesthe patient direct ga mana WhatsApp agent ki vastaru. Okko poster ki okkasaare; campaign taanantata taane aagipotundi.</p>
+            <div id="bstState" class="meta" style="margin-top:8px"></div>
+            <div style="margin-top:10px;display:grid;gap:8px">
+              <label class="meta"><input type="checkbox" id="bstOn"> Roju automatic ga ad pettu</label>
+              <div class="noteform" style="flex-wrap:wrap">
+                <span class="meta">Okko poster ki ₹</span><input id="bstRupees" inputmode="numeric" style="width:80px">
+                <span class="meta">·</span><input id="bstDays" inputmode="numeric" style="width:60px"><span class="meta">rojulu</span>
+                <span class="meta">· Eluru chuttu</span><input id="bstKm" inputmode="numeric" style="width:60px"><span class="meta">km</span>
+                <span class="meta">· roju max ₹</span><input id="bstMax" inputmode="numeric" style="width:80px">
+                <button class="btn btn--gold btn--sm" id="bstSave" type="button">Save</button>
+              </div>
+              <div class="err" id="bstErr"></div>
+            </div>
+            <div id="bstList" style="margin-top:10px"></div></div>
           <div class="box"><h2>Campaigns <span class="te" style="font-size:.9rem;color:var(--g3)">· సీజన్ ఆఫర్లు</span></h2>
             <p>Ee nela ki ready drafts kinda unnayi — audience select chesi, preview chusi, pampandi. Okka manishiki 14 rojulaki okka campaign matrame veltundi; STOP annavaallu skip. Tarvata ikkade kanipistundi: enni vellayi, enni reply ichcharu, enni book chesaru.</p>
             <div id="cmpSuggest" style="margin-top:10px"></div>
@@ -3367,6 +3382,27 @@
           ' <button class="btn btn--sm" data-act="rule-del" data-id="' + esc(r.id) + '" style="margin-left:8px">Teesey</button></div></div>';
       }).join("") : '<p class="meta">Inka rules ledu — agent standard prompt ne follow avutundi.</p>';
     }
+    // Money behind the day's poster.
+    function renderBoost() {
+      var b = (panel && panel.boost) || null; if (!$("bstOn") || !b) return;
+      $("bstOn").checked = !!b.on; $("bstRupees").value = b.rupees; $("bstDays").value = b.days; $("bstKm").value = b.km; $("bstMax").value = b.maxPerDay;
+      $("bstState").innerHTML = b.ready
+        ? "✅ Meta ads account connect ayindi. Ippudu: <b>" + (b.on ? "₹" + b.rupees + " × " + b.days + " rojulu, " + b.km + " km" : "off") + "</b>"
+        : '⚠️ Meta ads keys ledu (META_ADS_TOKEN / META_AD_ACCOUNT_ID / IG_PAGE_ID) — ad padadu.';
+      var rows = (panel && panel.boosts) || [];
+      $("bstList").innerHTML = rows.length ? '<h3 style="margin:10px 0 6px">Ippativaraku</h3>' + rows.map(function (r) {
+        return '<div class="pnl-row"><span><b style="font-weight:600">' + esc(r.topic || "poster") + '</b> <span class="meta">· ' + esc(r.day) + "</span>" +
+          '<br><span class="meta">' + (r.ok ? "₹" + r.rupees + " · " + r.days + " rojulu · " + r.km + " km" : "⚠️ " + esc(r.error || "fail")) + "</span></span>" +
+          "<span>" + (r.spend != null ? "₹" + r.spend + " spent" : "") + (r.reach ? ' · <span class="meta">' + r.reach + " mandiki</span>" : "") +
+          (r.chats ? ' · <b style="color:var(--ok)">' + r.chats + " chats</b>" : "") + "</span></div>";
+      }).join("") : '<p class="meta">Inka ad pettaledu — repati poster nundi modalavutundi.</p>';
+    }
+    if ($("bstSave")) $("bstSave").onclick = function () {
+      var btn = this; btn.disabled = true; $("bstErr").textContent = "";
+      api("boost-set", { on: $("bstOn").checked, rupees: $("bstRupees").value, days: $("bstDays").value, km: $("bstKm").value, maxPerDay: $("bstMax").value })
+        .then(function (j) { panel.boost = Object.assign({}, panel.boost, j.boost); renderBoost(); toast("Save ayindi ✅"); })
+        .catch(function (x) { $("bstErr").textContent = x.message; }).then(function () { btn.disabled = false; });
+    };
     // What the agent may say about money.
     function renderPrices() {
       var p = (panel && panel.prices) || { mode: "none", consult: 0, bands: [] };
@@ -3496,7 +3532,7 @@
     function renderPanel() {
       if (!panel) return;
       paintHealth(panel.health);
-      renderRules(); renderCallTeam(); renderPrices(); renderCycles(); loadCampaigns();
+      renderRules(); renderCallTeam(); renderPrices(); renderCycles(); renderBoost(); loadCampaigns();
       var R = panel.roles || {}, amOwner = panel.me && panel.me.role === "owner";
 
       // --- logins

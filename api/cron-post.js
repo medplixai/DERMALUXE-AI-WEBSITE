@@ -28,7 +28,7 @@ module.exports = async (req, res) => {
   const r = await guard.kvCommand(cfg, ["LRANGE", "adm:queue", "0", "49"]);
   const raws = r.result || [];
   const now = Date.now();
-  let published = 0, kept = 0, dropped = 0;
+  let published = 0, kept = 0, dropped = 0, boosted = null;
 
   for (const raw of raws) {
     let it;
@@ -53,6 +53,13 @@ module.exports = async (req, res) => {
         : `✅ *Scheduled ${it.vidId ? "reel" : "post"} live!* (${admin.fmtIst(it.due)})${out.fb ? " + 📘 FB page" : ""}${out.link ? "\n" + out.link : ""}`;
       const targets = it.quiet ? [] : (Array.isArray(it.notify) && it.notify.length ? it.notify : [it.by]);
       for (const ph of Array.from(new Set(targets))) await notifyAdmin(ph, liveMsg);
+      // The day's own poster gets money behind it: click-to-WhatsApp, Eluru
+      // and around, for as many days as the owner set. Their post, their
+      // budget — a post somebody published by hand is left alone.
+      if (it.auto && !it.story) {
+        try { boosted = await require("./_boost.js").run(cfg, { id: out.id, imgId: it.imgId, caption: it.caption, topic: it.topic || "", link: out.link || "" }); }
+        catch (e) { console.error("cron: boost", e && e.message); }
+      }
     } else if (out.transient && (it.tries || 0) < 3) {
       it.tries = (it.tries || 0) + 1;
       if (out.creationId) it.creationId = out.creationId; // resume the same IG container next run
@@ -157,5 +164,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: broadcast drain", e && e.message); }
 
-  return res.status(200).json({ ok: true, published, kept, dropped, reminded, lateAsked, bsent, graded, rescued });
+  return res.status(200).json({ ok: true, published, kept, dropped, boosted, reminded, lateAsked, bsent, graded, rescued });
 };

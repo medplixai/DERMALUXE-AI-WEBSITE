@@ -676,8 +676,15 @@ async function renderPoster(html) {
 // ---- 6. Orchestrator ---------------------------------------------------------
 // opts: {topic?: key, dueMs?: epoch ms (default today 8:30 IST), by?: digits}
 // Returns {imgId, caption, topic, due, queued}
+// Clinic one day, academy the next — the owner's rotation. On an academy
+// day with no live batch (seats gone, or the batch over) it falls back to the
+// clinic, so a day is never skipped and a seats poster is never a lie.
+const isAcademyDay = (ts) => Math.floor((Number(ts || Date.now()) + IST_MS) / 86400000) % 2 === 1;
+
 async function createDailyPost(cfg, opts = {}) {
-  const picked = opts.topic ? await pickTopic(cfg, opts.topic) : await planTopic(cfg);
+  const picked = opts.topic
+    ? await pickTopic(cfg, opts.topic)
+    : ((!opts.noAlternate && isAcademyDay() && await academyTopic(cfg).catch(() => null)) || await planTopic(cfg));
   const topic = Object.assign({}, picked, { look: await pickLook(cfg).catch(() => LOOKS[0]), note: opts.note || "" });
   const [img, caption] = await Promise.all([genImage(topic), writeCaption(topic)]);
   const doc = await pickDoctor(cfg, topic).catch(() => null);
@@ -708,4 +715,4 @@ async function createDailyPost(cfg, opts = {}) {
   return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
 }
 
-module.exports = { LOOKS, pickLook, DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
+module.exports = { isAcademyDay, LOOKS, pickLook, DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
