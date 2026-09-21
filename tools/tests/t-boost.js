@@ -109,6 +109,18 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   is((await boost.save(cfg, { km: 5 }, "Owner")).boost.km, 17, "a radius smaller than Meta allows is pulled up to its smallest, not ignored");
   is((await boost.save(cfg, { km: 500 }, "Owner")).boost.km, 80, "and one bigger than it allows, down to its largest");
 
+  console.log("\n  — arithmetic Meta would refuse —");
+  // This account will not run a lifetime budget below about ₹95 a day.
+  is((await boost.save(cfg, { rupees: 300, days: 5 }, "Owner")).error,
+    "₹300 ki 5 rojulu kudarav — Meta roju kaneesam ₹100 adugutundi. 3 rojulu varaku, leda budget ₹500 cheyandi.",
+    "₹300 stretched over five days is refused, with both ways out spelled");
+  is([(await boost.load(cfg)).rupees, (await boost.load(cfg)).days], [500, 5], "the settings that were already there stand");
+  is((await boost.save(cfg, { rupees: 300, days: 3 }, "Owner")).ok, true, "₹300 over three days is fine");
+  h.run(["SET", "boost:cfg", JSON.stringify({ on: true, rupees: 200, days: 7, km: 30, maxPerDay: 900 })]);   // as if edited outside the app
+  seedImage(9); calls = [];
+  const short = await boost.run(cfg, post(9));
+  is([short.days, bodyOf("adset").lifetime_budget], [2, 20000], "a stored setting Meta would refuse is shortened, not lost — ₹200 runs two days");
+
   console.log("\n  — what came of it —");
   const rows = await boost.recent(cfg, 5);
   is([rows[0].spend, rows[0].reach, rows[0].chats], [212, 8421, "6"], "each boost shows what it spent, who it reached and how many chats it started");

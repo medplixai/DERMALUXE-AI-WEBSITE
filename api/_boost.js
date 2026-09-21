@@ -27,6 +27,13 @@ const GRAPH = "https://graph.facebook.com/v21.0";
 const ELURU = { lat: 16.7107, lng: 81.0952 };
 const WA_LINK = "https://wa.me/919959134666";
 const DEFAULTS = { on: true, rupees: 300, days: 3, km: 30, ageMin: 20, ageMax: 60, maxPerDay: 900 };
+// Meta will not run a lifetime budget that works out to less than about ₹95 a
+// day on this account (min_daily_budget_cents = 9491). ₹300 over 3 days is
+// ₹100 — just over. Stretch the same ₹300 over 5 days and Meta refuses the
+// ad set, so the arithmetic is checked here instead of failing at 8:30 in
+// the morning.
+const MIN_PER_DAY = 100;
+const maxDays = (rupees) => Math.max(1, Math.floor(rupees / MIN_PER_DAY));
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
 const istDay = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts || Date.now()));
 // A number the owner typed: nonsense falls back to what was there, and
@@ -64,6 +71,9 @@ async function save(cfg, input, by) {
     by: String(by || "").slice(0, 40), ts: Date.now(),
   });
   if (next.rupees > next.maxPerDay) return { ok: false, error: "Roju limit, okka post budget kanna ekkuva undali" };
+  if (next.days > maxDays(next.rupees)) {
+    return { ok: false, error: `₹${next.rupees} ki ${next.days} rojulu kudarav — Meta roju kaneesam ₹${MIN_PER_DAY} adugutundi. ${maxDays(next.rupees)} rojulu varaku, leda budget ₹${next.days * MIN_PER_DAY} cheyandi.` };
+  }
   const r = await guard.kvCommand(cfg, ["SET", "boost:cfg", JSON.stringify(next)]);
   if (!r || r.error) return { ok: false, error: "Save avvaledu — malli try cheyandi" };
   return { ok: true, boost: next };
@@ -172,25 +182,28 @@ async function run(cfg, post) {
     await guard.kvCommand(cfg, ["DEL", key]).catch(() => {});
     return Object.assign(res, { why: `roju limit ₹${c.maxPerDay} daatindi` });
   }
-  const out = await create(cfg, post, c);
+  // Belt and braces: whatever is in the settings, never send Meta a lifetime
+  // budget it will refuse — shorten the run instead of losing the day.
+  const days = Math.min(c.days, maxDays(c.rupees));
+  const out = await create(cfg, post, Object.assign({}, c, { days }));
   if (!out.ok) {
     await guard.kvCommand(cfg, ["INCRBY", dayKey, String(-c.rupees)]).catch(() => {});
     await guard.kvCommand(cfg, ["DEL", key]).catch(() => {});   // so tomorrow's run may try again
   }
   await guard.kvCommand(cfg, ["LPUSH", "boost:log", JSON.stringify({
     ts: Date.now(), day: istDay(), post: post.id || "", topic: post.topic || "", link: post.link || "",
-    ok: out.ok, rupees: c.rupees, days: c.days, km: c.km,
+    ok: out.ok, rupees: c.rupees, days, km: c.km,
     campaign: out.made.campaign || "", ad: out.made.ad || "", error: out.ok ? "" : out.error,
   })]).catch(() => {});
   await guard.kvCommand(cfg, ["LTRIM", "boost:log", "0", "199"]).catch(() => {});
   try {
     const notify = require("./_notify.js");
     const text = out.ok
-      ? `📣 *Ee roju poster ki ₹${c.rupees} pettam* (${c.days} rojulu)\n\n📍 Eluru chuttu ${c.km} km · ${c.ageMin}-${c.ageMax} years\n💬 Tap chesthe direct ga mana WhatsApp agent ki\n${post.link ? "\n" + post.link : ""}\n\nApp → Control panel → Ads boost lo aapocchu / budget marchocchu.`
+      ? `📣 *Ee roju poster ki ₹${c.rupees} pettam* (${days} rojulu)\n\n📍 Eluru chuttu ${c.km} km · ${c.ageMin}-${c.ageMax} years\n💬 Tap chesthe direct ga mana WhatsApp agent ki\n${post.link ? "\n" + post.link : ""}\n\nApp → Control panel → Ads boost lo aapocchu / budget marchocchu.`
       : `⚠️ *Ee roju poster ki ad pettaleka poyam*\n\n${out.error}\n\nMeta lo payment method / ad account chudandi. Repu malli try chestundi — leda app → Control panel → Ads boost lo off cheyyandi.`;
     for (const to of guard.ownerPhones()) await notify.sendWa(to, text).catch(() => {});
   } catch (e) {}
-  return Object.assign(res, { boosted: out.ok, why: out.ok ? "" : out.error, campaign: out.made.campaign, ad: out.made.ad, rupees: c.rupees, days: c.days });
+  return Object.assign(res, { boosted: out.ok, why: out.ok ? "" : out.error, campaign: out.made.campaign, ad: out.made.ad, rupees: c.rupees, days });
 }
 
 // What the boosts did — for the control panel and the weekly report.
@@ -219,4 +232,4 @@ async function recent(cfg, n) {
   return rows;
 }
 
-module.exports = { load, save, run, recent, ready, DEFAULTS, ELURU, WA_LINK };
+module.exports = { load, save, run, recent, ready, maxDays, DEFAULTS, MIN_PER_DAY, ELURU, WA_LINK };
