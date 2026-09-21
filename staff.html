@@ -64,6 +64,8 @@
     .who b{color:var(--g1);font-weight:500;display:block}
     .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
     .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 10px}
+    .stat[data-act]{cursor:pointer}
+    .stat[data-act]:hover{border-color:var(--primary)}
     .stat b{display:block;font-family:var(--sans);font-weight:800;letter-spacing:-.015em;font-size:1.9rem;font-weight:600;color:var(--g1);line-height:1}
     .stat span{font-size:.68rem;letter-spacing:1px;text-transform:uppercase;color:var(--muted2)}
     .tabs{display:flex;gap:6px;overflow-x:auto;padding:2px 0 10px;scrollbar-width:none}
@@ -654,8 +656,8 @@
     <main class="wrap">
       <div class="netbar" id="netBar"></div>
       <div class="stats">
-        <div class="stat"><b id="sToday"></b><span>Leads today</span></div>
-        <div class="stat"><b id="sHot"></b><span>Hot · to call</span></div>
+        <div class="stat" data-act="seg-go" data-seg="today" role="button" tabindex="0"><b id="sToday"></b><span>Leads today</span></div>
+        <div class="stat" data-act="seg-go" data-seg="call" role="button" tabindex="0"><b id="sHot"></b><span>🔥 Ippude call</span></div>
         <div class="stat"><b id="sAppt"></b><span>Upcoming appts</span></div>
         <div class="stat"><b id="sSeats"></b><span>Academy seats</span></div>
       </div>
@@ -671,6 +673,7 @@
         <div class="segs" id="segs" role="tablist" aria-label="Lead groups">
           <button data-seg="call" class="on">🔥 Ippude call<i id="segN0"></i></button>
           <button data-seg="today">Ee roju<i id="segN1"></i></button>
+          <button data-seg="wait">⏳ Waiting<i id="segN4"></i></button>
           <button data-seg="open">Book kaanivi<i id="segN2"></i></button>
           <button data-seg="mine">🙋 Naavi<i id="segN3"></i></button>
           <button data-seg="all">Anni</button>
@@ -1208,7 +1211,10 @@
       if (firstTab && !document.querySelector(".tab.on:not(.hide)")) firstTab.click();
       var dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
       var today = d.leads.filter(function (l) { return l.ts >= dayStart.getTime(); }).length;
-      var hot = d.leads.filter(function (l) { return l.heat === "hot" && (l.status === "new" || l.status === "contacted"); }).length;
+      // The tile and the "Ippude call" group used to count different things —
+      // the tile went by the agent's old hot/warm guess, the group by the
+      // grade — so the screen could say "2 to call" over an empty list.
+      var hot = d.leads.filter(needsCall).length;
       $("sToday").textContent = today; $("sHot").textContent = hot; $("sAppt").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("sSeats").textContent = d.academy.booked + "/10";
       $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
@@ -1252,6 +1258,23 @@
         '<div class="phwrap" data-kind="lead" data-ref="' + esc(l.key) + '"></div>' +
         '<div class="notes">' + notes + '<form class="noteform" data-act="note" data-key="' + esc(l.key) + '"><input placeholder="Call note… (e.g. spoke, coming Sat 5 PM)" maxlength="400" /><button class="btn btn--sm btn--gold" type="submit">Add</button></form></div>' +
         '</article>';
+    }
+    // An empty group is a dead end unless it says where the work actually is.
+    function emptyLeads(seg, counts) {
+      var head = seg === "call" ? "Ippudu call cheyyalsina A-grade leads levu 👍"
+        : seg === "mine" ? "Mee peru meeda leads emi ledu 👍"
+        : seg === "wait" ? "Prathi lead ni evaro okaru touch chesaru 👍"
+        : seg === "today" ? "Ee roju inka leads raaledu."
+        : "Ee filter lo leads levu.";
+      var go = [
+        { seg: "wait", n: counts[4], label: "⏳ " + counts[4] + " ni evaru touch cheyyaledu" },
+        { seg: "open", n: counts[2], label: counts[2] + " inka book cheyyaledu" },
+        { seg: "today", n: counts[1], label: counts[1] + " ee roju vachchayi" },
+        { seg: "mine", n: counts[3], label: "🙋 " + counts[3] + " mee peru meeda" },
+      ].filter(function (x) { return x.n && x.seg !== seg; });
+      return '<div class="empty">' + esc(head) +
+        (go.length ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center">' +
+          go.map(function (x) { return '<button class="btn btn--sm" data-act="seg-go" data-seg="' + x.seg + '">' + esc(x.label) + "</button>"; }).join("") + "</div>" : "") + "</div>";
     }
     function waitFor(ms) {
       var m = Math.round(ms / 60000);
@@ -1334,22 +1357,37 @@
       var b = $("leadMoreBtn"); if (b) b.onclick = function () { loadRest(); };
     }
 
+    // Somebody to ring now: an A grade, or an ungraded lead the agent called
+    // hot, still open, not opted out, and not an academy enquiry.
+    function needsCall(l) {
+      if (!l || l.optedOut) return false;
+      if (/^\s*academy/i.test(String(l.concern || ""))) return false;
+      if (!(l.status === "new" || l.status === "contacted")) return false;
+      return l.grade ? l.grade === "A" : l.heat === "hot";
+    }
+    // Nobody has touched this one yet.
+    function untouched(l) {
+      return l.status === "new" && !(l.notes && l.notes.length) && !/^\s*academy/i.test(String(l.concern || ""));
+    }
     function renderLeads() {
       var d = state.data, q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fsrc = $("fSrc").value, days = Number($("fDays").value);
       var since = Date.now() - days * 86400000; if (days === 1) { var t0 = new Date(); t0.setHours(0, 0, 0, 0); since = t0.getTime(); }
       var seg = (document.querySelector("#segs button.on") || {}).dataset; seg = seg ? seg.seg : "all";
-      var isHotLead = function (l) { return (l.grade ? l.grade === "A" : l.heat === "hot") && (l.status === "new" || l.status === "contacted"); };
+      var isHotLead = needsCall;
       var t00 = new Date(); t00.setHours(0, 0, 0, 0);
       var base = d.leads.filter(function (l) { return !/^academy/i.test(String(l.concern || "")); });
       var myPhone = (d.me && d.me.phone) || "";
       var isMine = function (l) { return l.owner && l.owner === myPhone && (l.status === "new" || l.status === "contacted"); };
-      var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length, base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length];
+      var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length,
+        base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length,
+        base.filter(untouched).length];
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
       var list = d.leads.filter(function (l) {
         if (seg === "call" && !isHotLead(l)) return false;
         if (seg === "today" && l.ts < t00.getTime()) return false;
         if (seg === "open" && !(l.status === "new" || l.status === "contacted")) return false;
         if (seg === "mine" && !isMine(l)) return false;
+        if (seg === "wait" && !untouched(l)) return false;
         if (seg !== "call" && l.ts < since) return false;
         if (fs && l.status !== fs) return false;
         if (fsrc && src(l) !== fsrc) return false;
@@ -1357,13 +1395,14 @@
         if (q && (String(l.name) + " " + String(l.phone) + " " + String(l.concern) + " " + String(l.message)).toLowerCase().indexOf(q) === -1) return false;
         return true;
       }).sort(function (a, b) {
+        if (seg === "wait") return (a.ts || 0) - (b.ts || 0);          // longest wait first
         var sa = a.status === "new" || a.status === "contacted" ? 0 : 1, sb = b.status === "new" || b.status === "contacted" ? 0 : 1;
         if (sa !== sb) return sa - sb;
         var gr = { A: 0, B: 1, C: 2, D: 3 };
         var ga = a.grade ? gr[a.grade] : (heatRank[a.heat || ""] || 0) + 0.5, gb = b.grade ? gr[b.grade] : (heatRank[b.heat || ""] || 0) + 0.5; if (ga !== gb) return ga - gb;
         return b.ts - a.ts;
       });
-      $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : '<div class="empty">' + (seg === "call" ? "Ippudu call cheyyalsina A-grade leads levu 👍" : seg === "mine" ? "Mee peru meeda leads emi ledu 👍" : "No leads for this filter.") + "</div>";
+      $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts);
       paintMore();
     }
     // ---- the clinic day --------------------------------------------------
@@ -4731,6 +4770,15 @@
         el.disabled = true;
         api("rule-del", { id: el.dataset.id }).then(function (j) { panel.agentRules = j.rules; renderRules(); toast("Teesesam"); })
           .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      // A tile or an empty group's button takes the desk straight to that group.
+      if (el.dataset.act === "seg-go") {
+        var want = el.dataset.seg;
+        if (state.tab !== "leads") goTab("leads");
+        var b = document.querySelector('#segs button[data-seg="' + want + '"]');
+        if (b) { document.querySelectorAll("#segs button").forEach(function (x) { x.classList.remove("on"); }); b.classList.add("on"); renderLeads(); }
+        window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
       if (el.dataset.act === "gr-why") {
