@@ -174,7 +174,10 @@ async function run(cfg, opts) {
   for (const r of rows) for (const f of r.faults) faults[f] = (faults[f] || 0) + 1;
   const result = {
     day, n: scored.length, skipped: rows.filter((r) => r.skipped).length, score, secs: Math.round((Date.now() - started) / 1000),
-    booked: rows.filter((r) => r.booked).length, traps: `${rows.filter((r) => r.trapPassed).length}/${rows.filter((r) => r.trap).length}`,
+    booked: scored.filter((r) => r.booked).length,
+    // Only the personas that carry a trap can pass one — counting a pass
+    // against a persona without one printed "traps 1/0".
+    traps: (() => { const withTrap = scored.filter((r) => r.trap); return withTrap.length ? `${withTrap.filter((r) => r.trapPassed).length}/${withTrap.length}` : "—"; })(),
     faults, worst: scored.slice().sort((a, b) => a.score - b.score).slice(0, 3).map((r) => ({ who: r.who, score: r.score, note: r.note, faults: r.faults })),
     rows: rows.map((r) => (o.keep ? r : Object.assign({}, r, { transcript: undefined }))), at: Date.now(),
   };

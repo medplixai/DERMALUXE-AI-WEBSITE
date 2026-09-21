@@ -2612,7 +2612,10 @@
       return fetch(ORIGIN + "/api/wa-setup" + (qs || ""), { headers: { Authorization: "Bearer " + tok } })
         .then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
     }
-    function paintTemplates(j) {
+    // Named apart from the consent screen's paintTemplates(): two function
+    // declarations with one name in this scope, and the last one wins — which
+    // is how "Status chudu" painted nothing and wiped the consent list.
+    function paintWaTemplates(j) {
       var host = $("tplList");
       if (j.created) {
         host.innerHTML = '<p class="meta">' + j.created.filter(function (x) { return x.ok; }).length + " kotha templates Meta ki pampam. Approval ki konni gantalu padutundi." +
@@ -2646,12 +2649,12 @@
     };
     if ($("tplLoad")) $("tplLoad").onclick = function () {
       var b = this; b.disabled = true; $("tplList").innerHTML = '<div class="sk"><div></div><div></div></div>';
-      tplapi().then(paintTemplates).catch(function (x) { $("tplErr").textContent = x.message; $("tplList").innerHTML = ""; }).then(function () { b.disabled = false; });
+      tplapi().then(paintWaTemplates).catch(function (x) { $("tplErr").textContent = x.message; $("tplList").innerHTML = ""; }).then(function () { b.disabled = false; });
     };
     if ($("tplCreate")) $("tplCreate").onclick = function () {
       if (!confirm("Mana templates anni Meta approval ki pampanaa?\n\nMeta lo already unnavi skip avutayi. Approval ki konni gantalu padutundi.")) return;
       var b = this; b.disabled = true; $("tplList").innerHTML = '<div class="sk"><div></div><div></div></div>';
-      tplapi("?action=create").then(function (j) { paintTemplates(j); toast("Meta ki pampam"); })
+      tplapi("?action=create").then(function (j) { paintWaTemplates(j); toast("Meta ki pampam"); })
         .catch(function (x) { $("tplErr").textContent = x.message; $("tplList").innerHTML = ""; }).then(function () { b.disabled = false; });
     };
     if ($("cashGo")) $("cashGo").onclick = function () {
@@ -3648,12 +3651,22 @@
       if (H) { try { H.impact({ style: (ms || 8) > 12 ? "Medium" : "Light" }); return; } catch (e) {} }
       try { if (navigator.vibrate) navigator.vibrate(ms || 8); } catch (e) {}
     }
+    // navigator.clipboard.writeText returns a PROMISE: a try/catch around it
+    // never sees a refusal, and the app used to say "copy ayindi" over a
+    // clipboard that had rejected. This tells the truth, and leaves the text
+    // on screen to copy by hand when the browser says no.
+    function copyText(text, okMsg) {
+      var t = String(text || "");
+      if (!t) return Promise.resolve(false);
+      var p = (navigator.clipboard && navigator.clipboard.writeText) ? navigator.clipboard.writeText(t) : Promise.reject(new Error("no clipboard"));
+      return p.then(function () { if (okMsg) toast(okMsg); return true; })
+        .catch(function () { prompt("Copy cheyandi:", t); return false; });
+    }
     function nativeShare(title, text, url) {
       var S = plug("Share");
       if (S) return S.share({ title: title, text: text, url: url, dialogTitle: "Pampandi" }).catch(function () {});
       if (navigator.share) return navigator.share({ title: title, text: text, url: url }).catch(function () {});
-      try { navigator.clipboard.writeText(url || text); toast("Link copy ayindi"); } catch (e) {}
-      return Promise.resolve();
+      return copyText(url || text, "Link copy ayindi").then(function () {});
     }
     function visibleTabs() {
       return NAV_PREF.filter(function (t) {
@@ -5119,9 +5132,9 @@
     document.addEventListener("click", function (e) {
       var el = e.target.closest("[data-sact]"); if (!el || el.tagName === "FORM") return;
       var id = el.dataset.id, act = el.dataset.sact;
-      if (act === "link") return sapi("link", { id: id }).then(function (j) { navigator.clipboard && navigator.clipboard.writeText(j.url); prompt("Onboarding form link (copied):", j.url); }).catch(function (x) { toast(x.message); });
+      if (act === "link") return sapi("link", { id: id }).then(function (j) { return copyText(j.url, "Link copy ayindi"); }).catch(function (x) { toast(x.message); });
       if (act === "pay") { var amt = prompt("Amount received (₹):", "40000"); if (!amt) return; var ref = prompt("UPI / reference (optional):", "") || ""; return sapi("pay", { id: id, amount: Number(amt), ref: ref }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Receipt sent"); }).catch(function (x) { toast(x.message); }); }
-      if (act === "material") { return sapi("material", { id: id }).then(function (j) { if (!j.paid) { toast("Payment record ledu — material lock lo undi"); return; } navigator.clipboard && navigator.clipboard.writeText(j.day1); prompt("Student's Day 1 material link (copied). Roju material automatic ga veltundi.", j.day1); }).catch(function (x) { toast(x.message); }); }
+      if (act === "material") { return sapi("material", { id: id }).then(function (j) { if (!j.paid) { toast("Payment record ledu — material lock lo undi"); return; } return copyText(j.day1, "Day 1 material link copy ayindi — roju material automatic ga veltundi"); }).catch(function (x) { toast(x.message); }); }
       if (act === "send") { return sapi("send", { id: id, which: ["admission", "idcard"] }).then(function () { toast("Documents sent on WhatsApp"); }).catch(function (x) { toast(x.message); }); }
       if (act === "certify") { var g = prompt("Grade (A/B/C):", "A"); if (!g) return; if (!confirm("Generate and send the certificate?")) return; return sapi("certify", { id: id, grade: g }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Certificate sent 🎓"); }).catch(function (x) { toast(x.message); }); }
       if (act === "reopen") {
@@ -5129,8 +5142,7 @@
         return sapi("reopen", { id: id }).then(function (j) {
           students = students.map(function (x) { return x.id === id ? Object.assign({}, x, { onboarded: 0 }) : x; });
           renderStudents();
-          if (navigator.clipboard) navigator.clipboard.writeText(j.url);
-          prompt("Kotha form link (copy ayindi) — WhatsApp lo pampandi:", j.url);
+          return copyText(j.url, "Kotha form link copy ayindi — WhatsApp lo pampandi");
         }).catch(function (x) { toast(x.message); });
       }
       if (act === "delete") {
