@@ -125,6 +125,30 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   const rows = await boost.recent(cfg, 5);
   is([rows[0].spend, rows[0].reach, rows[0].chats], [212, 8421, "6"], "each boost shows what it spent, who it reached and how many chats it started");
 
+  console.log("\n  — the morning it actually runs —");
+  // The trigger itself: cron-post publishes the day's poster at 8:30 and the
+  // boost has to follow it. A post somebody published by hand must not.
+  const stub = (n, e) => { const p2 = path.join(API, n); require.cache[p2] = { id: p2, filename: p2, loaded: true, exports: e }; };
+  let publishes = 0;
+  stub("_admin.js", {
+    isAdmin: () => false, fmtIst: () => "8:30 am", promoParams: (t, n, x) => [n, x],
+    publishNow: async () => ({ ok: true, id: "ig-auto-" + (++publishes), link: "https://instagram.com/p/x" }),
+  });
+  const post9 = h.load("cron-post");
+  await boost.save(cfg, { on: true, rupees: 300, days: 3, km: 30, maxPerDay: 900 }, "Owner");
+  h.run(["DEL", "boost:day:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())]);
+  h.run(["SET", "adm:img:auto1", "POSTERBYTES"]);
+  h.run(["LPUSH", "adm:queue", JSON.stringify({ imgId: "auto1", caption: "Hair fall? 🙏", due: Date.now() - 60000, by: "9010427777", auto: true, topic: "hair-fall", quiet: true })]);
+  calls = [];
+  const cp = await h.call(post9, { key: "local-admin" });
+  is([cp.body.boosted && cp.body.boosted.boosted, calls.filter((c) => c.what === "campaign").length], [true, 1], "the poster goes live at 8:30 and the money follows it in the same run");
+  is(bodyOf("campaign").name.indexOf("hair-fall") > -1, true, "the campaign is named after the day's topic");
+  h.run(["SET", "adm:img:hand1", "POSTERBYTES"]);
+  h.run(["LPUSH", "adm:queue", JSON.stringify({ imgId: "hand1", caption: "Ee roju offer", due: Date.now() - 60000, by: "9010427777", quiet: true })]);
+  calls = [];
+  const cp2 = await h.call(post9, { key: "local-admin" });
+  is([cp2.body.published, calls.length], [1, 0], "a post somebody scheduled by hand is published and left alone — no money behind it");
+
   console.log("\n  — clinic one day, academy the next —");
   const day = (iso) => daily.isAcademyDay(Date.parse(iso + "T06:00:00Z"));
   is([day("2026-09-21"), day("2026-09-22"), day("2026-09-23"), day("2026-09-24")], [!day("2026-09-22"), !day("2026-09-21"), day("2026-09-21"), day("2026-09-22")], "the days alternate, and keep alternating");
