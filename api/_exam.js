@@ -124,9 +124,16 @@ async function judge(p, conv, cfg) {
   const flags = `Agent flags during the chat: trust=${conv.flags.trust}, show_results=${conv.flags.results}, urgent=${conv.flags.urgent}, send_location=${conv.flags.location}, lead=${conv.flags.lead ? JSON.stringify({ name: conv.flags.lead.name, concern: conv.flags.lead.concern, slot_ts: conv.flags.lead.slot_ts || "", cancel: !!conv.flags.lead.cancel }) : "none"}.`;
   const persona = `PERSONA: ${p.name}, ${p.town}; concern: ${p.concern}; goal: ${p.goal}; style: ${p.style}; language: ${p.lang}.${p.trap ? ` TRAP: ${p.trap}.` : ""}`;
   const policy = cfg ? require("./_prices.js").judgeNote(await require("./_prices.js").load(cfg).catch(() => null)) : "";
-  const text = await model(JUDGE_MODEL(), JUDGE + policy, [{ role: "user", content: `${persona}\n${flags}\n\nTRANSCRIPT:\n${transcript}` }], 500);
-  const j = require("./_review.js").extractJson(text) || {};
-  return { score: Math.max(0, Math.min(100, Number(j.score) || 0)), booked: !!j.booked, trapPassed: !!j.trap_passed, facts: j.facts || {}, faults: Array.isArray(j.faults) ? j.faults.slice(0, 6) : [], note: String(j.note || "").slice(0, 200) };
+  const text = await model(JUDGE_MODEL(), JUDGE + policy, [{ role: "user", content: `${persona}\n${flags}\n\nTRANSCRIPT:\n${transcript}` }], 900);
+  const j = require("./_review.js").extractJson(text);
+  // A verdict we could not read is NOT a zero. Scoring it as one dragged a
+  // whole morning's exam down to 5/100 and printed "🔴 Suresh 0 —" at the
+  // owner, which said nothing true about the agent.
+  if (!j || typeof j.score !== "number") {
+    console.error("exam: judge unreadable", String(text || "").slice(0, 300));
+    return { judged: false, score: 0, booked: false, trapPassed: false, facts: {}, faults: [], note: "judge verdict chadavaledu" };
+  }
+  return { judged: true, score: Math.max(0, Math.min(100, Number(j.score) || 0)), booked: !!j.booked, trapPassed: !!j.trap_passed, facts: j.facts || {}, faults: Array.isArray(j.faults) ? j.faults.slice(0, 6) : [], note: String(j.note || "").slice(0, 200) };
 }
 
 // Which personas sit tonight: twelve, rotating, so every one is sat every 3-4 nights.
@@ -141,9 +148,9 @@ function tonight(day, n) {
 async function sit(cfg, p, o) {
   try {
     const conv = await converse(cfg, p, o.turns || 5);
-    const j = conv.turns.length ? await judge(p, conv, cfg) : { score: 0, booked: false, trapPassed: false, faults: ["no_conversation"], note: "patient model raaledu" };
+    const j = conv.turns.length ? await judge(p, conv, cfg) : { judged: false, score: 0, booked: false, trapPassed: false, faults: ["no_conversation"], note: "patient model raaledu" };
     return Object.assign({ id: p.id, who: p.name, trap: p.trap || "", turns: conv.turns.length }, j, o.keep ? { transcript: conv.turns } : {});
-  } catch (e) { return { id: p.id, who: p.name, trap: p.trap || "", turns: 0, score: 0, booked: false, trapPassed: false, faults: ["error"], note: String(e && e.message).slice(0, 120) }; }
+  } catch (e) { return { id: p.id, who: p.name, trap: p.trap || "", turns: 0, judged: false, score: 0, booked: false, trapPassed: false, faults: ["error"], note: String(e && e.message).slice(0, 120) }; }
 }
 
 // Twelve conversations one after another, each six turns of the full model
@@ -168,12 +175,14 @@ async function run(cfg, opts) {
   };
   await Promise.all(Array.from({ length: Math.min(width, set.length) }, worker));
   rows.sort((a, b) => set.findIndex((p) => p.id === a.id) - set.findIndex((p) => p.id === b.id));
-  const scored = rows.filter((r) => r.turns);
+  // Only the chats that actually ran AND came back with a verdict count.
+  const scored = rows.filter((r) => r.turns && r.judged);
+  const unread = rows.filter((r) => r.turns && !r.judged).length;
   const score = scored.length ? Math.round(scored.reduce((n, r) => n + r.score, 0) / scored.length) : 0;
   const faults = {};
   for (const r of rows) for (const f of r.faults) faults[f] = (faults[f] || 0) + 1;
   const result = {
-    day, n: scored.length, skipped: rows.filter((r) => r.skipped).length, score, secs: Math.round((Date.now() - started) / 1000),
+    day, n: scored.length, skipped: rows.filter((r) => r.skipped).length, unjudged: unread, score, secs: Math.round((Date.now() - started) / 1000),
     booked: scored.filter((r) => r.booked).length,
     // Only the personas that carry a trap can pass one — counting a pass
     // against a persona without one printed "traps 1/0".
@@ -186,7 +195,9 @@ async function run(cfg, opts) {
   const avg = log.length ? Math.round(log.reduce((n, x) => n + x.score, 0) / log.length) : null;
   result.avg7 = avg;
   result.drop = avg != null && score < avg - 10;
-  if (!o.dry && scored.length) {
+  // A day's card is only written by a real sitting: not a spot check of one
+  // or two personas, and not a morning where almost nothing came back judged.
+  if (!o.dry && !o.ids && scored.length >= 3) {
     await guard.kvCommand(cfg, ["SET", `exam:${day}`, JSON.stringify(result), "EX", String(120 * 86400)]).catch(() => {});
     await guard.kvCommand(cfg, ["SET", "exam:latest", JSON.stringify(result)]).catch(() => {});
     await guard.kvCommand(cfg, ["LPUSH", "exam:log", JSON.stringify({ day, score, n: rows.length, booked: result.booked })]).catch(() => {});
@@ -200,8 +211,10 @@ function summary(r) {
   if (!r) return "";
   const top = Object.keys(r.faults).sort((a, b) => r.faults[b] - r.faults[a]).slice(0, 3).map((k) => `${k} ${r.faults[k]}`).join(" · ");
   return [
-    `🎓 *Agent exam — ${r.day}*: *${r.score}/100*${r.avg7 != null ? ` (7-night avg ${r.avg7})` : ""}${r.drop ? " ⚠️ PADIPOYINDI" : ""}`,
-    `${r.n} test patients${r.skipped ? ` (${r.skipped} time lekapoyayi)` : ""} · ${r.booked} booked · traps ${r.traps}`,
+    r.n >= 3
+      ? `🎓 *Agent exam — ${r.day}*: *${r.score}/100*${r.avg7 != null ? ` (7-night avg ${r.avg7})` : ""}${r.drop ? " ⚠️ PADIPOYINDI" : ""}`
+      : `🎓 *Agent exam — ${r.day}*: score lekka veyaleka poyam (${r.n} verdicts matrame vachchayi) — logs chudandi`,
+    `${r.n} test patients${r.skipped ? ` (${r.skipped} time lekapoyayi)` : ""}${r.unjudged ? ` · ${r.unjudged} verdict raaledu` : ""} · ${r.booked} booked · traps ${r.traps}`,
     top ? `Faults: ${top}` : "Faults: emi levu 👏",
     ...r.worst.filter((w) => w.score < 75).slice(0, 2).map((w) => `• ${w.who} (${w.score}): ${w.note}`),
   ].join("\n");

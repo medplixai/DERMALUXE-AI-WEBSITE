@@ -191,12 +191,34 @@ const slotTs = (daysAhead) => { const d = new Date(Date.now() + daysAhead * DAY 
   const ex = await exam.run(cfg, { ids: ["p01"], turns: 6 });
   is([ex.n, ex.rows[0].turns, ex.rows[0].booked, ex.score], [1, 3, true, 88], "a persona talks to the real agent until it is done, and the chat is judged");
   is(h.run(["LLEN", "lint:log"]), 0, "exam chats are not written into the day's editor record");
-  is(JSON.parse(h.run(["GET", "exam:latest"])).score, 88, "the result is kept for the Inbox card");
+  is(h.run(["GET", "exam:latest"]), null, "a spot check of one persona does not overwrite the day's card");
+  patientLines = ["Hair fall undi", "[END]", "Hair fall undi", "[END]", "Hair fall undi", "[END]", "Hair fall undi", "[END]"];
+  claude = [];
+  const night = await exam.run(cfg, { n: 4, turns: 2, width: 1 });   // one at a time, so the stubbed patient's lines land in order
+  is([night.n >= 3, JSON.parse(h.run(["GET", "exam:latest"])).n], [true, night.n], "a real sitting is kept for the Inbox card");
+  // A verdict the judge mangles must not be scored as a zero — that is how a
+  // morning's exam came out at 5/100 with "🔴 Suresh 0 —" under it.
+  const realFetch2 = global.fetch;
+  global.fetch = async (u, o) => {
+    const b2 = o && o.body ? JSON.parse(o.body) : {};
+    if (String(u).includes("api.anthropic.com") && /grade ONE simulated/.test(b2.system || "")) {
+      return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: "Here is my verdict: {\"score\": 8" }] }) };   // truncated
+    }
+    return realFetch2(u, o);
+  };
+  patientLines = ["Hair fall undi", "[END]"];
+  claude = [{ reply: "Entakalam nundi andi?", lead: null }];
+  const exBad = await exam.run(cfg, { ids: ["p01"], turns: 4, dry: true });
+  global.fetch = realFetch2;
+  is([exBad.n, exBad.unjudged, exBad.rows[0].judged], [0, 1, false], "a verdict that cannot be read counts as no verdict, not as nought out of a hundred");
+  is(/score lekka veyaleka poyam/.test(exam.summary(exBad)), true, "and the owner is told the score could not be worked out, instead of a frightening number");
+
   patientLines = ["job kavali, therapist experience undi", "[END]"];
   claude = [{ reply: "Careers page chudandi 🙏", lead: null }];
   const ex2 = await exam.run(cfg, { ids: ["p05"], turns: 6 });
   is([ex2.rows[0].booked, ex2.rows[0].faults], [false, ["no_next_step"]], "a chat that goes wrong is scored low with the fault named");
-  is(/Agent exam — .*: \*40\/100\*/.test(exam.summary(ex2)) && /Suresh \(40\): slot adagaledu/.test(exam.summary(ex2)), true, "and the owner's line names the worst chat");
+  is(/• Suresh \(40\): slot adagaledu/.test(exam.summary(ex2)), true, "and the owner's line names the worst chat, with what it did wrong");
+  is(/Agent exam — .*: \*\d+\/100\*/.test(exam.summary(night)), true, "a real sitting's line leads with the score out of a hundred");
   const ex3 = await exam.run(cfg, { ids: ["p01", "p05"], budgetMs: 0, dry: true });
   is([ex3.n, ex3.skipped, ex3.score], [0, 2, 0], "when the time budget is gone, the rest are skipped rather than the function dying at 300 s");
   h.run(["SET", `exam:${new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())}`, JSON.stringify({ score: 80 })]);

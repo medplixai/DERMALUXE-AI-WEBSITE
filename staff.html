@@ -572,10 +572,25 @@
     .ib-day{align-self:center;font-size:.7rem;color:var(--muted2);margin:6px 0}
     .ib-note{font-size:.78rem;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line)}
     .ib-note.warn{color:#b45309;background:#fffbeb}
-    .ib-quick{display:flex;gap:6px;overflow-x:auto;padding:8px 12px 0}
+    /* flex:none — in the pane's flex column these rows were shrinkable, so
+       the chips came out sliced in half under the composer. */
+    .ib-quick{flex:none;display:flex;gap:6px;overflow-x:auto;padding:8px 12px 2px;scrollbar-width:none}
+    .ib-quick::-webkit-scrollbar{display:none}
     .ib-quick button{flex:none;border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 10px;font:inherit;font-size:.78rem;cursor:pointer;color:var(--muted);white-space:nowrap}
     .ib-quick button:hover{border-color:var(--primary);color:var(--text)}
-    .ib-compose{display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+    .ib-compose{flex:none;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
+    .ib-card{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--ink2);font-size:.8rem;color:var(--muted)}
+    .ib-card b{font-weight:600;color:var(--text)}
+    .ib-card .nxt{flex-basis:100%;margin:0}
+    .ib-find{flex:none;display:flex;gap:6px;padding:0 0 8px;flex-wrap:wrap}
+    .ib-find input{flex:1;min-width:130px}
+    .ib-find button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:4px 10px;font:inherit;font-size:.76rem;cursor:pointer;color:var(--muted);white-space:nowrap}
+    .ib-find button.on{background:var(--g1);color:#fff;border-color:var(--g1)}
+    .ib-gr{font-size:.66rem;font-weight:700;border-radius:5px;padding:1px 4px;margin-left:4px}
+    .ib-gr.A{background:#fde8e8;color:#a61b1b} .ib-gr.B{background:#fff2d8;color:#8a5a00}
+    .ib-gr.C{background:var(--line);color:var(--muted)} .ib-gr.D{background:var(--line);color:var(--muted2)}
+    .ib-ct{font-size:.72rem;color:var(--muted2);align-self:center;min-width:34px;text-align:right}
+    .ib-ct.over{color:var(--bad);font-weight:600}
     .ib-compose textarea{flex:1;resize:none;border:1px solid var(--line2);border-radius:10px;padding:9px 11px;font:inherit;font-size:.92rem;max-height:120px;background:var(--panel);color:var(--text)}
     .ib-empty{flex:1;display:grid;place-items:center;color:var(--muted2);font-size:.9rem;padding:30px;text-align:center}
     @media (max-width:899px){ .ib.open .ib-list{display:none} .ib:not(.open) .ib-pane{display:none} .ib-pane{max-height:calc(100dvh - 170px)} }
@@ -665,7 +680,15 @@
       </section>
       <section id="t-inbox" class="hide">
         <div class="ib" id="ib">
-          <div class="ib-list"><div id="ibReview"></div><div id="ibList"><div class="sk"><div></div><div></div><div></div><div></div></div></div></div>
+          <div class="ib-list"><div id="ibReview"></div>
+            <div class="ib-find">
+              <input id="ibSearch" placeholder="Peru / number / message" />
+              <button type="button" data-ibf="all" class="on">Anni</button>
+              <button type="button" data-ibf="wait">Waiting</button>
+              <button type="button" data-ibf="unread">Chadavanivi</button>
+              <button type="button" data-ibf="hot">🔥 A/B</button>
+            </div>
+            <div id="ibList"><div class="sk"><div></div><div></div><div></div><div></div></div></div></div>
           <div class="ib-pane" id="ibPane">
             <div class="ib-empty" id="ibEmpty">Edaina chat open cheyandi.<br />Patients WhatsApp lo agent tho matladinavanni ikkada kanipistayi.</div>
             <div class="ib-head hide" id="ibHead"><button class="btn btn--sm" id="ibBack" aria-label="Venakki">‹</button>
@@ -674,8 +697,9 @@
               <button class="btn btn--sm hide" id="ibTake"></button></div>
             <div class="ib-msgs hide" id="ibMsgs"></div>
             <div class="ib-note hide" id="ibNote"></div>
+            <div class="ib-card hide" id="ibCard"></div>
             <div class="ib-quick hide" id="ibQuick"></div>
-            <form class="ib-compose hide" id="ibForm"><textarea id="ibText" rows="1" maxlength="1500" placeholder="Reply raayandi…" aria-label="Reply"></textarea><button class="btn btn--sm" type="button" id="ibDraft" title="AI draft">✍️</button><button class="btn btn--gold btn--sm" type="submit" id="ibSend">Send</button></form>
+            <form class="ib-compose hide" id="ibForm"><textarea id="ibText" rows="1" maxlength="1500" placeholder="Reply raayandi…" aria-label="Reply"></textarea><span class="ib-ct hide" id="ibCt"></span><button class="btn btn--sm" type="button" id="ibDraft" title="AI draft">✍️</button><button class="btn btn--gold btn--sm" type="submit" id="ibSend">Send</button></form>
           </div>
         </div>
       </section>
@@ -2219,7 +2243,7 @@
         return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; throw e; } return j; });
       });
     }
-    var ib = { phone: null, canReply: false, timer: null, sending: false, lastCount: -1 };
+    var ib = { phone: null, canReply: false, timer: null, sending: false, lastCount: -1, threads: [], filter: "all" };
     // The lines the desk sends again and again — one tap into the composer.
     var CANNED = [
       { label: "⏰ Timings", text: "Namaste 🙏 DermaLuxe by Medicare, Eluru.\n🕘 Monday–Saturday 9 AM – 9 PM (Sunday closed)\n📞 +91 99491 34666" },
@@ -2245,25 +2269,57 @@
           '<p class="meta" style="margin:0 0 4px">' + esc(rv.summary) + " · " + rv.checked + " chats" + (rv.lint && rv.lint.checked ? " · editor " + rv.lint.rewritten + "/" + rv.lint.checked + " replies sari chesindi" : "") + "</p>" +
           (rv.findings || []).slice(0, 4).map(function (f) { return '<div class="f">' + (f.severity === "high" ? "🔴" : f.severity === "medium" ? "🟠" : "🟡") + " <b>" + esc(f.who || "…" + f.phone) + "</b> — " + esc(f.issue) + "<small>↳ " + esc(f.fix) + "</small></div>"; }).join("") + "</div>" : "";
         var ex = j.exam;
-        if (rvh && ex && ex.n) rvh.innerHTML += '<div class="rvcard"><h3><span>🎓 Raatri exam · ' + esc(ex.day) + '</span><b style="color:' + (ex.score >= 75 ? "var(--ok)" : ex.score >= 50 ? "var(--hot)" : "var(--bad)") + '">' + ex.score + "/100" + (ex.drop ? " ⚠️" : "") + "</b></h3>" +
-          '<p class="meta" style="margin:0 0 4px">' + ex.n + " test patients · " + ex.booked + " booked · traps " + esc(ex.traps) + (ex.avg7 != null ? " · 7-night avg " + ex.avg7 : "") + "</p>" +
+        var exOk = ex && ex.n >= 3;
+        if (rvh && ex && ex.n) rvh.innerHTML += '<div class="rvcard"><h3><span>🎓 Raatri exam · ' + esc(ex.day) + "</span>" +
+          (exOk ? '<b style="color:' + (ex.score >= 75 ? "var(--ok)" : ex.score >= 50 ? "var(--hot)" : "var(--bad)") + '">' + ex.score + "/100" + (ex.drop ? " ⚠️" : "") + "</b>" : '<b style="color:var(--muted)">score raaledu</b>') + "</h3>" +
+          '<p class="meta" style="margin:0 0 4px">' + ex.n + " test patients · " + ex.booked + " booked · traps " + esc(ex.traps) + (ex.unjudged ? " · " + ex.unjudged + " verdict raaledu" : "") + (ex.avg7 != null ? " · 7-night avg " + ex.avg7 : "") + "</p>" +
           (ex.worst || []).filter(function (w) { return w.score < 75; }).slice(0, 2).map(function (w) { return '<div class="f">' + (w.score < 50 ? "🔴" : "🟠") + " <b>" + esc(w.who) + "</b> " + w.score + " — " + esc(w.note) + "</div>"; }).join("") + "</div>";
-        $("ibList").innerHTML = j.threads.length ? j.threads.map(function (t) {
-          var nm = t.name || t.phone;
-          return '<button class="ib-row' + (t.phone === ib.phone ? " on" : "") + '" data-act="ib-open" data-phone="' + esc(t.phone) + '">' +
-            '<span class="ib-av">' + esc(String(nm).trim().charAt(0).toUpperCase() || "?") + "</span>" +
-            '<span class="ib-mid"><b>' + esc(nm) + "</b>" + (t.name ? ' <span class="meta">· ' + esc(t.phone) + "</span>" : "") +
-            "<p>" + (t.lastDir === "out" ? (t.lastBy === "ai" ? "🤖 " : "👤 ") : "") + esc(t.last || "") + "</p></span>" +
-            '<span class="ib-side">' + ibTime(t.ts) + (t.unread ? '<span class="ib-un">' + t.unread + "</span>" : "") +
-            (t.human ? '<span class="ib-hum">👤 ' + esc(String(t.human.by || "").split(" ")[0]) + "</span>" : "") + "</span></button>";
-        }).join("") : '<div class="empty">Inka WhatsApp chats levu. Patient message chesthe ikkada kanipistundi.</div>';
+        ib.threads = j.threads || [];
+        renderIbList();
       }).catch(function (e) { if (!quiet) $("ibList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
+    // The list, with the desk's search and filter applied. A chat where the
+    // patient spoke last is "waiting" — that is the queue that matters.
+    function renderIbList() {
+      var rows = ib.threads || [];
+      var q = (($("ibSearch") || {}).value || "").trim().toLowerCase();
+      var f = ib.filter || "all";
+      var list = rows.filter(function (t) {
+        if (f === "unread" && !t.unread) return false;
+        if (f === "wait" && t.lastDir !== "in") return false;
+        if (f === "hot" && !(t.grade === "A" || t.grade === "B")) return false;
+        if (q && (String(t.name || "") + " " + t.phone + " " + String(t.last || "")).toLowerCase().indexOf(q) === -1) return false;
+        return true;
+      });
+      ["all", "wait", "unread", "hot"].forEach(function (k) {
+        var b = document.querySelector('[data-ibf="' + k + '"]'); if (b) b.classList.toggle("on", f === k);
+      });
+      var waiting = rows.filter(function (t) { return t.lastDir === "in"; }).length;
+      var wb = document.querySelector('[data-ibf="wait"]');
+      if (wb) wb.textContent = "Waiting" + (waiting ? " " + waiting : "");
+      $("ibList").innerHTML = list.length ? list.map(function (t) {
+        var nm = t.name || t.phone;
+        var wait = t.lastDir === "in" && t.lastIn ? Date.now() - t.lastIn : 0;
+        return '<button class="ib-row' + (t.phone === ib.phone ? " on" : "") + '" data-act="ib-open" data-phone="' + esc(t.phone) + '">' +
+          '<span class="ib-av">' + esc(String(nm).trim().charAt(0).toUpperCase() || "?") + "</span>" +
+          '<span class="ib-mid"><b>' + esc(nm) + "</b>" + (t.grade ? '<span class="ib-gr ' + esc(t.grade) + '">' + esc(t.grade) + "</span>" : "") +
+          (t.name ? ' <span class="meta">· ' + esc(t.phone) + "</span>" : "") +
+          "<p>" + (t.lastDir === "out" ? (t.lastBy === "ai" ? "🤖 " : "👤 ") : "") + esc(t.last || "") + "</p></span>" +
+          '<span class="ib-side">' + ibTime(t.ts) + (t.unread ? '<span class="ib-un">' + t.unread + "</span>" : "") +
+          (wait > 20 * 60000 ? '<span class="wait' + (wait > 3 * 3600000 ? " bad" : " warn") + '">' + waitFor(wait) + "</span>" : "") +
+          (t.human ? '<span class="ib-hum">👤 ' + esc(String(t.human.by || "").split(" ")[0]) + "</span>" : "") + "</span></button>";
+      }).join("") : '<div class="empty">' + (rows.length ? "Ee filter lo chats levu." : "Inka WhatsApp chats levu. Patient message chesthe ikkada kanipistundi.") + "</div>";
+    }
+    if ($("ibSearch")) $("ibSearch").addEventListener("input", function () { renderIbList(); });
+    document.querySelectorAll("[data-ibf]").forEach(function (b) {
+      b.onclick = function () { ib.filter = b.dataset.ibf; renderIbList(); };
+    });
     function paintThread(j) {
       var nm = (j.meta && j.meta.name) || j.phone;
       $("ibName").textContent = nm;
       $("ibSub").textContent = j.phone + (j.human ? " · 👤 " + j.human.by + " chusukuntunnaru — AI aagindi" : " · 🤖 AI agent matladutondi");
       ["ibHead", "ibMsgs", "ibForm", "ibNote"].forEach(function (id) { $(id).classList.remove("hide"); });
+      paintIbCard(j.card);
       $("ibQuick").classList.toggle("hide", !j.canReply);
       $("ibQuick").innerHTML = CANNED.map(function (c, i) { return '<button type="button" data-canned="' + i + '">' + esc(c.label) + "</button>"; }).join("");
       $("ibEmpty").classList.add("hide");
@@ -2284,11 +2340,42 @@
         var day = new Date(m.ts).toDateString(), sep = "";
         if (day !== lastDay) { lastDay = day; sep = '<div class="ib-day">' + new Date(m.ts).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" }) + "</div>"; }
         var cls = m.dir === "in" ? "in" : (m.by === "ai" ? "ai" : "st");
-        var who = m.dir === "in" ? "" : (m.by === "ai" ? "🤖 AI" : "👤 " + m.by) + (m.via === "template" ? " · template" : "") + " · ";
+        // Why an automatic message went out — otherwise the desk sees the
+        // agent writing to a patient hours later and cannot tell what it was.
+        var VIA = { template: "template", reengage: "malli palakarinchindi", resumed: "AI venakki teesukundi", recovered: "aagipoina reply", advance: "advance vachindi", draft: "draft" };
+        var who = m.dir === "in" ? "" : (m.by === "ai" ? "🤖 AI" : "👤 " + m.by) + (VIA[m.via] ? " · " + VIA[m.via] : "") + " · ";
         return sep + '<div class="ib-b ' + cls + '">' + esc(m.text) + "<small>" + esc(who) + new Date(m.ts).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) + "</small></div>";
       }).join("") || '<div class="ib-empty">Messages levu.</div>';
       if (atEnd) box.scrollTop = box.scrollHeight;
       ib.lastCount = j.msgs.length;
+      ibCount();
+    }
+    // Who the person on the other side is — the same facts the Leads card shows.
+    function paintIbCard(c) {
+      var el = $("ibCard"); if (!el) return;
+      if (!c || (!c.grade && !c.visits && !c.waiting)) { el.classList.add("hide"); el.innerHTML = ""; return; }
+      var bits = [];
+      if (c.grade) bits.push('<span>Grade <span class="ib-gr ' + esc(c.grade) + '">' + esc(c.grade) + " " + (c.score || 0) + "</span></span>");
+      if (c.problem) bits.push("<span>💬 <b>" + esc(c.problem) + "</b></span>");
+      if (c.since) bits.push("<span>⏳ <b>" + esc(c.since) + "</b></span>");
+      if (c.village) bits.push("<span>📍 <b>" + esc(c.village) + "</b>" + (c.km != null ? " · " + c.km + " km" : "") + "</span>");
+      if (c.visits) bits.push("<span>🩺 <b>" + c.visits + "</b> visits" + (c.lastVisit ? " · " + ago(c.lastVisit) : "") + "</span>");
+      if (c.due) bits.push("<span>🔁 " + esc(c.due) + "</span>");
+      if (c.waiting > 60000) bits.push('<span class="wait' + (c.waiting > 3 * 3600000 ? " bad" : c.waiting > 30 * 60000 ? " warn" : "") + '">⏱ ' + waitFor(c.waiting) + " nundi waiting</span>");
+      if (c.next && c.next.kind !== "skip" && c.next.kind !== "done") bits.push('<div class="nxt ' + esc(c.next.kind) + '">' + esc(c.next.text) + "</div>");
+      el.innerHTML = bits.join("");
+      el.classList.toggle("hide", !bits.length);
+    }
+    // Outside WhatsApp's 24 hours a reply travels as a template, and anything
+    // past 250 characters is silently cut — so the count is on screen.
+    function ibCount() {
+      var el = $("ibCt"), t = $("ibText"); if (!el || !t) return;
+      var closed = /template/.test($("ibNote").textContent || "");
+      el.classList.toggle("hide", !closed);
+      if (!closed) return;
+      var n = t.value.length;
+      el.textContent = n + "/250";
+      el.classList.toggle("over", n > 250);
     }
     function openThread(phone, quiet) {
       ib.phone = phone;
@@ -2303,7 +2390,7 @@
     }
     function closeThread() {
       ib.phone = null; $("ib").classList.remove("open");
-      ["ibHead", "ibMsgs", "ibForm", "ibNote", "ibQuick"].forEach(function (id) { $(id).classList.add("hide"); });
+      ["ibHead", "ibMsgs", "ibForm", "ibNote", "ibQuick", "ibCard"].forEach(function (id) { $(id).classList.add("hide"); });
       $("ibEmpty").classList.remove("hide");
       loadInbox(true);
     }
@@ -2323,7 +2410,7 @@
       var b = e.target.closest("[data-canned]"); if (!b) return;
       var t = $("ibText");
       t.value = (t.value ? t.value.trim() + "\n" : "") + CANNED[Number(b.dataset.canned)].text;
-      t.focus(); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px";
+      t.focus(); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px"; ibCount();
     });
     if ($("ibDraft")) $("ibDraft").onclick = function () {
       if (!ib.phone) return;
@@ -2332,7 +2419,7 @@
       ibapi("draft", { phone: ib.phone, ask: ask })
         .then(function (j) {
           var t = $("ibText");
-          t.value = j.text; t.focus(); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px";
+          t.value = j.text; t.focus(); t.style.height = "auto"; t.style.height = Math.min(120, t.scrollHeight) + "px"; ibCount();
           toast("Draft vachindi — chadivi send cheyandi");
         })
         .catch(function (x) { toast(x.message); })
@@ -2347,7 +2434,7 @@
         return openThread(ib.phone, true);
       }).catch(function (x) { toast(x.message); }).then(function () { btn.disabled = false; });
     };
-    if ($("ibText")) $("ibText").addEventListener("input", function () { this.style.height = "auto"; this.style.height = Math.min(120, this.scrollHeight) + "px"; });
+    if ($("ibText")) $("ibText").addEventListener("input", function () { this.style.height = "auto"; this.style.height = Math.min(120, this.scrollHeight) + "px"; ibCount(); });
     if ($("ibText")) $("ibText").addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $("ibForm").requestSubmit(); } });
     if ($("ibForm")) $("ibForm").addEventListener("submit", function (e) {
       e.preventDefault();

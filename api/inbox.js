@@ -44,6 +44,16 @@ module.exports = async (req, res) => {
   if (a === "list") {
     const rows = await inbox.threads(cfg, 150);
     const unread = rows.reduce((n, t) => n + (t.unread || 0), 0);
+    // The grade the qualifier gave each patient, so the desk can see at a
+    // glance which waiting chat is worth answering first.
+    try {
+      const qualify = require("./_qualify.js");
+      const recs = await qualify.forPhones(cfg, rows.map((t) => t.phone));
+      for (const t of rows) {
+        const rec = recs[t.phone];
+        if (rec) { t.grade = rec.grade; t.score = rec.score; t.status = rec.status || ""; }
+      }
+    } catch (e) { console.error("inbox: grades", e && e.message); }
     // yesterday's agent review rides along, for the card at the top of the screen
     let review = null; try { review = await require("./_review.js").latest(cfg); } catch (e) {}
     let exam = null; try { exam = await require("./_exam.js").latest(cfg); } catch (e) {}
@@ -56,7 +66,29 @@ module.exports = async (req, res) => {
     const t = await inbox.thread(cfg, ph);
     if (!t.meta && !t.msgs.length) return json(res, 404, { error: "Ee number tho chat ledu" });
     await inbox.markRead(cfg, ph);
-    return json(res, 200, Object.assign({ ok: true, open: inbox.windowOpen(t.meta), canReply }, t));
+    // Who this is, in the words the Leads screen uses: the grade and why, the
+    // one thing to do next, what the clinic already knows about them, and how
+    // long they have been waiting for an answer.
+    let card = null;
+    try {
+      const qualify = require("./_qualify.js");
+      const rec = await qualify.read(cfg, ph);
+      const known = await require("./_memory.js").facts(cfg, ph).catch(() => null);
+      const lastIn = (t.meta && Number(t.meta.lastIn)) || 0;
+      const lastOut = [...(t.msgs || [])].reverse().find((m) => m.dir === "out");
+      card = {
+        grade: rec ? rec.grade : "", score: rec ? rec.score : 0,
+        why: rec ? (rec.signals || []).map((s) => s.why).slice(0, 3) : [],
+        village: rec && rec.facts ? rec.facts.village || "" : "", km: rec ? rec.km : null,
+        since: rec && rec.facts ? rec.facts.problem_since || "" : "",
+        problem: rec && rec.facts ? rec.facts.problem || "" : "",
+        next: rec ? qualify.nextAction(rec, { status: rec.status || "new" }) : null,
+        waiting: lastIn && (!lastOut || lastOut.ts < lastIn) ? Date.now() - lastIn : 0,
+        visits: known ? known.came : 0, lastVisit: known && known.last ? known.last.at : 0,
+        due: known ? known.cycle || "" : "",
+      };
+    } catch (e) { console.error("inbox: card", e && e.message); }
+    return json(res, 200, Object.assign({ ok: true, open: inbox.windowOpen(t.meta), canReply, card }, t));
   }
 
   if (req.method !== "POST") return json(res, 405, { error: "POST" });

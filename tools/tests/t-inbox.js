@@ -92,6 +92,18 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   is((await h.call(inbox, {}, { a: "reply", phone: "9876500910", text: "Hello again" })).code, 502, "if nothing can be delivered, it says so instead of pretending");
   n.sendWaTemplate = failTpl;
 
+  console.log("\n  — what the desk sees beside the chat —");
+  h.as(["inbox.view", "inbox.reply"], DESK);
+  const Q = require(path.join(API, "_qualify.js"));
+  await Q.absorb({ kind: "pg" }, "9876500910", { problem: "pigmentation", problem_since: "8 nelalu", village: "Eluru", intent: "book_now" }, { inboundCount: 3 });
+  const li = await h.call(inbox, { a: "list" });
+  const row = li.body.threads.find((t) => t.phone === "9876500910");
+  is([row.grade, row.score > 0], ["A", true], "the list carries each patient's grade, so the desk answers the right chat first");
+  const th2 = await h.call(inbox, { a: "thread", phone: "9876500910" });
+  const card = th2.body.card;
+  is([card.grade, card.problem, card.since, card.village], ["A", "pigmentation", "8 nelalu", "Eluru"], "and the thread carries the card: grade, concern, how long, town");
+  is(card.next && card.next.kind, "call", "with the one thing to do next");
+
   console.log("\n  — who may —");
   h.as(["inbox.view"], DESK);
   is((await h.call(inbox, {}, { a: "reply", phone: "9876500910", text: "hi there" })).code, 403, "somebody who may only read cannot reply");
