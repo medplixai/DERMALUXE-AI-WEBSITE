@@ -94,6 +94,17 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   is(leaked, 0, "300 ordinary picks, not one academy poster among them");
   is((await daily.pickTopic({ kind: "pg" }, "acad-seats")).key, "acad-seats", "but asking for one by name still works");
 
+  // The alternation only works if ONE function decides it. planTopic used to
+  // grab the academy campaign as well, so a live batch took every single day
+  // and the clinic stopped posting — four academy posters in a row went up
+  // between 19 and 22 September 2026 before anybody noticed.
+  const planner = process.env.DAILY_PLANNER;
+  process.env.DAILY_PLANNER = "0";
+  let planned = 0;
+  for (let i = 0; i < 100; i++) { const t = await daily.planTopic({ kind: "pg" }); if (t.pillar === "academy") planned++; }
+  if (planner === undefined) delete process.env.DAILY_PLANNER; else process.env.DAILY_PLANNER = planner;
+  is(planned, 0, "and the planner, with the batch wide open, still never hands back an academy poster");
+
   console.log("\n  — the caption has to carry the way in —");
   const cap = await daily.writeCaption(Object.assign({}, base, { academy: { left: 2, offerDays: 12, batchDays: 32 } }));
   is(/\bACADEMY\b/.test(cap), true, "the word the WhatsApp agent is listening for");

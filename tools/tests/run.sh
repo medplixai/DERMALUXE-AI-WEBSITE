@@ -20,8 +20,15 @@ wiring=(tools/tests/wire*.js)
 echo "── what the app does ──────────────────────────────"
 [ ${#behaviour[@]} -eq 0 ] && echo "(none yet)"
 for f in "${behaviour[@]}"; do
-  out=$(node "$f" 2>&1)
-  if echo "$out" | grep -qE "FAILURE|✗"; then fail=1; printf "%-14s FAILED\n" "$(basename "$f" .js)"; echo "$out" | grep -E "✗|FAILURE" | sed 's/^/    /';
+  out=$(node "$f" 2>&1); code=$?
+  # A test that throws prints a stack trace and never reaches its own ✗ line.
+  # Without the exit code, the runner printed "Node.js v26.7.0" as if it were a
+  # verdict and called the run all good — t-whatsapp and t-photo sat dead that
+  # way until 23 September 2026.
+  if [ $code -ne 0 ] || echo "$out" | grep -qE "FAILURE|✗"; then
+    fail=1; printf "%-14s FAILED\n" "$(basename "$f" .js)"
+    echo "$out" | grep -E "✗|FAILURE|^[A-Za-z]*Error" | head -10 | sed 's/^/    /'
+    [ $code -ne 0 ] && echo "$out" | tail -12 | sed 's/^/    /'
   else printf "%-14s %s\n" "$(basename "$f" .js)" "$(echo "$out" | tail -1)"; fi
 done
 echo

@@ -83,7 +83,7 @@ const TRAINER = { name: "Ravi", phone: "9876500302", role: "trainer" };
   h.as(["*"], OWNER);
   is(((await h.call(push, { a: "devices" })).body.devices || []).length, 2, "the owner sees every phone");
   await h.call(push, {}, { a: "revoke", phone: "9876500301" });
-  is([h.run(["SMEMBERS", "push:ph:9876500301"]), h.run(["SISMEMBER", "push:tokens", TOK2])], [[], 0], "and can cut a person's phones off");
+  is([h.run(["SMEMBERS", "push:ph:9876500301"]), (h.run(["SMEMBERS", "push:tokens"]) || []).includes(TOK2)], [[], false], "and can cut a person's phones off");
   const health = await h.call(push, { a: "health" });
   is(Object.keys(health.body).sort(), ["configured", "ok", "parsed", "present", "project"], "the open health check says only whether it is set up");
 

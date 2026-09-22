@@ -262,10 +262,10 @@ async function leadInsights(cfg) {
 }
 
 async function planTopic(cfg) {
-  // The campaign takes the day when it is on. Its copy is written against real
-  // seat numbers and real dates, so it is not handed to the planner to reword.
-  const acad = await academyTopic(cfg).catch(() => null);
-  if (acad) return acad;
+  // The academy campaign is NOT decided here. createDailyPost gives it every
+  // other day; if this function grabbed it too, a live batch would take every
+  // single day and the clinic would stop posting altogether — which is exactly
+  // what happened between 19 and 22 September 2026.
   const base = await pickTopic(cfg);
   if (!process.env.ANTHROPIC_API_KEY || process.env.DAILY_PLANNER === "0") return base;
   let recent = [];

@@ -123,9 +123,12 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
 
   console.log("\n  — STOP means stop —");
   await say("9876500004", "STOP");
-  is(h.run(["SISMEMBER", "optout", "9876500004"]), 1, "STOP takes them off promotions");
+  // SMEMBERS, not SISMEMBER: the real store has no SISMEMBER, so a test that
+  // used it was asking a question production cannot ask.
+  const optedOut = () => (h.run(["SMEMBERS", "optout"]) || []).includes("9876500004");
+  is(optedOut(), true, "STOP takes them off promotions");
   await say("9876500004", "start");
-  is(h.run(["SISMEMBER", "optout", "9876500004"]), 0, "START puts them back");
+  is(optedOut(), false, "START puts them back");
 
   console.log("\n  — one number cannot run up the bill —");
   claudeCalls = 0;
