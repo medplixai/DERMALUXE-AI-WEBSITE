@@ -121,10 +121,16 @@ const tomorrow11 = () => {
   h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500091", name: "Hot Anu", at: Date.parse(tomDay + "T17:00:00+05:30") })]);
   is((await S({ a: "day", day: tomDay })).body.plan.fill.some((f) => f.phone === "9876500091"), false, "once they are booked they drop off it");
   // what could go wrong with the ones that are booked
-  const risky = (await S({ a: "day", day: tomDay })).body.rows.find((r) => r.ph === "9876500091");
-  is(risky.risk.some((x) => /confirm cheyyandi/.test(x)), true, "an unconfirmed appointment inside the next day is flagged — the ones further out are not");
-  h.run(["LPUSH", "appt:done", JSON.stringify({ ph: "9876500091", name: "Hot Anu", at: Date.now() - 12 * 86400000, ns: 1, status: "noshow" })]);
-  const twice = (await S({ a: "day", day: tomDay })).body.rows.find((r) => r.ph === "9876500091");
+  // Three hours out and five days out, so the clock cannot decide the answer.
+  const soonAt = Date.now() + 3 * 3600000, farAt = Date.now() + 5 * 86400000;
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500093", name: "Soon", at: soonAt })]);
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500094", name: "Far", at: farAt })]);
+  const soonRow = (await S({ a: "day", day: dayOf(soonAt) })).body.rows.find((r) => r.ph === "9876500093");
+  const farRow = (await S({ a: "day", day: dayOf(farAt) })).body.rows.find((r) => r.ph === "9876500094");
+  is(soonRow.risk.some((x) => /confirm cheyyandi/.test(x)), true, "an unconfirmed appointment a few hours away is flagged");
+  is(farRow.risk.some((x) => /confirm cheyyandi/.test(x)), false, "one five days out is not — there is still time");
+  h.run(["LPUSH", "appt:done", JSON.stringify({ ph: "9876500093", name: "Soon", at: Date.now() - 12 * 86400000, ns: 1, status: "noshow" })]);
+  const twice = (await S({ a: "day", day: dayOf(soonAt) })).body.rows.find((r) => r.ph === "9876500093");
   is(twice.risk.includes("mundu 1 sari raaledu"), true, "and a patient who has not turned up before is flagged, in the desk's own words");
   const sun = (await S({ a: "day", day: (function () { for (let i = 0; i < 8; i++) { const d = dayOf(Date.now() + i * 86400000); if (new Date(d + "T12:00:00+05:30").getUTCDay() === 0) return d; } })() })).body.plan;
   is([sun.closed, sun.free.length], [true, 0], "and Sunday is closed — no times are offered at all");
