@@ -36,7 +36,15 @@ global.fetch = async (url, opt) => {
     const body = JSON.parse(opt.body);
     if (/You fix one WhatsApp reply/.test(body.system)) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: body.messages[0].content.split("\n")[1] || "ok" }] }) };
     if (/haiku/.test(body.model)) { const next = patientLines.length ? patientLines.shift() : "[END]"; return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: next }] }) }; }
-    if (/grade ONE simulated/.test(body.system)) { judgeCalls++; const booked = /slot_ts/.test(body.messages[0].content); return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify({ score: booked ? 88 : 40, booked, trap_passed: booked, facts: {}, faults: booked ? [] : ["no_next_step"], note: booked ? "baaga close chesindi" : "slot adagaledu" }) }] }) }; }
+    if (/grade ONE simulated/.test(body.system)) {
+      judgeCalls++;
+      const booked = /slot_ts/.test(body.messages[0].content);
+      // The last message is the prefilled "{", so the model answers with the
+      // REST of the object — exactly how the real one is asked now.
+      const verdict = JSON.stringify({ score: booked ? 88 : 40, booked, trap_passed: booked, facts: {}, faults: booked ? [] : ["no_next_step"], note: booked ? "baaga close chesindi" : "slot adagaledu" });
+      const prefilled = body.messages[body.messages.length - 1].role === "assistant";
+      return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: prefilled ? verdict.slice(1) : verdict }], stop_reason: "end_turn" }) };
+    }
     lastUser = body.messages[body.messages.length - 1].content;
     const next = claude.length ? claude.shift() : { reply: "Namaste 🙏 Em problem andi?", lead: null };
     return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(next) }] }) };
@@ -202,7 +210,7 @@ const slotTs = (daysAhead) => { const d = new Date(Date.now() + daysAhead * DAY 
   global.fetch = async (u, o) => {
     const b2 = o && o.body ? JSON.parse(o.body) : {};
     if (String(u).includes("api.anthropic.com") && /grade ONE simulated/.test(b2.system || "")) {
-      return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: "Here is my verdict: {\"score\": 8" }] }) };   // truncated
+      return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: '"score": 8' }], stop_reason: "max_tokens" }) };   // cut off mid-verdict
     }
     return realFetch2(u, o);
   };

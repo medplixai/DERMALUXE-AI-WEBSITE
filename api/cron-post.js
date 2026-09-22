@@ -57,8 +57,12 @@ module.exports = async (req, res) => {
       // and around, for as many days as the owner set. Their post, their
       // budget — a post somebody published by hand is left alone.
       if (it.auto && !it.story) {
-        try { boosted = await require("./_boost.js").run(cfg, { id: out.id, imgId: it.imgId, caption: it.caption, topic: it.topic || "", link: out.link || "" }); }
-        catch (e) { console.error("cron: boost", e && e.message); }
+        try {
+          boosted = await require("./_boost.js").run(cfg, { id: out.id, imgId: it.imgId, caption: it.caption, topic: it.topic || "", link: out.link || "" });
+          console.log(`cron-post: today's poster is live (${it.topic || "?"}) — boost: ${boosted.boosted ? "created" : boosted.why || "no"}`);
+        } catch (e) { console.error("cron: boost", e && e.message); }
+      } else if (out.ok) {
+        console.log(`cron-post: published a ${it.story ? "story" : "hand-made post"} — no boost by design`);
       }
     } else if (out.transient && (it.tries || 0) < 3) {
       it.tries = (it.tries || 0) + 1;

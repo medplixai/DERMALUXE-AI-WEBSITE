@@ -168,11 +168,16 @@ async function run(cfg, post) {
   const res = { boosted: false, why: "" };
   if (!cfg || !post || !post.imgId) return Object.assign(res, { why: "no post" });
   const c = await load(cfg);
-  if (!c.on) return Object.assign(res, { why: "off" });
-  if (!ready()) return Object.assign(res, { why: "META_ADS_TOKEN / META_AD_ACCOUNT_ID / IG_PAGE_ID ledu" });
+  // Every one of these was silent, so a morning with no ad looked exactly
+  // like a morning with one. The owner's WhatsApp is not a log.
+  if (!c.on) { console.log("boost: skipped — switched off"); return Object.assign(res, { why: "off" }); }
+  if (!ready()) {
+    console.error(`boost: cannot run — missing ${[!token() && "META_ADS_TOKEN", !account() && "META_AD_ACCOUNT_ID", !pageId() && "IG_PAGE_ID"].filter(Boolean).join(", ")}`);
+    return Object.assign(res, { why: "META_ADS_TOKEN / META_AD_ACCOUNT_ID / IG_PAGE_ID ledu" });
+  }
   const key = `boost:${post.id || post.imgId}`;
   const once = await guard.kvCommand(cfg, ["SET", key, "1", "NX", "EX", String(90 * 86400)]).catch(() => ({}));
-  if (!once || !once.result) return Object.assign(res, { why: "already boosted" });
+  if (!once || !once.result) { console.log("boost: skipped — this poster already has one"); return Object.assign(res, { why: "already boosted" }); }
   // The day's ceiling, counted before anything is created.
   const dayKey = `boost:day:${istDay()}`;
   const spent = await guard.kvCommand(cfg, ["INCRBY", dayKey, String(c.rupees)]).catch(() => ({}));
@@ -186,6 +191,8 @@ async function run(cfg, post) {
   // budget it will refuse — shorten the run instead of losing the day.
   const days = Math.min(c.days, maxDays(c.rupees));
   const out = await create(cfg, post, Object.assign({}, c, { days }));
+  if (out.ok) console.log(`boost: ₹${c.rupees} · ${days} rojulu · campaign ${out.made.campaign} ad ${out.made.ad}`);
+  else console.error(`boost: Meta refused — ${out.error}${out.code ? " (code " + out.code + ")" : ""}`);
   if (!out.ok) {
     await guard.kvCommand(cfg, ["INCRBY", dayKey, String(-c.rupees)]).catch(() => {});
     await guard.kvCommand(cfg, ["DEL", key]).catch(() => {});   // so tomorrow's run may try again

@@ -77,8 +77,9 @@ async function model(modelId, system, messages, maxTokens) {
     body: JSON.stringify({ model: modelId, max_tokens: maxTokens || 400, system, messages }),
   });
   const d = await r.json().catch(() => ({}));
-  if (!r.ok) throw new Error(`model ${r.status}`);
-  return ((d.content || []).find((c) => c.type === "text") || {}).text || "";
+  if (!r.ok) throw new Error(`model ${r.status} ${String((d.error && d.error.message) || "").slice(0, 120)}`);
+  const text = ((d.content || []).find((c) => c.type === "text") || {}).text || "";
+  return { text, stop: d.stop_reason || "" };
 }
 
 // The patient's next line, from the persona and the conversation so far.
@@ -89,7 +90,7 @@ async function patientSays(p, turns) {
   for (const t of turns) { msgs.push({ role: "assistant", content: t.u }); msgs.push({ role: "user", content: `Receptionist: ${t.a}` }); }
   if (turns.length) msgs.push({ role: "user", content: "(Your next message, or [END].)" });
   // Anthropic wants the first message from the user; the opener already is.
-  const text = (await model(PATIENT_MODEL(), sys, msgs, 200)).trim();
+  const text = String((await model(PATIENT_MODEL(), sys, msgs, 200)).text || "").trim();
   return text.replace(/^["“]|["”]$/g, "").slice(0, 400);
 }
 
@@ -124,13 +125,23 @@ async function judge(p, conv, cfg) {
   const flags = `Agent flags during the chat: trust=${conv.flags.trust}, show_results=${conv.flags.results}, urgent=${conv.flags.urgent}, send_location=${conv.flags.location}, lead=${conv.flags.lead ? JSON.stringify({ name: conv.flags.lead.name, concern: conv.flags.lead.concern, slot_ts: conv.flags.lead.slot_ts || "", cancel: !!conv.flags.lead.cancel }) : "none"}.`;
   const persona = `PERSONA: ${p.name}, ${p.town}; concern: ${p.concern}; goal: ${p.goal}; style: ${p.style}; language: ${p.lang}.${p.trap ? ` TRAP: ${p.trap}.` : ""}`;
   const policy = cfg ? require("./_prices.js").judgeNote(await require("./_prices.js").load(cfg).catch(() => null)) : "";
-  const text = await model(JUDGE_MODEL(), JUDGE + policy, [{ role: "user", content: `${persona}\n${flags}\n\nTRANSCRIPT:\n${transcript}` }], 900);
+  // The verdict is JSON, so the answer is STARTED for the model: with the
+  // opening brace already on its lips it cannot write a sentence first, and
+  // "Here is my verdict: {…" — which is what came back twenty times this
+  // morning — stops happening.
+  const out = await model(JUDGE_MODEL(), JUDGE + policy, [
+    { role: "user", content: `${persona}\n${flags}\n\nTRANSCRIPT:\n${transcript}` },
+    { role: "assistant", content: "{" },
+  ], 1200);
+  const text = "{" + String(out.text || "");
   const j = require("./_review.js").extractJson(text);
   // A verdict we could not read is NOT a zero. Scoring it as one dragged a
   // whole morning's exam down to 5/100 and printed "🔴 Suresh 0 —" at the
   // owner, which said nothing true about the agent.
   if (!j || typeof j.score !== "number") {
-    console.error("exam: judge unreadable", String(text || "").slice(0, 300));
+    // One line, with the answer in it: a message and a payload log as two
+    // things and the payload is what is missing when this is read back.
+    console.error(`exam: judge unreadable (stop=${out.stop}) ${String(text || "").replace(/\s+/g, " ").slice(0, 240)}`);
     return { judged: false, score: 0, booked: false, trapPassed: false, facts: {}, faults: [], note: "judge verdict chadavaledu" };
   }
   return { judged: true, score: Math.max(0, Math.min(100, Number(j.score) || 0)), booked: !!j.booked, trapPassed: !!j.trap_passed, facts: j.facts || {}, faults: Array.isArray(j.faults) ? j.faults.slice(0, 6) : [], note: String(j.note || "").slice(0, 200) };
