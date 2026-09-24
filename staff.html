@@ -5249,7 +5249,7 @@
         if (!confirm("Ee post ni Instagram nunchi teeseyyala?\n\nIdi permanent — likes, comments anni poddi. Facebook lo kuda unte adi kuda teesestam.")) return;
         el.disabled = true; el.textContent = "Teestunnam…";
         postapi("remove", { id: el.dataset.id })
-          .then(function (j) { toast("Teesesam" + (j.fb ? " (Instagram + Facebook)" : "")); loadPosts(); })
+          .then(function (j) { toast(j.gone ? "Instagram lo ade ledu — list nunchi teesesam" : "Teesesam" + (j.fb ? " (Instagram + Facebook)" : "")); loadPosts(); })
           .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "Teesey"; });
         return;
       }

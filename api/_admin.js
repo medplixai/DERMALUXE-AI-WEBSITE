@@ -433,8 +433,15 @@ async function publishNow(cfg, item, legacyCaption) {
 // Facebook graph (DELETE /{ig-media-id}) rather than its own host, and the
 // token needs instagram_manage_contents — so when Meta refuses, say which
 // half failed instead of a bare false.
+// Meta's way of saying "there is no such object" — the post was already
+// deleted from the phone, or is old enough that the id no longer resolves.
+const alreadyGone = (err) => {
+  const m = String((err && (err.message || err.error_user_msg)) || "");
+  return (err && err.error_subcode === 33) || /does not exist|cannot be loaded|Unsupported get request|Object with ID/i.test(m);
+};
+
 async function deletePost(cfg, entry) {
-  const out = { ok: false, ig: false, fb: false, error: "" };
+  const out = { ok: false, ig: false, fb: false, gone: false, error: "" };
   const id = String((entry && entry.id) || "");
   if (!id) { out.error = "E post o teliyadu"; return out; }
   const tok = await igToken(cfg);
@@ -443,6 +450,10 @@ async function deletePost(cfg, entry) {
     const r = await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(id)}?access_token=${encodeURIComponent(tok)}`, { method: "DELETE" });
     const d = await r.json().catch(() => ({}));
     if (!r.ok || d.error) {
+      // Somebody deleted it from the phone first. The post is off the account
+      // either way, which is what was asked — so let the row go rather than
+      // leaving a dead entry nobody can ever clear.
+      if (alreadyGone(d.error)) { out.ok = true; out.gone = true; return out; }
       out.error = (d.error && (d.error.error_user_msg || d.error.message)) || `HTTP ${r.status}`;
       console.error("adm: ig delete", id, out.error);
       return out;

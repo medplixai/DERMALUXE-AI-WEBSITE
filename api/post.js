@@ -238,8 +238,8 @@ module.exports = async (req, res) => {
     if (!out.ok) return json(res, 502, { error: `Instagram teeseyaledu: ${out.error || "unknown"}` });
     await guard.kvCommand(cfg, ["LREM", "post:log", "1", raw]).catch(() => {});
     if (entry.imgId) await guard.kvCommand(cfg, ["DEL", `adm:img:${entry.imgId}`]).catch(() => {});
-    console.log("post removed by", me.phone.slice(-4), id, out.fb ? "(+fb)" : "");
-    return json(res, 200, { ok: true, ig: out.ig, fb: out.fb });
+    console.log("post removed by", me.phone.slice(-4), id, out.gone ? "(already gone)" : out.fb ? "(+fb)" : "");
+    return json(res, 200, { ok: true, ig: out.ig, fb: out.fb, gone: !!out.gone });
   }
 
   return json(res, 400, { error: "Unknown action" });

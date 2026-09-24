@@ -16,6 +16,7 @@ require.cache[admPath] = { id: admPath, filename: admPath, loaded: true, exports
   },
   deletePost: async (cfg, entry) => {
     deleted.push(entry);
+    if (refuse === "GONE") return { ok: true, ig: false, fb: false, gone: true, error: "" };
     if (refuse) return { ok: false, ig: false, fb: false, error: refuse };
     return { ok: true, ig: true, fb: !!entry.fbId, error: "" };
   },
@@ -110,6 +111,15 @@ const PIC = "data:image/jpeg;base64," + Buffer.from("x".repeat(600)).toString("b
   is(h.run(["LRANGE", "post:log", "0", "9"]).length, 0, "the row goes from the list");
   is(h.run(["GET", "adm:img:pic1"]), null, "and the picture with it");
   is((await P({ a: "remove" }, { a: "remove", id: "ig_live" })).code, 404, "deleting it twice says it is already gone");
+
+  // Somebody deletes it from the phone instead. The row must still be
+  // clearable, or the list keeps a post nobody can ever get rid of.
+  h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig_byhand", imgId: "", caption: "Laser", kind: "post", at: Date.now() })]);
+  refuse = "GONE";
+  const byHand = await P({ a: "remove" }, { a: "remove", id: "ig_byhand" });
+  is([byHand.code, byHand.body.gone], [200, true], "one already deleted from the phone still clears from the list");
+  is(h.run(["LRANGE", "post:log", "0", "9"]).length, 0, "and the row goes");
+  refuse = "";
 
   // who may
   console.log("\n  — who may post —");
