@@ -149,9 +149,12 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   const acadDoc = await daily.pickDoctor({ kind: "pg" }, daily.ACADEMY_TOPICS[0]);
   is(acadDoc && acadDoc.key, "meghana", "an academy poster shows the trainer");
   is(!!(acadDoc && acadDoc.b64.length > 1000), true, "with her real photograph, read from the site's own files");
+  // One face per kind of poster: the academy is Dr. Meghana's, and the daily
+  // consultant patients will actually meet is Dr. Nikhitha Priyanka. Rotating
+  // three doctors meant the poster promised whoever the calendar landed on.
   const seen = new Set();
   for (const d of ["2026-09-19", "2026-09-20", "2026-09-21"]) { at(d + "T07:00:00+05:30"); seen.add((await daily.pickDoctor({ kind: "pg" }, clinic)).key); }
-  is(seen.size, 3, "clinic posters take the three doctors in turn: " + [...seen].join(", "));
+  is([...seen], ["nikhitha"], "every clinic poster shows the daily consultant, whatever day it is");
   h.run(["SET", "dp:doctor", "sai"]);
   is((await daily.pickDoctor({ kind: "pg" }, daily.ACADEMY_TOPICS[0])).key, "sai", "the owner can pin one");
   h.run(["SET", "dp:doctor", "off"]);
@@ -168,6 +171,20 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
     "with no doctor it falls back to the clinic's own footer, not a gap");
   const acadHtml = daily.posterHtml(daily.ACADEMY_TOPICS[0], null, acadDoc);
   is(/Your trainer/.test(acadHtml) && /Meghana Valeti/.test(acadHtml), true, "an academy poster calls her the trainer");
+
+  // Instagram draws its own furniture over roughly the top 250px and the
+  // bottom 260px of a story. The first stories were the 4:5 poster squeezed
+  // into 9:16 and the WhatsApp number came out cut in half — the one thing on
+  // the poster that has to survive.
+  console.log("\n  — the story is drawn, not cropped —");
+  const feed = daily.posterHtml(clinic, null, null, "post");
+  const story = daily.posterHtml(clinic, null, null, "story");
+  is(/height:1350px/.test(feed) && /height:1920px/.test(story), true, "the feed poster is 4:5, the story 9:16");
+  is(/\.head\{position:absolute;top:250px/.test(story), true, "the logo starts below Instagram's own top bar");
+  is(/\.foot\{position:absolute;left:66px;right:66px;bottom:260px/.test(story), true, "and the doctor and the number sit above its reply bar");
+  is(/\.foot\{position:absolute;left:66px;right:66px;bottom:52px/.test(feed), true, "while the feed poster is unchanged");
+  is(/mask-image/.test(story) && !/mask-image/.test(feed), true, "the story's photograph fades into the black instead of ending on a hard line");
+  is(daily.posterHtml(clinic, null, null) === feed, true, "and asking for no shape at all still gives the feed poster");
 
   console.log("\n  — not the same dark room every day —");
   // Every picture was told "dark charcoal-black background with warm golden

@@ -85,11 +85,12 @@ module.exports = async (req, res) => {
   }
   if (now) {
     published = await admin.publishNow(cfg, { imgId: out.imgId, caption: out.caption, auto: true });
-    // same poster as an Instagram story (24h) — stories skip captions/FB
-    if (published && published.ok) storyOut = await admin.publishNow(cfg, { imgId: out.imgId, story: true, auto: true }).catch(() => null);
-  } else {
+    // The story is its own 1080×1920 drawing, not the feed poster squeezed
+    // into 9:16 — that crop cut the WhatsApp number off the right edge.
+    if (published && published.ok && out.storyId) storyOut = await admin.publishNow(cfg, { imgId: out.storyId, story: true, auto: true }).catch(() => null);
+  } else if (out.storyId) {
     // queue the story 3 minutes after the feed post; cron-post handles story items
-    await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId: out.imgId, story: true, due: out.due + 180000, by: out.by, tries: 0, auto: true, quiet: true })]).catch(() => {});
+    await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId: out.storyId, story: true, due: out.due + 180000, by: out.by, tries: 0, auto: true, quiet: true })]).catch(() => {});
   }
 
   const when = admin.fmtIst(out.due);

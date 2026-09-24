@@ -27,7 +27,7 @@ stub("_daily.js", Object.assign({}, real, {
       h.run(["LPUSH", "dp:hist", "acad-seats|2026-09-18"]);
       h.run(["SET", "dp:today", "{}"]);
     }
-    return { imgId: "i1", caption: "c", topic: { key: "acad-seats", h1: "Ten seats. One batch.", sub: "Only 2 seats left" },
+    return { imgId: "i1", storyId: "s1", caption: "c", topic: { key: "acad-seats", h1: "Ten seats. One batch.", sub: "Only 2 seats left" },
       due: Date.now() + 3600000, by: "Owner", notify: ["9010427777"], hadImage: true, queued: !opts.preview, preview: !!opts.preview };
   },
 }));
@@ -83,6 +83,11 @@ const C = (q) => h.call(cron, Object.assign({ key: "k" }, q || {}));
   is(built[0].queue, true, "and it does queue");
   is(h.run(["LRANGE", "adm:queue", "0", "9"]).length >= 1, true, "so something is waiting to go out");
   is(h.run(["LRANGE", "dp:hist", "0", "9"]).length, 1, "and the topic is recorded this time");
+  // The story is its own 1080×1920 drawing. Queuing the feed poster as a
+  // story is what cut the WhatsApp number off the right-hand edge.
+  const story = h.run(["LRANGE", "adm:queue", "0", "9"]).map((x) => JSON.parse(x)).find((q) => q.story);
+  is(story && story.imgId, "s1", "the story queued is the story-shaped picture, not the feed poster");
+  is(story && story.quiet, true, "and it goes out without a second 'it is live' message");
 
   console.log("\n  — who may ask —");
   is((await h.call(cron, { preview: "1" })).code, 401, "no key, no preview");

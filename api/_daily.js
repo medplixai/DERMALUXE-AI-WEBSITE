@@ -511,7 +511,6 @@ const DOCTORS = {
   sai: { name: "Dr. Sai Divija", cred: "MD (DVL) · Dermatologist",
     file: ["dr-sai-divija.webp"], aspect: 880 / 1100, fx: 0.47, fy: 0.30 },
 };
-const DOCTOR_ROTA = ["nikhitha", "meghana", "sai"];
 const _docPhoto = {};
 function doctorPhoto(key) {
   if (key in _docPhoto) return _docPhoto[key];
@@ -523,16 +522,19 @@ function doctorPhoto(key) {
   try { _docPhoto[key] = d && at ? fs.readFileSync(at).toString("base64") : ""; } catch (e) { _docPhoto[key] = ""; }
   return _docPhoto[key];
 }
-// Academy posters show the trainer. Clinic posters take the three doctors in
-// turn, a different one each day. The owner can pin one with KV dp:doctor
-// (nikhitha / meghana / sai) or take the doctor off with dp:doctor = "off".
+// One face per kind of poster, because that is how the clinic works: the
+// academy is Dr. Meghana's, and the daily consultant patients will meet is
+// Dr. Nikhitha Priyanka. Rotating three doctors through the clinic posters
+// meant the picture promised whoever the calendar landed on. The owner can
+// still pin somebody else with KV dp:doctor (nikhitha / meghana / sai) or
+// take the doctor off with dp:doctor = "off".
 async function pickDoctor(cfg, topic) {
   let pin = "";
   if (cfg) { try { pin = String((await guard.kvCommand(cfg, ["GET", "dp:doctor"])).result || "").toLowerCase(); } catch (e) {} }
   if (pin === "off") return null;
   let key = DOCTORS[pin] ? pin
     : topic && topic.pillar === "academy" ? "meghana"
-    : DOCTOR_ROTA[Math.floor((Date.now() + IST_MS) / 86400000) % DOCTOR_ROTA.length];
+    : "nikhitha";
   const b64 = doctorPhoto(key);
   if (!b64) return null;
   return Object.assign({ key, b64 }, DOCTORS[key]);
@@ -550,7 +552,19 @@ const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replac
 // headline block · footer (clinic name EN + TE, address, WhatsApp pill).
 // __fit() sits the headline block just above the footer and shrinks the type
 // until the block starts below the face band, so long copy never climbs onto it.
-function posterHtml(topic, img, doc) {
+// shape: "post" is Instagram's 1080×1350 feed frame; "story" is 1080×1920,
+// where the app draws its own furniture over roughly the top 250px and the
+// bottom 260px — anything the poster puts there is covered. The first stories
+// were the feed poster squeezed into 9:16 and the WhatsApp number came out
+// cut in half, which is the one thing on the poster that has to survive.
+const SHAPES = {
+  post:  { h: 1350, top: 60,  bottom: 52,  frame: "30px",             cnT: 22,  cnB: 22,  photoH: 1350, fade: false },
+  story: { h: 1920, top: 250, bottom: 260, frame: "210px 30px 230px", cnT: 202, cnB: 222, photoH: 1180, fade: true },
+};
+
+function posterHtml(topic, img, doc, shape) {
+  const S = SHAPES[shape] || SHAPES.post;
+  const H = S.h;
   // A course poster and a treatment poster are not the same advert. The line
   // across the top and the word on the WhatsApp pill both change, because on
   // Instagram most people never open the caption — if the picture does not say
@@ -564,8 +578,13 @@ function posterHtml(topic, img, doc) {
   // the circle, then moved so the face sits in its middle.
   const D = 116, BH = D * 2.5, BW = doc ? BH * doc.aspect : 0;
   const docCss = doc ? `background:#1b1812 url("data:image/webp;base64,${doc.b64}") no-repeat;background-size:${BW.toFixed(0)}px ${BH.toFixed(0)}px;background-position:${(D / 2 - doc.fx * BW).toFixed(1)}px ${(D / 2 - doc.fy * BH).toFixed(1)}px` : "";
-  const photo = img ? `url("data:${img.mime};base64,${img.b64}") center top/cover no-repeat` : "radial-gradient(70% 45% at 50% 32%,rgba(198,162,92,.30),transparent 70%)";
+  // Feed: the picture fills the frame. Story: it fills the top 1180px and
+  // fades out below, because covering the whole 9:16 would throw away a third
+  // of the width on each side and cut the subject in half.
+  const photo = img ? `url("data:${img.mime};base64,${img.b64}") center top/cover no-repeat`
+    : "radial-gradient(70% 45% at 50% 32%,rgba(198,162,92,.30),transparent 70%)";
   const frame = img ? framing(img.measure) : { k: 1, lift: 0 };
+  const fade = S.fade ? "-webkit-mask-image:linear-gradient(180deg,#000 0 62%,transparent 100%);mask-image:linear-gradient(180deg,#000 0 62%,transparent 100%);" : "";
   const h1size = topic.h1.length <= 22 ? 92 : topic.h1.length <= 30 ? 82 : 74;
   const tesize = topic.te.length <= 22 ? 46 : 40;
   return `<!doctype html><html><head><meta charset="utf-8">
@@ -573,34 +592,34 @@ function posterHtml(topic, img, doc) {
 <style>
 :root{--gold:#e6c98a;--ink:#f7f2e8;--mute:#d2cbbd;--bg:#0a0a0c}
 *{box-sizing:border-box}
-html,body{margin:0;width:1080px;height:1350px;overflow:hidden;background:var(--bg)}
+html,body{margin:0;width:1080px;height:${H}px;overflow:hidden;background:var(--bg)}
 body{color:var(--ink);font-family:Jost,sans-serif;position:relative}
 /* a literal colour: a var() in the same declaration drops the huge data-URL background */
-.photo{position:absolute;inset:0;background:#0a0a0c ${photo};transform-origin:50% 0;transform:translateY(${-(frame.lift * 1350).toFixed(1)}px) scale(${frame.k.toFixed(3)})}
+.photo{position:absolute;left:0;right:0;top:0;height:${S.photoH}px;background:#0a0a0c ${photo};${fade}transform-origin:50% 0;transform:translateY(${-(frame.lift * S.photoH).toFixed(1)}px) scale(${frame.k.toFixed(3)})}
 .shade{position:absolute;inset:0;background:linear-gradient(180deg,rgba(10,10,12,.86) 0%,rgba(10,10,12,.45) 11%,rgba(10,10,12,0) 22%,rgba(10,10,12,0) 44%,rgba(10,10,12,.62) 58%,rgba(10,10,12,.95) 72%,#0a0a0c 100%)}
 .vign{position:absolute;inset:0;background:radial-gradient(130% 95% at 50% 38%,transparent 58%,rgba(0,0,0,.55) 100%)}
-.frame{position:absolute;inset:30px;border:1px solid rgba(230,201,138,.32)}
+.frame{position:absolute;inset:${S.frame};border:1px solid rgba(230,201,138,.32)}
 .cn{position:absolute;width:44px;height:44px;border:0 solid var(--gold)}
-.c1{top:22px;left:22px;border-width:2px 0 0 2px}.c2{top:22px;right:22px;border-width:2px 2px 0 0}.c3{bottom:22px;left:22px;border-width:0 0 2px 2px}.c4{bottom:22px;right:22px;border-width:0 2px 2px 0}
-.head{position:absolute;top:60px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:4px}
+.c1{top:${S.cnT}px;left:22px;border-width:2px 0 0 2px}.c2{top:${S.cnT}px;right:22px;border-width:2px 2px 0 0}.c3{bottom:${S.cnB}px;left:22px;border-width:0 0 2px 2px}.c4{bottom:${S.cnB}px;right:22px;border-width:0 2px 2px 0}
+.head{position:absolute;top:${S.top}px;left:0;right:0;display:flex;flex-direction:column;align-items:center;gap:4px}
 .logo{width:268px;filter:drop-shadow(0 3px 14px rgba(0,0,0,.75))}
 .city{font-family:"Noto Sans Telugu",sans-serif;font-size:25px;font-weight:500;color:var(--gold);text-shadow:0 2px 10px rgba(0,0,0,.9)}
-.txt{position:absolute;left:80px;right:80px;bottom:300px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
+.txt{position:absolute;left:80px;right:80px;bottom:${S.bottom + 248}px;text-align:center;display:flex;flex-direction:column;align-items:center;gap:14px}
 .eyebrow{display:flex;align-items:center;gap:18px;font-size:19px;letter-spacing:.34em;text-transform:uppercase;color:var(--gold);font-weight:500}
 .eyebrow i{display:block;width:60px;height:1px;background:linear-gradient(90deg,transparent,var(--gold))}
 .eyebrow i.r{background:linear-gradient(270deg,transparent,var(--gold))}
 h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;line-height:1.02;margin:0;color:var(--ink);text-wrap:balance;text-shadow:0 2px 22px rgba(0,0,0,.8)}
 .te{font-family:"Noto Sans Telugu",sans-serif;font-weight:500;font-size:${tesize}px;line-height:1.45;color:var(--gold);text-shadow:0 2px 14px rgba(0,0,0,.85)}
 .sub{font-size:25px;font-weight:300;color:var(--mute);line-height:1.45;max-width:880px;text-wrap:balance}
-.foot{position:absolute;left:66px;right:66px;bottom:52px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:24px;border-top:1px solid rgba(230,201,138,.38)}
-.foot.withdoc{bottom:92px}
+.foot{position:absolute;left:66px;right:66px;bottom:${S.bottom}px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:24px;border-top:1px solid rgba(230,201,138,.38)}
+.foot.withdoc{bottom:${S.bottom + 40}px}
 .dr{display:flex;align-items:center;gap:20px;min-width:0}
 .dr .ph{flex:none;width:${D}px;height:${D}px;border-radius:50%;${docCss};box-shadow:0 0 0 3px #0a0a0c,0 0 0 5px rgba(230,201,138,.9),0 8px 26px rgba(0,0,0,.6)}
 .dr .t{min-width:0}
 .dr .k{font-size:14px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);font-weight:500}
 .dr .dn{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:36px;line-height:1.08;color:var(--ink);white-space:nowrap;margin-top:3px}
 .dr .dc{font-size:18px;color:var(--mute);margin-top:4px;white-space:nowrap;letter-spacing:.01em}
-.addr{position:absolute;left:66px;right:66px;bottom:50px;text-align:center;font-size:17px;color:#aaa396;letter-spacing:.03em;white-space:nowrap}
+.addr{position:absolute;left:66px;right:66px;bottom:${S.bottom - 2}px;text-align:center;font-size:17px;color:#aaa396;letter-spacing:.03em;white-space:nowrap}
 .brand{min-width:0}
 .brand .n{font-size:25px;color:var(--ink);letter-spacing:.02em;white-space:nowrap}
 .brand .nt{font-family:"Noto Sans Telugu",sans-serif;font-size:19px;color:var(--mute);margin-top:1px;white-space:nowrap}
@@ -632,8 +651,8 @@ window.__fit = function () {
   }
   var addr = document.querySelector(".addr");
   if (addr) { var af = 17; while (addr.scrollWidth > addr.clientWidth + 1 && af > 12) { af -= 0.5; addr.style.fontSize = af + "px"; } }
-  txt.style.bottom = (1350 - foot.offsetTop + 46) + "px";
-  var floor = 1350 * 0.555, h = parseFloat(getComputedStyle(h1).fontSize), t = parseFloat(getComputedStyle(te).fontSize), s = 25;
+  txt.style.bottom = (${H} - foot.offsetTop + 46) + "px";
+  var floor = ${H} * 0.555, h = parseFloat(getComputedStyle(h1).fontSize), t = parseFloat(getComputedStyle(te).fontSize), s = 25;
   for (var i = 0; i < 30 && txt.offsetTop < floor; i++) {
     if (h > 62) { h -= 3; h1.style.fontSize = h + "px"; }
     if (t > 34) { t -= 1; te.style.fontSize = t + "px"; }
@@ -647,8 +666,10 @@ window.__fit = function () {
 
 // ---- 5. Render (headless Chromium) ---------------------------------------
 // Rendered at 4/3 scale: 1440 × 1800 is Instagram's full 4:5 size, so the gold
-// hairlines and the Telugu glyphs stay crisp instead of being upscaled by the app.
-async function renderPoster(html) {
+// hairlines and the Telugu glyphs stay crisp instead of being upscaled by the
+// app. A story is 1080 × 1920 and takes the same treatment.
+async function renderPoster(html, height) {
+  const h = Number(height) > 0 ? Math.round(Number(height)) : 1350;
   // puppeteer-core 25 / @sparticuz/chromium 152 ship as ES modules — load
   // them with import() so this CommonJS file works on Vercel's Node 24.
   const pmod = await import("puppeteer-core");
@@ -661,14 +682,14 @@ async function renderPoster(html) {
     const chromium = cmod.default || cmod;
     launch = { args: chromium.args, executablePath: await chromium.executablePath(), headless: true };
   }
-  const browser = await puppeteer.launch(Object.assign({ defaultViewport: { width: 1080, height: 1350, deviceScaleFactor: 4 / 3 } }, launch));
+  const browser = await puppeteer.launch(Object.assign({ defaultViewport: { width: 1080, height: h, deviceScaleFactor: 4 / 3 } }, launch));
   try {
     const page = await browser.newPage();
     await page.setContent(html, { waitUntil: "networkidle0", timeout: 25000 });
     try { await page.evaluate(() => document.fonts.ready); } catch (e) {}
     try { await page.evaluate(() => window.__fit && window.__fit()); } catch (e) {}
     await new Promise((z) => setTimeout(z, 300));
-    const buf = await page.screenshot({ type: "jpeg", quality: 90, clip: { x: 0, y: 0, width: 1080, height: 1350 } });
+    const buf = await page.screenshot({ type: "jpeg", quality: 90, clip: { x: 0, y: 0, width: 1080, height: h } });
     return Buffer.from(buf).toString("base64");
   } finally { await browser.close().catch(() => {}); }
 }
@@ -688,8 +709,15 @@ async function createDailyPost(cfg, opts = {}) {
   const topic = Object.assign({}, picked, { look: await pickLook(cfg).catch(() => LOOKS[0]), note: opts.note || "" });
   const [img, caption] = await Promise.all([genImage(topic), writeCaption(topic)]);
   const doc = await pickDoctor(cfg, topic).catch(() => null);
-  const b64 = await renderPoster(posterHtml(topic, img, doc));
+  const b64 = await renderPoster(posterHtml(topic, img, doc, "post"), 1350);
+  // The story is drawn, not cropped. Posting the 4:5 poster as a story cut
+  // the WhatsApp number in half — the one thing on it that has to survive.
+  const story64 = await renderPoster(posterHtml(topic, img, doc, "story"), 1920).catch((e) => {
+    console.error("daily: story render failed", e && e.message);
+    return "";
+  });
   const imgId = crypto.randomBytes(16).toString("hex");
+  const storyId = story64 ? crypto.randomBytes(16).toString("hex") : "";
   const due = opts.dueMs || todayAtIst(8, 30);
   const admins = guard.ownerPhones();
   const by = opts.by || admins[0] || "";
@@ -701,7 +729,8 @@ async function createDailyPost(cfg, opts = {}) {
     // change what tomorrow posts.
     const keep = opts.preview ? String(Math.max(600, Math.min(1209600, Number(opts.keepSec) || 7200))) : "259200";
     await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, b64, "EX", keep]);
-    if (opts.preview) return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: false, preview: true, doctor: doc ? doc.name : "" };
+    if (storyId) await guard.kvCommand(cfg, ["SET", `adm:img:${storyId}`, story64, "EX", keep]);
+    if (opts.preview) return { imgId, storyId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: false, preview: true, doctor: doc ? doc.name : "" };
     if (opts.queue !== false) {
       await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId, caption, due, by, tries: 0, auto: true, topic: topic.key, notify: notifyList })]);
     }
@@ -712,7 +741,7 @@ async function createDailyPost(cfg, opts = {}) {
     await guard.kvCommand(cfg, ["SET", "dp:today", JSON.stringify({ key: topic.key, h1: topic.h1, te: topic.te, page: topic.page, at: Date.now() }), "EX", "172800"]).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", "dp:hist", "0", "59"]);
   }
-  return { imgId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
+  return { imgId, storyId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
 }
 
 module.exports = { isAcademyDay, LOOKS, pickLook, DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
