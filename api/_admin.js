@@ -296,12 +296,14 @@ async function fbCrossPost(cfg, item) {
     }
     if (!out.ok) {
       console.error("adm: fb crosspost failed", out.status, JSON.stringify(out.d).slice(0, 250));
-      return false;
+      return "";
     }
-    return true;
+    // The id, not just "yes": without it the Facebook copy could never be
+    // taken down again, so deleting a post left half of it standing.
+    return String((out.d && (out.d.post_id || out.d.id)) || "");
   } catch (e) {
     console.error("adm: fb crosspost error", e && e.message);
-    return false;
+    return "";
   }
 }
 
@@ -405,8 +407,9 @@ async function publishNow(cfg, item, legacyCaption) {
   }
   let link = "";
   try { const perm = await igGet(`/${pd.id}?fields=permalink`, tok); link = perm.permalink || ""; } catch (e) {}
-  let fb = false;
-  if (!item.story) { try { fb = await fbCrossPost(cfg, item); } catch (e) {} }
+  let fbId = "";
+  if (!item.story) { try { fbId = await fbCrossPost(cfg, item); } catch (e) {} }
+  const fb = !!fbId;
 
   // Write down what went out. Nothing has ever recorded this: a post was
   // published and then existed only on Instagram, so the clinic could not
@@ -418,12 +421,51 @@ async function publishNow(cfg, item, legacyCaption) {
       id: pd.id, imgId: item.imgId || "", vidId: item.vidId || "",
       caption: String(item.caption || "").slice(0, 400),
       kind: item.story ? "story" : item.vidId ? "reel" : "post",
-      link, fb, at: Date.now(), by: item.by || "",
+      link, fb, fbId, at: Date.now(), by: item.by || "",
     })]);
     await guard.kvCommand(cfg, ["LTRIM", "post:log", "0", "199"]);
   } catch (e) { console.error("adm: post log", e && e.message); }
 
-  return { ok: true, link, fb, id: pd.id };
+  return { ok: true, link, fb, fbId, id: pd.id };
+}
+
+// Taking one back down. Instagram deletes published media through the
+// Facebook graph (DELETE /{ig-media-id}) rather than its own host, and the
+// token needs instagram_manage_contents — so when Meta refuses, say which
+// half failed instead of a bare false.
+async function deletePost(cfg, entry) {
+  const out = { ok: false, ig: false, fb: false, error: "" };
+  const id = String((entry && entry.id) || "");
+  if (!id) { out.error = "E post o teliyadu"; return out; }
+  const tok = await igToken(cfg);
+  if (!tok) { out.error = "Instagram token ledu"; return out; }
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(id)}?access_token=${encodeURIComponent(tok)}`, { method: "DELETE" });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || d.error) {
+      out.error = (d.error && (d.error.error_user_msg || d.error.message)) || `HTTP ${r.status}`;
+      console.error("adm: ig delete", id, out.error);
+      return out;
+    }
+    out.ig = true; out.ok = true;
+  } catch (e) {
+    out.error = (e && e.message) || "delete failed";
+    return out;
+  }
+  // The Facebook copy is a separate post; leaving it up would be half a delete.
+  const fbId = String((entry && entry.fbId) || "");
+  if (fbId) {
+    try {
+      const ptok = await fbPageToken(cfg);
+      if (ptok) {
+        const r2 = await fetch(`https://graph.facebook.com/v21.0/${encodeURIComponent(fbId)}?access_token=${encodeURIComponent(ptok)}`, { method: "DELETE" });
+        const d2 = await r2.json().catch(() => ({}));
+        out.fb = r2.ok && !d2.error;
+        if (!out.fb) console.error("adm: fb delete", fbId, JSON.stringify(d2).slice(0, 200));
+      }
+    } catch (e) { console.error("adm: fb delete", e && e.message); }
+  }
+  return out;
 }
 
 async function publishPending(cfg, digits) {
@@ -1732,4 +1774,4 @@ async function handle(cfg, digits, text, photo, video) {
   return null; // not an admin command → normal patient flow
 }
 
-module.exports = { isAdmin, handle, publishNow, fmtIst, promoParams, bcTargets };
+module.exports = { isAdmin, handle, publishNow, deletePost, fmtIst, promoParams, bcTargets };

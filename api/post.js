@@ -220,5 +220,27 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true });
   }
 
+  // Taking down one that already went out. Instagram is the one that has to
+  // agree: if Meta refuses, the row stays in the list rather than disappearing
+  // from the app while it is still live on the account.
+  if (a === "remove") {
+    if (!canPost) return json(res, 403, { error: "Mee role ki post teesey permission ledu" });
+    const id = clean(b.id, 60);
+    if (!id) return json(res, 400, { error: "Post id kavali" });
+    const r = await guard.kvCommand(cfg, ["LRANGE", "post:log", "0", "199"]).catch(() => ({}));
+    let raw = null, entry = null;
+    for (const x of (r.result || [])) {
+      const it = parse(x, null);
+      if (it && String(it.id) === id) { raw = x; entry = it; break; }
+    }
+    if (!entry) return json(res, 404, { error: "Aa post mana list lo ledu" });
+    const out = await admin.deletePost(cfg, entry);
+    if (!out.ok) return json(res, 502, { error: `Instagram teeseyaledu: ${out.error || "unknown"}` });
+    await guard.kvCommand(cfg, ["LREM", "post:log", "1", raw]).catch(() => {});
+    if (entry.imgId) await guard.kvCommand(cfg, ["DEL", `adm:img:${entry.imgId}`]).catch(() => {});
+    console.log("post removed by", me.phone.slice(-4), id, out.fb ? "(+fb)" : "");
+    return json(res, 200, { ok: true, ig: out.ig, fb: out.fb });
+  }
+
   return json(res, 400, { error: "Unknown action" });
 };

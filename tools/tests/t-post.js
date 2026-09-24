@@ -5,12 +5,19 @@ const h = require("./harness.js");
 // the publisher is stubbed: a test must never actually post to Instagram
 const admPath = path.join(process.env.DL_API, "_admin.js");
 const published = [];
+const deleted = [];
+let refuse = "";
 require.cache[admPath] = { id: admPath, filename: admPath, loaded: true, exports: {
   publishNow: async (cfg, item) => {
     published.push(item);
     if (item.caption === "FAIL") return { ok: false, transient: false, msg: "image processing error" };
     if (item.caption === "SLOW") return { ok: false, transient: true, msg: "still processing" };
-    return { ok: true, link: "https://instagram.com/p/xyz", fb: true, id: "ig_1" };
+    return { ok: true, link: "https://instagram.com/p/xyz", fb: true, fbId: "fb_1", id: "ig_1" };
+  },
+  deletePost: async (cfg, entry) => {
+    deleted.push(entry);
+    if (refuse) return { ok: false, ig: false, fb: false, error: refuse };
+    return { ok: true, ig: true, fb: !!entry.fbId, error: "" };
   },
 } };
 const post = h.load("post");
@@ -79,12 +86,38 @@ const PIC = "data:image/jpeg;base64," + Buffer.from("x".repeat(600)).toString("b
   is(h.run(["GET", "adm:img:" + q[0].imgId]), null, "the photo goes with it, not left behind");
   is((await P({ a: "cancel" }, { a: "cancel", imgId: q[0].imgId })).code, 404, "cancelling it twice says it is already gone");
 
+  // ---- taking one back down ----------------------------------------------
+  // A post already on the account. Instagram has to agree first: if Meta
+  // refuses, the row must stay in the list rather than vanishing from the app
+  // while it is still live for everybody else.
+  console.log("\n  — taking one back down —");
+  h.run(["DEL", "post:log"]);
+  h.run(["SET", "adm:img:pic1", "PICBYTES"]);
+  h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig_live", imgId: "pic1", fbId: "fb_live", caption: "Laser", kind: "post", at: Date.now() })]);
+  is((await P({ a: "remove" }, { a: "remove" })).code, 400, "no id, nothing happens");
+  is((await P({ a: "remove" }, { a: "remove", id: "not_ours" })).code, 404, "and an id we never posted is not ours to delete");
+
+  refuse = "Requires instagram_manage_contents";
+  const no = await P({ a: "remove" }, { a: "remove", id: "ig_live" });
+  is(no.code, 502, "when Meta refuses, the app says so");
+  is(/instagram_manage_contents/.test(no.body.error), true, "with Meta's own reason: " + no.body.error);
+  is(h.run(["LRANGE", "post:log", "0", "9"]).length, 1, "and the post is still in the list, because it is still on the account");
+
+  refuse = "";
+  const gone = await P({ a: "remove" }, { a: "remove", id: "ig_live" });
+  is([gone.code, gone.body.ig, gone.body.fb], [200, true, true], "when it works, Instagram and the Facebook copy both go");
+  is(deleted[deleted.length - 1].fbId, "fb_live", "the Facebook post id was carried through, so half of it is not left standing");
+  is(h.run(["LRANGE", "post:log", "0", "9"]).length, 0, "the row goes from the list");
+  is(h.run(["GET", "adm:img:pic1"]), null, "and the picture with it");
+  is((await P({ a: "remove" }, { a: "remove", id: "ig_live" })).code, 404, "deleting it twice says it is already gone");
+
   // who may
   console.log("\n  — who may post —");
   h.as(["posts.view"]);
   is((await P({ a: "list" })).code, 200, "somebody who may see posts, sees them");
   is((await P({ a: "list" })).body.canPost, false, "and the app is told not to draw the button");
   is((await P({ a: "create" }, { a: "create", image: PIC, caption: "x" })).code, 403, "but cannot post");
+  is((await P({ a: "remove" }, { a: "remove", id: "ig_live" })).code, 403, "and cannot take one down either");
   h.as(["leads.view"]);
   is((await P({ a: "list" })).code, 403, "somebody with no posts permission sees none of it");
   h.as(["*"]);

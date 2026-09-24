@@ -3443,8 +3443,10 @@
               ? '<div class="meta" style="margin-top:4px;color:var(--ok)"><b>' + p.leads + " lead" + (p.leads > 1 ? "s" : "") + "</b> → " +
                 p.came + " vachcharu" + (p.revenue ? " · " + money0(p.revenue) : "") + "</div>"
               : '<div class="meta" style="margin-top:4px;opacity:.6">Inka evaru raaledu</div>') +
-            (p.link ? '<div class="acts" style="margin-top:6px"><a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(p.link) + '">Instagram lo chudu ↗</a></div>' : "") +
-            "</div></div></div>";
+            '<div class="acts" style="margin-top:6px">' +
+            (p.link ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(p.link) + '">Instagram lo chudu ↗</a> ' : "") +
+            (canPost && p.id ? '<button class="btn btn--sm" data-act="post-del" data-id="' + esc(p.id) + '" style="color:var(--bad)">Teesey</button>' : "") +
+            "</div></div></div></div>";
         }).join("");
 
         host.innerHTML =
@@ -5239,6 +5241,16 @@
         postapi("cancel", { imgId: el.dataset.img })
           .then(function () { toast("Teesesam"); loadPosts(); })
           .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      // Already live on the account. Said plainly, because it cannot be undone
+      // and the comments and likes on it go with it.
+      if (el.dataset.act === "post-del") {
+        if (!confirm("Ee post ni Instagram nunchi teeseyyala?\n\nIdi permanent — likes, comments anni poddi. Facebook lo kuda unte adi kuda teesestam.")) return;
+        el.disabled = true; el.textContent = "Teestunnam…";
+        postapi("remove", { id: el.dataset.id })
+          .then(function (j) { toast("Teesesam" + (j.fb ? " (Instagram + Facebook)" : "")); loadPosts(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "Teesey"; });
         return;
       }
       if (el.dataset.act === "ref-send") {
