@@ -486,6 +486,8 @@
     .pnl-days .d .out{background:var(--bad);opacity:.7;border-radius:0 0 3px 3px}
     .pnl-days .d em{position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);font-size:.6rem;color:var(--muted2);font-style:normal}
     .pnl-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.86rem}
+    .goalbar{height:6px;border-radius:3px;background:var(--g5,#eee);margin-top:6px;overflow:hidden}
+    .goalbar i{display:block;height:100%;border-radius:3px}
     .pnl-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
     .inc-rates th{font-weight:500;color:var(--muted);font-size:.76rem;padding:4px 6px;text-align:center}
     .inc-rates td{padding:4px 6px;border-top:1px solid var(--line);text-align:center}
@@ -879,6 +881,21 @@
         </div>
 
         <div id="cp-controls" class="hide">
+          <div class="box"><h2>Goals <span class="te" style="font-size:.9rem;color:var(--g3)">· లక్ష్యాలు</span></h2>
+            <p>Rendu numbers — academy seats, nelaki appointments. Roju podduna digest lo "ippatiki entha undali, entha undi" ani vastundi, ikkada kuda kanipistundi.</p>
+            <div id="goalState" style="margin-top:10px;display:grid;gap:10px"></div>
+            <div style="margin-top:12px;display:grid;gap:8px">
+              <div class="noteform" style="flex-wrap:wrap">
+                <span class="meta">🎓 Academy seats</span><input id="glSeats" inputmode="numeric" style="width:70px">
+                <span class="meta">·</span><input id="glSeatsBy" type="date" style="width:160px"><span class="meta">lopu</span>
+              </div>
+              <div class="noteform" style="flex-wrap:wrap">
+                <span class="meta">📅 Nelaki appointments</span><input id="glAppts" inputmode="numeric" style="width:80px">
+                <span class="meta">(0 pedithe off)</span>
+                <button class="btn btn--gold btn--sm" id="glSave" type="button">Save</button>
+              </div>
+              <div class="err" id="glErr"></div><div class="meta" id="glInfo"></div>
+            </div></div>
           <div class="box"><h2>System health <span class="te" style="font-size:.9rem;color:var(--g3)">· సిస్టమ్</span></h2>
             <div id="healthBox" class="meta">—</div></div>
           <div class="box"><h2>Agent rules <span class="te" style="font-size:.9rem;color:var(--g3)">· ఏజెంట్‌కి మీ నియమాలు</span></h2>
@@ -3582,6 +3599,39 @@
         .then(function (j) { panel.boost = Object.assign({}, panel.boost, j.boost); renderBoost(); toast("Save ayindi ✅"); })
         .catch(function (x) { $("bstErr").textContent = x.message; }).then(function () { btn.disabled = false; });
     };
+    // The two numbers the clinic is chasing, and whether today is on the way.
+    function goalBar(done, target, ok) {
+      var pct = target > 0 ? Math.max(0, Math.min(100, Math.round((done / target) * 100))) : 0;
+      return '<div class="goalbar"><i style="width:' + pct + '%;background:' + (ok ? "var(--ok)" : "var(--hot)") + '"></i></div>';
+    }
+    function renderGoals() {
+      var g = (panel && panel.goals) || null, st = (panel && panel.goalState) || null;
+      if ($("glSeats")) $("glSeats").value = g ? g.seats : "";
+      if ($("glSeatsBy")) $("glSeatsBy").value = g ? g.seatsBy : "";
+      if ($("glAppts")) $("glAppts").value = g ? g.appts : "";
+      if ($("glInfo")) $("glInfo").textContent = g && g.ts ? "Last set: " + esc(g.by || "") + " · " + ago(g.ts) : "";
+      var host = $("goalState"); if (!host) return;
+      var out = "";
+      if (st && st.seats) {
+        var s2 = st.seats;
+        out += '<div><b>🎓 Academy seats</b> — <b style="color:' + (s2.hit ? "var(--ok)" : "var(--g2)") + '">' + s2.booked + "/" + s2.target + "</b>" +
+          '<span class="meta"> · ' + (s2.hit ? "ayipoyindi ✅" : s2.over ? "goal date dati poyindi" : "inka " + s2.left + " · " + s2.days + " rojulu" + (s2.perWeek ? " · vaaraniki ~" + s2.perWeek : "")) + "</span>" +
+          goalBar(s2.booked, s2.target, s2.hit || !s2.over) + "</div>";
+      }
+      if (st && st.appts) {
+        var a2 = st.appts;
+        out += '<div><b>📅 Appointments (' + esc(a2.month) + ')</b> — <b style="color:' + (a2.behind ? "var(--hot)" : "var(--ok)") + '">' + a2.total + "/" + a2.target + "</b>" +
+          '<span class="meta"> · ippatiki ' + a2.pace + " undali · " + (a2.hit ? "ayipoyindi ✅" : a2.behind ? (a2.pace - a2.total) + " venaka · roju ~" + a2.perDay + " kavali" : "track lo · roju ~" + a2.perDay) + "</span>" +
+          goalBar(a2.total, a2.target, !a2.behind) + "</div>";
+      }
+      host.innerHTML = out || '<p class="meta">Goal inka pettaledu — kinda numbers pettandi.</p>';
+    }
+    if ($("glSave")) $("glSave").onclick = function () {
+      var btn = this; btn.disabled = true; $("glErr").textContent = "";
+      api("goals-set", { seats: $("glSeats").value, seatsBy: $("glSeatsBy").value, appts: $("glAppts").value })
+        .then(function (j) { panel.goals = j.goals; panel.goalState = j.goalState; renderGoals(); toast("Goal set ayindi ✅"); })
+        .catch(function (x) { $("glErr").textContent = x.message; }).then(function () { btn.disabled = false; });
+    };
     // What the agent may say about money.
     function renderPrices() {
       var p = (panel && panel.prices) || { mode: "none", consult: 0, bands: [] };
@@ -3711,7 +3761,7 @@
     function renderPanel() {
       if (!panel) return;
       paintHealth(panel.health);
-      renderRules(); renderCallTeam(); renderPrices(); renderCycles(); renderBoost(); loadCampaigns();
+      renderGoals(); renderRules(); renderCallTeam(); renderPrices(); renderCycles(); renderBoost(); loadCampaigns();
       var R = panel.roles || {}, amOwner = panel.me && panel.me.role === "owner";
 
       // --- logins

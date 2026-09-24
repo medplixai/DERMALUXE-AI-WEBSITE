@@ -523,16 +523,19 @@ module.exports = async (req, res) => {
 
   // What the agent may say about money, and when a treatment is due again —
   // both the owner's to change from the control panel.
-  if (a === "prices-set" || a === "cycles-set" || a === "boost-set") {
+  if (a === "prices-set" || a === "cycles-set" || a === "boost-set" || a === "goals-set") {
     if (req.method !== "POST") return json(res, 405, { error: "POST" });
     if (!allow("settings.manage")) return json(res, 403, { error: "Idi owner/manager ki matrame" });
     const out = a === "prices-set" ? await require("./_prices.js").save(cfg, b, me.name)
       : a === "boost-set" ? await require("./_boost.js").save(cfg, b, me.name)
+      : a === "goals-set" ? await require("./_goals.js").save(cfg, b, me.name)
       : await require("./_cycles.js").setDays(cfg, b.days || {}, me.name);
     if (!out.ok) return json(res, 400, { error: out.error });
     await audit(cfg, me, a === "prices-set" ? `Price policy: ${out.prices.mode}${out.prices.consult ? " · consult ₹" + out.prices.consult : ""}`
       : a === "boost-set" ? `Ads boost: ${out.boost.on ? "on" : "off"} · ₹${out.boost.rupees} · ${out.boost.days} rojulu · ${out.boost.km} km`
+      : a === "goals-set" ? `Goals: ${out.goals.seats} seats (${out.goals.seatsBy}) · nelaki ${out.goals.appts} appointments`
       : "Treatment cycle days maarcharu");
+    if (a === "goals-set") out.goalState = await require("./_goals.js").state(cfg).catch(() => null);
     return json(res, 200, out);
   }
 
@@ -630,17 +633,19 @@ module.exports = async (req, res) => {
     }).sort((x, y) => (y.lastLogin || 0) - (x.lastLogin || 0));
     const audit = (log.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
     // The owner's own rules for the agent, and who is behind on calls today.
-    const [agentRules, team2, prices, cycles, boost, boosts] = await Promise.all([
+    const [agentRules, team2, prices, cycles, boost, boosts, goals, goalState] = await Promise.all([
       require("./_rules.js").load(cfg).catch(() => []),
       require("./_queue.js").teamDay(cfg).catch(() => []),
       require("./_prices.js").load(cfg).catch(() => null),
       require("./_cycles.js").table(cfg).catch(() => []),
       require("./_boost.js").load(cfg).catch(() => null),
       require("./_boost.js").recent(cfg, 6).catch(() => []),
+      require("./_goals.js").load(cfg).catch(() => null),
+      require("./_goals.js").state(cfg).catch(() => null),
     ]);
     return json(res, 200, {
       ok: true, roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, people, health,
-      agentRules, callTeam: team2, prices, cycles,
+      agentRules, callTeam: team2, prices, cycles, goals, goalState,
       boost: boost ? Object.assign({}, boost, { ready: require("./_boost.js").ready() }) : null, boosts,
       owners: ownerPhones().map((ph) => ({ phone: ph, lastLogin: Number(last[ph] || 0) || null })),
       passwordSet: !!(pwd && pwd.result),

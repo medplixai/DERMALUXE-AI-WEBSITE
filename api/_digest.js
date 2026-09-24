@@ -207,10 +207,18 @@ async function buildDigest(cfg, live) {
     }
   } catch (e) {}
 
+  // The goals go last, where the eye stops: everything above is what
+  // happened, this is what still has to.
+  let goalLines = [];
+  try {
+    goalLines = require("./_goals.js").lines(await require("./_goals.js").state(cfg));
+    if (goalLines.length) lines.push("", "🎯 *Goals*", ...goalLines);
+  } catch (e) { console.error("digest: goals", e && e.message); }
+
   lines.push("", "Dashboard: dermaluxe.ai/leads.html");
   return {
     body: lines.join("\n").slice(0, 3200),
-    oneLine: `Ninna ${nLeads} leads · ivala ${nAppts} appointments`.slice(0, 200),
+    oneLine: (goalLines.length ? goalLines[goalLines.length - 1] + " · " : "") + `ninna ${nLeads} leads · ivala ${nAppts} appointments`.slice(0, 200),
   };
 }
 

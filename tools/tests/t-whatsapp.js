@@ -41,12 +41,14 @@ stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () =
 // the agent sends to a patient is recorded.
 let claude = [];            // queue of replies (objects become the model's JSON text)
 let claudeCalls = 0;
+let claudeBody = null;      // what was actually asked of the model, last time
 const sent = [];
 global.fetch = async (url, opt) => {
   const u = String(url);
   if (u.includes("api.anthropic.com")) {
     if (/You fix one WhatsApp reply/.test(String((opt && opt.body) || ""))) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.parse(opt.body).messages[0].content.split("\n")[1] || "ok" }] }) };   // the editor's rewrite is not a patient turn
     claudeCalls++;
+    try { claudeBody = JSON.parse(opt.body); } catch (e) { claudeBody = null; }
     const next = claude.length ? claude.shift() : { reply: "Namaste 🙏", lead: null };
     if (next === 500) return { ok: false, status: 500, json: async () => ({}) };
     const text = typeof next === "string" ? next : JSON.stringify(next);
@@ -129,6 +131,21 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   is(optedOut(), true, "STOP takes them off promotions");
   await say("9876500004", "start");
   is(optedOut(), false, "START puts them back");
+
+  // A voice note that would not transcribe, a sticker, a shared location: each
+  // leaves a turn with no words in it. Sent as-is the API answers 400 and the
+  // patient gets nothing — it happened twice on the live number.
+  console.log("\n  — a message with no words in it —");
+  claude = [{ reply: "Namaste 🙏 em kavali?", lead: null }];
+  const blank = await wa.askClaude([{ u: "juttu ralutondi", a: "Ela unnaru?" }, { u: "", a: "" }, { u: "photo", a: "" }], "", "Lakshmi");
+  const blocks = (claudeBody.messages || []).map((m) => (typeof m.content === "string" ? m.content : ""));
+  is(blocks.filter((c) => !String(c).trim()).length, 0, "nothing empty is sent to the model");
+  is(blocks.length, 3, "the two half-turns are dropped, the good one and the new question stay");
+  is(typeof blank.reply === "string" && blank.reply.length > 0, true, "and the patient still gets an answer");
+
+  claude = [{ reply: "Cheppandi 🙏", lead: null }];
+  await wa.askClaude([], "   ", "");
+  is(String(claudeBody.messages[0].content).length > 0, true, "a message that is only spaces is replaced, not sent blank");
 
   console.log("\n  — one number cannot run up the bill —");
   claudeCalls = 0;

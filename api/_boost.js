@@ -133,6 +133,11 @@ async function create(cfg, post, c) {
       lifetime_budget: c.rupees * 100,                  // Meta counts paise
       start_time: new Date(start).toISOString(), end_time: new Date(end).toISOString(),
       billing_event: "IMPRESSIONS", optimization_goal: "CONVERSATIONS",
+      // Meta refuses an ad set with its own budget unless this is answered
+      // either way: "You must specify True or False in the field
+      // is_adset_budget_sharing_enabled if you are not using campaign budget."
+      // It cost the 22 and 23 September posters their ad.
+      is_adset_budget_sharing_enabled: false,
       destination_type: "WHATSAPP", promoted_object: { page_id: pageId() },
       targeting: targeting(c),
     });

@@ -126,13 +126,31 @@ const FAST_MODEL = () => process.env.AI_FAST_MODEL || "claude-sonnet-5";
 // "Voice lo cheppandi" — somebody who would rather listen than read.
 const VOICE_ASK = /(voice\s*(lo|note|message)|audio\s*(lo|message)|vinipinch|chadav(a)?len|chadavadam kashtam|kallu\s*(kanapad|sarigga)|record\s*chesi|వాయిస్|ఆడియో|వినిపించ)/i;
 
-async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
+// "claude HTTP 400" on its own tells nobody what was wrong with the request.
+const why = async (resp) => {
+  try { return String(await resp.text()).replace(/\s+/g, " ").slice(0, 200); } catch (e) { return ""; }
+};
+
+// A voice note nobody could transcribe, a sticker, a location pin: all of them
+// land in the history as a turn with no words. The API refuses an empty text
+// block outright — 400, no reply sent, and the patient is left waiting. So no
+// half-turn and no blank message ever leaves this file.
+const said = (s) => String(s == null ? "" : s).trim();
+function turns(hist) {
   const messages = [];
-  hist.forEach((t) => {
-    messages.push({ role: "user", content: t.u });
-    messages.push({ role: "assistant", content: t.a });
+  (hist || []).forEach((t) => {
+    const u = said(t.u), a = said(t.a);
+    if (!u || !a) return;
+    messages.push({ role: "user", content: u });
+    messages.push({ role: "assistant", content: a });
   });
-  messages.push({ role: "user", content: (extraCtx || "") + (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + userMsg });
+  return messages;
+}
+const NO_WORDS = "[patient sent something with no words in it — greet them and ask what they need help with]";
+
+async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
+  const messages = turns(hist);
+  messages.push({ role: "user", content: said((extraCtx || "") + (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + said(userMsg)) || NO_WORDS });
 
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
     method: "POST",
@@ -148,7 +166,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
       messages,
     }),
   });
-  if (!resp.ok) throw new Error(`claude HTTP ${resp.status}`);
+  if (!resp.ok) throw new Error(`claude HTTP ${resp.status} ${await why(resp)}`);
   const data = await resp.json();
   const text = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
   try {
@@ -806,16 +824,12 @@ async function sendCloudVoice(phoneNumberId, to, mp3) {
 // Claude vision — quick skin/hair pre-assessment of a WhatsApp photo.
 async function askClaudeVision(hist, media, caption, profileName, extraCtx, sysExtra) {
   const mime = ["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(media.mime) !== -1 ? media.mime : "image/jpeg";
-  const messages = [];
-  hist.forEach((t) => {
-    messages.push({ role: "user", content: t.u });
-    messages.push({ role: "assistant", content: t.a });
-  });
+  const messages = turns(hist);
   messages.push({
     role: "user",
     content: [
       { type: "image", source: { type: "base64", media_type: mime, data: media.base64 } },
-      { type: "text", text: (extraCtx || "") + (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + (caption || "Photo pampanu — analysis cheyandi.") },
+      { type: "text", text: said((extraCtx || "") + (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + said(caption)) || "Photo pampanu — analysis cheyandi." },
     ],
   });
   const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -832,7 +846,7 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx, sysE
       messages,
     }),
   });
-  if (!resp.ok) throw new Error(`claude vision HTTP ${resp.status}`);
+  if (!resp.ok) throw new Error(`claude vision HTTP ${resp.status} ${await why(resp)}`);
   const data = await resp.json();
   const text = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
   try {
