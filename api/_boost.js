@@ -126,6 +126,13 @@ async function create(cfg, post, c) {
     const camp = await graph(`/act_${account()}/campaigns`, {
       name, objective: "OUTCOME_ENGAGEMENT", status: "ACTIVE",
       special_ad_categories: [], buying_type: "AUCTION",
+      // Meta will not publish an ad set that carries its own budget until the
+      // CAMPAIGN answers this either way: "You must specify True or False in
+      // the field is_adset_budget_sharing_enabled if you are not using
+      // campaign budget." It reads like an ad set field and it is not — sent
+      // there it is ignored, and 22, 23 and 24 September each lost their ad.
+      // false = this ad set keeps its own ₹300; it lends none of it away.
+      is_adset_budget_sharing_enabled: false,
     });
     made.campaign = camp.id;
     const adset = await graph(`/act_${account()}/adsets`, {
@@ -133,11 +140,6 @@ async function create(cfg, post, c) {
       lifetime_budget: c.rupees * 100,                  // Meta counts paise
       start_time: new Date(start).toISOString(), end_time: new Date(end).toISOString(),
       billing_event: "IMPRESSIONS", optimization_goal: "CONVERSATIONS",
-      // Meta refuses an ad set with its own budget unless this is answered
-      // either way: "You must specify True or False in the field
-      // is_adset_budget_sharing_enabled if you are not using campaign budget."
-      // It cost the 22 and 23 September posters their ad.
-      is_adset_budget_sharing_enabled: false,
       destination_type: "WHATSAPP", promoted_object: { page_id: pageId() },
       targeting: targeting(c),
     });

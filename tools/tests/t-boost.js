@@ -54,6 +54,11 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   const out = await boost.run(cfg, post(1));
   is([out.boosted, out.rupees, out.days], [true, 300, 3], "the poster is promoted — ₹300 over three days, the owner's numbers");
   is(calls.map((c) => c.what), ["campaign", "adset", "adimages", "creative", "ad"], "one campaign, one ad set, the poster uploaded, one creative, one ad");
+  // Meta refuses to publish an ad set that carries its own budget unless the
+  // CAMPAIGN has answered this, and it reads like an ad set field: sent there
+  // it is ignored, and 22, 23 and 24 September each lost their ₹300.
+  is(bodyOf("campaign").is_adset_budget_sharing_enabled, false, "the campaign says the ad set keeps its own budget — on the campaign, where Meta looks for it");
+  is("is_adset_budget_sharing_enabled" in bodyOf("adset"), false, "and not on the ad set, where it does nothing");
   const as = bodyOf("adset");
   is(as.lifetime_budget, 30000, "the budget goes to Meta in paise, as a LIFETIME budget — it cannot overspend");
   is(Math.round((new Date(as.end_time) - new Date(as.start_time)) / 86400000), 3, "and it ends by itself after three days");
