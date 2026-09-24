@@ -32,7 +32,9 @@ stub("_daily.js", Object.assign({}, real, {
   },
 }));
 let publishes = 0;
-stub("_admin.js", { publishNow: async () => { publishes++; return { ok: true, link: "l" }; }, fmtIst: () => "8:30 AM" });
+stub("_admin.js", { publishNow: async () => { publishes++; return { ok: true, link: "l", id: "ig_now" }; }, fmtIst: () => "8:30 AM" });
+const boosts = [];
+stub("_boost.js", { run: async (cfg, post) => { boosts.push(post); return { boosted: true, rupees: 300 }; } });
 
 const sentWa = [];
 global.fetch = async (url, opt) => {
@@ -89,6 +91,17 @@ const C = (q) => h.call(cron, Object.assign({ key: "k" }, q || {}));
   is(story && story.imgId, "s1", "the story queued is the story-shaped picture, not the feed poster");
   is(story && story.quiet, true, "and it goes out without a second 'it is live' message");
 
+  // "daily post now" is the same poster, published at a different hour. Before
+  // this it quietly meant "and no ad today" — cron-post put the money behind
+  // the 8:30 one, and nothing put it behind this one.
+  console.log("\n  — posting it by hand still gets the day's money —");
+  built = []; sentWa.length = 0; boosts.length = 0;
+  const nowRun = await C({ now: "1" });
+  is(nowRun.code, 200, "it publishes");
+  is(boosts.length, 1, "and the boost runs once");
+  is([boosts[0].id, boosts[0].topic], ["ig_now", "acad-seats"], "against the post that actually went out, named for the day's topic");
+  is(nowRun.body.boosted.boosted, true, "and the answer says what the money did");
+
   console.log("\n  — who may ask —");
   is((await h.call(cron, { preview: "1" })).code, 401, "no key, no preview");
   is((await h.call(cron, { key: "wrong", preview: "1" })).code, 401, "and a wrong one is no better");
@@ -98,6 +111,7 @@ const C = (q) => h.call(cron, Object.assign({ key: "k" }, q || {}));
   // could have posted to the clinic's account.
   const ak = process.env.ADMIN_KEY;
   delete process.env.ADMIN_KEY; delete process.env.CRON_SECRET;
+  publishes = 0;   // count only what THIS call does
   const open = await h.call(cron, { key: "anything", now: "1" });
   is(open.code, 401, "and with no secret configured at all it refuses, rather than standing open");
   is(String(open.body.note || "").includes("unset"), true, "saying why");

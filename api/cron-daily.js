@@ -76,7 +76,7 @@ module.exports = async (req, res) => {
   }
 
   const url = `${BASE}/api/media?id=${out.imgId}`;
-  let published = null, storyOut = null;
+  let published = null, storyOut = null, boosted = null;
   if (previewOnly) {
     const cap = `👀 *Preview only — idi ekkadiki veLLaledu.*\n${out.topic.h1}${out.hadImage ? "" : "\n⚠️ Photo raaledu — background matrame"}\n\n${out.caption}`.slice(0, 900);
     for (const ph of out.notify) { if (!(await waImage(ph, url, cap))) await waText(ph, cap); }
@@ -88,6 +88,16 @@ module.exports = async (req, res) => {
     // The story is its own 1080×1920 drawing, not the feed poster squeezed
     // into 9:16 — that crop cut the WhatsApp number off the right edge.
     if (published && published.ok && out.storyId) storyOut = await admin.publishNow(cfg, { imgId: out.storyId, story: true, auto: true }).catch(() => null);
+    // Posted by hand at noon it is still the day's own poster, so it gets the
+    // day's money behind it — cron-post does this for the 8:30 one, and
+    // without it "daily post now" quietly meant "and no ad today". The same
+    // guards apply: once per post, and the day's rupee ceiling.
+    if (published && published.ok) {
+      try {
+        boosted = await require("./_boost.js").run(cfg, { id: published.id, imgId: out.imgId, caption: out.caption, topic: out.topic.key, link: published.link || "" });
+        console.log(`cron-daily: posted now (${out.topic.key}) — boost: ${boosted.boosted ? "created" : boosted.why || "no"}`);
+      } catch (e) { console.error("cron-daily: boost", e && e.message); }
+    }
   } else if (out.storyId) {
     // queue the story 3 minutes after the feed post; cron-post handles story items
     await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId: out.storyId, story: true, due: out.due + 180000, by: out.by, tries: 0, auto: true, quiet: true })]).catch(() => {});
@@ -102,5 +112,5 @@ module.exports = async (req, res) => {
     const ok = await waImage(ph, url, caption);
     if (!ok) await waText(ph, caption);
   }
-  return res.status(200).json({ ok: true, imgId: out.imgId, topic: out.topic.key, due: out.due, hadImage: out.hadImage, published, ms: Date.now() - t0 });
+  return res.status(200).json({ ok: true, imgId: out.imgId, storyId: out.storyId || "", topic: out.topic.key, due: out.due, hadImage: out.hadImage, published, boosted, ms: Date.now() - t0 });
 };
