@@ -69,6 +69,8 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   const geo = as.targeting.geo_locations.custom_locations[0];
   is([geo.latitude, geo.longitude, geo.radius, geo.distance_unit], [16.7107, 81.0952, 30, "kilometer"], "aimed at Eluru and 30 km around it");
   is([as.targeting.age_min, as.targeting.age_max, as.targeting.publisher_platforms], [20, 60, ["instagram", "facebook"]], "adults, on Instagram and Facebook");
+  // Meta retired Explore and refuses the whole ad set for asking for it.
+  is(as.targeting.instagram_positions.includes("explore"), false, "and not in Explore, which Meta no longer accepts at all");
   const cr = bodyOf("creative").object_story_spec.link_data;
   is([cr.image_hash, cr.link, cr.call_to_action.type], ["IMGHASH1", "https://wa.me/919959134666", "WHATSAPP_MESSAGE"], "the ad is the poster itself, and the button opens our WhatsApp");
   is(/Hair fall/.test(cr.message), true, "with the post's own caption");

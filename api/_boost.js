@@ -111,7 +111,10 @@ const targeting = (c) => ({
   geo_locations: { custom_locations: [{ latitude: ELURU.lat, longitude: ELURU.lng, radius: c.km, distance_unit: "kilometer" }] },
   age_min: c.ageMin, age_max: c.ageMax,
   publisher_platforms: ["instagram", "facebook"],
-  instagram_positions: ["stream", "explore", "reels"],
+  // No "explore": Meta retired that placement and now refuses the whole ad
+  // set for asking — "IG Explore placement is deprecated for this API version
+  // and cannot be selected." It cost the 25 September poster its ad.
+  instagram_positions: ["stream", "reels"],
   facebook_positions: ["feed"],
 });
 
