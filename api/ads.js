@@ -185,15 +185,94 @@ function verdict(spend, results, costEach, target) {
 const FLOOR = 200;                       // rupees spent before a verdict is worth making
 const perMonth = (spend, days) => Math.round((spend / Math.max(1, days)) * 30);
 
-function suggestions(account, campaigns, target, days, dismissed) {
+function suggestions(account, campaigns, target, days, dismissed, ours) {
   const out = [];
   const live = (campaigns || []).filter((c) => c.running);
   const scored = live.filter((c) => c.spend >= FLOOR);
+  const o = ours || {};
+
+  // The one that matters most, and the one a spend-and-reach dashboard can
+  // never say: the ads are working and the clinic is not. Money is arriving
+  // as leads and stopping there — that is a telephone problem, not a Meta
+  // problem, and no amount of budget tuning fixes it.
+  if (account && account.spend >= FLOOR && (o.leads || 0) >= 3 && !(o.booked || 0)) {
+    out.push({
+      id: "follow:leads", kind: "follow",
+      title: `${o.leads} leads vachcharu, okkaru book cheyyaledu`,
+      why: `${days} rojullo ads meeda ₹${account.spend.toLocaleString("en-IN")} — okko lead ₹${Math.round(account.spend / o.leads).toLocaleString("en-IN")}. Ads pani chestunnayi; aagindi follow-up daggara.`,
+      gain: "Leads screen lo 🔥 Ippude call chudandi — ee mandine call cheyyali",
+      action: null, go: "leads",
+    });
+  }
+
+  // Meta says it started conversations; our own book has nobody. Either the
+  // leads are not being written down, or the chats die before a name — worth
+  // knowing which, because the rest of this screen is built on our numbers.
+  if (account && (account.results || 0) >= 5 && !(o.leads || 0)) {
+    out.push({
+      id: "track:none", kind: "track",
+      title: "Meta సంభాషణలు chebutondi, mana daggara lead ledu",
+      why: `Meta ${account.results} సంభాషణలు modalayyayi ani chebutondi, kaani ee ${days} rojullo mana lead book lo ads nunchi okkati kuda ledu. Agent leda tracking daggara emo aagutondi.`,
+      gain: "Inbox lo aa chats unnaya chudandi",
+      action: null, go: "inbox",
+    });
+  }
+
+  // An account running unattended ads every morning with no ceiling on it.
+  if (account && account.capLeft === null && account.spend > 0) {
+    out.push({
+      id: "cap:none", kind: "cap",
+      title: "Account ki spending limit ledu",
+      why: "Roju podduna poster ki ad taanantata padutundi. Account meeda limit lekapothe, emaina tappu jarigithe aapedi emi ledu.",
+      gain: "Ads Manager → Billing lo account spending limit pettandi",
+      action: null,
+    });
+  }
+
+  // Leads Meta attributed to an ad that is no longer among the campaigns —
+  // six of eight, on the day this was written. Without saying so, the screen
+  // quietly credits them to nothing.
+  const known = new Set((campaigns || []).map((c) => String(c.id)));
+  const orphan = Object.entries(o.byAd || {})
+    .filter(([, r]) => (r.leads || 0) > 0)
+    .reduce((n, [, r]) => n + r.leads, 0);
+  const shown = (campaigns || []).reduce((n, c) => n + ((c.patients && c.patients.leads) || 0), 0);
+  if (orphan > shown && orphan - shown >= 3) {
+    out.push({
+      id: "orphan:ads", kind: "track",
+      title: `${orphan - shown} leads e ad nunchi vachchayo ee page cheppaledu`,
+      why: "Vaallani techina ad ippudu campaigns list lo ledu — aagipoyindi leda teesesaru. Lead mana daggara undi, kaani aa kharchu tho kalapaleka poyam.",
+      gain: "Aa campaign ni Ads Manager lo chudochu",
+      action: null,
+    });
+  }
+
   // The best campaign is the yardstick: "expensive" only means anything next
-  // to something cheaper that the clinic is already running.
+  // to something cheaper that the clinic is already running. Where the clinic
+  // has its OWN number — how many of those people walked in — that is the one
+  // to rank by; Meta's conversation count is only a stand-in until then.
+  const withPatients = scored.filter((c) => c.patients && c.patients.came > 0);
+  const byPatient = withPatients.length >= 2;
+  const bestP = byPatient ? withPatients.sort((a, b) => a.patients.costPerPatient - b.patients.costPerPatient)[0] : null;
   const best = scored.filter((c) => c.results > 0).sort((a, b) => a.costEach - b.costEach)[0] || null;
 
+  if (bestP) {
+    for (const c of withPatients) {
+      if (c.id === bestP.id) continue;
+      if (c.patients.costPerPatient < bestP.patients.costPerPatient * 3) continue;
+      out.push({
+        id: `stopp:${c.id}`, kind: "stop", campaign: c.name, campaignId: c.id,
+        title: `Aapandi: ${c.name}`,
+        why: `Okko patient ki ₹${c.patients.costPerPatient.toLocaleString("en-IN")} — "${bestP.name}" ₹${bestP.patients.costPerPatient.toLocaleString("en-IN")} ki testundi. Idi Meta lekka kaadu, mana daggara vachchina vaalla lekka.`,
+        gain: `Nelaki sumaru ₹${perMonth(c.spend, days).toLocaleString("en-IN")} migulutundi`,
+        action: { a: "pause", id: c.id },
+      });
+    }
+  }
+
+  const judged = new Set(out.map((x) => x.campaignId).filter(Boolean));
   for (const c of scored) {
+    if (judged.has(c.id)) continue;
     if (!c.results) {
       out.push({
         id: `stop:${c.id}`, kind: "stop", campaign: c.name, campaignId: c.id,
@@ -212,6 +291,20 @@ function suggestions(account, campaigns, target, days, dismissed) {
         why: `Okka సంభాషణ ki ₹${c.costEach.toLocaleString("en-IN")} — "${best.name}" adhe pani ₹${best.costEach.toLocaleString("en-IN")} ki chestundi (${times} rettu takkuva). ${days} rojullo ikkada ₹${c.spend.toLocaleString("en-IN")} kharchu ayindi.`,
         gain: `Nelaki sumaru ₹${perMonth(c.spend, days).toLocaleString("en-IN")} migulutundi`,
         action: { a: "pause", id: c.id },
+      });
+      continue;
+    }
+    // Cheap, and on a lifetime budget — so there is no daily number here to
+    // raise. Most of this clinic's campaigns are that shape (the poster boost
+    // and anything set up by hand), so without this the good news never got
+    // said at all and the box sat empty on a campaign that was working.
+    if (!c.daily && c.costEach <= target * 0.5) {
+      out.push({
+        id: `good:${c.id}`, kind: "good", campaign: c.name, campaignId: c.id,
+        title: `Baaga pani chestondi: ${c.name}`,
+        why: `Okko సంభాషణ ₹${c.costEach.toLocaleString("en-IN")} — lakshyam ₹${target.toLocaleString("en-IN")}. ${days} rojullo ₹${c.spend.toLocaleString("en-IN")} kharchu, ${c.results} సంభాషణలు.`,
+        gain: "Idi lifetime budget campaign — roju budget ledu. Ekkuva pettalante Ads Manager lo penchandi",
+        action: null,
       });
       continue;
     }
@@ -362,7 +455,7 @@ module.exports = async (req, res) => {
     // What the owner has already said no to, so it does not come back tomorrow.
     const dm = await guard.kvCommand(cfg, ["SMEMBERS", "ads:no"]).catch(() => ({}));
     const dismissed = Array.isArray(dm.result) ? dm.result : [];
-    const suggest = suggestions(account, campaigns, target, days, dismissed);
+    const suggest = suggestions(account, campaigns, target, days, dismissed, ours);
 
     return json(res, 200, {
       ok: true, connected: true, days, target, canChange,

@@ -119,7 +119,10 @@ const A = (q, b) => h.call(ads, q, b);
   // owner at nine in the morning, so nobody ever does it. Every suggestion has
   // to carry the number it came from and apply itself.
   console.log("\n  — what to do about it —");
-  const sg = (camps, acct) => ads.suggestions(acct || { spend: 1000, capLeft: null }, camps, 300, 30, []);
+  // capLeft 0 in the default account means "there IS a cap and it is spent",
+  // which is not what these cases are about — pass a real one so the
+  // no-ceiling rule does not fire in every other assertion.
+  const sg = (camps, acct, ours) => ads.suggestions(acct || { spend: 1000, capLeft: 9000 }, camps, 300, 30, [], ours || { leads: 0 });
   const camp = (o) => Object.assign({ id: "1", name: "C", running: true, spend: 1000, results: 5, costEach: 200, daily: 0 }, o);
 
   is(sg([camp({ spend: 150, results: 0 })]).length, 0, "a campaign that has barely spent anything is not judged — noise is not a finding");
@@ -146,8 +149,55 @@ const A = (q, b) => h.call(ads, q, b);
   const up = sg([camp({ id: "3", name: "Academy", spend: 3000, results: 30, costEach: 100, daily: 300 })]);
   is([up.length, up[0].kind, up[0].action.a, up[0].action.daily], [1, "raise", "budget", 450], "the cheap one, starved, is told to spend more — ₹300 → ₹450");
   is(/₹100 ki testundi/.test(up[0].why) && /roju ₹300 matrame/.test(up[0].why), true, "saying why: " + up[0].why);
-  is(sg([camp({ id: "4", costEach: 100, daily: 0 })]).length, 0, "a lifetime-budget campaign has no daily number to raise, so it is left alone");
+  // A lifetime budget has no daily number to raise — but staying silent about
+  // a campaign that is working is how the box came to sit empty on the one
+  // campaign the clinic had running. It says so, and says where the knob is.
+  const lifeOnly = sg([camp({ id: "4", costEach: 100, daily: 0 })]);
+  is([lifeOnly.length, lifeOnly[0].kind], [1, "good"], "a lifetime-budget campaign is praised, not told to raise a budget it does not have");
+  is(lifeOnly.some((x) => x.kind === "raise"), false, "and never handed a daily-budget button that would do nothing");
   is(sg([camp({ id: "6", running: false, spend: 9000, results: 0 })]).length, 0, "and nothing already paused is suggested at all");
+
+  // ---- the ones a spend-and-reach dashboard can never say ------------------
+  console.log("\n  — what the money actually did —");
+  const noBook = sg([], { spend: 1000, capLeft: 9000 }, { leads: 8, booked: 0 });
+  const follow = noBook.find((x) => x.kind === "follow");
+  is(!!follow, true, "leads arriving and nobody booking is the most important thing on the page");
+  is(/8 leads vachcharu, okkaru book cheyyaledu/.test(follow.title), true, "said plainly: " + follow.title);
+  is(/okko lead ₹125/.test(follow.why), true, "with what each one cost: " + follow.why);
+  is(follow.go, "leads", "and it sends you to the screen where the work is");
+  is(sg([], { spend: 1000, capLeft: 9000 }, { leads: 8, booked: 1 }).some((x) => x.kind === "follow"), false,
+    "one booking and it stops nagging");
+  is(sg([], { spend: 1000, capLeft: 9000 }, { leads: 2, booked: 0 }).some((x) => x.kind === "follow"), false,
+    "two leads is not a pattern");
+
+  const gap = sg([], { spend: 1000, capLeft: 9000, results: 40 }, { leads: 0 });
+  is(gap.some((x) => x.id === "track:none"), true, "Meta counting conversations we have no lead for is worth knowing about");
+
+  const noCap = sg([], { spend: 1000, capLeft: null }, { leads: 0 });
+  is(noCap.some((x) => x.id === "cap:none"), true, "an account with no ceiling at all, running ads unattended every morning");
+
+  const orph = sg([{ id: "1", name: "C", running: true, spend: 1000, results: 5, costEach: 200, daily: 0, patients: { leads: 2, came: 0 } }],
+    { spend: 1000, capLeft: 9000 }, { leads: 8, booked: 1, byAd: { ad_gone: { leads: 6 }, ad_here: { leads: 2 } } });
+  const orphan = orph.find((x) => x.id === "orphan:ads");
+  is(!!orphan && /6 leads/.test(orphan.title), true, "leads credited to an ad that is no longer listed are named, not silently dropped");
+
+  console.log("\n  — ranked by patients once we have them —");
+  const pt = (came, cost) => ({ leads: came * 3, booked: came, came: came, revenue: 0, costPerPatient: cost });
+  const byPatient = sg([
+    { id: "1", name: "Cheap chats", running: true, spend: 6000, results: 200, costEach: 30, daily: 0, patients: pt(2, 3000) },
+    { id: "2", name: "Fewer chats, more patients", running: true, spend: 6000, results: 20, costEach: 300, daily: 0, patients: pt(12, 500) },
+  ], { spend: 12000, capLeft: 90000 }, { leads: 42, booked: 14 });
+  const stopCheap = byPatient.find((x) => x.campaignId === "1" && x.kind === "stop");
+  is(!!stopCheap, true, "the one that is cheap per chat but dear per patient is the one to stop");
+  is(/Idi Meta lekka kaadu/.test(stopCheap.why), true, "and it says whose number it is using: " + stopCheap.why);
+  is(byPatient.some((x) => x.campaignId === "2" && x.kind === "stop"), false, "the one that actually fills the clinic is left alone");
+  is(byPatient.filter((x) => x.campaignId === "1").length, 1, "and nothing is judged twice, once on patients and again on chats");
+
+  console.log("\n  — a lifetime budget has no daily knob —");
+  const life = sg([{ id: "7", name: "Academy Batch 1", running: true, spend: 313, results: 3, costEach: 104, daily: 0 }], { spend: 313, capLeft: 9000 });
+  const doingWell = life.find((x) => x.kind === "good");
+  is(!!doingWell, true, "a campaign doing well on a lifetime budget is not silence — it used to leave the box empty");
+  is(/lifetime budget campaign/.test(doingWell.gain), true, "saying where the knob actually is: " + doingWell.gain);
 
   const cap = sg([], { spend: 30000, capLeft: 4000 });
   is([cap.length, cap[0].kind], [1, "cap"], "the account's own spending limit running out is worth a word");

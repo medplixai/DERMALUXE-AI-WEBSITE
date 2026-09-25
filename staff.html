@@ -2215,24 +2215,30 @@
         // ---- what to do about it ------------------------------------------
         // The point of the screen. Each one carries the number it was worked
         // out from, so the owner is agreeing with arithmetic, not a hunch.
+        var ICON = { stop: "🛑", raise: "🚀", good: "✅", follow: "📞", track: "🔍", cap: "⚠️" };
         var sug = (j.suggest || []).map(function (x) {
-          var icon = x.kind === "stop" ? "🛑" : x.kind === "raise" ? "🚀" : "⚠️";
-          return '<div class="sug"><b>' + icon + " " + esc(x.title) + "</b>" +
+          return '<div class="sug"><b>' + (ICON[x.kind] || "💡") + " " + esc(x.title) + "</b>" +
             '<div class="meta" style="margin-top:3px">' + esc(x.why) + "</div>" +
             (x.gain ? '<div class="meta" style="margin-top:3px;color:var(--ok);font-weight:500">' + esc(x.gain) + "</div>" : "") +
             '<div class="acts" style="margin-top:8px">' +
             (x.action && j.canChange
               ? '<button class="btn btn--sm btn--gold" data-act="ads-do" data-s="' + esc(x.id) + '" data-do="' + esc(JSON.stringify(x.action)) + '">Avunu, cheyyi</button>'
               : "") +
+            (x.go ? '<button class="btn btn--sm" data-act="ads-go" data-t="' + esc(x.go) + '">' + (x.go === "leads" ? "Leads teruvu" : "Inbox teruvu") + "</button>" : "") +
             '<button class="btn btn--sm" data-act="ads-no" data-s="' + esc(x.id) + '">Vaddu</button>' +
             "</div></div>";
         }).join("");
         var openerBox = openerBlock(j);
 
-        var sugBox = sug
-          ? '<div class="sugbox"><h3>💡 Ee roju ads suchanalu</h3>' +
-            '<p class="meta" style="margin-bottom:8px">Prathi suchana ki kaaranam kinda undi. Meeru okay ante ne maarutundi.</p>' + sug + "</div>"
-          : "";
+        // An empty box used to mean "nothing to say", which on a screen reads
+        // exactly like "this is broken". It now says which of the two it is.
+        var quiet = !(j.campaigns || []).some(function (c) { return c.running && c.spend >= 200; })
+          ? "Inka chaalinanta kharchu kaledu — okko campaign ₹200 daatthaka suchanalu modalavutayi."
+          : "Anni baane unnayi — ippudu maarchalsindi emi ledu.";
+        var sugBox = '<div class="sugbox"><h3>💡 Ee roju ads suchanalu</h3>' +
+          (sug
+            ? '<p class="meta" style="margin-bottom:8px">Prathi suchana ki kaaranam kinda undi. Meeru okay ante ne maarutundi.</p>' + sug
+            : '<p class="meta">' + esc(quiet) + "</p>") + "</div>";
 
         var camps = (j.campaigns || []).map(function (c) {
           var col = c.verdict.tone === "good" ? "var(--ok)" : c.verdict.tone === "bad" ? "var(--bad)" : c.verdict.tone === "warn" ? "var(--hot)" : "var(--muted)";
@@ -2262,12 +2268,26 @@
           '<div class="acts"><button class="btn btn--sm" data-act="ads-sync">↻ Sync from Ads Manager</button>' +
           (j.adsManager ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(j.adsManager) + '">Open Ads Manager ↗</a>' : "") + "</div></div>" +
           (j.error ? '<p class="meta" style="color:var(--hot)">Meta nunchi: ' + esc(j.error) + "</p>" : "") +
+          headline(j) +
           sugBox +
           '<div class="grid" style="margin-top:10px">' + cards + "</div>" +
           oursBlock(j) +
           (camps ? '<h3 style="margin-top:14px;font-size:1rem">Campaigns</h3>' + camps : '<p class="meta" style="margin-top:10px">Campaigns emi ledu.</p>') +
           "</div>" + openerBox;
       }).catch(function () { host.innerHTML = ""; });
+    }
+
+    // The whole screen in one sentence, so somebody who reads nothing else
+    // still knows where the money went and what came of it.
+    function headline(j) {
+      var A = j.account || {}, o = j.ours || {};
+      if (!A.spend) return "";
+      var bits = "Ee " + j.days + " rojullo <b>" + money0(A.spend) + "</b> kharchu — " +
+        (A.results || 0) + " \u0C38\u0C02\u0C2D\u0C3E\u0C37\u0C23\u0C32\u0C41, <b>" + (o.leads || 0) + " leads</b>, <b>" + (o.booked || 0) + " book</b>, <b>" + (o.came || 0) + " vachcharu</b>.";
+      var end = (o.came ? " Okko patient ki " + money0(Math.round(A.spend / o.came)) + "."
+        : o.leads ? " Okko lead ki " + money0(Math.round(A.spend / o.leads)) + " \u2014 inka evaru raaledu."
+        : " Inka okka lead kuda raaledu.");
+      return '<p class="meta" style="margin-top:6px;font-size:.95rem;color:var(--text)">' + bits + end + "</p>";
     }
 
     // Two openers, the same ads, the same day. reply ÷ leads is the opener's
@@ -5351,6 +5371,13 @@
         adsapi("dismiss", { id: el.dataset.s })
           .then(function () { var c = el.closest(".sug"); if (c) c.remove(); })
           .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      // "Leads teruvu" / "Inbox teruvu" — the suggestion names the screen the
+      // work actually happens on, and takes you there.
+      if (el.dataset.act === "ads-go") {
+        var b2 = document.querySelector('.tab[data-t="' + el.dataset.t + '"]');
+        if (b2 && !b2.classList.contains("hide")) b2.click();
         return;
       }
       if (el.dataset.act === "ads-sync") {
