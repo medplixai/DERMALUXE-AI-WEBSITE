@@ -114,6 +114,60 @@ const A = (q, b) => h.call(ads, q, b);
   is((await A({ a: "overview" })).code, 403, "somebody without reports sees none of it");
   h.as(["*"]);
 
+  // ---- what to do about it ------------------------------------------------
+  // A dashboard that only reports leaves eight campaigns' arithmetic to the
+  // owner at nine in the morning, so nobody ever does it. Every suggestion has
+  // to carry the number it came from and apply itself.
+  console.log("\n  — what to do about it —");
+  const sg = (camps, acct) => ads.suggestions(acct || { spend: 1000, capLeft: null }, camps, 300, 30, []);
+  const camp = (o) => Object.assign({ id: "1", name: "C", running: true, spend: 1000, results: 5, costEach: 200, daily: 0 }, o);
+
+  is(sg([camp({ spend: 150, results: 0 })]).length, 0, "a campaign that has barely spent anything is not judged — noise is not a finding");
+  const dead = sg([camp({ id: "9", name: "Hair transplant", spend: 7390, results: 0 })]);
+  is([dead.length, dead[0].kind, dead[0].action.a, dead[0].action.id], [1, "stop", "pause", "9"], "money going nowhere: stop it, in one tap");
+  is(/7,390/.test(dead[0].why) && /okka సంభాషణ kuda raaledu/.test(dead[0].why), true, "with the number it was worked out from: " + dead[0].why);
+  is(/₹7,390 migulutundi/.test(dead[0].gain), true, "and what a month of it is worth: " + dead[0].gain);
+
+  const pair = sg([
+    camp({ id: "1", name: "Cheap", spend: 6000, results: 60, costEach: 100 }),
+    camp({ id: "2", name: "Dear", spend: 9000, results: 9, costEach: 1000 }),
+  ]);
+  const stop2 = pair.find((x) => x.campaignId === "2");
+  is(!!stop2, true, "the expensive one is named");
+  is(/"Cheap" adhe pani ₹100 ki chestundi \(10 rettu takkuva\)/.test(stop2.why), true,
+    "against the cheaper one the clinic is already running: " + stop2.why);
+  is(pair.some((x) => x.campaignId === "1" && x.kind === "stop"), false, "and the cheap one is never told to stop");
+
+  // "Expensive" only means anything beside something cheaper. One campaign on
+  // its own, over target, is not evidence that a better price exists.
+  is(sg([camp({ id: "5", spend: 9000, results: 9, costEach: 1000 })]).filter((x) => x.kind === "stop").length, 0,
+    "with nothing to compare against, nothing is called expensive");
+
+  const up = sg([camp({ id: "3", name: "Academy", spend: 3000, results: 30, costEach: 100, daily: 300 })]);
+  is([up.length, up[0].kind, up[0].action.a, up[0].action.daily], [1, "raise", "budget", 450], "the cheap one, starved, is told to spend more — ₹300 → ₹450");
+  is(/₹100 ki testundi/.test(up[0].why) && /roju ₹300 matrame/.test(up[0].why), true, "saying why: " + up[0].why);
+  is(sg([camp({ id: "4", costEach: 100, daily: 0 })]).length, 0, "a lifetime-budget campaign has no daily number to raise, so it is left alone");
+  is(sg([camp({ id: "6", running: false, spend: 9000, results: 0 })]).length, 0, "and nothing already paused is suggested at all");
+
+  const cap = sg([], { spend: 30000, capLeft: 4000 });
+  is([cap.length, cap[0].kind], [1, "cap"], "the account's own spending limit running out is worth a word");
+  is(/inka 4 rojulu/.test(cap[0].why), true, "counted at the rate it is actually going: " + cap[0].why);
+  is(ads.suggestions({ spend: 30000, capLeft: 4000 }, [], 300, 30, ["cap:account"]).length, 0, "and once the owner says vaddu, it stops asking");
+
+  console.log("\n  — the screen's own wiring —");
+  h.run(["DEL", "ads:no"]);
+  const dis = await A({ a: "dismiss" }, { a: "dismiss", id: "stop:111" });
+  is(dis.code, 200, "a suggestion can be dismissed");
+  is(h.run(["SMEMBERS", "ads:no"]), ["stop:111"], "and is remembered as a no");
+  h.as(["reports.view"]);
+  is((await A({ a: "dismiss" }, { a: "dismiss", id: "x" })).code, 200, "saying no costs nothing, so anybody who sees the screen may");
+  is((await A({ a: "pause" }, { a: "pause", id: "111" })).code, 403, "but only the owner may spend or stop money");
+  h.as(["*"]);
+  h.run(["SET", "ads:conn", JSON.stringify({ ok: true, tokenName: "META_ADS_TOKEN", accountId: "2110247062961086", at: Date.now() })]);
+  is((await A({ a: "sync" }, { a: "sync" })).code, 200, "and the cached account can be thrown away to read Meta again");
+  is(h.run(["GET", "ads:conn"]), null, "which is what sync does");
+  h.run(["DEL", "ads:no"]);
+
   console.log("\n  — with nothing configured —");
   delete process.env.META_ADS_TOKEN;
   h.run(["DEL", "ads:conn"]);

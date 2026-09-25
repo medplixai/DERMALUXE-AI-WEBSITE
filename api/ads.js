@@ -170,6 +170,84 @@ function verdict(spend, results, costEach, target) {
   return { tone: "bad", text: `Chala kharidu — okko సంభాషణ ₹${costEach}. Aapeyyadam manchidi` };
 }
 
+// ---- what to do about it, in a sentence and one tap -----------------------
+// A dashboard that only reports leaves the owner to work out the arithmetic
+// between eight campaigns at nine in the morning, so nobody ever does. Each
+// suggestion below carries the number it was worked out from and the money it
+// is worth, and applies itself — there is nothing to go and find afterwards.
+//
+// Rules, in the order they matter:
+//   * money going nowhere — spending with nothing to show
+//   * money going somewhere expensive, when a cheaper campaign exists
+//   * the cheap one, starved
+// Nothing is suggested off a handful of rupees: under FLOOR the numbers are
+// noise, and a suggestion built on noise teaches people to ignore the box.
+const FLOOR = 200;                       // rupees spent before a verdict is worth making
+const perMonth = (spend, days) => Math.round((spend / Math.max(1, days)) * 30);
+
+function suggestions(account, campaigns, target, days, dismissed) {
+  const out = [];
+  const live = (campaigns || []).filter((c) => c.running);
+  const scored = live.filter((c) => c.spend >= FLOOR);
+  // The best campaign is the yardstick: "expensive" only means anything next
+  // to something cheaper that the clinic is already running.
+  const best = scored.filter((c) => c.results > 0).sort((a, b) => a.costEach - b.costEach)[0] || null;
+
+  for (const c of scored) {
+    if (!c.results) {
+      out.push({
+        id: `stop:${c.id}`, kind: "stop", campaign: c.name, campaignId: c.id,
+        title: `Aapandi: ${c.name}`,
+        why: `₹${c.spend.toLocaleString("en-IN")} kharchu ayindi, okka సంభాషణ kuda raaledu (${days} rojullo).`,
+        gain: `Nelaki sumaru ₹${perMonth(c.spend, days).toLocaleString("en-IN")} migulutundi`,
+        action: { a: "pause", id: c.id },
+      });
+      continue;
+    }
+    if (best && c.id !== best.id && c.costEach >= best.costEach * 3 && c.costEach > target) {
+      const times = Math.round((c.costEach / best.costEach) * 10) / 10;
+      out.push({
+        id: `stop:${c.id}`, kind: "stop", campaign: c.name, campaignId: c.id,
+        title: `Aapandi: ${c.name}`,
+        why: `Okka సంభాషణ ki ₹${c.costEach.toLocaleString("en-IN")} — "${best.name}" adhe pani ₹${best.costEach.toLocaleString("en-IN")} ki chestundi (${times} rettu takkuva). ${days} rojullo ikkada ₹${c.spend.toLocaleString("en-IN")} kharchu ayindi.`,
+        gain: `Nelaki sumaru ₹${perMonth(c.spend, days).toLocaleString("en-IN")} migulutundi`,
+        action: { a: "pause", id: c.id },
+      });
+      continue;
+    }
+    // Cheap and still running on a small daily budget: the one place where
+    // spending MORE is the right answer.
+    if (c.daily && c.costEach <= target * 0.5) {
+      const next = Math.min(Math.max(100, Math.round((c.daily * 1.5) / 50) * 50), Math.max(100, Math.min(50000, Number(process.env.ADS_MAX_DAILY) || 5000)));
+      if (next > c.daily) {
+        out.push({
+          id: `raise:${c.id}`, kind: "raise", campaign: c.name, campaignId: c.id,
+          title: `Budget penchandi: ${c.name} → ₹${next.toLocaleString("en-IN")}/roju`,
+          why: `Idi okka సంభాషణ ₹${c.costEach.toLocaleString("en-IN")} ki testundi — lakshyam ₹${target.toLocaleString("en-IN")}. Ippudu roju ₹${c.daily.toLocaleString("en-IN")} matrame.`,
+          gain: `Roju ~${Math.max(1, Math.round((next - c.daily) / Math.max(1, c.costEach)))} సంభాషణలు ekkuva ravochu`,
+          action: { a: "budget", id: c.id, daily: next },
+        });
+      }
+    }
+  }
+
+  // The account itself, when Meta is about to stop it for us.
+  if (account && account.capLeft != null && account.capLeft > 0 && account.spend > 0) {
+    const perDay = account.spend / Math.max(1, days);
+    const left = Math.floor(account.capLeft / Math.max(1, perDay));
+    if (left <= 7) {
+      out.push({
+        id: "cap:account", kind: "cap",
+        title: "Spending limit ayipotondi",
+        why: `Limit lo ₹${account.capLeft.toLocaleString("en-IN")} migilindi — ee vegam ki inka ${left} roju${left === 1 ? "" : "lu"}. Taruvata ads taanantata aagipotayi.`,
+        gain: "Ads Manager lo limit penchandi",
+        action: null,
+      });
+    }
+  }
+  return out.filter((x) => !(dismissed || []).includes(x.id));
+}
+
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
   const cfg = guard.kvConfig();
@@ -278,10 +356,16 @@ module.exports = async (req, res) => {
       err = String(e.message || e).slice(0, 200);
     }
 
+    // What the owner has already said no to, so it does not come back tomorrow.
+    const dm = await guard.kvCommand(cfg, ["SMEMBERS", "ads:no"]).catch(() => ({}));
+    const dismissed = Array.isArray(dm.result) ? dm.result : [];
+    const suggest = suggestions(account, campaigns, target, days, dismissed);
+
     return json(res, 200, {
       ok: true, connected: true, days, target, canChange,
       tokenName: conn.tokenName, accountId: conn.accountId,
-      account, today, campaigns, error: err || undefined,
+      adsManager: `https://www.facebook.com/adsmanager/manage/campaigns?act=${conn.accountId}`,
+      account, today, campaigns, suggest, error: err || undefined,
       ours,
       // The join, stated carefully: Meta counts conversations it started,
       // we count people who became patients. Different things, both real.
@@ -297,10 +381,30 @@ module.exports = async (req, res) => {
   }
 
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
+
+  // "Vaddu" on a suggestion. Not a money action, so anybody who can see the
+  // screen may do it; it expires, because a campaign that was fine last week
+  // is worth asking about again.
+  if (a === "dismiss") {
+    const sid = clean(b.id, 60);
+    if (!sid) return json(res, 400, { error: "Suggestion id kavali" });
+    await guard.kvCommand(cfg, ["SADD", "ads:no", sid]).catch(() => {});
+    await guard.kvCommand(cfg, ["EXPIRE", "ads:no", "604800"]).catch(() => {});
+    return json(res, 200, { ok: true, dismissed: sid });
+  }
+
   if (!canChange) return json(res, 403, { error: "Ads marchagaligedi owner matrame" });
   if (!conn.ok) return json(res, 400, { error: "Ads inka connect cheyyaledu" });
   const rlw = await guard.rateLimit(cfg, `rl:adsw:${me.phone}`, 60, 3600);
   if (!rlw.allowed) return json(res, 429, { error: "Konchem aagandi" });
+
+  // Forget what was cached about the account and read Meta again. No campaign
+  // id, so it answers before the id check below.
+  if (a === "sync") {
+    await guard.kvCommand(cfg, ["DEL", "ads:conn"]).catch(() => {});
+    return json(res, 200, { ok: true });
+  }
+
   const tok = tokenOf(conn.tokenName);
   const id = clean(b.id, 40);
   if (!/^\d+$/.test(id)) return json(res, 400, { error: "Campaign id kavali" });
@@ -369,5 +473,6 @@ async function spend(cfg, days) {
   } catch (e) { return null; }
 }
 module.exports.spend = spend;
+module.exports.suggestions = suggestions;
 module.exports.verdict = verdict;
 module.exports.ourSide = ourSide;

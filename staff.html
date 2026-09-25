@@ -487,6 +487,10 @@
     .pnl-days .d em{position:absolute;bottom:-15px;left:50%;transform:translateX(-50%);font-size:.6rem;color:var(--muted2);font-style:normal}
     .pnl-row{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px solid var(--line);font-size:.86rem}
     .goalbar{height:6px;border-radius:3px;background:var(--g5,#eee);margin-top:6px;overflow:hidden}
+    .adshead{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+    .sugbox{margin-top:12px;border:1px solid rgba(214,158,46,.45);background:rgba(214,158,46,.07);border-radius:12px;padding:12px}
+    .sugbox h3{margin:0 0 2px;font-size:1rem}
+    .sug{border:1px solid var(--line);background:var(--card,#fff);border-radius:10px;padding:10px 12px;margin-top:8px}
     .goalbar i{display:block;height:100%;border-radius:3px}
     .pnl-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
     .inc-rates th{font-weight:500;color:var(--muted);font-size:.76rem;padding:4px 6px;text-align:center}
@@ -2175,15 +2179,44 @@
           return;
         }
         var A = j.account || {}, T = j.today || {}, J = j.joined || {};
+        var o = j.ours || {};
+        var live = (j.campaigns || []).filter(function (c) { return c.running; }).length;
         var cards = [
-          ["Ee roju kharchu", money0(T.spend), (T.impressions || 0).toLocaleString("en-IN") + " sarlu chupinchindi"],
-          [insDays + " rojula kharchu", money0(A.spend), (A.reach || 0).toLocaleString("en-IN") + " mandiki"],
-          ["Okko సంభాషణ ki", money0(A.costEach), "lakshyam " + money0(j.target)],
-          ["Nadustunna campaigns", String((j.campaigns || []).filter(function (c) { return c.running; }).length), (j.campaigns || []).length + " mottam"],
+          ["Ee roju kharchu", money0(T.spend), (T.impressions || 0).toLocaleString("en-IN") + " impressions", ""],
+          ["Nadustunna campaigns", String(live), (j.campaigns || []).length + " mottam", ""],
+          ["Spending limit lo migilindi", A.capLeft === null || A.capLeft === undefined ? "—" : money0(A.capLeft), A.capLeft === null || A.capLeft === undefined ? "Limit pettaledu" : "", ""],
+          ["WhatsApp సంభాషణలు (" + insDays + "d)", (A.results || 0).toLocaleString("en-IN"), (A.reach || 0).toLocaleString("en-IN") + " mandiki", "ok"],
+          ["Kharchu (" + insDays + "d)", money0(A.spend), (A.impressions || 0).toLocaleString("en-IN") + " impressions", ""],
+          ["Okko సంభాషణకు", money0(A.costEach), "lakshyam " + money0(j.target), A.costEach && A.costEach <= j.target ? "ok" : A.costEach ? "bad" : ""],
+          ["Ads nunchi leads (" + insDays + " rojulu)", (o.leads || 0).toLocaleString("en-IN"), (o.booked || 0) + " book · " + (o.came || 0) + " vachcharu", ""],
+          ["Okko patient ki kharchu (" + insDays + "d)", J.costPerCame ? money0(J.costPerCame) : "—",
+            J.costPerBooked ? "book ayina okkokkariki " + money0(J.costPerBooked) : "inka evaru raaledu", J.costPerCame ? "ok" : ""],
         ].map(function (c) {
-          return '<div class="cell"><dt>' + esc(c[0]) + "</dt><dd>" + esc(c[1]) + "</dd>" +
-            '<div class="meta" style="margin-top:2px">' + esc(c[2]) + "</div></div>";
+          var tint = c[3] === "ok" ? ";background:rgba(31,150,90,.07);border-color:rgba(31,150,90,.35)"
+            : c[3] === "bad" ? ";background:rgba(190,60,50,.06);border-color:rgba(190,60,50,.3)" : "";
+          return '<div class="cell" style="min-width:0' + tint + '"><dt>' + esc(c[0]) + "</dt><dd>" + esc(c[1]) + "</dd>" +
+            (c[2] ? '<div class="meta" style="margin-top:2px">' + esc(c[2]) + "</div>" : "") + "</div>";
         }).join("");
+
+        // ---- what to do about it ------------------------------------------
+        // The point of the screen. Each one carries the number it was worked
+        // out from, so the owner is agreeing with arithmetic, not a hunch.
+        var sug = (j.suggest || []).map(function (x) {
+          var icon = x.kind === "stop" ? "🛑" : x.kind === "raise" ? "🚀" : "⚠️";
+          return '<div class="sug"><b>' + icon + " " + esc(x.title) + "</b>" +
+            '<div class="meta" style="margin-top:3px">' + esc(x.why) + "</div>" +
+            (x.gain ? '<div class="meta" style="margin-top:3px;color:var(--ok);font-weight:500">' + esc(x.gain) + "</div>" : "") +
+            '<div class="acts" style="margin-top:8px">' +
+            (x.action && j.canChange
+              ? '<button class="btn btn--sm btn--gold" data-act="ads-do" data-s="' + esc(x.id) + '" data-do="' + esc(JSON.stringify(x.action)) + '">Avunu, cheyyi</button>'
+              : "") +
+            '<button class="btn btn--sm" data-act="ads-no" data-s="' + esc(x.id) + '">Vaddu</button>' +
+            "</div></div>";
+        }).join("");
+        var sugBox = sug
+          ? '<div class="sugbox"><h3>💡 Ee roju ads suchanalu</h3>' +
+            '<p class="meta" style="margin-bottom:8px">Prathi suchana ki kaaranam kinda undi. Meeru okay ante ne maarutundi.</p>' + sug + "</div>"
+          : "";
 
         var camps = (j.campaigns || []).map(function (c) {
           var col = c.verdict.tone === "good" ? "var(--ok)" : c.verdict.tone === "bad" ? "var(--bad)" : c.verdict.tone === "warn" ? "var(--hot)" : "var(--muted)";
@@ -2208,9 +2241,12 @@
             "</div>";
         }).join("");
 
-        host.innerHTML = '<div class="box"><h2>Meta Ads <span class="te" style="font-size:.9rem;color:var(--g3)">· ప్రకటనలు</span></h2>' +
-          '<p class="meta">Account ' + esc(A.name || j.accountId) + (A.capLeft !== null && A.capLeft !== undefined ? " · limit lo migilindi " + money0(A.capLeft) : "") + "</p>" +
+        host.innerHTML = '<div class="box"><div class="adshead"><div><h2 style="margin:0">Meta Ads <span class="te" style="font-size:.9rem;color:var(--g3)">· ప్రకటనలు</span></h2>' +
+          '<p class="meta" style="margin-top:2px">Ad account ' + esc(j.accountId || "") + " · " + esc(A.name || "") + "</p></div>" +
+          '<div class="acts"><button class="btn btn--sm" data-act="ads-sync">↻ Sync from Ads Manager</button>' +
+          (j.adsManager ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(j.adsManager) + '">Open Ads Manager ↗</a>' : "") + "</div></div>" +
           (j.error ? '<p class="meta" style="color:var(--hot)">Meta nunchi: ' + esc(j.error) + "</p>" : "") +
+          sugBox +
           '<div class="grid" style="margin-top:10px">' + cards + "</div>" +
           oursBlock(j) +
           (camps ? '<h3 style="margin-top:14px;font-size:1rem">Campaigns</h3>' + camps : '<p class="meta" style="margin-top:10px">Campaigns emi ledu.</p>') +
@@ -5239,6 +5275,32 @@
         adsapi(pausing ? "pause" : "resume", { id: el.dataset.id })
           .then(function () { toast(pausing ? "Aapesam" : "Malli modalu pettam"); loadAds(); })
           .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      // A suggestion, applied. The button carries the whole action the server
+      // handed over, so the app is not re-deriving what to do from the words.
+      if (el.dataset.act === "ads-do") {
+        var act = null; try { act = JSON.parse(el.dataset.do); } catch (x) {}
+        if (!act) return;
+        if (!confirm(el.closest(".sug").querySelector("b").textContent + "\n\nCheyyala?")) return;
+        el.disabled = true; el.textContent = "Chestunnam…";
+        adsapi(act.a, act, "")
+          .then(function () { toast("Ayindi ✅"); loadAds(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "Avunu, cheyyi"; });
+        return;
+      }
+      if (el.dataset.act === "ads-no") {
+        el.disabled = true;
+        adsapi("dismiss", { id: el.dataset.s })
+          .then(function () { var c = el.closest(".sug"); if (c) c.remove(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ads-sync") {
+        el.disabled = true; el.textContent = "Sync…";
+        adsapi("sync", {})
+          .then(function () { toast("Meta nunchi malli teesukunnam"); loadAds(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "↻ Sync from Ads Manager"; });
         return;
       }
       if (el.dataset.act === "post-cancel") {

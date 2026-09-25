@@ -25,6 +25,7 @@ Object.assign(process.env, {
   ADMIN_PHONES: "9010427777", LEAD_NOTIFY_PHONES: "9989325777",
   WA_WEBHOOK_TOKEN: "hook", WA_CLOUD_TOKEN: "cloud", WA_PHONE_ID_ALLOWLIST: "111",
   WA_AGENT_ENABLED: "1", ANTHROPIC_API_KEY: "test", UPI_VPA: "dermaluxe@upi", PUBLIC_BASE: "http://localhost:4600",
+  META_ADS_TOKEN: "dev", META_AD_ACCOUNT_ID: "4527414787474363",
 });
 const h = require(path.join(ROOT, "tools", "tests", "harness.js"));
 delete require.cache[path.join(API, "staff.js")];          // the real one, with real sessions
@@ -59,6 +60,31 @@ global.fetch = async (url, opt) => {
       rejected_reason: i === 5 ? "INVALID_FORMAT" : "NONE",
     })).slice(0, process.env.DL_META_MISSING ? -3 : undefined);
     return { ok: true, status: 200, json: async () => ({ data }) };
+  }
+  // The ad account, answering the way a real one with eight campaigns would —
+  // one expensive, one dead, one cheap and starved — so the Ads screen and its
+  // suggestions can be looked at without a token or a rupee.
+  if (u.includes("graph.facebook.com") && /\/act_\d+\/insights/.test(u)) {
+    if (u.includes("date_preset=today")) return { ok: true, status: 200, json: async () => ({ data: [{ spend: "412", impressions: "9431" }] }) };
+    return { ok: true, status: 200, json: async () => ({ data: [{ spend: "11840", impressions: "486233", reach: "92104",
+      actions: [{ action_type: "onsite_conversion.messaging_conversation_started", value: "168" }] }] }) };
+  }
+  if (u.includes("graph.facebook.com") && /\/act_\d+\/campaigns/.test(u)) {
+    const ins = (spend, reach, conv) => ({ data: [{ spend: String(spend), reach: String(reach), impressions: String(reach * 4),
+      actions: [{ action_type: "onsite_conversion.messaging_conversation_started", value: String(conv) }] }] });
+    return { ok: true, status: 200, json: async () => ({ data: [
+      { id: "120111", name: "DermaLuxe Academy · Batch 1 · launch offer", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", daily_budget: "30000", insights: ins(5400, 41200, 96) },
+      { id: "120222", name: "Laser hair removal — Eluru 30km", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", daily_budget: "60000", insights: ins(4100, 29800, 8) },
+      { id: "120333", name: "Daily poster 2026-09-24 · review", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", lifetime_budget: "30000", insights: ins(2340, 21100, 0) },
+      { id: "120444", name: "Daily poster 2026-09-21 · hair-fall", status: "PAUSED", effective_status: "PAUSED", objective: "OUTCOME_ENGAGEMENT", lifetime_budget: "30000", insights: ins(300, 2400, 4) },
+    ] }) };
+  }
+  if (u.includes("graph.facebook.com") && u.includes("/me/adaccounts")) {
+    return { ok: true, status: 200, json: async () => ({ data: [{ account_id: "4527414787474363", name: "DermaLuxe by Medicare — Eluru", account_status: 1, currency: "INR" }] }) };
+  }
+  if (u.includes("graph.facebook.com") && /\/act_\d+$/.test(u.split("?")[0])) {
+    return { ok: true, status: 200, json: async () => ({ name: "DermaLuxe by Medicare — Eluru", currency: "INR", account_status: 1,
+      amount_spent: "1184000", spend_cap: "1500000" }) };
   }
   if (u.includes("graph.facebook.com") && /\d{6,}$/.test(u.split("?")[0])) {
     return { ok: true, status: 200, json: async () => ({ name: "DermaLuxe by Medicare", account_review_status: "APPROVED" }) };
