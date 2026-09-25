@@ -51,7 +51,11 @@ const student = (id, o) => h.run(["SET", `acad:st:${id}`, JSON.stringify(Object.
   process.env.ACADEMY_TRAINER_PHONES = "9876500601";
   is(pdf(await h.call(material, { t: `t9876500601.${sig("t9876500601")}`, book: "skin" })), true, "a trainer opens the manual");
   is((await h.call(material, { t: `t9876500602.${sig("t9876500602")}`, book: "skin" })).code, 403, "a correctly signed trainer link for somebody no longer a trainer does not");
-  const staffTok = { headers: { authorization: "Bearer " + Buffer.from(JSON.stringify({ exp: Date.now() + 3600000 })).toString("base64url") + "." + crypto.createHmac("sha256", process.env.STAFF_SECRET).update(Buffer.from(JSON.stringify({ exp: Date.now() + 3600000 })).toString("base64url")).digest("hex") } };
+  // Build the payload ONCE. Reading the clock twice — for the token and again
+  // for its signature — signs a different payload than it sends whenever the
+  // millisecond turns over between the two, and the test fails at random.
+  const staffPayload = Buffer.from(JSON.stringify({ exp: Date.now() + 3600000 })).toString("base64url");
+  const staffTok = { headers: { authorization: "Bearer " + staffPayload + "." + crypto.createHmac("sha256", process.env.STAFF_SECRET).update(staffPayload).digest("hex") } };
   h.as(["academy.material"]);
   is(pdf(await h.call(material, { track: "skin", day: "1" }, null, staffTok)), true, "staff with academy.material open the day's material");
   is((await h.call(material, { book: "skin" }, null, staffTok)).code, 403, "but only trainers (academy.certify) the manual");
