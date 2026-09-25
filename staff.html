@@ -375,7 +375,7 @@
     header.top img{height:34px}
     .who{color:var(--muted)}.who b{color:var(--g1);font-weight:700}
     .ptitle{font-size:1.05rem;font-weight:800;letter-spacing:-.015em;margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}
-    /* phone bottom bar + the "Inka" sheet as a grid of tiles */
+    /* phone bottom bar + the "More" sheet as a grid of tiles */
     .appbar button{color:#8e8e96;font-size:.68rem;font-weight:600}
     .appbar button.on{color:var(--primary)}
     .appbar button.on::before{background:var(--primary)}
@@ -649,17 +649,18 @@
         <button class="tab" data-t="patients"><span>Patients</span><i id="nPt">0</i></button>
         <button class="tab" data-t="money"><span>Money</span></button>
         <button class="tab" data-t="numbers"><span>Numbers</span></button>
+        <button class="tab" data-t="ads"><span>Ads</span></button>
         <button class="tab" data-t="students"><span>Students</span><i id="nStud">0</i></button>
         <button class="tab" data-t="today"><span>Today's post</span></button>
         <button class="tab" data-t="reviews"><span>Reviews</span></button>
         <button class="tab hide" data-t="office" id="officeTab"><span>AI Office</span></button>
         <button class="tab hide" data-t="stock" id="stockTab"><span>Stock</span></button>
-        <button class="tab" data-t="attend"><span>Haajaru</span></button>
+        <button class="tab" data-t="attend"><span>Attendance</span></button>
         <button class="tab hide" data-t="team" id="teamTab"><span>Control panel</span></button>
       </div>
   </aside>
     <header class="top"><div class="wrap">
-      <button class="btn btn--sm hide" id="navBack" title="Venakki" aria-label="Venakki">‹ Venakki</button>
+      <button class="btn btn--sm hide" id="navBack" title="Back" aria-label="Back">‹ Back</button>
       <a href="index.html" class="homelink" aria-label="DermaLuxe"><img class="bm-i" src="assets/app/icon-192.png" alt="" /></a>
       <h1 class="ptitle" id="pageTitle">Leads</h1>
       <div style="display:flex;align-items:center;gap:10px">
@@ -710,7 +711,7 @@
             <div id="ibList"><div class="sk"><div></div><div></div><div></div><div></div></div></div></div>
           <div class="ib-pane" id="ibPane">
             <div class="ib-empty" id="ibEmpty">Edaina chat open cheyandi.<br />Patients WhatsApp lo agent tho matladinavanni ikkada kanipistayi.</div>
-            <div class="ib-head hide" id="ibHead"><button class="btn btn--sm" id="ibBack" aria-label="Venakki">‹</button>
+            <div class="ib-head hide" id="ibHead"><button class="btn btn--sm" id="ibBack" aria-label="Back">‹</button>
               <div><b id="ibName"></b><div class="meta" id="ibSub"></div></div>
               <button class="btn btn--sm hide" id="ibPt" title="Patient file">📋</button>
               <button class="btn btn--sm hide" id="ibTake"></button></div>
@@ -788,8 +789,12 @@
         <div id="insBody"><div class="sk"><div></div><div></div><div></div></div></div>
         <div id="pnlBoard" style="margin-top:14px"></div>
         <div id="incBoard" style="margin-top:14px"></div>
-        <div id="adsBoard" style="margin-top:14px"></div>
         <div id="refBoard" style="margin-top:14px"></div>
+      </section>
+      <!-- The one screen where a tap spends money. It was the fourth board at
+           the bottom of Numbers, so nobody ever scrolled to it. -->
+      <section id="t-ads" class="hide">
+        <div id="adsBoard"></div>
       </section>
       <section id="t-academy" class="hide">
         <div class="countdown" id="acadCount"></div>
@@ -1020,7 +1025,7 @@
   <nav class="appbar" id="appbar" aria-label="Main"></nav>
   <div class="sheet" id="moreSheet" role="dialog" aria-modal="true" aria-label="More">
     <div class="sheet-bg" data-close="1"></div>
-    <div class="sheet-in"><div class="sheet-grip"></div><h2>Inka</h2><div id="moreRows"></div></div>
+    <div class="sheet-in"><div class="sheet-grip"></div><h2>More</h2><div id="moreRows"></div></div>
   </div>
   <div class="ptsheet" id="ptSheet" role="dialog" aria-modal="true" aria-label="Patient">
     <div class="ptsheet-bg" data-close="1"></div>
@@ -1236,7 +1241,7 @@
       if (allow("stock.view")) $("stockTab").classList.remove("hide");
       if (allow("inbox.view")) { $("inboxTab").classList.remove("hide"); if (ib && !ib.loadedOnce) { ib.loadedOnce = true; loadInbox(true); } }
       if (allow("leads.edit")) $("leadAdd").classList.remove("hide");
-      [["leads", "leads.view"], ["inbox", "inbox.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"], ["stock", "stock.view"]].forEach(function (p) {
+      [["leads", "leads.view"], ["inbox", "inbox.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["ads", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"], ["stock", "stock.view"]].forEach(function (p) {
         var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
       });
       var firstTab = document.querySelector(".tab:not(.hide)");
@@ -2243,8 +2248,7 @@
         // must not quietly take the other off the screen.
         .then(loadRefBoard)
         .then(function () { return loadPnl(); })
-        .then(function () { return loadIncBoard(); })
-        .then(loadAds);
+        .then(function () { return loadIncBoard(); });
     }
     // ---- the month's profit and loss --------------------------------------
     var pnlMonth = null;
@@ -3897,6 +3901,7 @@
       appts:'<svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3.5v3M16 3.5v3"/><circle cx="12" cy="14.5" r="1.4" fill="currentColor" stroke="none"/></svg>',
       students:'<svg viewBox="0 0 24 24"><path d="M12 4 3 8.5l9 4.5 9-4.5L12 4Z"/><path d="M6.5 10.8v4.4c0 1.6 2.5 2.9 5.5 2.9s5.5-1.3 5.5-2.9v-4.4M21 8.5v5"/></svg>',
       numbers:'<svg viewBox="0 0 24 24"><path d="M4 19.5V15M9.3 19.5V9M14.7 19.5v-6M20 19.5V5"/></svg>',
+      ads:'<svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L14 5.5v13L7.5 14.5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z"/><path d="M17.5 9.2a4 4 0 0 1 0 5.6M20 7a7.5 7.5 0 0 1 0 10"/></svg>',
       money:'<svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 12h.01M17.5 12h.01"/></svg>',
       patients:'<svg viewBox="0 0 24 24"><path d="M12 20.5s-7-4.3-7-9.3A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 3.2c0 5-7 9.3-7 9.3Z"/><path d="M12 11.2v3.4M10.3 12.9h3.4"/></svg>',
       academy:'<svg viewBox="0 0 24 24"><path d="M5 20V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"/><path d="M5 20h14M9 8h6M9 12h6M9 16h3"/></svg>',
@@ -3908,8 +3913,8 @@
       attend:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
       team:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'
     };
-    var NAV_LABEL = { inbox:"Inbox", leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", stock:"Stock", attend:"Haajaru", team:"Panel" };
-    var NAV_PREF = ["leads","inbox","appts","patients","money","numbers","attend","stock","academy","students","office","today","reviews","team"];
+    var NAV_LABEL = { inbox:"Inbox", leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", ads:"Ads", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", stock:"Stock", attend:"Attendance", team:"Panel" };
+    var NAV_PREF = ["leads","inbox","appts","patients","money","numbers","ads","attend","stock","academy","students","office","today","reviews","team"];
     var NAV_BADGE = { inbox:"nInbox", leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad", patients:"nPt" };
 
     function plug(n) { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n]) || null; }
@@ -3959,7 +3964,7 @@
           navIcon(t) + badge + "<span>" + esc(NAV_LABEL[t]) + "</span></button>";
       }).join("") + (rest.length
         ? '<button data-nav="__more"' + (rest.indexOf(cur) > -1 ? ' class="on"' : "") + ' aria-label="More">' +
-          '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg><span>Inka</span></button>'
+          '<svg viewBox="0 0 24 24"><circle cx="5.5" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.5" fill="currentColor" stroke="none"/><circle cx="18.5" cy="12" r="1.5" fill="currentColor" stroke="none"/></svg><span>More</span></button>'
         : "");
       $("moreRows").innerHTML = rest.map(function (t) {
         return '<button class="sheet-row" data-nav="' + t + '">' + navIcon(t) + "<span>" + esc(NAV_LABEL[t]) + "</span></button>";
@@ -4722,6 +4727,7 @@
       if (t === "inbox") loadInbox();
       if (t === "attend") loadAttend();
       if (t === "numbers") loadInsights();
+      if (t === "ads") loadAds();
       if (t === "appts") loadSchedule();
     });
     // Deep link from an app shortcut or a shared URL: /staff.html#office

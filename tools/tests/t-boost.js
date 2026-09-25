@@ -63,6 +63,9 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   is(as.lifetime_budget, 30000, "the budget goes to Meta in paise, as a LIFETIME budget — it cannot overspend");
   is(Math.round((new Date(as.end_time) - new Date(as.start_time)) / 86400000), 3, "and it ends by itself after three days");
   is([as.destination_type, as.optimization_goal, as.promoted_object.page_id], ["WHATSAPP", "CONVERSATIONS", "page1"], "it is a click-to-WhatsApp ad, optimised for conversations started");
+  // Left unsaid, Meta picks a strategy that needs a bid cap and then refuses
+  // the ad set for not having one — that cost 24 and 25 September their ad.
+  is(as.bid_strategy, "LOWEST_COST_WITHOUT_CAP", "bidding is named: spend the budget, get the most chats, no bid cap to supply");
   const geo = as.targeting.geo_locations.custom_locations[0];
   is([geo.latitude, geo.longitude, geo.radius, geo.distance_unit], [16.7107, 81.0952, 30, "kilometer"], "aimed at Eluru and 30 km around it");
   is([as.targeting.age_min, as.targeting.age_max, as.targeting.publisher_platforms], [20, 60, ["instagram", "facebook"]], "adults, on Instagram and Facebook");

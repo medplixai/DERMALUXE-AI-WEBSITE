@@ -140,6 +140,11 @@ async function create(cfg, post, c) {
       lifetime_budget: c.rupees * 100,                  // Meta counts paise
       start_time: new Date(start).toISOString(), end_time: new Date(end).toISOString(),
       billing_event: "IMPRESSIONS", optimization_goal: "CONVERSATIONS",
+      // Say which bidding this is, or Meta picks one that needs a bid cap and
+      // then refuses the ad set for not having one ("Bid amount or bid
+      // constraints required"). Lowest cost without a cap is what the Ads
+      // Manager calls Highest volume: spend the ₹300, get the most chats.
+      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
       destination_type: "WHATSAPP", promoted_object: { page_id: pageId() },
       targeting: targeting(c),
     });
