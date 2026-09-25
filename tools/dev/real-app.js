@@ -121,6 +121,17 @@ async function seed() {
   await say("9876503003", "Hello! Can I get more info on this?", "Priya", { referral: { source_type: "ad", source_id: "ad77", headline: "Hair fall? PRP therapy at DermaLuxe" } });
   await say("9876503004", "Doctor evaru andi? results vastaya?", "Kiran");
   await say("9876503005", "amma ki kuda, iddaram vastam Saturday", "Nagamani");
+  // An opener test partway through, so the Ads screen's comparison can be
+  // looked at without waiting a fortnight for real leads.
+  h.run(["SET", "ab:cfg", JSON.stringify({ on: true,
+    a: { label: "Paata opener", text: "Namaste 🙏 DermaLuxe nunchi — em problem tho ibbandi padutunnaru?" },
+    b: { label: "Kotha opener", text: "Namaste 🙏 Mee concern cheppandi — MD doctor tho modati matlaata free." },
+    by: "Owner", ts: Date.now() - 14 * 86400000 })]);
+  [["a", 516, 268, 50], ["b", 1825, 985, 228]].forEach(function (r) {
+    h.run(["SET", "ab:" + r[0] + ":leads", String(r[1])]);
+    h.run(["SET", "ab:" + r[0] + ":reply", String(r[2])]);
+    h.run(["SET", "ab:" + r[0] + ":booked", String(r[3])]);
+  });
   const staff = load("staff"), money = load("money"), pkg = load("package"), sch = load("schedule"), inbox = load("inbox"), stock = load("stock");
   const auth = { authorization: "Bearer " + token() };
   const post = (mod, a, body) => call(mod, { method: "POST", headers: auth, query: { a }, body: Object.assign({ a, cid: "seed-" + a + "-" + (++mid) + "-xxxx" }, body) });

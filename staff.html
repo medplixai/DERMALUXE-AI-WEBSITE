@@ -491,6 +491,9 @@
     .sugbox{margin-top:12px;border:1px solid rgba(214,158,46,.45);background:rgba(214,158,46,.07);border-radius:12px;padding:12px}
     .sugbox h3{margin:0 0 2px;font-size:1rem}
     .sug{border:1px solid var(--line);background:var(--card,#fff);border-radius:10px;padding:10px 12px;margin-top:8px}
+    .abgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+    .abside{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+    .abside.win{border-color:rgba(31,150,90,.5);background:rgba(31,150,90,.07)}
     .goalbar i{display:block;height:100%;border-radius:3px}
     .pnl-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
     .inc-rates th{font-weight:500;color:var(--muted);font-size:.76rem;padding:4px 6px;text-align:center}
@@ -912,6 +915,17 @@
             <div class="noteform" style="margin-top:10px"><input id="ruleText" maxlength="300" placeholder="Agent em cheyyali / cheyyakudadu?" /><button class="btn btn--gold btn--sm" id="ruleAdd">Add</button></div>
             <div class="err" id="ruleErr"></div>
             <div id="ruleList" style="margin-top:10px"></div></div>
+          <div class="box"><h2>Ad opener test <span class="te" style="font-size:.9rem;color:var(--g3)">· మొదటి మెసేజ్ పరీక్ష</span></h2>
+            <p>Ad nunchi vachchina prathi kotha manishi ki agent modati line. Rendu raayandi — sagam mandiki okati, sagam mandiki inkoti, <b style="color:var(--g2);font-weight:500">okey rojullo, okey ads meeda</b>. Evaru ekkuva mandi tirigi raastunnaro Ads screen lo kanipistundi.</p>
+            <div style="margin-top:10px;display:grid;gap:8px">
+              <label class="meta"><input type="checkbox" id="abOn"> Test nadipinchu</label>
+              <div class="noteform" style="flex-wrap:wrap"><input id="abALabel" maxlength="40" placeholder="Peru (ex. Paata opener)" style="min-width:150px"></div>
+              <textarea id="abAText" rows="2" maxlength="300" placeholder="A opener — agent modati line"></textarea>
+              <div class="noteform" style="flex-wrap:wrap"><input id="abBLabel" maxlength="40" placeholder="Peru (ex. Kotha opener)" style="min-width:150px"></div>
+              <textarea id="abBText" rows="2" maxlength="300" placeholder="B opener — agent modati line"></textarea>
+              <div><button class="btn btn--gold btn--sm" id="abSave" type="button">Save</button> <span class="meta" id="abInfo"></span></div>
+              <div class="err" id="abErr"></div>
+            </div></div>
           <div class="box"><h2>Price policy <span class="te" style="font-size:.9rem;color:var(--g3)">· ధరల నియమం</span></h2>
             <p>Patient "entha avutundi?" ani adigithe agent em cheppali — mee decision. Default: emi cheppadu (consultation lo doctor cheptaru).</p>
             <div style="margin-top:10px;display:grid;gap:8px">
@@ -2175,7 +2189,7 @@
             (j.tried && j.tried.length
               ? '<p class="meta" style="margin-top:6px;opacity:.8">Try chesinavi: ' + j.tried.map(function (t) { return esc(t.name) + " — " + esc(t.why); }).join(" · ") + "</p>"
               : "") +
-            oursBlock(j) + "</div>";
+            oursBlock(j) + "</div>" + openerBlock(j);
           return;
         }
         var A = j.account || {}, T = j.today || {}, J = j.joined || {};
@@ -2213,6 +2227,8 @@
             '<button class="btn btn--sm" data-act="ads-no" data-s="' + esc(x.id) + '">Vaddu</button>' +
             "</div></div>";
         }).join("");
+        var openerBox = openerBlock(j);
+
         var sugBox = sug
           ? '<div class="sugbox"><h3>💡 Ee roju ads suchanalu</h3>' +
             '<p class="meta" style="margin-bottom:8px">Prathi suchana ki kaaranam kinda undi. Meeru okay ante ne maarutundi.</p>' + sug + "</div>"
@@ -2250,8 +2266,30 @@
           '<div class="grid" style="margin-top:10px">' + cards + "</div>" +
           oursBlock(j) +
           (camps ? '<h3 style="margin-top:14px;font-size:1rem">Campaigns</h3>' + camps : '<p class="meta" style="margin-top:10px">Campaigns emi ledu.</p>') +
-          "</div>";
+          "</div>" + openerBox;
       }).catch(function () { host.innerHTML = ""; });
+    }
+
+    // Two openers, the same ads, the same day. reply ÷ leads is the opener's
+    // own doing — a booking is weeks of work that happened after it. It needs
+    // no ad account, so it shows even before Meta is connected.
+    function openerBlock(j) {
+      var O = j.opener || null;
+      if (!O || !(O.on || O.a.leads || O.b.leads)) return "";
+      function col(x, win) {
+        return '<div class="abside' + (win ? " win" : "") + '"><div class="meta">' + esc(x.label) + "</div>" +
+          '<div style="font-size:1.5rem;font-weight:600;margin:2px 0">' + x.rate + "%</div>" +
+          '<div class="meta">' + x.reply + " / " + x.leads + " leads · " + x.booked + " booked</div>" +
+          (x.text ? '<div class="meta" style="margin-top:6px;opacity:.8">\u201C' + esc(x.text) + "\u201D</div>" : "") + "</div>";
+      }
+      return '<div class="box" style="margin-top:12px"><div class="adshead"><h3 style="margin:0">\u270F\uFE0F Ad opener test <span class="meta" style="font-weight:400">\u2014 rendo message raasinavaallu</span></h3>' +
+        (O.enough && O.lead ? '<span class="badge">+' + O.by_pts + " points</span>" : "") + "</div>" +
+        '<div class="abgrid">' + col(O.a, O.enough && O.lead === "a") + col(O.b, O.enough && O.lead === "b") + "</div>" +
+        '<p class="meta" style="margin-top:8px">' +
+        (!O.on ? "Test off undi \u2014 Control panel lo rendu openers raasi on cheyandi."
+          : !O.enough ? "Inka cheppalemu \u2014 okko openeriki kaneesam " + O.need + " leads kavali."
+          : O.lead ? '<b style="color:var(--ok);font-weight:500">' + esc(O[O.lead].label) + "</b> munduku undi \u2014 " + O.by_pts + " points ekkuva. Deenne rendu chotla pettandi."
+          : "Rendu okkate la unnayi \u2014 veru opener try cheyandi.") + "</p></div>";
     }
 
     // The join, spelled out — Meta counts conversations it started, we count
@@ -3674,6 +3712,25 @@
         .then(function (j) { panel.goals = j.goals; panel.goalState = j.goalState; renderGoals(); toast("Goal set ayindi ✅"); })
         .catch(function (x) { $("glErr").textContent = x.message; }).then(function () { btn.disabled = false; });
     };
+    // The two opening lines themselves. The results live on the Ads screen.
+    function renderOpener() {
+      var o = (panel && panel.opener) || null;
+      if (!$("abOn")) return;
+      $("abOn").checked = !!(o && o.on);
+      $("abALabel").value = o ? o.a.label : "";
+      $("abAText").value = o ? o.a.text : "";
+      $("abBLabel").value = o ? o.b.label : "";
+      $("abBText").value = o ? o.b.text : "";
+      $("abInfo").textContent = o && o.ts ? "Last set: " + esc(o.by || "") + " · " + ago(o.ts) : "";
+    }
+    if ($("abSave")) $("abSave").onclick = function () {
+      var btn = this; btn.disabled = true; $("abErr").textContent = "";
+      api("opener-set", { on: $("abOn").checked,
+        a: { label: $("abALabel").value, text: $("abAText").value },
+        b: { label: $("abBLabel").value, text: $("abBText").value } })
+        .then(function (j) { panel.opener = j.opener; renderOpener(); toast("Save ayindi ✅"); })
+        .catch(function (x) { $("abErr").textContent = x.message; }).then(function () { btn.disabled = false; });
+    };
     // What the agent may say about money.
     function renderPrices() {
       var p = (panel && panel.prices) || { mode: "none", consult: 0, bands: [] };
@@ -3803,7 +3860,7 @@
     function renderPanel() {
       if (!panel) return;
       paintHealth(panel.health);
-      renderGoals(); renderRules(); renderCallTeam(); renderPrices(); renderCycles(); renderBoost(); loadCampaigns();
+      renderGoals(); renderRules(); renderCallTeam(); renderOpener(); renderPrices(); renderCycles(); renderBoost(); loadCampaigns();
       var R = panel.roles || {}, amOwner = panel.me && panel.me.role === "owner";
 
       // --- logins

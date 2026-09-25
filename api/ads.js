@@ -273,11 +273,14 @@ module.exports = async (req, res) => {
 
     const since = Date.now() - days * 86400000;
     const ours = await ourSide(cfg, since);
+    // Which of the two openers people actually answer. It needs no ad account
+    // — the agent's own numbers — so it shows even before Meta is connected.
+    const opener = await require("./_abtest.js").stats(cfg).catch(() => null);
 
     if (!conn.ok) {
       return json(res, 200, {
         ok: true, connected: false, why: conn.why, tried: conn.tried || [],
-        days, ours, canChange, target,
+        days, ours, opener, canChange, target,
         // Said in the order it has to be done.
         needs: conn.why === "no-token"
           ? ["META_ADS_TOKEN", "META_AD_ACCOUNT_ID"]
@@ -366,7 +369,7 @@ module.exports = async (req, res) => {
       tokenName: conn.tokenName, accountId: conn.accountId,
       adsManager: `https://www.facebook.com/adsmanager/manage/campaigns?act=${conn.accountId}`,
       account, today, campaigns, suggest, error: err || undefined,
-      ours,
+      ours, opener,
       // The join, stated carefully: Meta counts conversations it started,
       // we count people who became patients. Different things, both real.
       joined: account ? {

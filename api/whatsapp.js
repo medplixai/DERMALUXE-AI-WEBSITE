@@ -1306,6 +1306,14 @@ module.exports = async (req, res) => {
     : "[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish and ask what concern they have] ";
 
   const ownerRules = cfg ? await rules.block(cfg).catch(() => "") : "";
+  // Two openers, running side by side on the same day's ads. The first line
+  // is the one thing every later number hangs off, and until now it changed
+  // with no way to tell whether it had helped.
+  const ab = require("./_abtest.js");
+  let abLine = "";
+  if (cfg && firstTurn) { try { abLine = await ab.opener(cfg, digits); } catch (e) {} }
+  else if (cfg) { try { await ab.note(cfg, digits, "reply"); } catch (e) {} }
+  const abRule = abLine ? `\n\nOPENER: start this reply with exactly this line, then carry on as usual:\n${abLine}` : "";
   // Would they rather listen? A voice note in, a request in words, or a
   // preference they set earlier (a month) — then the reply is spoken too.
   let speak = !!audioId;
@@ -1328,7 +1336,7 @@ module.exports = async (req, res) => {
       const media = await fetchMedia(imageId);
       if (media && media.tooBig) return respond("Photo chala pedda undi 🙏 — normal quality photo malli pampandi.\n· ఫోటో చాలా పెద్దగా ఉంది — మామూలు క్వాలిటీలో పంపండి.");
       if (!media) return respond("Photo download avvaledu 🙏 — konchem sepu agi malli pampandi, leda text type cheyandi.\n· ఫోటో డౌన్‌లోడ్ కాలేదు — మళ్ళీ ప్రయత్నించండి.");
-      out = await askClaudeVision(hist, media, text, profileName, extraCtx, ownerRules);
+      out = await askClaudeVision(hist, media, text, profileName, extraCtx, ownerRules + abRule);
       text = "[📷 photo]" + (text ? " " + text : "");
     } else {
       if (audioId) {
@@ -1342,7 +1350,7 @@ module.exports = async (req, res) => {
         }
         text = String(heard).slice(0, 1000).trim();
       }
-      out = await askClaude(hist, text, profileName, speak ? extraCtx + VOICE_CTX : extraCtx, ownerRules, fast ? { model: FAST_MODEL() } : undefined);
+      out = await askClaude(hist, text, profileName, speak ? extraCtx + VOICE_CTX : extraCtx, ownerRules + abRule, fast ? { model: FAST_MODEL() } : undefined);
       if (speak) {
         // Pull the TTS script line out of the visible reply.
         const vm = String(out.reply || "").match(/\n?\s*VOICE_SCRIPT\s*:\s*([\s\S]+?)\s*$/);
@@ -1389,6 +1397,7 @@ module.exports = async (req, res) => {
     capi.send("Schedule", { phone: digits, eventId, custom: { content_name: String((out.lead && out.lead.concern) || "").slice(0, 60), source: adLead ? "ad" : "organic" } }).catch(() => {});
     await guard.kvCommand(cfg, ["LPUSH", "ttb:log", JSON.stringify({ ts: Date.now(), ph: digits.slice(-4), turns: hist.length + 1, ad: !!adLead, known: !!known, at: justBooked })]).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", "ttb:log", "0", "999"]).catch(() => {});
+    try { await require("./_abtest.js").note(cfg, digits, "booked"); } catch (e) {}
   }
   // Cancellation works even when the lead JSON came without a name.
   if (out.lead && out.lead.cancel === true) {
