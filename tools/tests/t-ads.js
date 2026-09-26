@@ -221,11 +221,15 @@ const A = (q, b) => h.call(ads, q, b);
   h.run(["DEL", "post:log"]); h.run(["DEL", "ads:igmedia"]); h.run(["DEL", "ads:promo"]);
   h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig1", imgId: "abc123", kind: "post", caption: "Hydrafacial roju", at: Date.now() - 3600000 })]);
   h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig2", imgId: "def456", kind: "story", caption: "A story", at: Date.now() - 7200000 })]);
+  // Our own copy of a poster is thrown out of KV after three days; offering
+  // an older one hands Meta a link that answers 404, which is exactly how the
+  // first real build failed.
+  h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig3", imgId: "old789", kind: "post", caption: "Last week", at: Date.now() - 5 * 86400000 })]);
   const pk = await A({ a: "posters" });
   is(pk.code, 200, "the picker has something to show");
   const own = (pk.body.rows || []).filter((r) => r.src === "poster");
-  is(own.length, 1, "our own published posters are in it — but not the stories, which are gone in a day");
-  is(own[0].img, "https://www.dermaluxe.ai/api/media?id=abc123", "each one as a link Meta can actually fetch");
+  is(own.map((r) => r.img), ["https://www.dermaluxe.ai/api/media?id=abc123"],
+    "a recent poster of ours, as a link Meta can fetch — no stories, and nothing old enough to have been thrown away");
 
   console.log("\n  — the screen's own wiring —");
   h.run(["DEL", "ads:no"]);

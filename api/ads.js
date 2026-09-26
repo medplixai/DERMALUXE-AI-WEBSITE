@@ -599,15 +599,22 @@ module.exports = async (req, res) => {
   if (a === "posters") {
     const ig = (await igMedia(cfg).catch(() => [])).slice(0, 24)
       .map((m) => ({ id: m.id, src: "instagram", img: m.img, caption: m.caption, link: m.link, ts: m.ts, reach: m.reach }));
+    // Our own posters live in KV and are thrown away after a few days, so an
+    // older one is a picture Meta will fetch and get a 404 from. Anything
+    // beyond the longest of those lifetimes is not offered.
+    const KEPT = 3 * 86400000;
     const lg = await guard.kvCommand(cfg, ["LRANGE", "post:log", "0", "23"]).catch(() => ({}));
-    const own = (lg.result || []).map((x) => parse(x, null)).filter((x) => x && x.imgId && x.kind !== "story")
+    const own = (lg.result || []).map((x) => parse(x, null))
+      .filter((x) => x && x.imgId && x.kind !== "story" && Date.now() - (x.at || 0) < KEPT)
       .map((x) => ({ id: "own:" + x.imgId, src: "poster", img: `https://www.dermaluxe.ai/api/media?id=${x.imgId}`,
         caption: String(x.caption || "").replace(/\s+/g, " ").slice(0, 60), link: x.link || "", ts: x.at || 0, reach: 0 }));
-    // Same picture from both sides: our own poster and the Instagram post of
-    // it. One row each, newest first.
+    // The same picture from both sides: our own copy and the Instagram post of
+    // it. Instagram's is the one to keep — it is there for ever, and ours is
+    // gone in three days.
     const seen = new Set();
-    const rows = ig.concat(own).sort((x, y) => y.ts - x.ts)
+    const rows = ig.concat(own)
       .filter((r) => { const k = (r.caption || r.id).slice(0, 30); if (seen.has(k)) return false; seen.add(k); return true; })
+      .sort((x, y) => y.ts - x.ts)
       .slice(0, 24);
     return json(res, 200, { ok: true, rows });
   }
