@@ -42,7 +42,7 @@ global.fetch = async (url, opt) => {
       interests: ["Skin care", "Hair care", "Trichology"], rupees: 1500, days: 5,
       headline: "Juttu raalutunda?",
       body: "Juttu raalatam chaala mandi ki vastundi — kaani kaaranam okkokkariki okkoti.\nMana MD dermatologists mee scalp chusi, mee ki e treatment saripotundo cheptaru.\nPRP, GFC, laser — anni okey chota.\nMee concern ikkade WhatsApp lo cheppandi 😊" };
-    return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(plan).slice(1) }] }) };
+    return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(plan) }] }) };
   }
   if (u.includes("api.anthropic.com")) {
     const body = JSON.parse(opt.body);

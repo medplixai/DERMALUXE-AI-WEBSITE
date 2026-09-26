@@ -38,8 +38,10 @@ let reply = {
   interests: ["Skin care", "Beauty", "Trichological hair restoration"],
   rupees: 1500, days: 5, headline: "Juttu raalutunda?", body: "Line one\nLine two\nMessage cheyandi",
 };
+// Wrapped in a sentence on purpose: a model that will not take a prefilled
+// turn is a model that will sometimes say "Here is the plan:" first.
 global.fetch = async () => ({ ok: true, status: 200,
-  json: async () => ({ content: [{ type: "text", text: JSON.stringify(reply).slice(1) }] }) });
+  json: async () => ({ content: [{ type: "text", text: "Here is the plan:\n" + JSON.stringify(reply) }] }) });
 
 const ap = h.load("_adplan");
 const cfg = { kind: "pg" };

@@ -110,13 +110,17 @@ Plan ONE campaign to run next.`;
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
+        // No assistant prefill: whichever model AI_MODEL names has to work,
+        // and some of them refuse a prefilled turn outright ("This model does
+        // not support assistant message prefill"). extractJson copes with a
+        // model that wraps its JSON in a sentence, which is the other risk.
         model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 900, system: SYS,
-        messages: [{ role: "user", content: ask }, { role: "assistant", content: "{" }],
+        messages: [{ role: "user", content: ask }],
       }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(`HTTP ${r.status} ${String((d.error && d.error.message) || "").slice(0, 100)}`);
-    const text = "{" + (((d.content || []).find((c) => c.type === "text") || {}).text || "");
+    const text = ((d.content || []).find((c) => c.type === "text") || {}).text || "";
     j = require("./_review.js").extractJson(text);
   } catch (e) {
     console.error("adplan:", e && e.message);
