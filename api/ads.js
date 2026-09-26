@@ -413,6 +413,21 @@ async function promotable(cfg) {
   return rows;
 }
 
+// The link the picker was drawn with may be stale by the time anybody presses
+// the button. For an Instagram post, ask Instagram again.
+async function freshImage(cfg, id, current) {
+  if (!id || String(id).startsWith("own:") || !/cdninstagram|fbcdn/.test(String(current || ""))) return "";
+  const tok = await igToken(cfg);
+  if (!tok) return "";
+  const u = new URL(`${IG_GRAPH}/${encodeURIComponent(String(id))}`);
+  u.searchParams.set("fields", "media_url,thumbnail_url,media_type");
+  u.searchParams.set("access_token", tok);
+  const r = await fetch(u.toString());
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok) return "";
+  return (d.media_type === "VIDEO" ? d.thumbnail_url : d.media_url) || "";
+}
+
 // ---- the day's list, one line per campaign --------------------------------
 // The suggestions box argues a case; this is the glance. Every campaign that
 // has spent enough to have an opinion about, in one line each, green or red,
@@ -668,7 +683,13 @@ module.exports = async (req, res) => {
   // Build the planned campaign on Meta — PAUSED. Starting it is a separate,
   // deliberate act on Meta's own screen, so this press cannot spend.
   if (a === "build") {
-    const out = await require("./_adplan.js").create(cfg, b.plan || {}, me.name);
+    const p = Object.assign({}, b.plan || {});
+    // An Instagram CDN link is signed and does not stay fetchable — the one
+    // the picker was drawn with can be half an hour old by the time somebody
+    // presses Build, and Meta gets a 403. Ask Instagram for the current one.
+    const fresh = await freshImage(cfg, p.imageId, p.image).catch(() => "");
+    if (fresh) p.image = fresh;
+    const out = await require("./_adplan.js").create(cfg, p, me.name);
     if (!out.ok) return json(res, 502, { error: out.error });
     return json(res, 200, out);
   }
@@ -795,5 +816,6 @@ module.exports.todo = todo;
 module.exports.connect = connect;
 module.exports.graph = graph;
 module.exports.tokenOf = tokenOf;
+module.exports.freshImage = freshImage;
 module.exports.verdict = verdict;
 module.exports.ourSide = ourSide;

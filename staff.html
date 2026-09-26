@@ -2425,7 +2425,7 @@
       if (!POSTERS || !POSTERS.length) { host.innerHTML = '<span class="meta">Instagram posts dorakaledu — kinda link pettandi.</span>'; return; }
       var cur = ($("plImg") || {}).value || "";
       host.innerHTML = POSTERS.map(function (m) {
-        return '<button class="postpick' + (m.img === cur ? " on" : "") + '" data-act="ads-poster" data-img="' + esc(m.img) + '" title="' + esc(m.caption) + '">' +
+        return '<button class="postpick' + (m.img === cur ? " on" : "") + '" data-act="ads-poster" data-img="' + esc(m.img) + '" data-pid="' + esc(m.id) + '" title="' + esc(m.caption) + '">' +
           '<img src="' + esc(m.img) + '" alt="" loading="lazy" onerror="this.closest(\'.postpick\').style.display=\'none\'">' +
           (m.reach ? '<i>👁 ' + (m.reach > 999 ? Math.round(m.reach / 1000) + "k" : m.reach) + "</i>" : "") + "</button>";
       }).join("");
@@ -5653,6 +5653,9 @@
       }
       if (el.dataset.act === "ads-poster") {
         if ($("plImg")) $("plImg").value = el.dataset.img;
+        // The id travels too: an Instagram link goes stale, and the server
+        // asks Instagram for a fresh one at the moment of building.
+        if (PLAN) PLAN.imageId = el.dataset.pid || "";
         paintPosters();
         return;
       }

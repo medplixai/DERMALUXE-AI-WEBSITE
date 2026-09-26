@@ -231,6 +231,25 @@ const A = (q, b) => h.call(ads, q, b);
   is(own.map((r) => r.img), ["https://www.dermaluxe.ai/api/media?id=abc123"],
     "a recent poster of ours, as a link Meta can fetch — no stories, and nothing old enough to have been thrown away");
 
+  // An Instagram link is signed and goes stale; by the time somebody presses
+  // Build, Meta gets a 403 from it. The one thing that must happen is asking
+  // Instagram again for the current one.
+  console.log("\n  — a link that has gone stale —");
+  let asked = null;
+  const realFetch = global.fetch;
+  global.fetch = async (u) => {
+    if (String(u).includes("graph.instagram.com")) { asked = String(u); return { ok: true, json: async () => ({ media_type: "IMAGE", media_url: "https://scontent.cdninstagram.com/FRESH" }) }; }
+    return realFetch(u);
+  };
+  process.env.IG_LOGIN_TOKEN = "igtok";
+  is(await ads.freshImage({ kind: "pg" }, "ig123", "https://scontent.cdninstagram.com/STALE"), "https://scontent.cdninstagram.com/FRESH",
+    "an Instagram picture is looked up again at the moment of building");
+  is(/ig123/.test(asked || ""), true, "by its own id");
+  is(await ads.freshImage({ kind: "pg" }, "own:abc", "https://www.dermaluxe.ai/api/media?id=abc"), "",
+    "our own posters are served by us and need no refreshing");
+  is(await ads.freshImage({ kind: "pg" }, "", "https://scontent.cdninstagram.com/x"), "", "and a picture with no id is left alone");
+  global.fetch = realFetch;
+
   console.log("\n  — the screen's own wiring —");
   h.run(["DEL", "ads:no"]);
   const dis = await A({ a: "dismiss" }, { a: "dismiss", id: "stop:111" });
