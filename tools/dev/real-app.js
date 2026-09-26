@@ -155,6 +155,13 @@ async function seed() {
     h.run(["SET", "ab:" + r[0] + ":reply", String(r[2])]);
     h.run(["SET", "ab:" + r[0] + ":booked", String(r[3])]);
   });
+  // Two alerts already on the owner's phone — one of which WhatsApp refused,
+  // because that is the row the feed exists to be honest about.
+  [["Instagram post: Gachyanthram leka.... 😅", "₹569 kharchu, okka WhatsApp chat ledu. Aapandi.", false, 3],
+   ["Laser hair removal — Eluru 30km", "okko chat ₹513 — lakshyam ₹300. Chala kharidu, chudandi.", true, 26]
+  ].forEach(function (a) {
+    h.run(["RPUSH", "ads:alerts", JSON.stringify({ ts: Date.now() - a[3] * 3600000, kind: "nochat", id: "c", name: a[0], text: a[1], sent: a[2] })]);
+  });
   const staff = load("staff"), money = load("money"), pkg = load("package"), sch = load("schedule"), inbox = load("inbox"), stock = load("stock");
   const auth = { authorization: "Bearer " + token() };
   const post = (mod, a, body) => call(mod, { method: "POST", headers: auth, query: { a }, body: Object.assign({ a, cid: "seed-" + a + "-" + (++mid) + "-xxxx" }, body) });

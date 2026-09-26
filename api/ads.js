@@ -446,11 +446,12 @@ module.exports = async (req, res) => {
     // — the agent's own numbers — so it shows even before Meta is connected.
     const opener = await require("./_abtest.js").stats(cfg).catch(() => null);
     const promote = await promotable(cfg).catch(() => []);
+    const alerts = await require("./_adalert.js").recent(cfg, 8).catch(() => []);
 
     if (!conn.ok) {
       return json(res, 200, {
         ok: true, connected: false, why: conn.why, tried: conn.tried || [],
-        days, ours, opener, canChange, target,
+        days, ours, opener, alerts: [], canChange, target,
         // Said in the order it has to be done.
         needs: conn.why === "no-token"
           ? ["META_ADS_TOKEN", "META_AD_ACCOUNT_ID"]
@@ -554,7 +555,8 @@ module.exports = async (req, res) => {
       tokenName: conn.tokenName, accountId: conn.accountId,
       adsManager: `https://www.facebook.com/adsmanager/manage/campaigns?act=${conn.accountId}`,
       account, today, campaigns, suggest, error: err || undefined,
-      ours, opener, promote, todo: todo(account, campaigns, target),
+      ours, opener, promote, alerts, alertEvery: require("./_adalert.js").EVERY / 60000,
+      todo: todo(account, campaigns, target),
       // The join, stated carefully: Meta counts conversations it started,
       // we count people who became patients. Different things, both real.
       joined: account ? {
@@ -712,5 +714,10 @@ async function spend(cfg, days) {
 module.exports.spend = spend;
 module.exports.suggestions = suggestions;
 module.exports.todo = todo;
+// The alert job reads the same account through the same door — one place
+// that knows which token works and which account it is.
+module.exports.connect = connect;
+module.exports.graph = graph;
+module.exports.tokenOf = tokenOf;
 module.exports.verdict = verdict;
 module.exports.ourSide = ourSide;

@@ -503,6 +503,9 @@
     .adcell{border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0;text-align:center}
     .adcell b{display:block;margin-top:1px;font-size:.95rem}
     .todorow{border-radius:8px;padding:8px 10px;margin-top:6px;font-size:.9rem}
+    .alertbox{margin-top:10px;border:1px solid rgba(214,158,46,.45);background:rgba(214,158,46,.07);border-radius:12px;padding:10px 12px}
+    .alertrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:6px 0;font-size:.9rem;border-bottom:1px solid var(--line)}
+    .alertrow:last-of-type{border-bottom:0}
     .pbud.on{border-color:var(--g2);color:var(--g2)}
     .adbud{text-align:right}
     .goalbar i{display:block;height:100%;border-radius:3px}
@@ -2338,12 +2341,26 @@
           (j.adsManager ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(j.adsManager) + '">Open Ads Manager ↗</a>' : "") + "</div></div>" +
           (j.error ? '<p class="meta" style="color:var(--hot)">Meta nunchi: ' + esc(j.error) + "</p>" : "") +
           headline(j) +
+          alertBox(j) +
           sugBox +
           '<div class="grid" style="margin-top:10px">' + cards + "</div>" +
           oursBlock(j) +
           (camps || '<p class="meta" style="margin-top:10px">Campaigns emi ledu.</p>') +
           "</div>" + promoBox + todoBox + openerBox;
       }).catch(function () { host.innerHTML = ""; });
+    }
+
+    // What was said on the owner's phone, and whether it arrived. A feed that
+    // showed "sent" for messages nobody got would be worse than no feed.
+    function alertBox(j) {
+      var A = j.alerts || [];
+      if (!A.length) return "";
+      return '<div class="alertbox">' + A.map(function (a) {
+        return '<div class="alertrow"><div style="min-width:0">🔔 <b style="font-weight:500">' + esc(a.name) + "</b> — " + esc(a.text) + "</div>" +
+          '<div class="meta" style="flex:none;text-align:right">' + fmtAt(a.ts) +
+          (a.sent ? "" : ' · <span style="color:var(--hot)">WhatsApp velladu</span>') + "</div></div>";
+      }).join("") +
+        '<p class="meta" style="margin-top:8px">Prathi ' + (j.alertEvery || 15) + ' nimishalaki okasari chustundi — okka campaign ki, okka samasya meeda, <b>vaaraniki okkasaare</b>. "Velladu" ante mee number nunchi 24 gantallo AI number ki message velledu; okka "hi" pampithe taruvata alerts vastayi. <b>Ee campaign ni idi marchadu</b> — cheppadam matrame.</p></div>';
     }
 
     // The whole screen in one sentence, so somebody who reads nothing else

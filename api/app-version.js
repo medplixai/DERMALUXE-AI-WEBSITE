@@ -4,13 +4,13 @@
 // Public on purpose: it carries a version number and a download link, nothing
 // else, and the app has to reach it before anyone has logged in.
 const LATEST = {
-  version: "1.36.0",
-  versionCode: 46,
+  version: "1.37.0",
+  versionCode: 47,
   // Below this, the app is too old to trust — it nags until they update.
   minVersionCode: 6,
   url: "https://www.dermaluxe.ai/assets/app/DermaLuxe-Staff.apk",
   page: "https://www.dermaluxe.ai/staff-app.html",
-  notes: "Ads screen motham kotha ga — campaign cards (photo, kharchu, leads to book to vachcharu, budget/pause card meedane), Nadustunnavi/Aapinavi, ee roju cheyyalsinavi list, inka uchitanga ne baaga vellina posts ni 200/500/1000 tho promote cheyyadam (PAUSED ga — dabbu podu).",
+  notes: "Ads alert feed — oka campaign dabbu tinesi okka chat kuda teekapothe, WhatsApp lo cheptundi (vaaraniki okkasaare) inka Ads screen lo kanipistundi. Message velladha ledha anedi kuda nijam ga chupistundi. Campaign ni idi maarchadu — cheppadam matrame.",
 };
 
 module.exports = async (req, res) => {

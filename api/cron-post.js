@@ -126,6 +126,12 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: appt reminders", e && e.message); }
 
+  // ---- money going wrong, said on the owner's phone -----------------------
+  // Nobody opens the Ads screen on the Tuesday a campaign starts eating ₹700
+  // for nothing. This looks, and tells; it changes nothing by itself.
+  let adAlerts = null;
+  try { adAlerts = await require("./_adalert.js").run(cfg); } catch (e) { console.error("cron: ad alerts", e && e.message); }
+
   // ---- a patient waiting on a colleague who has not answered --------------
   let rescued = null;
   try { rescued = await require("./_rescue.js").run(cfg, 3); } catch (e) { console.error("cron: rescue", e && e.message); }
@@ -168,5 +174,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: broadcast drain", e && e.message); }
 
-  return res.status(200).json({ ok: true, published, kept, dropped, boosted, reminded, lateAsked, bsent, graded, rescued });
+  return res.status(200).json({ ok: true, published, kept, dropped, boosted, reminded, lateAsked, bsent, graded, rescued, adAlerts });
 };
