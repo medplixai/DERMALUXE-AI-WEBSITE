@@ -2237,7 +2237,7 @@
         // ---- what to do about it ------------------------------------------
         // The point of the screen. Each one carries the number it was worked
         // out from, so the owner is agreeing with arithmetic, not a hunch.
-        var ICON = { stop: "🛑", raise: "🚀", good: "✅", follow: "📞", track: "🔍", cap: "⚠️" };
+        var ICON = { stop: "🛑", raise: "🚀", good: "✅", follow: "📞", track: "🔍", cap: "⚠️", tidy: "🧹" };
         var sug = (j.suggest || []).map(function (x) {
           return '<div class="sug"><b>' + (ICON[x.kind] || "💡") + " " + esc(x.title) + "</b>" +
             '<div class="meta" style="margin-top:3px">' + esc(x.why) + "</div>" +
@@ -5534,10 +5534,13 @@
       if (el.dataset.act === "ads-do") {
         var act = null; try { act = JSON.parse(el.dataset.do); } catch (x) {}
         if (!act) return;
-        if (!confirm(el.closest(".sug").querySelector("b").textContent + "\n\nCheyyala?")) return;
+        var ask = act.a === "cleanup"
+          ? "Khaali campaigns anni teeseyyala?\n\nKharchu ayinavi, nadustunnavi, andulo ads unnavi — evvi muttamu. Ivi poyaka tirigi raavu."
+          : el.closest(".sug").querySelector("b").textContent + "\n\nCheyyala?";
+        if (!confirm(ask)) return;
         el.disabled = true; el.textContent = "Chestunnam…";
         adsapi(act.a, act, "")
-          .then(function () { toast("Ayindi ✅"); loadAds(); })
+          .then(function (jj) { toast(jj && jj.gone !== undefined ? jj.gone + " teesesam ✅" : "Ayindi ✅"); loadAds(); })
           .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "Avunu, cheyyi"; });
         return;
       }

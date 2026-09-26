@@ -178,7 +178,7 @@ const A = (q, b) => h.call(ads, q, b);
 
   const orph = sg([{ id: "1", name: "C", running: true, spend: 1000, results: 5, costEach: 200, daily: 0, patients: { leads: 2, came: 0 } }],
     { spend: 1000, capLeft: 9000 }, { leads: 8, booked: 1, byAd: { ad_gone: { leads: 6 }, ad_here: { leads: 2 } } });
-  const orphan = orph.find((x) => x.id === "orphan:ads");
+  const orphan = orph.find((x) => /^orphan:ads:/.test(x.id));
   is(!!orphan && /6 leads/.test(orphan.title), true, "leads credited to an ad that is no longer listed are named, not silently dropped");
 
   console.log("\n  — ranked by patients once we have them —");
@@ -239,6 +239,26 @@ const A = (q, b) => h.call(ads, q, b);
   // An Instagram link is signed and goes stale; by the time somebody presses
   // Build, Meta gets a 403 from it. The one thing that must happen is asking
   // Instagram again for the current one.
+  // "Vaddu" answers the situation in front of the owner. Eight leads with no
+  // booking, dismissed; twenty-four is a different fact and has to be allowed
+  // to ask again — but not at nine.
+  console.log("\n  — saying no, and when it wears off —");
+  const follow8 = sg([], { spend: 1000, capLeft: 9000 }, { leads: 8, booked: 0 }).find((x) => x.kind === "follow");
+  const said = [follow8.id];
+  is(ads.suggestions({ spend: 1000, capLeft: 9000 }, [], 300, 30, said, { leads: 9, booked: 0 }).some((x) => x.kind === "follow"), false,
+    "nine leads is the same situation, and it stays quiet");
+  is(ads.suggestions({ spend: 1000, capLeft: 9000 }, [], 300, 30, said, { leads: 24, booked: 0 }).some((x) => x.kind === "follow"), true,
+    "three times as many is not, and it asks again");
+
+  console.log("\n  — the shells a run of failures leaves —");
+  const shell = (i) => ({ id: "s" + i, name: "Half-built " + i, running: false, spend: 0, results: 0, costEach: 0, patients: { leads: 0 } });
+  is(sg([shell(1), shell(2)]).some((x) => x.kind === "tidy"), false, "two is not a mess");
+  const tidy = sg([shell(1), shell(2), shell(3), shell(4)]).find((x) => x.kind === "tidy");
+  is([!!tidy, tidy.action.a], [true, "cleanup"], "four is, and it offers to clear them in one tap");
+  is(/4 khaali campaigns/.test(tidy.title), true, "counting them: " + tidy.title);
+  is(sg([shell(1), shell(2), Object.assign(shell(3), { spend: 900 })]).some((x) => x.kind === "tidy"), false,
+    "and one that cost money is not a shell, so there are only two left — no offer");
+
   console.log("\n  — a link that has gone stale —");
   let asked = null;
   const realFetch = global.fetch;

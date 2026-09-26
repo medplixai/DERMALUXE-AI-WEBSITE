@@ -184,6 +184,9 @@ function verdict(spend, results, costEach, target) {
 // noise, and a suggestion built on noise teaches people to ignore the box.
 const FLOOR = 200;                       // rupees spent before a verdict is worth making
 const perMonth = (spend, days) => Math.round((spend / Math.max(1, days)) * 30);
+// Which doubling a number is in. Saying "vaddu" to a thing at 8 should not
+// silence it at 24 — but it should not ask again at 9 either.
+const bucket = (n) => Math.floor(Math.log2(Math.max(1, Number(n) || 1)));
 
 function suggestions(account, campaigns, target, days, dismissed, ours) {
   const out = [];
@@ -197,7 +200,11 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
   // problem, and no amount of budget tuning fixes it.
   if (account && account.spend >= FLOOR && (o.leads || 0) >= 3 && !(o.booked || 0)) {
     out.push({
-      id: "follow:leads", kind: "follow",
+      // "Vaddu" is about the situation in front of the owner, not the subject
+      // for ever. Eight leads with no booking was dismissed; twenty-four is a
+      // different fact and has to be allowed to ask again. The id carries the
+      // doubling, so it returns when the number doubles and not before.
+      id: `follow:leads:${bucket(o.leads)}`, kind: "follow",
       title: `${o.leads} leads vachcharu, okkaru book cheyyaledu`,
       why: `${days} rojullo ads meeda ₹${account.spend.toLocaleString("en-IN")} — okko lead ₹${Math.round(account.spend / o.leads).toLocaleString("en-IN")}. Ads pani chestunnayi; aagindi follow-up daggara.`,
       gain: "Leads screen lo 🔥 Ippude call chudandi — ee mandine call cheyyali",
@@ -239,7 +246,7 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
   const shown = (campaigns || []).reduce((n, c) => n + ((c.patients && c.patients.leads) || 0), 0);
   if (orphan > shown && orphan - shown >= 3) {
     out.push({
-      id: "orphan:ads", kind: "track",
+      id: `orphan:ads:${bucket(orphan - shown)}`, kind: "track",
       title: `${orphan - shown} leads e ad nunchi vachchayo ee page cheppaledu`,
       why: "Vaallani techina ad ippudu campaigns list lo ledu — aagipoyindi leda teesesaru. Lead mana daggara undi, kaani aa kharchu tho kalapaleka poyam.",
       gain: "Aa campaign ni Ads Manager lo chudochu",
@@ -322,6 +329,20 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
         });
       }
     }
+  }
+
+  // Shells: paused, never spent anything, nothing in them. Meta keeps them
+  // for ever and they are all named nearly the same, so the account becomes
+  // unreadable — nine of them here by the third day.
+  const shells = (campaigns || []).filter((c) => !c.running && !c.spend && !(c.patients && c.patients.leads));
+  if (shells.length >= 3) {
+    out.push({
+      id: `shells:${bucket(shells.length)}`, kind: "tidy",
+      title: `${shells.length} khaali campaigns Meta lo padi unnayi`,
+      why: `Ivi aagipoyinavi, okka rupee kuda kharchu kaaledu, andulo ads kuda levu — chaala varaku sagam lo aagipoyina prayatnalu. Ads Manager lo list ni chadavaleka chestunnayi.`,
+      gain: "Okka tap tho anni teesestam — kharchu ayina campaign ni mathram muttamu",
+      action: { a: "cleanup" },
+    });
   }
 
   // The account itself, when Meta is about to stop it for us.
@@ -678,6 +699,37 @@ module.exports = async (req, res) => {
   if (!conn.ok) return json(res, 400, { error: "Ads inka connect cheyyaledu" });
   const rlw = await guard.rateLimit(cfg, `rl:adsw:${me.phone}`, 60, 3600);
   if (!rlw.allowed) return json(res, 429, { error: "Konchem aagandi" });
+
+  // Clear out the shells a run of failed builds leaves behind. Re-checked
+  // here against Meta rather than trusted from the screen: only a campaign
+  // that is stopped AND has never spent a rupee AND has no ad in it is
+  // deleted. Anything that ever cost money is left exactly where it is.
+  if (a === "cleanup") {
+    const conn2 = conn;
+    const tok2 = tokenOf(conn2.tokenName);
+    const act2 = `/act_${conn2.accountId}`;
+    let gone = 0, kept = 0;
+    try {
+      const [camps, adsAll] = await Promise.all([
+        graph(act2 + "/campaigns", tok2, { fields: "name,effective_status,insights{spend}", limit: 100 }),
+        graph(act2 + "/ads", tok2, { fields: "campaign_id", limit: 500 }).catch(() => ({ data: [] })),
+      ]);
+      const hasAd = new Set((adsAll.data || []).map((x) => String(x.campaign_id)));
+      for (const c of (camps.data || [])) {
+        const spent = rupees((((c.insights || {}).data || [])[0] || {}).spend);
+        const live = (c.effective_status || "") === "ACTIVE";
+        if (live || spent > 0 || hasAd.has(String(c.id))) { kept++; continue; }
+        const r = await fetch(`${GRAPH}/${c.id}?access_token=${encodeURIComponent(tok2)}`, { method: "DELETE" }).catch(() => null);
+        if (r && r.ok) gone++;
+      }
+    } catch (e) {
+      return json(res, 502, { error: String(e.message || e).slice(0, 160) });
+    }
+    await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({
+      ts: Date.now(), by: me.name, phone: me.phone, what: `Ads: ${gone} khaali campaigns teesesaru`,
+    })]).catch(() => {});
+    return json(res, 200, { ok: true, gone, kept });
+  }
 
   // Forget what was cached about the account and read Meta again. No campaign
   // id, so it answers before the id check below.
