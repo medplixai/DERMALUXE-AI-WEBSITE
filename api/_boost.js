@@ -100,7 +100,15 @@ async function graph(path, body) {
 async function uploadImage(cfg, imgId, imageUrl) {
   let b64 = "";
   if (imageUrl) {
-    const r = await fetch(String(imageUrl));
+    // Instagram's CDN answers 403 to a bare server-side fetch — Node sends no
+    // User-Agent at all, and the CDN takes that for a scraper. It serves the
+    // same picture happily to anything that looks like a browser.
+    const r = await fetch(String(imageUrl), {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
+        Accept: "image/avif,image/webp,image/jpeg,image/png,*/*",
+      },
+    });
     if (!r.ok) throw new Error(`post image HTTP ${r.status}`);
     b64 = Buffer.from(await r.arrayBuffer()).toString("base64");
   } else {

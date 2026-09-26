@@ -413,6 +413,17 @@ async function promotable(cfg) {
   return rows;
 }
 
+// Our own copy of a poster that also went to Instagram, matched by its first
+// words. Meta can fetch this; Instagram's own link it cannot.
+async function ownCopy(cfg, caption) {
+  const key = String(caption || "").replace(/\s+/g, " ").slice(0, 30);
+  if (!key) return "";
+  const lg = await guard.kvCommand(cfg, ["LRANGE", "post:log", "0", "49"]).catch(() => ({}));
+  const hit = (lg.result || []).map((x) => parse(x, null))
+    .find((x) => x && x.imgId && String(x.caption || "").replace(/\s+/g, " ").slice(0, 30) === key);
+  return hit ? `https://www.dermaluxe.ai/api/media?id=${hit.imgId}` : "";
+}
+
 // The link the picker was drawn with may be stale by the time anybody presses
 // the button. For an Instagram post, ask Instagram again.
 async function freshImage(cfg, id, current) {
@@ -612,22 +623,29 @@ module.exports = async (req, res) => {
   // the posters it has published from this app. Typing an image URL by hand
   // was the only way before, which nobody on a phone was going to do.
   if (a === "posters") {
-    const ig = (await igMedia(cfg).catch(() => [])).slice(0, 24)
-      .map((m) => ({ id: m.id, src: "instagram", img: m.img, caption: m.caption, link: m.link, ts: m.ts, reach: m.reach }));
-    // Our own posters live in KV and are thrown away after a few days, so an
-    // older one is a picture Meta will fetch and get a 404 from. Anything
-    // beyond the longest of those lifetimes is not offered.
-    const KEPT = 3 * 86400000;
+    // Instagram's CDN answers 403 to anything but a browser, so a picture
+    // hosted there cannot be handed to Meta as an ad's image — only our own
+    // copy can. Instagram is still read, but only to put the reach numbers
+    // on posters we can actually use.
+    const ig = await igMedia(cfg).catch(() => []);
+    const reachOf = (cap) => {
+      const key = String(cap || "").slice(0, 30);
+      const hit = ig.find((m) => String(m.caption || "").slice(0, 30) === key);
+      return hit ? hit.reach : 0;
+    };
+    // Our own posters live in KV for a month. Beyond that they are gone, and
+    // offering one is handing Meta a link to a 404.
+    const KEPT = 30 * 86400000;
     const lg = await guard.kvCommand(cfg, ["LRANGE", "post:log", "0", "23"]).catch(() => ({}));
     const own = (lg.result || []).map((x) => parse(x, null))
       .filter((x) => x && x.imgId && x.kind !== "story" && Date.now() - (x.at || 0) < KEPT)
-      .map((x) => ({ id: "own:" + x.imgId, src: "poster", img: `https://www.dermaluxe.ai/api/media?id=${x.imgId}`,
-        caption: String(x.caption || "").replace(/\s+/g, " ").slice(0, 60), link: x.link || "", ts: x.at || 0, reach: 0 }));
-    // The same picture from both sides: our own copy and the Instagram post of
-    // it. Instagram's is the one to keep — it is there for ever, and ours is
-    // gone in three days.
+      .map((x) => {
+        const caption = String(x.caption || "").replace(/\s+/g, " ").slice(0, 60);
+        return { id: "own:" + x.imgId, src: "poster", img: `https://www.dermaluxe.ai/api/media?id=${x.imgId}`,
+          caption, link: x.link || "", ts: x.at || 0, reach: reachOf(caption) };
+      });
     const seen = new Set();
-    const rows = ig.concat(own)
+    const rows = own
       .filter((r) => { const k = (r.caption || r.id).slice(0, 30); if (seen.has(k)) return false; seen.add(k); return true; })
       .sort((x, y) => y.ts - x.ts)
       .slice(0, 24);
@@ -700,8 +718,14 @@ module.exports = async (req, res) => {
     const rows = await promotable(cfg).catch(() => []);
     const m = rows.find((x) => x.id === clean(b.id, 40));
     if (!m) return json(res, 404, { error: "Aa post ippudu list lo ledu" });
+    // Meta needs the picture's bytes, and Instagram's CDN will not give them
+    // to a server. Our own copy of the same poster will — so that is what is
+    // sent, and a post we have no copy of says so rather than failing with
+    // Instagram's 403.
+    const ours = await ownCopy(cfg, m.caption);
+    if (!ours) return json(res, 400, { error: "Ee post mana daggara ledu — Instagram nunchi photo teesukoleka poyam. App lo pettina poster ni promote cheyandi." });
     const out = await require("./_boost.js").promote(cfg, {
-      mediaId: m.id, imageUrl: m.img, caption: m.caption,
+      mediaId: m.id, imageUrl: ours, caption: m.caption,
       rupees: Number(b.rupees) || 500, days: Number(b.days) || 3,
     });
     if (!out.ok) return json(res, 502, { error: out.error });

@@ -221,15 +221,20 @@ const A = (q, b) => h.call(ads, q, b);
   h.run(["DEL", "post:log"]); h.run(["DEL", "ads:igmedia"]); h.run(["DEL", "ads:promo"]);
   h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig1", imgId: "abc123", kind: "post", caption: "Hydrafacial roju", at: Date.now() - 3600000 })]);
   h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig2", imgId: "def456", kind: "story", caption: "A story", at: Date.now() - 7200000 })]);
-  // Our own copy of a poster is thrown out of KV after three days; offering
-  // an older one hands Meta a link that answers 404, which is exactly how the
-  // first real build failed.
+  // Our own copy of a poster is kept a month; offering one older than that
+  // hands Meta a link that answers 404, which is how the first real build
+  // failed.
   h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig3", imgId: "old789", kind: "post", caption: "Last week", at: Date.now() - 5 * 86400000 })]);
+  h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig4", imgId: "gone42", kind: "post", caption: "Two months ago", at: Date.now() - 60 * 86400000 })]);
   const pk = await A({ a: "posters" });
   is(pk.code, 200, "the picker has something to show");
   const own = (pk.body.rows || []).filter((r) => r.src === "poster");
-  is(own.map((r) => r.img), ["https://www.dermaluxe.ai/api/media?id=abc123"],
-    "a recent poster of ours, as a link Meta can fetch — no stories, and nothing old enough to have been thrown away");
+  is(own.map((r) => r.img), ["https://www.dermaluxe.ai/api/media?id=abc123", "https://www.dermaluxe.ai/api/media?id=old789"],
+    "our own posters, as links Meta can fetch — no stories, newest first");
+  // Instagram's CDN answers 403 to a server, so a picture hosted there can
+  // never be an ad's image. Offering one is offering a button that fails.
+  is((pk.body.rows || []).some((r) => /cdninstagram|fbcdn/.test(r.img)), false,
+    "and nothing hosted by Instagram, which will not hand a picture to a server");
 
   // An Instagram link is signed and goes stale; by the time somebody presses
   // Build, Meta gets a 403 from it. The one thing that must happen is asking

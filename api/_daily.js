@@ -727,7 +727,11 @@ async function createDailyPost(cfg, opts = {}) {
     // enough to reach WhatsApp, and nothing else is written. Without this the
     // act of looking at a poster would mark its topic as already used and
     // change what tomorrow posts.
-    const keep = opts.preview ? String(Math.max(600, Math.min(1209600, Number(opts.keepSec) || 7200))) : "259200";
+    // Thirty days, not three. A poster is the picture an ad is built from, and
+    // the campaign planner offers the last month of them — a poster thrown
+    // away after three days is a link Meta fetches and gets a 404 from. About
+    // 350 KB each, so a month of them is ten megabytes.
+    const keep = opts.preview ? String(Math.max(600, Math.min(1209600, Number(opts.keepSec) || 7200))) : "2592000";
     await guard.kvCommand(cfg, ["SET", `adm:img:${imgId}`, b64, "EX", keep]);
     if (storyId) await guard.kvCommand(cfg, ["SET", `adm:img:${storyId}`, story64, "EX", keep]);
     if (opts.preview) return { imgId, storyId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: false, preview: true, doctor: doc ? doc.name : "" };
