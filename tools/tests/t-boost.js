@@ -75,6 +75,8 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   is(as.targeting.targeting_automation, { advantage_audience: 0 }, "and it says plainly that Meta may not widen the audience for us");
   const cr = bodyOf("creative").object_story_spec.link_data;
   is([cr.image_hash, cr.link, cr.call_to_action.type], ["IMGHASH1", "https://wa.me/919959134666", "WHATSAPP_MESSAGE"], "the ad is the poster itself, and the button opens our WhatsApp");
+  // Meta deprecated the opt-out field and refuses a creative that sends it.
+  is("degrees_of_freedom_spec" in bodyOf("creative"), false, "and nothing Meta has retired is sent with it");
   is(/Hair fall/.test(cr.message), true, "with the post's own caption");
   is(sentTo("9010427777").some((t) => /₹300 pettam/.test(t) && /3 rojulu/.test(t) && /30 km/.test(t)), true, "the owner is told what was put behind it");
 

@@ -186,7 +186,14 @@ async function create(cfg, post, c) {
           call_to_action: { type: "WHATSAPP_MESSAGE", value: { app_destination: "WHATSAPP" } },
         },
       },
-      degrees_of_freedom_spec: { creative_features_spec: { standard_enhancements: { enroll_status: "OPT_OUT" } } },
+      // We used to opt out of Meta's automatic creative enhancements here.
+      // Meta deprecated that field ("Including standard enhancements field in
+      // creative has been deprecated. Please choose to set individual
+      // features instead") and refuses the creative for sending it. The
+      // replacement is a list of individual feature names that will
+      // themselves keep changing, and a refused creative is a day with no ad
+      // at all — a worse outcome than Meta brightening a photograph. Opt out
+      // in Ads Manager if it ever does something to a poster.
     });
     made.creative = creative.id;
     const ad = await graph(`/act_${account()}/ads`, { name, adset_id: adset.id, creative: { creative_id: creative.id }, status });
