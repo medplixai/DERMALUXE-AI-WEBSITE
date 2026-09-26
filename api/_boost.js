@@ -94,10 +94,19 @@ async function graph(path, body) {
   return d;
 }
 
-// The poster itself, as an image Meta holds.
-async function uploadImage(cfg, imgId) {
-  const r = await guard.kvCommand(cfg, ["GET", `adm:img:${imgId}`]).catch(() => ({}));
-  const b64 = r && r.result;
+// The poster itself, as an image Meta holds. Either our own (kept in KV as
+// base64) or one already on Instagram, fetched from its CDN — promoting a
+// post that did well on its own takes the same road as the day's poster.
+async function uploadImage(cfg, imgId, imageUrl) {
+  let b64 = "";
+  if (imageUrl) {
+    const r = await fetch(String(imageUrl));
+    if (!r.ok) throw new Error(`post image HTTP ${r.status}`);
+    b64 = Buffer.from(await r.arrayBuffer()).toString("base64");
+  } else {
+    const r = await guard.kvCommand(cfg, ["GET", `adm:img:${imgId}`]).catch(() => ({}));
+    b64 = (r && r.result) || "";
+  }
   if (!b64) throw new Error("poster image gone");
   const d = await graph(`/act_${account()}/adimages`, { bytes: String(b64) });
   const images = d.images || {};
@@ -122,12 +131,15 @@ const targeting = (c) => ({
 // it is made, so a failure half way can be undone instead of left spending.
 async function create(cfg, post, c) {
   const made = { campaign: "", adset: "", creative: "", ad: "" };
-  const name = `Daily poster ${istDay()} · ${String(post.topic || post.kind || "post").slice(0, 30)}`;
+  const name = post.name || `Daily poster ${istDay()} · ${String(post.topic || post.kind || "post").slice(0, 30)}`;
+  // A promoted post is created stopped: the owner starts it themselves, so a
+  // mis-tap on a phone cannot begin spending on its own.
+  const status = c.status === "PAUSED" ? "PAUSED" : "ACTIVE";
   const start = Date.now() + 2 * 60000;
   const end = start + c.days * 86400000;
   try {
     const camp = await graph(`/act_${account()}/campaigns`, {
-      name, objective: "OUTCOME_ENGAGEMENT", status: "ACTIVE",
+      name, objective: "OUTCOME_ENGAGEMENT", status,
       special_ad_categories: [], buying_type: "AUCTION",
       // Meta will not publish an ad set that carries its own budget until the
       // CAMPAIGN answers this either way: "You must specify True or False in
@@ -139,7 +151,7 @@ async function create(cfg, post, c) {
     });
     made.campaign = camp.id;
     const adset = await graph(`/act_${account()}/adsets`, {
-      name, campaign_id: camp.id, status: "ACTIVE",
+      name, campaign_id: camp.id, status,
       lifetime_budget: c.rupees * 100,                  // Meta counts paise
       start_time: new Date(start).toISOString(), end_time: new Date(end).toISOString(),
       billing_event: "IMPRESSIONS", optimization_goal: "CONVERSATIONS",
@@ -152,7 +164,7 @@ async function create(cfg, post, c) {
       targeting: targeting(c),
     });
     made.adset = adset.id;
-    const image_hash = await uploadImage(cfg, post.imgId);
+    const image_hash = await uploadImage(cfg, post.imgId, post.imageUrl);
     const creative = await graph(`/act_${account()}/adcreatives`, {
       name,
       object_story_spec: {
@@ -166,7 +178,7 @@ async function create(cfg, post, c) {
       degrees_of_freedom_spec: { creative_features_spec: { standard_enhancements: { enroll_status: "OPT_OUT" } } },
     });
     made.creative = creative.id;
-    const ad = await graph(`/act_${account()}/ads`, { name, adset_id: adset.id, creative: { creative_id: creative.id }, status: "ACTIVE" });
+    const ad = await graph(`/act_${account()}/ads`, { name, adset_id: adset.id, creative: { creative_id: creative.id }, status });
     made.ad = ad.id;
     return { ok: true, made, start, end };
   } catch (e) {
@@ -254,4 +266,30 @@ async function recent(cfg, n) {
   return rows;
 }
 
-module.exports = { load, save, run, recent, ready, maxDays, DEFAULTS, MIN_PER_DAY, ELURU, WA_LINK };
+// A post that already did well for nothing, given money. Created PAUSED, so
+// nothing spends until somebody presses Start on Meta's own post card — the
+// whole point is that a tap here cannot cost anything by itself.
+async function promote(cfg, o) {
+  if (!ready()) return { ok: false, error: "META_ADS_TOKEN / META_AD_ACCOUNT_ID / IG_PAGE_ID ledu" };
+  const rupees = num(o && o.rupees, 200, 5000, 500);
+  const days = Math.max(1, Math.min(maxDays(rupees), Math.round(Number(o && o.days) || 3)));
+  const id = String((o && o.mediaId) || "");
+  if (!id || !(o && o.imageUrl)) return { ok: false, error: "Post teliyadu" };
+  const once = await guard.kvCommand(cfg, ["SET", `promo:${id}`, "1", "NX", "EX", String(90 * 86400)]).catch(() => ({}));
+  if (!once || !once.result) return { ok: false, error: "Ee post ki already pettaru" };
+  const c = Object.assign({}, await load(cfg), { rupees, days, status: "PAUSED" });
+  const out = await create(cfg, {
+    id, imageUrl: o.imageUrl, caption: o.caption || "",
+    name: `Promote ${istDay()} · ${String(o.caption || "post").replace(/\s+/g, " ").slice(0, 28)}`,
+  }, c);
+  if (!out.ok) {
+    await guard.kvCommand(cfg, ["DEL", `promo:${id}`]).catch(() => {});
+    console.error(`promote: Meta refused — ${out.error}`);
+    return { ok: false, error: out.error };
+  }
+  await guard.kvCommand(cfg, ["SADD", "promo:done", id]).catch(() => {});
+  console.log(`promote: ₹${rupees} · ${days} rojulu · campaign ${out.made.campaign} (PAUSED)`);
+  return { ok: true, rupees, days, campaign: out.made.campaign };
+}
+
+module.exports = { load, save, run, promote, recent, ready, maxDays, DEFAULTS, MIN_PER_DAY, ELURU, WA_LINK };

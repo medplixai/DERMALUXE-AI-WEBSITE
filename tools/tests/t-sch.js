@@ -95,7 +95,13 @@ const tomorrow11 = () => {
   const path2 = require("path");
   const Q2 = require(path2.join(process.env.DL_API, "_qualify.js"));
   const dayOf = (t) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t));
-  const tomDay = dayOf(Date.now() + 86400000);
+  // Tomorrow, unless tomorrow is a Sunday — the clinic is shut then, and a
+  // plan for a shut day is legitimately 0 slots. Written as "tomorrow" this
+  // test failed every Saturday and nowhere else.
+  const open = (t) => new Date(dayOf(t) + "T12:00:00+05:30").getUTCDay() !== 0;
+  let tomTs = Date.now() + 86400000;
+  while (!open(tomTs)) tomTs += 86400000;
+  const tomDay = dayOf(tomTs);
   const plan1 = (await S({ a: "day", day: tomDay })).body.plan;
   is([plan1.slots, plan1.per], [24, 2], "the clinic's day is 24 half-hours, two patients to a slot");
   is([plan1.free.some((f) => /am$/.test(f.time)), plan1.free.some((f) => /[5-8]:\d\d pm$/.test(f.time))], [true, true],

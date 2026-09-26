@@ -42,4 +42,24 @@ for (const f of api) {
 }
 console.log("  (only failures listed)");
 
-console.log(bad ? `\n${bad} problem(s)` : "\nno problems in 1–5");
+// 6. The dashboard is one <script> of about five thousand lines, and a single
+// stray quote in it takes the WHOLE app down — every tab blank, no error the
+// user can see, and every other check in this folder still green, because
+// they all read the file as text. One parse catches it in a second.
+console.log("\n6. the dashboard's own script parses");
+for (const page of ["staff.html", "leads.html", "index.html"]) {
+  if (!fs.existsSync(page)) continue;
+  const src = fs.readFileSync(page, "utf8");
+  const blocks = [...src.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)]
+    .map((m) => m[1])
+    .filter((x) => x.trim() && !/^\s*\{[\s\S]*\}\s*$/.test(x));   // JSON-LD blocks are not JS
+  let n = 0;
+  for (const js of blocks) {
+    n++;
+    try { new (require("vm").Script)(js, { filename: `${page}#${n}` }); }
+    catch (e) { say(false, `${page} script ${n} — ${String(e.message).slice(0, 90)}`); }
+  }
+  say(true, `${page} — ${blocks.length} script block(s)`);
+}
+
+console.log(bad ? `\n${bad} problem(s)` : "\nno problems in 1–6");

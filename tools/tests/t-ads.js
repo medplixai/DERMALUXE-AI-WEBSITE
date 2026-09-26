@@ -204,6 +204,16 @@ const A = (q, b) => h.call(ads, q, b);
   is(/inka 4 rojulu/.test(cap[0].why), true, "counted at the rate it is actually going: " + cap[0].why);
   is(ads.suggestions({ spend: 30000, capLeft: 4000 }, [], 300, 30, ["cap:account"]).length, 0, "and once the owner says vaddu, it stops asking");
 
+  console.log("\n  — the day's list —");
+  const td = (camps, acct) => ads.todo(acct || { costEach: 115 }, camps, 300);
+  const c2 = (o) => Object.assign({ id: "1", name: "C", running: true, spend: 1000, results: 5, costEach: 200 }, o);
+  is(td([c2({ spend: 299 })]).rows.length, 0, "under ₹300 a campaign has not earned an opinion");
+  is(td([c2({ spend: 400, results: 0 })]).rows[0].tone, "bad", "spending with nothing to show is red");
+  is(td([c2({ spend: 400, costEach: 22 })]).rows[0].text, "okko సంభాషణ ₹22 — chauka. Budget penchandi", "cheap is green, and says what to do");
+  is(td([c2({ spend: 400, costEach: 515 })]).rows[0].text, "okko సంభాషణ ₹515 — lakshyam ₹300. Aapi creative marchandi", "dear says which number it missed");
+  is(td([c2({ running: false, spend: 4000, costEach: 22 })]).rows.length, 0, "and a stopped campaign is not on today's list");
+  is([td([]).min, td([]).target, td([]).avg], [300, 300, 115], "the footnote carries the floor, the target and our own average");
+
   console.log("\n  — the screen's own wiring —");
   h.run(["DEL", "ads:no"]);
   const dis = await A({ a: "dismiss" }, { a: "dismiss", id: "stop:111" });

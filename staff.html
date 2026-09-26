@@ -494,6 +494,17 @@
     .abgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
     .abside{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
     .abside.win{border-color:rgba(31,150,90,.5);background:rgba(31,150,90,.07)}
+    .adsgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(310px,1fr));gap:12px}
+    .adcard{border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
+    .adtop{display:flex;gap:10px;align-items:flex-start;min-width:0}
+    .adthumb{flex:none;width:58px;height:58px;border-radius:8px;object-fit:cover;background:var(--g6,#eee)}
+    .adverdict{margin-top:8px;border-radius:8px;padding:7px 10px;font-size:.86rem}
+    .adcells{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
+    .adcell{border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0;text-align:center}
+    .adcell b{display:block;margin-top:1px;font-size:.95rem}
+    .todorow{border-radius:8px;padding:8px 10px;margin-top:6px;font-size:.9rem}
+    .pbud.on{border-color:var(--g2);color:var(--g2)}
+    .adbud{text-align:right}
     .goalbar i{display:block;height:100%;border-radius:3px}
     .pnl-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
     .inc-rates th{font-weight:500;color:var(--muted);font-size:.76rem;padding:4px 6px;text-align:center}
@@ -2240,28 +2251,86 @@
             ? '<p class="meta" style="margin-bottom:8px">Prathi suchana ki kaaranam kinda undi. Meeru okay ante ne maarutundi.</p>' + sug
             : '<p class="meta">' + esc(quiet) + "</p>") + "</div>";
 
-        var camps = (j.campaigns || []).map(function (c) {
+        // One card per campaign, the way somebody recognises them: the picture
+        // that is running, what it cost, and the buttons on the card itself
+        // rather than three taps away in Ads Manager.
+        function adCard(c) {
           var col = c.verdict.tone === "good" ? "var(--ok)" : c.verdict.tone === "bad" ? "var(--bad)" : c.verdict.tone === "warn" ? "var(--hot)" : "var(--muted)";
-          return '<div class="vrow"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start">' +
-            "<b>" + esc(c.name) + "</b>" +
-            '<span class="badge ' + (c.running ? "" : "quiet") + '">' + esc(c.running ? "ON" : c.status) + "</span></div>" +
-            '<div class="meta" style="color:' + col + ';margin-top:4px">' + esc(c.verdict.text) + "</div>" +
-            '<div class="meta" style="margin-top:4px">' + money0(c.spend) + " · " + (c.reach || 0).toLocaleString("en-IN") + " mandiki · " +
-              c.results + " సంభాషణలు" + (c.daily ? " · roju " + money0(c.daily) : "") + "</div>" +
-            (c.patients && c.patients.leads
-              ? '<div class="meta" style="margin-top:4px;color:var(--text)">👥 Ee ad nundi: <b>' + c.patients.leads + "</b> leads · " + c.patients.booked + " book · <b>" + c.patients.came + "</b> vachharu" +
-                (c.patients.revenue ? " · " + money0(c.patients.revenue) + " vachindi (" + c.patients.back + "%)" : "") +
-                (c.patients.costPerPatient ? ' · <b style="color:var(--g2)">okko patient ki ' + money0(c.patients.costPerPatient) + "</b>" : "") + "</div>"
-              : "") +
+          var bg = c.verdict.tone === "good" ? "rgba(31,150,90,.08)" : c.verdict.tone === "bad" ? "rgba(190,60,50,.07)" : c.verdict.tone === "warn" ? "rgba(214,120,40,.08)" : "var(--g6,#f6f6f6)";
+          var cell = function (t, v) { return '<div class="adcell"><div class="meta">' + esc(t) + "</div><b>" + esc(v) + "</b></div>"; };
+          var p = c.patients || {};
+          return '<div class="adcard">' +
+            '<div class="adtop">' +
+            (c.thumb ? '<img class="adthumb" src="' + esc(c.thumb) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<div class="adthumb"></div>') +
+            '<div style="min-width:0;flex:1">' +
+            '<div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><b style="min-width:0">' + esc(c.name) + "</b>" +
+            '<span class="badge ' + (c.running ? "" : "quiet") + '">' + esc(c.running ? "ACTIVE" : c.status) + "</span></div>" +
+            '<div class="meta" style="margin-top:2px">' + esc(String(c.objective || "").replace("OUTCOME_", "")) + " · #" + esc(c.id) +
+            (c.created ? " · " + fmtAt(Date.parse(c.created)) : "") + "</div></div></div>" +
+            '<div class="adverdict" style="color:' + col + ";background:" + bg + '">' + esc(c.verdict.text) + "</div>" +
+            (c.postLink ? '<div style="margin-top:6px"><a class="meta" target="_blank" rel="noopener" href="' + esc(c.postLink) + '">🎬 Promote avutunna post chudu ↗</a></div>' : "") +
+            '<div class="adcells">' + cell("Kharchu", money0(c.spend)) + cell("Chusinavaaru", (c.reach || 0).toLocaleString("en-IN")) +
+              cell("సంభాషణలు", String(c.results || 0)) + cell("Okkodaaniki", c.costEach ? money0(c.costEach) : "—") + "</div>" +
+            '<div class="meta" style="margin-top:6px">Leads <b style="color:var(--text)">' + (p.leads || 0) + "</b> → book <b style=\"color:var(--text)\">" + (p.booked || 0) +
+              "</b> → vachcharu <b style=\"color:var(--text)\">" + (p.came || 0) + "</b>" +
+              (p.booked ? " · " + money0(Math.round(c.spend / p.booked)) + "/book" : "") +
+              (p.costPerPatient ? ' · <b style="color:var(--g2)">' + money0(p.costPerPatient) + "/patient</b>" : "") + "</div>" +
             (j.canChange
-              ? '<div class="acts" style="margin-top:6px">' +
-                '<button class="btn btn--sm" data-act="ads-budget" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '" data-d="' + c.daily + '">Budget marchu</button>' +
+              ? '<div class="noteform" style="margin-top:8px;flex-wrap:wrap"><span class="meta">₹</span>' +
+                '<input class="adbud" data-id="' + esc(c.id) + '" inputmode="numeric" value="' + (c.daily || "") + '" placeholder="' + (c.lifetime ? "lifetime" : "roju") + '" style="width:90px">' +
+                '<button class="btn btn--sm" data-act="ads-budget" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">Save</button>' +
                 (c.running
-                  ? '<button class="btn btn--sm" data-act="ads-pause" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '" style="color:var(--bad)">Aapu</button>'
-                  : '<button class="btn btn--sm" data-act="ads-resume" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">Malli modalu</button>') + "</div>"
+                  ? '<button class="btn btn--sm" data-act="ads-pause" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '" style="color:var(--bad)">Pause</button>'
+                  : '<button class="btn btn--sm" data-act="ads-resume" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">Activate</button>') +
+                "</div>" +
+                '<div class="meta" style="margin-top:6px">More · ' +
+                '<a href="#" data-act="ads-rename" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">rename</a>, ' +
+                (j.adsManager ? '<a target="_blank" rel="noopener" href="' + esc(j.adsManager) + '">ads</a>, ' : "") +
+                '<a href="#" data-act="ads-del" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '" style="color:var(--bad)">delete</a></div>'
               : "") +
             "</div>";
-        }).join("");
+        }
+        var live = (j.campaigns || []).filter(function (c) { return c.running; });
+        var stopped = (j.campaigns || []).filter(function (c) { return !c.running && c.spend > 0; });
+        var camps = (live.length ? '<h3 style="margin:14px 0 8px;font-size:1rem">Nadustunnavi (' + live.length + ")</h3>" +
+            '<div class="adsgrid">' + live.map(adCard).join("") + "</div>" : "") +
+          (stopped.length ? '<h3 style="margin:16px 0 8px;font-size:1rem">Aapinavi — ee ' + j.days + " rojullo kharchu ayinavi (" + stopped.length + ")</h3>" +
+            '<div class="adsgrid">' + stopped.map(adCard).join("") + "</div>" : "");
+
+        // The glance: every campaign that has spent enough to have an opinion
+        // about, one line each, against the account's own average.
+        var T = j.todo || { rows: [] };
+        var todoBox = T.rows.length
+          ? '<div class="box" style="margin-top:12px"><h3 style="margin:0 0 8px">Ee roju cheyyalsinavi</h3>' +
+            T.rows.map(function (r) {
+              var c2 = r.tone === "good" ? "rgba(31,150,90,.10)" : r.tone === "bad" ? "rgba(190,60,50,.09)" : "rgba(214,120,40,.10)";
+              return '<div class="todorow" style="background:' + c2 + '"><b>' + esc(r.name) + "</b> — " + esc(r.text) + "</div>";
+            }).join("") +
+            '<p class="meta" style="margin-top:8px">Kaneesam ' + money0(T.min) + " kharchu chesina, ippudu nadustunna campaigns matrame. Mana sagatu okko సంభాషణకు " +
+            money0(T.avg) + ", lakshyam " + money0(T.target) + ".</p></div>"
+          : "";
+
+        // The cheapest advertising there is: the post that already worked.
+        var P = j.promote || [];
+        var promoBox = P.length
+          ? '<div class="box" style="margin-top:12px"><h3 style="margin:0 0 8px">🚀 Ivi promote cheyandi — uchitanga ne baaga vellina posts</h3>' +
+            '<div class="adsgrid">' + P.map(function (m) {
+              return '<div class="adcard"><div class="adtop">' +
+                '<img class="adthumb" src="' + esc(m.img) + '" alt="" onerror="this.style.visibility=\'hidden\'">' +
+                '<div style="min-width:0;flex:1"><b style="font-weight:500">' + esc(m.caption || "Post") + "</b>" +
+                '<div class="meta" style="margin-top:4px">👁 ' + (m.reach || 0).toLocaleString("en-IN") + " — sagatu (" + (m.avg || 0).toLocaleString("en-IN") + ") kanna <b>" + m.times + "×</b></div>" +
+                (m.link ? '<div class="meta" style="margin-top:2px"><a target="_blank" rel="noopener" href="' + esc(m.link) + '">chudu ↗</a></div>' : "") +
+                "</div></div>" +
+                (j.canChange
+                  ? '<div class="noteform" style="margin-top:8px;flex-wrap:wrap">' +
+                    [200, 500, 1000].map(function (n) {
+                      return '<button class="btn btn--sm pbud' + (n === 500 ? " on" : "") + '" data-act="ads-pbud" data-m="' + esc(m.id) + '" data-r="' + n + '">₹' + n + "</button>";
+                    }).join("") +
+                    '<button class="btn btn--sm btn--gold" data-act="ads-promote" data-m="' + esc(m.id) + '">🚀 Promote (3 days)</button></div>'
+                  : "") + "</div>";
+            }).join("") + "</div>" +
+            '<p class="meta" style="margin-top:8px">Gata 30 rojula posts lo reach sagatu kanna 1.5× paiga vachchi, inka promote cheyyanivi. Nokkithe <b>PAUSED</b> ga create avutundi — dabbu podu; Instagram / FB page lo aa post card meeda ▶ Start nokkithe ne nadustundi.</p></div>'
+          : "";
 
         host.innerHTML = '<div class="box"><div class="adshead"><div><h2 style="margin:0">Meta Ads <span class="te" style="font-size:.9rem;color:var(--g3)">· ప్రకటనలు</span></h2>' +
           '<p class="meta" style="margin-top:2px">Ad account ' + esc(j.accountId || "") + " · " + esc(A.name || "") + "</p></div>" +
@@ -2272,8 +2341,8 @@
           sugBox +
           '<div class="grid" style="margin-top:10px">' + cards + "</div>" +
           oursBlock(j) +
-          (camps ? '<h3 style="margin-top:14px;font-size:1rem">Campaigns</h3>' + camps : '<p class="meta" style="margin-top:10px">Campaigns emi ledu.</p>') +
-          "</div>" + openerBox;
+          (camps || '<p class="meta" style="margin-top:10px">Campaigns emi ledu.</p>') +
+          "</div>" + promoBox + todoBox + openerBox;
       }).catch(function () { host.innerHTML = ""; });
     }
 
@@ -5331,9 +5400,11 @@
           .finally(function () { el.disabled = false; });
         return;
       }
+      // The number is typed on the card itself now; the prompt is only the
+      // fallback for the suggestion buttons, which carry no input.
       if (el.dataset.act === "ads-budget") {
-        var cur = el.dataset.d && el.dataset.d !== "0" ? el.dataset.d : "";
-        var v = prompt(el.dataset.n + "\n\nRoju budget entha? (rupayalu)", cur);
+        var inp = el.closest(".adcard") && el.closest(".adcard").querySelector(".adbud");
+        var v = inp ? inp.value : prompt(el.dataset.n + "\n\nRoju budget entha? (rupayalu)", el.dataset.d || "");
         if (!v) return;
         var n2 = Math.round(Number(String(v).replace(/[^0-9]/g, "")) || 0);
         if (!n2) { toast("Number ivvandi"); return; }
@@ -5378,6 +5449,41 @@
       if (el.dataset.act === "ads-go") {
         var b2 = document.querySelector('.tab[data-t="' + el.dataset.t + '"]');
         if (b2 && !b2.classList.contains("hide")) b2.click();
+        return;
+      }
+      // A campaign's name is the only handle anybody has on it three weeks on.
+      if (el.dataset.act === "ads-rename") {
+        var nm = prompt("Campaign peru:", el.dataset.n);
+        if (!nm || nm === el.dataset.n) return;
+        adsapi("rename", { id: el.dataset.id, name: nm })
+          .then(function () { toast("Peru marchamu"); loadAds(); })
+          .catch(function (x) { toast(x.message); });
+        return;
+      }
+      // Gone for good, with its history — so it asks for the word, not a tap.
+      if (el.dataset.act === "ads-del") {
+        var ask = prompt(el.dataset.n + "\n\nIdi POYINDI ante poyinatte — kharchu, results, anni. Aapali ante Pause chaalu.\n\nNijanga teeseyyalante 'delete' ani raayandi:");
+        if (String(ask || "").toLowerCase() !== "delete") return;
+        adsapi("delete", { id: el.dataset.id, confirm: "delete" })
+          .then(function () { toast("Teesesam"); loadAds(); })
+          .catch(function (x) { toast(x.message); });
+        return;
+      }
+      // ₹200 / ₹500 / ₹1000 on a post that already did well for nothing.
+      if (el.dataset.act === "ads-pbud") {
+        var row = el.closest(".adcard");
+        if (row) row.querySelectorAll(".pbud").forEach(function (x) { x.classList.toggle("on", x === el); });
+        return;
+      }
+      if (el.dataset.act === "ads-promote") {
+        var card = el.closest(".adcard");
+        var pick = card && card.querySelector(".pbud.on");
+        var rup = pick ? Number(pick.dataset.r) : 500;
+        if (!confirm("₹" + rup.toLocaleString("en-IN") + " × 3 rojulu.\n\nPAUSED ga create avutundi — ippudu dabbu podu. Instagram/Facebook lo aa post meeda ▶ Start nokkithe ne modalavutundi.\n\nSare na?")) return;
+        el.disabled = true; el.textContent = "Chestunnam…";
+        adsapi("promote", { id: el.dataset.m, rupees: rup, days: 3 })
+          .then(function (jj) { toast("₹" + jj.rupees + " × " + jj.days + " rojulu — PAUSED ga ready ✅"); loadAds(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "🚀 Promote (3 days)"; });
         return;
       }
       if (el.dataset.act === "ads-sync") {

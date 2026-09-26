@@ -25,7 +25,7 @@ Object.assign(process.env, {
   ADMIN_PHONES: "9010427777", LEAD_NOTIFY_PHONES: "9989325777",
   WA_WEBHOOK_TOKEN: "hook", WA_CLOUD_TOKEN: "cloud", WA_PHONE_ID_ALLOWLIST: "111",
   WA_AGENT_ENABLED: "1", ANTHROPIC_API_KEY: "test", UPI_VPA: "dermaluxe@upi", PUBLIC_BASE: "http://localhost:4600",
-  META_ADS_TOKEN: "dev", META_AD_ACCOUNT_ID: "4527414787474363",
+  META_ADS_TOKEN: "dev", META_AD_ACCOUNT_ID: "4527414787474363", IG_LOGIN_TOKEN: "dev",
 });
 const h = require(path.join(ROOT, "tools", "tests", "harness.js"));
 delete require.cache[path.join(API, "staff.js")];          // the real one, with real sessions
@@ -69,14 +69,37 @@ global.fetch = async (url, opt) => {
     return { ok: true, status: 200, json: async () => ({ data: [{ spend: "11840", impressions: "486233", reach: "92104",
       actions: [{ action_type: "onsite_conversion.messaging_conversation_started", value: "168" }] }] }) };
   }
+  // The ad list carries each campaign's picture and the post behind it.
+  if (u.includes("graph.facebook.com") && /\/act_\d+\/ads/.test(u)) {
+    return { ok: true, status: 200, json: async () => ({ data: [
+      { id: "ad1", campaign_id: "120111", creative: { thumbnail_url: "https://www.dermaluxe.ai/assets/academy/batch1-poster.jpg", effective_object_story_id: "1312992278555449_111" } },
+      { id: "ad2", campaign_id: "120222", creative: { thumbnail_url: "https://www.dermaluxe.ai/assets/academy/batch1-story.jpg", effective_object_story_id: "1312992278555449_222" } },
+    ] }) };
+  }
+  // Instagram's own media, so the "promote what already worked" strip has
+  // something to work with: one post far above the month's average reach.
+  if (u.includes("graph.instagram.com") && u.includes("/me/media")) {
+    const day = 86400000, now = Date.now();
+    const m = (i, reach, cap) => ({ id: "ig" + i, caption: cap, media_type: "IMAGE",
+      media_url: "https://www.dermaluxe.ai/assets/academy/batch1-poster.jpg",
+      permalink: "https://www.instagram.com/p/x" + i + "/",
+      timestamp: new Date(now - i * 2 * day).toISOString(),
+      insights: { data: [{ name: "reach", values: [{ value: reach }] }] } });
+    return { ok: true, status: 200, json: async () => ({ data: [
+      m(1, 41200, "Beauty therapist kaavaala? — Academy Batch 1"),
+      m(2, 980, "Hydrafacial roju"), m(3, 760, "PRP hair therapy"),
+      m(4, 1120, "Pigmentation ki PICO"), m(5, 640, "Doctor evaru"),
+    ] }) };
+  }
   if (u.includes("graph.facebook.com") && /\/act_\d+\/campaigns/.test(u)) {
     const ins = (spend, reach, conv) => ({ data: [{ spend: String(spend), reach: String(reach), impressions: String(reach * 4),
       actions: [{ action_type: "onsite_conversion.messaging_conversation_started", value: String(conv) }] }] });
+    const made = (d) => new Date(Date.now() - d * 86400000).toISOString();
     return { ok: true, status: 200, json: async () => ({ data: [
-      { id: "120111", name: "DermaLuxe Academy · Batch 1 · launch offer", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", daily_budget: "30000", insights: ins(5400, 41200, 96) },
-      { id: "120222", name: "Laser hair removal — Eluru 30km", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", daily_budget: "60000", insights: ins(4100, 29800, 8) },
-      { id: "120333", name: "Daily poster 2026-09-24 · review", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", lifetime_budget: "30000", insights: ins(2340, 21100, 0) },
-      { id: "120444", name: "Daily poster 2026-09-21 · hair-fall", status: "PAUSED", effective_status: "PAUSED", objective: "OUTCOME_ENGAGEMENT", lifetime_budget: "30000", insights: ins(300, 2400, 4) },
+      { id: "120111", name: "DermaLuxe Academy · Batch 1 · launch offer", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", created_time: made(18), daily_budget: "30000", insights: ins(5400, 41200, 96) },
+      { id: "120222", name: "Laser hair removal — Eluru 30km", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", created_time: made(12), daily_budget: "60000", insights: ins(4100, 29800, 8) },
+      { id: "120333", name: "Daily poster 2026-09-24 · review", status: "ACTIVE", effective_status: "ACTIVE", objective: "OUTCOME_ENGAGEMENT", created_time: made(2), lifetime_budget: "30000", insights: ins(2340, 21100, 0) },
+      { id: "120444", name: "Daily poster 2026-09-21 · hair-fall", status: "PAUSED", effective_status: "PAUSED", objective: "OUTCOME_ENGAGEMENT", created_time: made(5), lifetime_budget: "30000", insights: ins(300, 2400, 4) },
     ] }) };
   }
   if (u.includes("graph.facebook.com") && u.includes("/me/adaccounts")) {

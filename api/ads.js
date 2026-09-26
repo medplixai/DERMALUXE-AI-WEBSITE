@@ -341,6 +341,82 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
   return out.filter((x) => !(dismissed || []).includes(x.id));
 }
 
+// ---- posts that did well for nothing --------------------------------------
+// The cheapest advertising the clinic will ever buy is the post that already
+// worked. A month of posts have a reach average; the ones well above it have
+// proved something no targeting guess can, and they are the ones worth money.
+// Cached, because this is two extra calls on a screen somebody refreshes.
+const IG_GRAPH = "https://graph.instagram.com/v21.0";
+const OVER = 1.5;                     // times the month's average reach
+
+async function igToken(cfg) {
+  const r = await guard.kvCommand(cfg, ["GET", "ig:ltok"]).catch(() => ({}));
+  return (r && r.result) || process.env.IG_LOGIN_TOKEN || "";
+}
+
+async function promotable(cfg) {
+  const cached = parse(((await guard.kvCommand(cfg, ["GET", "ads:promo"]).catch(() => ({}))) || {}).result || "", null);
+  if (cached && cached.at > Date.now() - 1800000) return cached.rows;
+  const tok = await igToken(cfg);
+  if (!tok) return [];
+  let rows = [];
+  try {
+    const u = new URL(`${IG_GRAPH}/me/media`);
+    u.searchParams.set("fields", "id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,insights.metric(reach)");
+    u.searchParams.set("limit", "40");
+    u.searchParams.set("access_token", tok);
+    const r = await fetch(u.toString());
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error((d.error && d.error.message) || `HTTP ${r.status}`);
+    const cut = Date.now() - 30 * 86400000;
+    const posts = (d.data || [])
+      .map((m) => ({
+        id: String(m.id), caption: String(m.caption || "").replace(/\s+/g, " ").slice(0, 60),
+        img: m.media_type === "VIDEO" ? (m.thumbnail_url || "") : (m.media_url || ""),
+        link: m.permalink || "", ts: Date.parse(m.timestamp) || 0,
+        reach: Number((((m.insights || {}).data || []).find((x) => x.name === "reach") || { values: [{}] }).values[0].value) || 0,
+      }))
+      .filter((m) => m.ts >= cut && m.reach > 0 && m.img);
+    if (posts.length < 4) return [];
+    const avg = Math.round(posts.reduce((n, m) => n + m.reach, 0) / posts.length);
+    const dn = await guard.kvCommand(cfg, ["SMEMBERS", "promo:done"]).catch(() => ({}));
+    const done = new Set(Array.isArray(dn.result) ? dn.result : []);
+    rows = posts
+      .filter((m) => m.reach >= avg * OVER && !done.has(m.id))
+      .sort((a, b) => b.reach - a.reach)
+      .slice(0, 3)
+      .map((m) => Object.assign({ avg, times: Math.round((m.reach / avg) * 10) / 10 }, m));
+  } catch (e) {
+    console.error("ads: promotable", e && e.message);
+    return [];
+  }
+  await guard.kvCommand(cfg, ["SET", "ads:promo", JSON.stringify({ at: Date.now(), rows }), "EX", "3600"]).catch(() => {});
+  return rows;
+}
+
+// ---- the day's list, one line per campaign --------------------------------
+// The suggestions box argues a case; this is the glance. Every campaign that
+// has spent enough to have an opinion about, in one line each, green or red,
+// with the account's own average underneath so a number has something to be
+// good or bad against.
+const TODO_MIN = 300;
+
+function todo(account, campaigns, target) {
+  const rows = (campaigns || [])
+    .filter((c) => c.running && c.spend >= TODO_MIN)
+    .sort((a, b) => (a.results && b.results ? a.costEach - b.costEach : b.spend - a.spend))
+    .map((c) => {
+      if (!c.results) return { id: c.id, name: c.name, tone: "bad", text: `₹${c.spend.toLocaleString("en-IN")} kharchu, okka సంభాషణ kuda raaledu. Aapandi` };
+      const each = `okko సంభాషణ ₹${c.costEach.toLocaleString("en-IN")}`;
+      if (c.costEach <= target * 0.5) return { id: c.id, name: c.name, tone: "good", text: `${each} — chauka. Budget penchandi` };
+      if (c.costEach <= target) return { id: c.id, name: c.name, tone: "good", text: `${each} — baagundi` };
+      // Over the target is over the target. A middle "keep an eye on it" band
+      // is how a list stops being a list of things to do.
+      return { id: c.id, name: c.name, tone: "bad", text: `${each} — lakshyam ₹${target.toLocaleString("en-IN")}. Aapi creative marchandi` };
+    });
+  return { min: TODO_MIN, target, avg: (account && account.costEach) || 0, rows };
+}
+
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
   const cfg = guard.kvConfig();
@@ -369,6 +445,7 @@ module.exports = async (req, res) => {
     // Which of the two openers people actually answer. It needs no ad account
     // — the agent's own numbers — so it shows even before Meta is connected.
     const opener = await require("./_abtest.js").stats(cfg).catch(() => null);
+    const promote = await promotable(cfg).catch(() => []);
 
     if (!conn.ok) {
       return json(res, 200, {
@@ -393,14 +470,24 @@ module.exports = async (req, res) => {
         graph(act + "/insights", tok, { fields: "spend,impressions,reach,actions", time_range: JSON.stringify({ since: since_s, until: until_s }) }),
         graph(act + "/insights", tok, { fields: "spend,impressions", date_preset: "today" }),
         graph(act + "/campaigns", tok, {
-          fields: "name,status,effective_status,daily_budget,lifetime_budget,objective," +
+          fields: "name,status,effective_status,daily_budget,lifetime_budget,objective,created_time," +
                   `insights.time_range(${JSON.stringify({ since: since_s, until: until_s })}){spend,impressions,reach,actions}`,
           limit: 50,
         }),
-        Object.keys(ours.byAd || {}).length ? graph(act + "/ads", tok, { fields: "id,campaign_id", limit: 500 }).catch(() => ({ data: [] })) : Promise.resolve({ data: [] }),
+        // Always: the ad list also carries the picture and the post behind each
+        // campaign, which is how somebody recognises "the tonsils one" without
+        // reading an id.
+        graph(act + "/ads", tok, { fields: "id,campaign_id,creative{thumbnail_url,effective_object_story_id}", limit: 500 }).catch(() => ({ data: [] })),
       ]);
       const adToCamp = {};
-      for (const x of (adsList.data || [])) adToCamp[String(x.id)] = String(x.campaign_id);
+      const campArt = {};
+      for (const x of (adsList.data || [])) {
+        adToCamp[String(x.id)] = String(x.campaign_id);
+        const cid = String(x.campaign_id), cr = x.creative || {};
+        if (!campArt[cid]) campArt[cid] = {};
+        if (cr.thumbnail_url && !campArt[cid].thumb) campArt[cid].thumb = cr.thumbnail_url;
+        if (cr.effective_object_story_id && !campArt[cid].story) campArt[cid].story = cr.effective_object_story_id;
+      }
 
       const conv = (actions) => {
         const rows = actions || [];
@@ -437,8 +524,13 @@ module.exports = async (req, res) => {
         }
         pts.costPerPatient = pts.came ? Math.round(s / pts.came) : 0;
         pts.back = s ? Math.round((pts.revenue / s) * 100) : 0;
+        const art = campArt[String(c.id)] || {};
         return {
           id: c.id, name: c.name, objective: c.objective, patients: pts,
+          created: c.created_time || "",
+          thumb: art.thumb || "",
+          // The post the money is behind. Recognising it beats an id.
+          postLink: art.story ? `https://www.facebook.com/${art.story}` : "",
           status: c.effective_status || c.status,
           running: (c.effective_status || c.status) === "ACTIVE",
           daily: c.daily_budget ? Math.round(Number(c.daily_budget) / 100) : 0,
@@ -462,7 +554,7 @@ module.exports = async (req, res) => {
       tokenName: conn.tokenName, accountId: conn.accountId,
       adsManager: `https://www.facebook.com/adsmanager/manage/campaigns?act=${conn.accountId}`,
       account, today, campaigns, suggest, error: err || undefined,
-      ours, opener,
+      ours, opener, promote, todo: todo(account, campaigns, target),
       // The join, stated carefully: Meta counts conversations it started,
       // we count people who became patients. Different things, both real.
       joined: account ? {
@@ -502,8 +594,57 @@ module.exports = async (req, res) => {
   }
 
   const tok = tokenOf(conn.tokenName);
+
+  // A post that already did well, given money. It is created PAUSED and the
+  // owner presses Start on Meta's own post card — so this tap cannot spend.
+  if (a === "promote") {
+    const rows = await promotable(cfg).catch(() => []);
+    const m = rows.find((x) => x.id === clean(b.id, 40));
+    if (!m) return json(res, 404, { error: "Aa post ippudu list lo ledu" });
+    const out = await require("./_boost.js").promote(cfg, {
+      mediaId: m.id, imageUrl: m.img, caption: m.caption,
+      rupees: Number(b.rupees) || 500, days: Number(b.days) || 3,
+    });
+    if (!out.ok) return json(res, 502, { error: out.error });
+    await guard.kvCommand(cfg, ["DEL", "ads:promo"]).catch(() => {});
+    await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({
+      ts: Date.now(), by: me.name, phone: me.phone,
+      what: `Ads: post promote — ₹${out.rupees} × ${out.days} rojulu (PAUSED ga)`,
+    })]).catch(() => {});
+    return json(res, 200, { ok: true, rupees: out.rupees, days: out.days, campaign: out.campaign });
+  }
+
   const id = clean(b.id, 40);
   if (!/^\d+$/.test(id)) return json(res, 400, { error: "Campaign id kavali" });
+
+  // Its name is the only handle anybody has on it three weeks later.
+  if (a === "rename") {
+    const name = clean(b.name, 80);
+    if (name.length < 3) return json(res, 400, { error: "Peru raayandi" });
+    try {
+      const r = await fetch(`${GRAPH}/${id}`, { method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, access_token: tok }) });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return json(res, 502, { error: ((j.error || {}).message || "Meta oppukoledu").slice(0, 160) });
+    } catch (e) { return json(res, 502, { error: String(e.message || e).slice(0, 160) }); }
+    await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({ ts: Date.now(), by: me.name, phone: me.phone,
+      what: `Ads: campaign ${id} peru "${name}" ga marcharu` })]).catch(() => {});
+    return json(res, 200, { ok: true, name });
+  }
+
+  // Gone for good, with its history. Pausing is what the owner almost always
+  // wants, so this asks for the word "delete" on the way in.
+  if (a === "delete") {
+    if (clean(b.confirm, 20).toLowerCase() !== "delete") return json(res, 400, { error: "Confirm cheyyandi" });
+    try {
+      const r = await fetch(`${GRAPH}/${id}?access_token=${encodeURIComponent(tok)}`, { method: "DELETE" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) return json(res, 502, { error: ((j.error || {}).message || "Meta oppukoledu").slice(0, 160) });
+    } catch (e) { return json(res, 502, { error: String(e.message || e).slice(0, 160) }); }
+    await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({ ts: Date.now(), by: me.name, phone: me.phone,
+      what: `Ads: campaign ${id} teesesaru` })]).catch(() => {});
+    return json(res, 200, { ok: true, deleted: id });
+  }
 
   // Money. A budget is a daily number in rupees, bounded so a slipped finger
   // cannot turn ₹500 into ₹50,000, and every change is written into the audit.
@@ -570,5 +711,6 @@ async function spend(cfg, days) {
 }
 module.exports.spend = spend;
 module.exports.suggestions = suggestions;
+module.exports.todo = todo;
 module.exports.verdict = verdict;
 module.exports.ourSide = ourSide;
