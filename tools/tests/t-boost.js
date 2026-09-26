@@ -23,7 +23,7 @@ global.fetch = async (url, opt) => {
   if (u.includes("graph.facebook.com")) {
     const what = u.includes("/insights") ? "insights" : u.includes("/adimages") ? "adimages" : u.includes("/campaigns") ? "campaign"
       : u.includes("/adsets") ? "adset" : u.includes("/adcreatives") ? "creative" : u.includes("/ads") ? "ad"
-      : /\/(c1|as1)\b/.test(u) ? "edit" : "other";
+      : /\/(c1|as1)\b/.test(u) ? ((opt && opt.method) === "DELETE" ? "scrap" : "edit") : "other";
     calls.push({ what, body, url: u });
     if (fail === what) return { ok: false, status: 400, json: async () => ({ error: { message: "Ad account has no payment method", code: 2635 } }) };
     if (what === "adimages") return { ok: true, json: async () => ({ images: { bytes: { hash: "IMGHASH1" } } }) };
@@ -107,7 +107,11 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   const bad = await boost.run(cfg, post(7));
   fail = null;
   is([bad.boosted, /payment method/.test(bad.why)], [false, true], "a refused ad is reported in Meta's own words");
-  is(calls.filter((c) => c.what === "edit").map((c) => c.body.status), ["PAUSED", "PAUSED"], "the ad set and campaign it had already made are paused — nothing is left running");
+  // An ad set and campaign with no ad in them can never spend, and five
+  // attempts at one campaign left five identically named empty shells on the
+  // live account. Nothing to pause — there is nothing there.
+  is(calls.filter((c) => c.what === "scrap").length, 2, "the empty ad set and campaign it had made are deleted, not left as litter");
+  is(calls.filter((c) => c.what === "edit").length, 0, "there is nothing to pause, because there is nothing in them");
   is(sentTo("9010427777").some((t) => /ad pettaleka poyam/.test(t) && /payment method/.test(t)), true, "and the owner hears why, with what to check");
   is(h.run(["GET", "boost:boost:ig7"]), null, "the poster is not marked done, so tomorrow may try again");
   is(Number(h.run(["GET", "boost:day:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())])), 0, "and the money it had counted is given back to the day");

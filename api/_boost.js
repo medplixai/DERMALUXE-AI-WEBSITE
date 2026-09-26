@@ -200,9 +200,19 @@ async function create(cfg, post, c) {
     made.ad = ad.id;
     return { ok: true, made, start, end };
   } catch (e) {
-    // Never leave a half-built boost running: pause whatever was made.
-    for (const id of [made.adset, made.campaign].filter(Boolean)) {
-      await graph(`/${id}`, { status: "PAUSED" }).catch(() => {});
+    // Never leave a half-built boost running. Without an ad it can never
+    // spend, and it is litter: five attempts at one campaign left five empty
+    // shells on the account, all named the same. So a build that never
+    // reached an ad is DELETED; one that did is only paused, because by then
+    // there is a real thing somebody might want to look at.
+    if (made.ad) {
+      for (const id of [made.adset, made.campaign].filter(Boolean)) {
+        await graph(`/${id}`, { status: "PAUSED" }).catch(() => {});
+      }
+    } else {
+      for (const id of [made.adset, made.campaign].filter(Boolean)) {
+        await fetch(`${GRAPH}/${id}?access_token=${encodeURIComponent(token())}`, { method: "DELETE" }).catch(() => {});
+      }
     }
     return { ok: false, made, error: String(e && e.message).slice(0, 200), code: (e && e.meta && e.meta.code) || 0 };
   }
