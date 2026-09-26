@@ -354,8 +354,11 @@ async function igToken(cfg) {
   return (r && r.result) || process.env.IG_LOGIN_TOKEN || "";
 }
 
-async function promotable(cfg) {
-  const cached = parse(((await guard.kvCommand(cfg, ["GET", "ads:promo"]).catch(() => ({}))) || {}).result || "", null);
+// Everything the clinic has put on Instagram lately, with what it reached.
+// Two screens want this — the "promote what already worked" strip, and the
+// poster picker in the planner — so it is fetched once and cached.
+async function igMedia(cfg) {
+  const cached = parse(((await guard.kvCommand(cfg, ["GET", "ads:igmedia"]).catch(() => ({}))) || {}).result || "", null);
   if (cached && cached.at > Date.now() - 1800000) return cached.rows;
   const tok = await igToken(cfg);
   if (!tok) return [];
@@ -368,15 +371,31 @@ async function promotable(cfg) {
     const r = await fetch(u.toString());
     const d = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error((d.error && d.error.message) || `HTTP ${r.status}`);
-    const cut = Date.now() - 30 * 86400000;
-    const posts = (d.data || [])
+    rows = (d.data || [])
       .map((m) => ({
         id: String(m.id), caption: String(m.caption || "").replace(/\s+/g, " ").slice(0, 60),
+        // A reel's own file is a video; Meta needs a still for an image ad.
         img: m.media_type === "VIDEO" ? (m.thumbnail_url || "") : (m.media_url || ""),
-        link: m.permalink || "", ts: Date.parse(m.timestamp) || 0,
+        link: m.permalink || "", ts: Date.parse(m.timestamp) || 0, kind: m.media_type || "IMAGE",
         reach: Number((((m.insights || {}).data || []).find((x) => x.name === "reach") || { values: [{}] }).values[0].value) || 0,
       }))
-      .filter((m) => m.ts >= cut && m.reach > 0 && m.img);
+      .filter((m) => m.img)
+      .sort((a, b) => b.ts - a.ts);
+  } catch (e) {
+    console.error("ads: igMedia", e && e.message);
+    return [];
+  }
+  await guard.kvCommand(cfg, ["SET", "ads:igmedia", JSON.stringify({ at: Date.now(), rows }), "EX", "3600"]).catch(() => {});
+  return rows;
+}
+
+async function promotable(cfg) {
+  const cached = parse(((await guard.kvCommand(cfg, ["GET", "ads:promo"]).catch(() => ({}))) || {}).result || "", null);
+  if (cached && cached.at > Date.now() - 1800000) return cached.rows;
+  let rows = [];
+  try {
+    const cut = Date.now() - 30 * 86400000;
+    const posts = (await igMedia(cfg)).filter((m) => m.ts >= cut && m.reach > 0);
     if (posts.length < 4) return [];
     const avg = Math.round(posts.reduce((n, m) => n + m.reach, 0) / posts.length);
     const dn = await guard.kvCommand(cfg, ["SMEMBERS", "promo:done"]).catch(() => ({}));
@@ -572,6 +591,25 @@ module.exports = async (req, res) => {
         back: account.spend ? Math.round((ours.revenue / account.spend) * 100) : 0,
       } : null,
     });
+  }
+
+  // Posters to choose from: what the clinic has put on Instagram lately, and
+  // the posters it has published from this app. Typing an image URL by hand
+  // was the only way before, which nobody on a phone was going to do.
+  if (a === "posters") {
+    const ig = (await igMedia(cfg).catch(() => [])).slice(0, 24)
+      .map((m) => ({ id: m.id, src: "instagram", img: m.img, caption: m.caption, link: m.link, ts: m.ts, reach: m.reach }));
+    const lg = await guard.kvCommand(cfg, ["LRANGE", "post:log", "0", "23"]).catch(() => ({}));
+    const own = (lg.result || []).map((x) => parse(x, null)).filter((x) => x && x.imgId && x.kind !== "story")
+      .map((x) => ({ id: "own:" + x.imgId, src: "poster", img: `https://www.dermaluxe.ai/api/media?id=${x.imgId}`,
+        caption: String(x.caption || "").replace(/\s+/g, " ").slice(0, 60), link: x.link || "", ts: x.at || 0, reach: 0 }));
+    // Same picture from both sides: our own poster and the Instagram post of
+    // it. One row each, newest first.
+    const seen = new Set();
+    const rows = ig.concat(own).sort((x, y) => y.ts - x.ts)
+      .filter((r) => { const k = (r.caption || r.id).slice(0, 30); if (seen.has(k)) return false; seen.add(k); return true; })
+      .slice(0, 24);
+    return json(res, 200, { ok: true, rows });
   }
 
   // Meta's own vocabulary — interests and towns. Read-only, so anybody who

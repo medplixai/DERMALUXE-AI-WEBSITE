@@ -214,6 +214,19 @@ const A = (q, b) => h.call(ads, q, b);
   is(td([c2({ running: false, spend: 4000, costEach: 22 })]).rows.length, 0, "and a stopped campaign is not on today's list");
   is([td([]).min, td([]).target, td([]).avg], [300, 300, 115], "the footnote carries the floor, the target and our own average");
 
+  // ---- the posters to choose from ----------------------------------------
+  // Typing an image URL by hand was the only way to give a campaign a
+  // picture, which nobody on a phone was ever going to do.
+  console.log("\n  — choosing a poster —");
+  h.run(["DEL", "post:log"]); h.run(["DEL", "ads:igmedia"]); h.run(["DEL", "ads:promo"]);
+  h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig1", imgId: "abc123", kind: "post", caption: "Hydrafacial roju", at: Date.now() - 3600000 })]);
+  h.run(["LPUSH", "post:log", JSON.stringify({ id: "ig2", imgId: "def456", kind: "story", caption: "A story", at: Date.now() - 7200000 })]);
+  const pk = await A({ a: "posters" });
+  is(pk.code, 200, "the picker has something to show");
+  const own = (pk.body.rows || []).filter((r) => r.src === "poster");
+  is(own.length, 1, "our own published posters are in it — but not the stories, which are gone in a day");
+  is(own[0].img, "https://www.dermaluxe.ai/api/media?id=abc123", "each one as a link Meta can actually fetch");
+
   console.log("\n  — the screen's own wiring —");
   h.run(["DEL", "ads:no"]);
   const dis = await A({ a: "dismiss" }, { a: "dismiss", id: "stop:111" });

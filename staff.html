@@ -509,6 +509,11 @@
     .plangrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
     .planfield{border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
     .ichip{border-color:var(--g2);color:var(--g2)}
+    .postrip{display:flex;gap:8px;overflow-x:auto;padding:8px 0;margin-top:4px}
+    .postpick{flex:none;position:relative;width:74px;height:74px;border:2px solid var(--line);border-radius:10px;padding:0;overflow:hidden;background:var(--g6,#eee);cursor:pointer}
+    .postpick.on{border-color:var(--g2);box-shadow:0 0 0 2px rgba(180,140,60,.25)}
+    .postpick img{width:100%;height:100%;object-fit:cover;display:block}
+    .postpick i{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);color:#fff;font-size:.62rem;font-style:normal;padding:1px 0}
     .pbud.on{border-color:var(--g2);color:var(--g2)}
     .adbud{text-align:right}
     .goalbar i{display:block;height:100%;border-radius:3px}
@@ -2381,6 +2386,9 @@
       var host = $("planOut"); if (!host) return;
       if (!PLAN) { host.innerHTML = ""; return; }
       var p = PLAN;
+      // Drawn after the form, because it is fetched separately — the plan
+      // should not wait on Instagram to appear.
+      setTimeout(loadPosters2, 0);
       host.innerHTML =
         '<div class="sug"><b>' + esc(p.name) + "</b>" +
         '<div class="meta" style="margin-top:3px">' + esc(p.why) + "</div>" +
@@ -2399,9 +2407,34 @@
         '<div style="margin-top:10px"><div class="meta">📝 Ad matter</div>' +
         '<input id="plHead" maxlength="60" value="' + esc(p.headline) + '" style="width:100%;margin-top:4px">' +
         '<textarea id="plBody" rows="5" maxlength="600" style="margin-top:6px">' + esc(p.body) + "</textarea></div>" +
-        '<div style="margin-top:10px"><div class="meta">🖼 Poster (image link)</div><input id="plImg" maxlength="400" placeholder="https://www.dermaluxe.ai/assets/..." value="' + esc(p.image || "") + '" style="width:100%;margin-top:4px"></div>' +
+        '<div style="margin-top:10px"><div class="meta">🖼 Poster — Instagram nunchi select cheyandi</div>' +
+        '<div id="plPosters" class="postrip"><span class="meta">Teesukostunnam…</span></div>' +
+        '<input id="plImg" maxlength="400" placeholder="leda image link ikkada pettandi" value="' + esc(p.image || "") + '" style="width:100%;margin-top:6px"></div>' +
+        '<div class="meta" style="margin-top:8px">📱 Ad meeda button: <b style="color:var(--g2)">WhatsApp</b> — tap chesthe ' +
+        'direct ga mana WhatsApp agent ki vastaru, adi lead ni pattukuni, concern adigi, slot ista pedutundi. Ads lo entha mandi vachcharo ee page lone kanipistundi.</div>' +
         '<div class="noteform" style="margin-top:10px"><button class="btn btn--gold btn--sm" data-act="ads-build">Build cheyyi (PAUSED ga)</button><span class="meta" id="plMsg"></span></div>' +
         '<p class="meta" style="margin-top:6px">Build chesthe Meta lo campaign <b>PAUSED</b> ga tayaru avutundi — <b>dabbu podu</b>. Ads Manager lo chusi, nachithe ▶ Start nokkandi.</p>';
+    }
+
+    // The posters to choose from — what went on Instagram lately, and what
+    // this app published. Typing an image URL by hand was the only way
+    // before, which nobody on a phone was ever going to do.
+    var POSTERS = null;
+    function paintPosters() {
+      var host = $("plPosters"); if (!host) return;
+      if (!POSTERS || !POSTERS.length) { host.innerHTML = '<span class="meta">Instagram posts dorakaledu — kinda link pettandi.</span>'; return; }
+      var cur = ($("plImg") || {}).value || "";
+      host.innerHTML = POSTERS.map(function (m) {
+        return '<button class="postpick' + (m.img === cur ? " on" : "") + '" data-act="ads-poster" data-img="' + esc(m.img) + '" title="' + esc(m.caption) + '">' +
+          '<img src="' + esc(m.img) + '" alt="" loading="lazy" onerror="this.closest(\'.postpick\').style.display=\'none\'">' +
+          (m.reach ? '<i>👁 ' + (m.reach > 999 ? Math.round(m.reach / 1000) + "k" : m.reach) + "</i>" : "") + "</button>";
+      }).join("");
+    }
+    function loadPosters2() {
+      if (POSTERS) return paintPosters();
+      adsapi("posters", null, "")
+        .then(function (jj) { POSTERS = jj.rows || []; paintPosters(); })
+        .catch(function () { POSTERS = []; paintPosters(); });
     }
 
     // What was said on the owner's phone, and whether it arrived. A feed that
@@ -5616,6 +5649,11 @@
           .then(function (jj) { PLAN = null; toast("✅ Campaign ready — PAUSED ga. Ads Manager lo ▶ Start nokkandi"); loadAds(); })
           .catch(function (x) { $("plMsg").textContent = x.message; })
           .then(function () { el.disabled = false; el.textContent = "Build cheyyi (PAUSED ga)"; });
+        return;
+      }
+      if (el.dataset.act === "ads-poster") {
+        if ($("plImg")) $("plImg").value = el.dataset.img;
+        paintPosters();
         return;
       }
       if (el.dataset.act === "ads-sync") {
