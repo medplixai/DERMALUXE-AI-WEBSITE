@@ -127,6 +127,11 @@ const targeting = (c, t) => Object.assign({
   // and cannot be selected." It cost the 25 September poster its ad.
   instagram_positions: ["stream", "reels"],
   facebook_positions: ["feed"],
+  // Meta refuses the ad set until this is answered either way: "you need to
+  // enable or disable the Advantage audience feature". 0 = stay inside the
+  // audience we asked for. With interests chosen by a person that is the
+  // whole point, and for the daily poster it keeps the money in Eluru.
+  targeting_automation: { advantage_audience: 0 },
 },
   t && t.genders === "women" ? { genders: [2] } : t && t.genders === "men" ? { genders: [1] } : {},
   t && (t.interests || []).length
