@@ -506,6 +506,9 @@
     .alertbox{margin-top:10px;border:1px solid rgba(214,158,46,.45);background:rgba(214,158,46,.07);border-radius:12px;padding:10px 12px}
     .alertrow{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;padding:6px 0;font-size:.9rem;border-bottom:1px solid var(--line)}
     .alertrow:last-of-type{border-bottom:0}
+    .plangrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:10px;margin-top:10px}
+    .planfield{border:1px solid var(--line);border-radius:10px;padding:8px 10px;min-width:0}
+    .ichip{border-color:var(--g2);color:var(--g2)}
     .pbud.on{border-color:var(--g2);color:var(--g2)}
     .adbud{text-align:right}
     .goalbar i{display:block;height:100%;border-radius:3px}
@@ -2342,12 +2345,63 @@
           (j.error ? '<p class="meta" style="color:var(--hot)">Meta nunchi: ' + esc(j.error) + "</p>" : "") +
           headline(j) +
           alertBox(j) +
+          planBox(j) +
           sugBox +
           '<div class="grid" style="margin-top:10px">' + cards + "</div>" +
           oursBlock(j) +
           (camps || '<p class="meta" style="margin-top:10px">Campaigns emi ledu.</p>') +
           "</div>" + promoBox + todoBox + openerBox;
+        restorePlan(j);
       }).catch(function () { host.innerHTML = ""; });
+    }
+
+    // ---- plan a campaign, then build it -------------------------------------
+    // Ads Manager asks for an objective, a radius, an age range, interests and
+    // a budget in a language none of that is in. The answers are already in
+    // this database, so the draft comes from there and the owner edits what
+    // they disagree with. Nothing reaches Meta until Build, and what Build
+    // makes is PAUSED.
+    var PLAN = null;
+    function planBox(j) {
+      return '<div class="box" style="margin-top:12px"><div class="adshead">' +
+        '<h3 style="margin:0">🧠 Kotha campaign — AI plan chesi ivvu</h3>' +
+        '<div class="acts"><button class="btn btn--sm btn--gold" data-act="ads-plan">Plan cheyyi</button></div></div>' +
+        '<p class="meta">Mana sonta leads — evaru, e ibbandi tho, e ooru nunchi — vaati batti oka campaign plan chestundi: e vaalliki, entha dooram, e vayasu, e interests, entha budget, inka ad matter. Meeru marchi, taruvata build cheyyochu.</p>' +
+        '<div id="planOut" style="margin-top:10px"></div></div>';
+    }
+    // A draft left behind last time. Thinking about a campaign, going to look
+    // at something else and coming back is the normal way this gets used.
+    function restorePlan(j) { if (!PLAN && j.planDraft) PLAN = j.planDraft; paintPlan(); }
+    // Written out rather than built from a variable: wire-buttons reads this
+    // file as text, and an action assembled at runtime is invisible to it.
+    function intChip(name, n) {
+      return '<button class="btn btn--sm ichip" data-act="ads-iout" data-i="' + n + '">' + esc(name) + " ✕</button>";
+    }
+    function paintPlan() {
+      var host = $("planOut"); if (!host) return;
+      if (!PLAN) { host.innerHTML = ""; return; }
+      var p = PLAN;
+      host.innerHTML =
+        '<div class="sug"><b>' + esc(p.name) + "</b>" +
+        '<div class="meta" style="margin-top:3px">' + esc(p.why) + "</div>" +
+        (p.missed && p.missed.length ? '<div class="meta" style="margin-top:4px;color:var(--hot)">Meta ki teliyani interests teesesam: ' + esc(p.missed.join(", ")) + "</div>" : "") +
+        "</div>" +
+        '<div class="plangrid">' +
+        '<div class="planfield"><div class="meta">📍 Eluru chuttu</div><div class="noteform"><input id="plRad" inputmode="numeric" value="' + p.radius + '" style="width:70px"><span class="meta">km</span></div></div>' +
+        '<div class="planfield"><div class="meta">👤 Vayasu</div><div class="noteform"><input id="plAgeMin" inputmode="numeric" value="' + p.ageMin + '" style="width:60px"><span class="meta">–</span><input id="plAgeMax" inputmode="numeric" value="' + p.ageMax + '" style="width:60px"></div></div>' +
+        '<div class="planfield"><div class="meta">⚧ Evaru</div><select id="plGen">' +
+          ["all", "women", "men"].map(function (g) { return '<option value="' + g + '"' + (p.genders === g ? " selected" : "") + ">" + (g === "all" ? "Andaru" : g === "women" ? "Aadavaallu" : "Magavaallu") + "</option>"; }).join("") + "</select></div>" +
+        '<div class="planfield"><div class="meta">💰 Budget</div><div class="noteform"><span class="meta">₹</span><input id="plRup" inputmode="numeric" value="' + p.rupees + '" style="width:90px"><span class="meta">·</span><input id="plDays" inputmode="numeric" value="' + p.days + '" style="width:55px"><span class="meta">rojulu</span></div></div>' +
+        "</div>" +
+        '<div style="margin-top:10px"><div class="meta">🎯 Interests</div><div id="plInt" class="noteform" style="flex-wrap:wrap;margin-top:4px">' +
+          (p.interests || []).map(function (i, n) { return intChip(i.name, n); }).join("") +
+        '</div><div class="noteform" style="margin-top:6px"><input id="plIq" maxlength="40" placeholder="Interest vedakandi (ex. skin care)" style="min-width:180px"><button class="btn btn--sm" data-act="ads-isearch">Veduku</button></div><div id="plIres" class="noteform" style="flex-wrap:wrap;margin-top:6px"></div></div>' +
+        '<div style="margin-top:10px"><div class="meta">📝 Ad matter</div>' +
+        '<input id="plHead" maxlength="60" value="' + esc(p.headline) + '" style="width:100%;margin-top:4px">' +
+        '<textarea id="plBody" rows="5" maxlength="600" style="margin-top:6px">' + esc(p.body) + "</textarea></div>" +
+        '<div style="margin-top:10px"><div class="meta">🖼 Poster (image link)</div><input id="plImg" maxlength="400" placeholder="https://www.dermaluxe.ai/assets/..." value="' + esc(p.image || "") + '" style="width:100%;margin-top:4px"></div>' +
+        '<div class="noteform" style="margin-top:10px"><button class="btn btn--gold btn--sm" data-act="ads-build">Build cheyyi (PAUSED ga)</button><span class="meta" id="plMsg"></span></div>' +
+        '<p class="meta" style="margin-top:6px">Build chesthe Meta lo campaign <b>PAUSED</b> ga tayaru avutundi — <b>dabbu podu</b>. Ads Manager lo chusi, nachithe ▶ Start nokkandi.</p>';
     }
 
     // What was said on the owner's phone, and whether it arrived. A feed that
@@ -5501,6 +5555,67 @@
         adsapi("promote", { id: el.dataset.m, rupees: rup, days: 3 })
           .then(function (jj) { toast("₹" + jj.rupees + " × " + jj.days + " rojulu — PAUSED ga ready ✅"); loadAds(); })
           .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "🚀 Promote (3 days)"; });
+        return;
+      }
+      // ---- the campaign planner ------------------------------------------
+      if (el.dataset.act === "ads-plan") {
+        el.disabled = true; el.textContent = "Alochistunna…";
+        $("planOut").innerHTML = '<div class="sk"><div></div><div></div></div>';
+        adsapi("plan", { ask: "", rupees: 0 })
+          .then(function (jj) { PLAN = jj.plan; paintPlan(); })
+          .catch(function (x) { $("planOut").innerHTML = '<p class="meta" style="color:var(--bad)">' + esc(x.message) + "</p>"; })
+          .then(function () { el.disabled = false; el.textContent = "Plan cheyyi"; });
+        return;
+      }
+      if (el.dataset.act === "ads-iout") {
+        if (PLAN) { PLAN.interests.splice(Number(el.dataset.i), 1); paintPlan(); }
+        return;
+      }
+      if (el.dataset.act === "ads-isearch") {
+        var q2 = $("plIq").value;
+        if (!q2) return;
+        el.disabled = true;
+        adsapi("interests", null, "&q=" + encodeURIComponent(q2))
+          .then(function (jj) {
+            $("plIres").innerHTML = (jj.rows || []).length
+              ? jj.rows.map(function (r, n) {
+                  return '<button class="btn btn--sm" data-act="ads-iadd" data-id="' + esc(r.id) + '" data-n="' + esc(r.name) + '">+ ' + esc(r.name) +
+                    (r.audience ? ' <span class="meta">' + Math.round(r.audience / 100000) / 10 + "M</span>" : "") + "</button>";
+                }).join("")
+              : '<span class="meta">Emi dorakaledu</span>';
+          })
+          .catch(function (x) { toast(x.message); })
+          .then(function () { el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ads-iadd") {
+        if (PLAN && !PLAN.interests.some(function (i) { return i.id === el.dataset.id; })) {
+          PLAN.interests.push({ id: el.dataset.id, name: el.dataset.n });
+          paintPlan();
+        }
+        return;
+      }
+      if (el.dataset.act === "ads-build") {
+        if (!PLAN) return;
+        PLAN.radius = Number($("plRad").value) || PLAN.radius;
+        PLAN.ageMin = Number($("plAgeMin").value) || PLAN.ageMin;
+        PLAN.ageMax = Number($("plAgeMax").value) || PLAN.ageMax;
+        PLAN.genders = $("plGen").value;
+        PLAN.rupees = Number($("plRup").value) || PLAN.rupees;
+        PLAN.days = Number($("plDays").value) || PLAN.days;
+        PLAN.headline = $("plHead").value;
+        PLAN.body = $("plBody").value;
+        PLAN.image = $("plImg").value;
+        if (!PLAN.image) { toast("Poster image link pettandi"); return; }
+        if (PLAN.rupees / PLAN.days < 100) { toast("Roju ₹100 kanna takkuva kudaradu — budget penchandi leda rojulu taggichandi"); return; }
+        if (!confirm(PLAN.name + "\n\n₹" + PLAN.rupees + " × " + PLAN.days + " rojulu · Eluru chuttu " + PLAN.radius + " km\n\nPAUSED ga create avutundi — ippudu dabbu podu.\n\nSare na?")) return;
+        el.disabled = true; el.textContent = "Build avutondi…";
+        adsapi("build", { plan: PLAN })
+          // loadAds() repaints this whole board, so a message written into it
+          // vanishes in the same breath. The toast outlives the repaint.
+          .then(function (jj) { PLAN = null; toast("✅ Campaign ready — PAUSED ga. Ads Manager lo ▶ Start nokkandi"); loadAds(); })
+          .catch(function (x) { $("plMsg").textContent = x.message; })
+          .then(function () { el.disabled = false; el.textContent = "Build cheyyi (PAUSED ga)"; });
         return;
       }
       if (el.dataset.act === "ads-sync") {

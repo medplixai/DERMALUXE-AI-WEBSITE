@@ -25,7 +25,7 @@ Object.assign(process.env, {
   ADMIN_PHONES: "9010427777", LEAD_NOTIFY_PHONES: "9989325777",
   WA_WEBHOOK_TOKEN: "hook", WA_CLOUD_TOKEN: "cloud", WA_PHONE_ID_ALLOWLIST: "111",
   WA_AGENT_ENABLED: "1", ANTHROPIC_API_KEY: "test", UPI_VPA: "dermaluxe@upi", PUBLIC_BASE: "http://localhost:4600",
-  META_ADS_TOKEN: "dev", META_AD_ACCOUNT_ID: "4527414787474363", IG_LOGIN_TOKEN: "dev",
+  META_ADS_TOKEN: "dev", META_AD_ACCOUNT_ID: "4527414787474363", IG_LOGIN_TOKEN: "dev", IG_PAGE_ID: "1312992278555449",
 });
 const h = require(path.join(ROOT, "tools", "tests", "harness.js"));
 delete require.cache[path.join(API, "staff.js")];          // the real one, with real sessions
@@ -34,6 +34,16 @@ delete require.cache[path.join(API, "staff.js")];          // the real one, with
 let turn = 0;
 global.fetch = async (url, opt) => {
   const u = String(url);
+  // The planner's own answer, so the AI campaign draft can be looked at
+  // without a key. It is recognisable by its system prompt.
+  if (u.includes("api.anthropic.com") && /You plan Meta \(Instagram \+ Facebook\) ad campaigns/.test(String((opt && opt.body) || ""))) {
+    const plan = { name: "Juttu raalatam — Eluru 30km", why: "Gata 60 rojullo ekkuva mandi juttu raalatam gurinchi ne raasaru, andulo chaala mandi Eluru nunchi. Andhuke ade oka campaign ga.",
+      concern: "hair fall", radius_km: 30, age_min: 24, age_max: 50, genders: "all",
+      interests: ["Skin care", "Hair care", "Trichology"], rupees: 1500, days: 5,
+      headline: "Juttu raalutunda?",
+      body: "Juttu raalatam chaala mandi ki vastundi — kaani kaaranam okkokkariki okkoti.\nMana MD dermatologists mee scalp chusi, mee ki e treatment saripotundo cheptaru.\nPRP, GFC, laser — anni okey chota.\nMee concern ikkade WhatsApp lo cheppandi 😊" };
+    return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(plan).slice(1) }] }) };
+  }
   if (u.includes("api.anthropic.com")) {
     const body = JSON.parse(opt.body);
     if (/You fix one WhatsApp reply/.test(body.system)) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: body.messages[0].content.split("\n")[1] || "ok" }] }) };
@@ -76,6 +86,26 @@ global.fetch = async (url, opt) => {
       { id: "ad2", campaign_id: "120222", creative: { thumbnail_url: "https://www.dermaluxe.ai/assets/academy/batch1-story.jpg", effective_object_story_id: "1312992278555449_222" } },
     ] }) };
   }
+  // Creating things on the ad account, so the planner's Build and the promote
+  // buttons can be pressed here without a token or a rupee.
+  if (u.includes("graph.facebook.com") && opt && opt.method === "POST" && /\/act_\d+\/(campaigns|adsets|adcreatives|ads|adimages)/.test(u)) {
+    if (/adimages/.test(u)) return { ok: true, status: 200, json: async () => ({ images: { bytes: { hash: "DEVHASH" } } }) };
+    return { ok: true, status: 200, json: async () => ({ id: "dev" + Math.floor(Math.random() * 1e9) }) };
+  }
+  // Meta's targeting vocabulary, so the planner's interest search answers.
+  if (u.includes("graph.facebook.com") && u.includes("/search")) {
+    // URLSearchParams writes a space as "+", and decodeURIComponent does not
+    // turn that back — matching on the raw value finds nothing.
+    const q = decodeURIComponent(String((u.match(/[?&]q=([^&]*)/) || [, ""])[1] || "").replace(/\+/g, " ")).toLowerCase();
+    const all = [
+      { id: "6003107902433", name: "Skin care", audience_size_upper_bound: 912000000, path: ["Interests", "Beauty"] },
+      { id: "6003139266461", name: "Beauty", audience_size_upper_bound: 845000000, path: ["Interests"] },
+      { id: "6003212469satisfy", name: "Hair care", audience_size_upper_bound: 640000000, path: ["Interests", "Beauty"] },
+      { id: "6002974590168", name: "Cosmetics", audience_size_upper_bound: 520000000, path: ["Interests", "Beauty"] },
+      { id: "6003295306173", name: "Physical fitness", audience_size_upper_bound: 700000000, path: ["Interests"] },
+    ];
+    return { ok: true, status: 200, json: async () => ({ data: q ? all.filter((x) => x.name.toLowerCase().includes(q)) : all }) };
+  }
   // Instagram's own media, so the "promote what already worked" strip has
   // something to work with: one post far above the month's average reach.
   if (u.includes("graph.instagram.com") && u.includes("/me/media")) {
@@ -112,7 +142,10 @@ global.fetch = async (url, opt) => {
   if (u.includes("graph.facebook.com") && /\d{6,}$/.test(u.split("?")[0])) {
     return { ok: true, status: 200, json: async () => ({ name: "DermaLuxe by Medicare", account_review_status: "APPROVED" }) };
   }
-  return { ok: true, status: 200, json: async () => ({ data: [], id: "x" }), text: async () => "" };
+  // arrayBuffer too: anything that fetches a picture (the promote and plan
+  // paths upload one to Meta) otherwise dies on a stub that only speaks JSON.
+  return { ok: true, status: 200, json: async () => ({ data: [], id: "x" }), text: async () => "",
+    arrayBuffer: async () => new TextEncoder().encode("dev-image-bytes").buffer };
 };
 
 const load = (n) => require(path.join(API, n + ".js"));

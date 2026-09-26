@@ -447,11 +447,15 @@ module.exports = async (req, res) => {
     const opener = await require("./_abtest.js").stats(cfg).catch(() => null);
     const promote = await promotable(cfg).catch(() => []);
     const alerts = await require("./_adalert.js").recent(cfg, 8).catch(() => []);
+    // The draft survives leaving the screen — thinking about a campaign and
+    // coming back to it is the normal way this gets used.
+    const dr = await guard.kvCommand(cfg, ["GET", "adplan:last"]).catch(() => ({}));
+    const planDraft = parse((dr && dr.result) || "", null);
 
     if (!conn.ok) {
       return json(res, 200, {
         ok: true, connected: false, why: conn.why, tried: conn.tried || [],
-        days, ours, opener, alerts: [], canChange, target,
+        days, ours, opener, alerts: [], planDraft: null, canChange, target,
         // Said in the order it has to be done.
         needs: conn.why === "no-token"
           ? ["META_ADS_TOKEN", "META_AD_ACCOUNT_ID"]
@@ -555,7 +559,7 @@ module.exports = async (req, res) => {
       tokenName: conn.tokenName, accountId: conn.accountId,
       adsManager: `https://www.facebook.com/adsmanager/manage/campaigns?act=${conn.accountId}`,
       account, today, campaigns, suggest, error: err || undefined,
-      ours, opener, promote, alerts, alertEvery: require("./_adalert.js").EVERY / 60000,
+      ours, opener, promote, alerts, planDraft, alertEvery: require("./_adalert.js").EVERY / 60000,
       todo: todo(account, campaigns, target),
       // The join, stated carefully: Meta counts conversations it started,
       // we count people who became patients. Different things, both real.
@@ -568,6 +572,15 @@ module.exports = async (req, res) => {
         back: account.spend ? Math.round((ours.revenue / account.spend) * 100) : 0,
       } : null,
     });
+  }
+
+  // Meta's own vocabulary — interests and towns. Read-only, so anybody who
+  // can see the screen may look one up.
+  if (a === "interests" || a === "places") {
+    const rows = await require("./_adplan.js")
+      .search(cfg, a === "interests" ? "adinterest" : "adgeolocation", String(q.q || b.q || ""))
+      .catch(() => []);
+    return json(res, 200, { ok: true, rows });
   }
 
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
@@ -596,6 +609,24 @@ module.exports = async (req, res) => {
   }
 
   const tok = tokenOf(conn.tokenName);
+
+  // Draft a campaign out of what the clinic already knows. Nothing reaches
+  // Meta here — a plan is a plan until somebody presses the other button.
+  if (a === "plan") {
+    const rl = await guard.rateLimit(cfg, `rl:adplan:${me.phone}`, 20, 3600);
+    if (!rl.allowed) return json(res, 429, { error: "Konchem aagandi" });
+    const out = await require("./_adplan.js").plan(cfg, { ask: b.ask, rupees: b.rupees });
+    if (!out.ok) return json(res, 502, { error: out.error });
+    return json(res, 200, out);
+  }
+
+  // Build the planned campaign on Meta — PAUSED. Starting it is a separate,
+  // deliberate act on Meta's own screen, so this press cannot spend.
+  if (a === "build") {
+    const out = await require("./_adplan.js").create(cfg, b.plan || {}, me.name);
+    if (!out.ok) return json(res, 502, { error: out.error });
+    return json(res, 200, out);
+  }
 
   // A post that already did well, given money. It is created PAUSED and the
   // owner presses Start on Meta's own post card — so this tap cannot spend.

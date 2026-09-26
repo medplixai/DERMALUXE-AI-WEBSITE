@@ -116,16 +116,22 @@ async function uploadImage(cfg, imgId, imageUrl) {
 }
 
 // Eluru and the towns around it, in adults who use Instagram or Facebook.
-const targeting = (c) => ({
-  geo_locations: { custom_locations: [{ latitude: ELURU.lat, longitude: ELURU.lng, radius: c.km, distance_unit: "kilometer" }] },
-  age_min: c.ageMin, age_max: c.ageMax,
+// A planned campaign may narrow it — a tighter radius, an age range, one
+// gender, and interests Meta has confirmed exist.
+const targeting = (c, t) => Object.assign({
+  geo_locations: { custom_locations: [{ latitude: ELURU.lat, longitude: ELURU.lng, radius: (t && t.radius) || c.km, distance_unit: "kilometer" }] },
+  age_min: (t && t.ageMin) || c.ageMin, age_max: (t && t.ageMax) || c.ageMax,
   publisher_platforms: ["instagram", "facebook"],
   // No "explore": Meta retired that placement and now refuses the whole ad
   // set for asking — "IG Explore placement is deprecated for this API version
   // and cannot be selected." It cost the 25 September poster its ad.
   instagram_positions: ["stream", "reels"],
   facebook_positions: ["feed"],
-});
+},
+  t && t.genders === "women" ? { genders: [2] } : t && t.genders === "men" ? { genders: [1] } : {},
+  t && (t.interests || []).length
+    ? { flexible_spec: [{ interests: t.interests.map((i) => ({ id: String(i.id), name: String(i.name || "") })) }] }
+    : {});
 
 // One poster → one campaign, one ad set, one ad. Every id is written down as
 // it is made, so a failure half way can be undone instead of left spending.
@@ -161,7 +167,7 @@ async function create(cfg, post, c) {
       // Manager calls Highest volume: spend the ₹300, get the most chats.
       bid_strategy: "LOWEST_COST_WITHOUT_CAP",
       destination_type: "WHATSAPP", promoted_object: { page_id: pageId() },
-      targeting: targeting(c),
+      targeting: targeting(c, post.targeting),
     });
     made.adset = adset.id;
     const image_hash = await uploadImage(cfg, post.imgId, post.imageUrl);
@@ -279,8 +285,8 @@ async function promote(cfg, o) {
   if (!once || !once.result) return { ok: false, error: "Ee post ki already pettaru" };
   const c = Object.assign({}, await load(cfg), { rupees, days, status: "PAUSED" });
   const out = await create(cfg, {
-    id, imageUrl: o.imageUrl, caption: o.caption || "",
-    name: `Promote ${istDay()} · ${String(o.caption || "post").replace(/\s+/g, " ").slice(0, 28)}`,
+    id, imageUrl: o.imageUrl, caption: o.caption || "", targeting: o.targeting || null,
+    name: o.name || `Promote ${istDay()} · ${String(o.caption || "post").replace(/\s+/g, " ").slice(0, 28)}`,
   }, c);
   if (!out.ok) {
     await guard.kvCommand(cfg, ["DEL", `promo:${id}`]).catch(() => {});
