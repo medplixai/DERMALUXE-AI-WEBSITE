@@ -80,6 +80,17 @@ const cfg = { kind: "pg" };
   const p3 = await ap.plan(cfg, {});
   is([p3.plan.radius, p3.plan.ageMin], [80, 18], "a nonsense radius or a child's age is pulled back to what Meta allows");
 
+  // extractJson happily returns whatever fields survived a cut-off answer, so
+  // a plan can parse and still have no ad in it. The live one did exactly
+  // that: a name, a half-written reason, and empty copy.
+  console.log("\n  — a plan cut off half way —");
+  const whole = reply;
+  reply = { name: "Hair fall", why: "Because peo", radius_km: 30, rupees: 1500, days: 5 };
+  const cut = await ap.plan(cfg, {});
+  is([cut.ok, cut.error], [false, "Plan sagam lone aagipoyindi — malli 'Plan cheyyi' nokkandi"],
+    "no headline and no body is not a plan, and it says so rather than showing empty boxes");
+  reply = whole;
+
   console.log("\n  — building it —");
   const good = Object.assign({}, p1.plan, { image: "https://www.dermaluxe.ai/assets/academy/batch1-poster.jpg" });
   const out = await ap.create(cfg, good, "Owner");

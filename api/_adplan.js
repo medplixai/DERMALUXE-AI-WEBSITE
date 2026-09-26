@@ -87,7 +87,7 @@ Rules you must not break:
 - Budget is a LIFETIME budget in rupees over N days, and Meta refuses anything under ₹100 a day, so rupees / days must be at least 100.
 
 Output ONLY a JSON object, no prose around it:
-{"name":"short campaign name","why":"2 sentences: what this is aimed at and why, from the clinic's own numbers","concern":"the one concern this targets","radius_km":30,"age_min":22,"age_max":55,"genders":"all|women|men","interests":["Skin care","Beauty"],"rupees":1500,"days":5,"headline":"max 40 chars","body":"3-5 short Tenglish lines, one idea a line, ends asking them to message","cta":"WHATSAPP_MESSAGE"}`;
+{"name":"short campaign name","why":"ONE sentence, under 200 characters: what this is aimed at and why, from the clinic's own numbers","concern":"the one concern this targets","radius_km":30,"age_min":22,"age_max":55,"genders":"all|women|men","interests":["Skin care","Beauty"],"rupees":1500,"days":5,"headline":"max 40 chars","body":"3-5 short Tenglish lines, one idea a line, ends asking them to message","cta":"WHATSAPP_MESSAGE"}`;
 
 // ---- the draft -------------------------------------------------------------
 async function plan(cfg, opts) {
@@ -114,7 +114,7 @@ Plan ONE campaign to run next.`;
         // and some of them refuse a prefilled turn outright ("This model does
         // not support assistant message prefill"). extractJson copes with a
         // model that wraps its JSON in a sentence, which is the other risk.
-        model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 900, system: SYS,
+        model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 1800, system: SYS,
         messages: [{ role: "user", content: ask }],
       }),
     });
@@ -127,6 +127,13 @@ Plan ONE campaign to run next.`;
     return { ok: false, error: `Plan ready avvaledu — ${String(e.message || e).slice(0, 80)}` };
   }
   if (!j || !j.name) return { ok: false, error: "Plan chadavaleka poyam — malli try cheyandi" };
+  // A plan cut off half way still parses — extractJson happily returns the
+  // fields that made it. Without the ad's own words there is nothing to run,
+  // so say so instead of handing over a form with empty boxes.
+  if (!clean(j.headline, 60) || !clean(j.body, 600)) {
+    console.error("adplan: truncated —", JSON.stringify(j).slice(0, 200));
+    return { ok: false, error: "Plan sagam lone aagipoyindi — malli 'Plan cheyyi' nokkandi" };
+  }
 
   // Interests are checked against Meta, one by one. What Meta does not know
   // is dropped, and the owner is told which — a made-up id targets nobody.
