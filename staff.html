@@ -3872,7 +3872,9 @@
       var maxD = Math.max(1, Math.floor(Number(b.rupees) / 100));
       $("bstHint").textContent = "(₹" + b.rupees + " ki max " + maxD + " rojulu)";
       $("bstState").innerHTML = b.ready
-        ? "✅ Meta ads account connect ayindi. Ippudu: <b>" + (b.on ? "₹" + b.rupees + " × " + b.days + " rojulu, " + b.km + " km" : "off") + "</b>"
+        // Both radii, since the day's poster goes out at one or the other.
+        // Naming only the clinic one made this line half true.
+        ? "✅ Meta ads account connect ayindi. Ippudu: <b>" + (b.on ? "₹" + b.rupees + " × " + b.days + " rojulu · clinic " + b.km + " km · academy " + b.kmAcademy + " km" : "off") + "</b>"
         : '⚠️ Meta ads keys ledu (META_ADS_TOKEN / META_AD_ACCOUNT_ID / IG_PAGE_ID) — ad padadu.';
       var rows = (panel && panel.boosts) || [];
       $("bstList").innerHTML = rows.length ? '<h3 style="margin:10px 0 6px">Ippativaraku</h3>' + rows.map(function (r) {

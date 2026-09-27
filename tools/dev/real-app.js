@@ -29,6 +29,12 @@ Object.assign(process.env, {
 });
 const h = require(path.join(ROOT, "tools", "tests", "harness.js"));
 delete require.cache[path.join(API, "staff.js")];          // the real one, with real sessions
+// The harness stubs _push.js down to the three calls its tests need, which is
+// right for a test and wrong here: /api/push?a=devices then threw a 500 on
+// every load of the Control panel. A phantom error in this window is worse
+// than none — it is what a real one hides behind. Without VAPID keys the real
+// module simply reports itself switched off, which is the truth.
+delete require.cache[path.join(API, "_push.js")];
 
 // The model: a plausible receptionist. A message with a time in it books.
 let turn = 0;
