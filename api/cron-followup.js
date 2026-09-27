@@ -34,7 +34,8 @@ module.exports = async (req, res) => {
   // until somebody happens to look. So: write something, read it back, throw
   // it away. If that does not work, say so on WhatsApp — which does not need
   // the database to work, unlike the push notifications.
-  const UNTIL = Date.now() + BUDGET_MS;
+  const STARTED = Date.now();
+  const UNTIL = STARTED + BUDGET_MS;
   const timeLeft = () => UNTIL - Date.now();
   const skipped = [];
   // Enough clock left to start something that may take a while?
@@ -549,5 +550,11 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, health, ms: Date.now() - (UNTIL - BUDGET_MS), skipped, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
+  // These go in the RESPONSE, which nothing keeps. The one question asked of
+  // this job after a bad morning is "how long did it take, and what did it not
+  // get to" — so it says both where somebody can read it afterwards.
+  const took = Date.now() - STARTED;
+  console.log(`cron-followup ${took}ms hour=${istHour}${skipped.length ? " skipped=" + skipped.join(",") : ""}` +
+    ` sent=${sent} early=${early} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled}`);
+  return res.status(200).json({ ok: true, health, ms: took, skipped, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
 };
