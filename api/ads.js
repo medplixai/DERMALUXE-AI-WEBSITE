@@ -155,7 +155,32 @@ async function ourSide(cfg, sinceMs) {
     for (const r of Object.values(byAd)) r.revenue = r.phones.reduce((n, p) => n + (payOf[p] || 0), 0);
   }
   for (const r of Object.values(byAd)) delete r.phones;
-  return { leads: paid.length, booked, came, revenue, people: phones.size, fromAds: leads.filter((x) => x.ad_id).length, byAd };
+
+  // Where they are. A click-to-WhatsApp ad shown too widely fills the book
+  // with people who will never travel to Eluru, and on the money numbers
+  // alone that looks like success — cheap leads, lots of them. The agent
+  // already asks everybody which town they are from, so the answer is here.
+  const Q = require("./_qualify.js");
+  const near = { local: 0, district: 0, far: 0, unknown: 0 };
+  const towns = {};
+  const adRing = {};
+  for (const l of paid) {
+    const v = String(l.village || l.town || "").trim();
+    const p = (Q.placeOf ? Q.placeOf(v) : { known: false, km: null });
+    const ring = !v ? "unknown" : p.km == null ? "far" : p.km <= 25 ? "local" : p.km <= 80 ? "district" : "far";
+    near[ring]++;
+    if (v) towns[p.label || v] = (towns[p.label || v] || 0) + 1;
+    const ad = String(l.ad_id || "");
+    if (ad) { (adRing[ad] || (adRing[ad] = { local: 0, district: 0, far: 0, unknown: 0 }))[ring]++; }
+  }
+  const where = {
+    near, adRing,
+    towns: Object.entries(towns).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, n]) => ({ name, n })),
+    // "unknown" is a chat that stopped before the agent got a town out of
+    // them — not evidence either way, so it is counted apart.
+    said: near.local + near.district + near.far,
+  };
+  return { leads: paid.length, booked, came, revenue, people: phones.size, fromAds: leads.filter((x) => x.ad_id).length, byAd, where };
 }
 
 // ---- what to say about one campaign ----------------------------------------
@@ -232,6 +257,31 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
       title: "Account ki spending limit ledu",
       why: "Roju podduna poster ki ad taanantata padutundi. Account meeda limit lekapothe, emaina tappu jarigithe aapedi emi ledu.",
       gain: "Ads Manager → Billing lo account spending limit pettandi",
+      action: null,
+    });
+  }
+
+  // The one a money dashboard gets exactly backwards. Cheap leads, lots of
+  // them, and none of them near enough to walk in. Meta is buying whoever is
+  // cheapest inside the radius, and outside the radius the ad is not ours at
+  // all — an Instagram in-app Boost is targeted nationwide by default and
+  // points at the same WhatsApp number.
+  const w = o.where || null;
+  if (w && w.said >= 6 && (w.near.far / Math.max(1, w.said)) >= 0.4) {
+    const far = w.near.far, share = Math.round((far / w.said) * 100);
+    // Name the ad doing it, when one ad is doing most of it.
+    const worst = Object.entries(w.adRing || {})
+      .map(([ad, r]) => ({ ad, far: r.far, all: r.local + r.district + r.far + r.unknown }))
+      .filter((x) => x.far >= 3).sort((a, b) => b.far - a.far)[0];
+    const ours = new Set((campaigns || []).map((c) => String(c.id)));
+    out.push({
+      id: `far:leads:${bucket(far)}`, kind: "track",
+      title: `${far} leads mana ooriki dooram nunchi (${share}%)`,
+      why: `Town cheppina ${w.said} mandi lo ${far} mandi 80 km kanna dooram — vaallu clinic ki raaru.` +
+        (worst ? ` Andulo ekkuva mandi okey ad nunchi: ${worst.ad}${ours.has(worst.ad) ? "" : " — idi mana ad account lo ledu, Instagram app lo 'Boost post' tho pettinadi avutundi, daani targeting India motham"}.` : ""),
+      gain: worst && !ours.has(worst.ad)
+        ? "Instagram app lo aa post → Boost chusi aapandi, leda ikkada Plan cheyyi tho Eluru ki matrame pettandi"
+        : "Radius taggichandi, leda Telugu/English matrame ani language pettandi",
       action: null,
     });
   }
@@ -675,10 +725,9 @@ module.exports = async (req, res) => {
 
   // Meta's own vocabulary — interests and towns. Read-only, so anybody who
   // can see the screen may look one up.
-  if (a === "interests" || a === "places") {
-    const rows = await require("./_adplan.js")
-      .search(cfg, a === "interests" ? "adinterest" : "adgeolocation", String(q.q || b.q || ""))
-      .catch(() => []);
+  if (a === "interests" || a === "places" || a === "locales") {
+    const type = a === "interests" ? "adinterest" : a === "places" ? "adgeolocation" : "adlocale";
+    const rows = await require("./_adplan.js").search(cfg, type, String(q.q || b.q || "")).catch(() => []);
     return json(res, 200, { ok: true, rows });
   }
 

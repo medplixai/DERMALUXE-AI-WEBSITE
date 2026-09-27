@@ -38,9 +38,12 @@ async function search(cfg, type, q) {
       type, q: clean(q, 60), limit: 12,
       ...(type === "adgeolocation" ? { location_types: JSON.stringify(["city"]) } : {}),
     });
-    return (d.data || []).map((x) => (type === "adinterest"
-      ? { id: String(x.id), name: x.name, audience: Number(x.audience_size_upper_bound || x.audience_size || 0), path: (x.path || []).join(" › ") }
-      : { key: String(x.key), name: x.name, region: x.region || "", country: x.country_code || "IN", type: x.type || "city" }));
+    if (type === "adinterest") {
+      return (d.data || []).map((x) => ({ id: String(x.id), name: x.name,
+        audience: Number(x.audience_size_upper_bound || x.audience_size || 0), path: (x.path || []).join(" › ") }));
+    }
+    if (type === "adlocale") return (d.data || []).map((x) => ({ key: Number(x.key), name: x.name }));
+    return (d.data || []).map((x) => ({ key: String(x.key), name: x.name, region: x.region || "", country: x.country_code || "IN", type: x.type || "city" }));
   } catch (e) {
     console.error(`adplan: search ${type}`, e && e.message);
     return [];
@@ -88,6 +91,23 @@ Rules you must not break:
 
 Output ONLY a JSON object, no prose around it:
 {"name":"short campaign name","why":"ONE sentence, under 200 characters: what this is aimed at and why, from the clinic's own numbers","concern":"the one concern this targets","radius_km":30,"age_min":22,"age_max":55,"genders":"all|women|men","interests":["Skin care","Beauty"],"rupees":1500,"days":5,"headline":"max 40 chars","body":"3-5 short Tenglish lines, one idea a line, ends asking them to message","cta":"WHATSAPP_MESSAGE"}`;
+
+// The languages the clinic can actually serve. Meta numbers these, and the
+// numbers are not guessable, so they are looked up once and kept.
+const LANGS = ["Telugu", "English (All)"];
+
+async function locales(cfg) {
+  const got = parse(((await guard.kvCommand(cfg, ["GET", "ads:locales"]).catch(() => ({}))) || {}).result || "", null);
+  if (got && got.at > Date.now() - 30 * 86400000 && (got.ids || []).length) return got.ids;
+  const ids = [];
+  for (const name of LANGS) {
+    const hits = await search(cfg, "adlocale", name);
+    const hit = hits.find((h) => String(h.name).toLowerCase() === name.toLowerCase()) || hits[0];
+    if (hit && Number(hit.key) && !ids.includes(Number(hit.key))) ids.push(Number(hit.key));
+  }
+  if (ids.length) await guard.kvCommand(cfg, ["SET", "ads:locales", JSON.stringify({ at: Date.now(), ids })]).catch(() => {});
+  return ids;
+}
 
 // ---- the draft -------------------------------------------------------------
 async function plan(cfg, opts) {
@@ -178,6 +198,7 @@ async function create(cfg, p, by) {
     targeting: {
       radius: num(p.radius, 10, 80, 30), ageMin: num(p.ageMin, 18, 60, 22), ageMax: num(p.ageMax, 20, 65, 55),
       genders: p.genders, interests: (p.interests || []).map((i) => ({ id: String(i.id), name: clean(i.name, 40) })).slice(0, 10),
+      locales: await locales(cfg).catch(() => []),
     },
   });
   if (!out.ok) return out;
@@ -188,4 +209,4 @@ async function create(cfg, p, by) {
   return out;
 }
 
-module.exports = { plan, create, search, clinicFacts, ELURU };
+module.exports = { plan, create, search, clinicFacts, locales, LANGS, ELURU };

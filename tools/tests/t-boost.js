@@ -80,6 +80,18 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   is(/Hair fall/.test(cr.message), true, "with the post's own caption");
   is(sentTo("9010427777").some((t) => /₹300 pettam/.test(t) && /3 rojulu/.test(t) && /30 km/.test(t)), true, "the owner is told what was put behind it");
 
+  // The clinic is in Eluru and the doctor consults in Telugu. Without this,
+  // Meta buys whoever is cheapest inside the radius and the chats arrive in
+  // Hindi from people who are never going to come.
+  h.run(["SET", "ads:locales", JSON.stringify({ at: Date.now(), ids: [92, 6] })]);
+  seedImage(21); calls = [];
+  await boost.run(cfg, post(21));
+  is(bodyOf("adset").targeting.locales, [92, 6], "the ad is shown in the languages the clinic can actually answer");
+  h.run(["DEL", "ads:locales"]);
+  seedImage(22); calls = [];
+  await boost.run(cfg, post(22));
+  is("locales" in bodyOf("adset").targeting, false, "with none looked up yet, nothing is invented — no locales at all rather than a guessed number");
+
   console.log("\n  — what it refuses —");
   calls = [];
   is((await boost.run(cfg, post(1))).why, "already boosted", "the same poster is never boosted twice");

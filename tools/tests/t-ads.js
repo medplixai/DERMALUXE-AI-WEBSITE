@@ -250,6 +250,27 @@ const A = (q, b) => h.call(ads, q, b);
   is(ads.suggestions({ spend: 1000, capLeft: 9000 }, [], 300, 30, said, { leads: 24, booked: 0 }).some((x) => x.kind === "follow"), true,
     "three times as many is not, and it asks again");
 
+  // Cheap leads from four states away look like success on every money
+  // number there is: lots of them, ₹16 each, and not one of them will ever
+  // walk into a clinic in Eluru.
+  console.log("\n  — leads from too far to come —");
+  const where = (local, district, far, adRing) => ({ leads: local + district + far, booked: 0,
+    where: { near: { local, district, far, unknown: 0 }, said: local + district + far, towns: [], adRing: adRing || {} } });
+  is(sg([], { spend: 1000, capLeft: 9000 }, where(4, 1, 0)).some((x) => x.kind === "track"), false,
+    "leads from around Eluru are the point, and nothing is said");
+  is(sg([], { spend: 1000, capLeft: 9000 }, where(2, 1, 2)).some((x) => /dooram/.test(x.title || "")), false,
+    "five leads is too few to call it a pattern");
+  const farOnes = sg([], { spend: 1000, capLeft: 9000 }, where(3, 2, 11, { "52570534911773": { local: 1, district: 0, far: 10, unknown: 0 } }))
+    .find((x) => /dooram/.test(x.title || ""));
+  is(!!farOnes, true, "eleven of sixteen from far away is");
+  is(/11 leads mana ooriki dooram nunchi \(69%\)/.test(farOnes.title), true, "with the share: " + farOnes.title);
+  is(/52570534911773/.test(farOnes.why) && /mana ad account lo ledu/.test(farOnes.why), true,
+    "naming the ad, and that it is not one of ours: " + farOnes.why);
+  const mine = sg([{ id: "c9", name: "Ours", running: true, spend: 500, results: 3, costEach: 166, daily: 0, patients: { leads: 0, came: 0 } }],
+    { spend: 1000, capLeft: 9000 }, where(3, 2, 11, { c9: { local: 1, district: 0, far: 10, unknown: 0 } }))
+    .find((x) => /dooram/.test(x.title || ""));
+  is(/mana ad account lo ledu/.test(mine.why), false, "and when it IS one of ours, it says to narrow it instead");
+
   console.log("\n  — the shells a run of failures leaves —");
   const shell = (i) => ({ id: "s" + i, name: "Half-built " + i, running: false, spend: 0, results: 0, costEach: 0, patients: { leads: 0 } });
   is(sg([shell(1), shell(2)]).some((x) => x.kind === "tidy"), false, "two is not a mess");

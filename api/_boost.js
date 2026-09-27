@@ -141,6 +141,10 @@ const targeting = (c, t) => Object.assign({
   // whole point, and for the daily poster it keeps the money in Eluru.
   targeting_automation: { advantage_audience: 0 },
 },
+  // The clinic is in Eluru and the doctor consults in Telugu. Without this,
+  // Meta shows a click-to-WhatsApp ad to whoever is cheapest inside the
+  // radius — and the chats arrive in Hindi from people who will never come.
+  (t && (t.locales || []).length) ? { locales: t.locales.map(Number).filter(Boolean) } : {},
   t && t.genders === "women" ? { genders: [2] } : t && t.genders === "men" ? { genders: [1] } : {},
   t && (t.interests || []).length
     ? { flexible_spec: [{ interests: t.interests.map((i) => ({ id: String(i.id), name: String(i.name || "") })) }] }
@@ -154,6 +158,12 @@ async function create(cfg, post, c) {
   // A promoted post is created stopped: the owner starts it themselves, so a
   // mis-tap on a phone cannot begin spending on its own.
   const status = c.status === "PAUSED" ? "PAUSED" : "ACTIVE";
+  // The languages the clinic can serve, looked up once by the planner and
+  // kept. The morning poster's ad gets them too — it is the same clinic and
+  // the same doctor, and a Hindi chat is a chat nobody can answer.
+  const loc = parse(((await guard.kvCommand(cfg, ["GET", "ads:locales"]).catch(() => ({}))) || {}).result || "", null);
+  const tgt = Object.assign({}, post.targeting || {},
+    (!(post.targeting || {}).locales && loc && (loc.ids || []).length) ? { locales: loc.ids } : {});
   const start = Date.now() + 2 * 60000;
   const end = start + c.days * 86400000;
   try {
@@ -180,7 +190,7 @@ async function create(cfg, post, c) {
       // Manager calls Highest volume: spend the ₹300, get the most chats.
       bid_strategy: "LOWEST_COST_WITHOUT_CAP",
       destination_type: "WHATSAPP", promoted_object: { page_id: pageId() },
-      targeting: targeting(c, post.targeting),
+      targeting: targeting(c, tgt),
     });
     made.adset = adset.id;
     const image_hash = await uploadImage(cfg, post.imgId, post.imageUrl);
