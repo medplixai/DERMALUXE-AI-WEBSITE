@@ -139,6 +139,39 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   is((await boost.save(cfg, { km: 5 }, "Owner")).boost.km, 17, "a radius smaller than Meta allows is pulled up to its smallest, not ignored");
   is((await boost.save(cfg, { km: 500 }, "Owner")).boost.km, 80, "and one bigger than it allows, down to its largest");
 
+  // Two radii, because the two things the clinic sells are not the same
+  // journey. Getting this the wrong way round is the exact complaint the
+  // owner raised: leads from towns nobody is going to travel in from.
+  console.log("\n  — how far each kind of poster goes —");
+  // This section makes six ads, which is more than the day's real ceiling.
+  // Left as it is, the day limit — not the radius — would decide the answers,
+  // and it would starve whatever test ran next.
+  const DAYKEY = "boost:day:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  await boost.save(cfg, { rupees: 300, days: 3, km: 30, kmAcademy: 80, maxPerDay: 20000 }, "Owner");
+  const radiusFor = async (n, topic) => {
+    seedImage(n); h.run(["DEL", DAYKEY]); h.run(["DEL", "boost:ig" + n]); calls = []; h.sent.length = 0;
+    const r = await boost.run(cfg, Object.assign(post(n), { topic }));
+    if (!r.boosted) return `not boosted: ${r.why}`;
+    return bodyOf("adset").targeting.geo_locations.custom_locations[0].radius;
+  };
+  is(await radiusFor(20, "acad-trainer"), 80, "an academy poster goes the whole 80 km — a six-week course is worth the bus");
+  is(sentTo("9010427777").some((t) => /80 km/.test(t)), true, "and the owner is told 80, not the number in the other box");
+  is(await radiusFor(21, "bridal"), 30, "a clinic poster stays at 30 — nobody drives 80 km for a facial");
+  is(await radiusFor(22, "hair-fall"), 30, "and so does a treatment poster");
+  // A topic that has been renamed or removed must not silently inherit the
+  // wide one: unknown means clinic, the cheaper mistake.
+  is(await radiusFor(23, "no-such-topic"), 30, "a topic this build has never heard of falls back to the clinic radius");
+  is(await radiusFor(24, ""), 30, "and so does a post with no topic at all");
+  // Every academy topic, asked of the list that defines them rather than of a
+  // pattern in their names.
+  is(daily.ACADEMY_TOPICS.every((t) => boost.kmFor({ km: 30, kmAcademy: 80 }, t.key) === 80), true, "every academy topic, not just the one that was tested");
+  is(daily.TOPICS.every((t) => boost.kmFor({ km: 30, kmAcademy: 80 }, t.key) === 30), true, "and no clinic topic leaks into the wide one");
+  is((await boost.save(cfg, { kmAcademy: 500 }, "Owner")).boost.kmAcademy, 80, "80 km is Meta's own limit, so a bigger number is pulled back to it");
+  is((await boost.save(cfg, { kmAcademy: 2 }, "Owner")).boost.kmAcademy, 17, "and a smaller one up to its smallest");
+  // Put the day and the settings back the way the next section expects them.
+  h.run(["DEL", DAYKEY]);
+  await boost.save(cfg, { rupees: 500, days: 5, km: 45, kmAcademy: 80, maxPerDay: 2000 }, "Owner");
+
   console.log("\n  — arithmetic Meta would refuse —");
   // This account will not run a lifetime budget below about ₹95 a day.
   is((await boost.save(cfg, { rupees: 300, days: 5 }, "Owner")).error,

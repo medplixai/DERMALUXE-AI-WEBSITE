@@ -26,7 +26,12 @@ const guard = require("./_guard.js");
 const GRAPH = "https://graph.facebook.com/v21.0";
 const ELURU = { lat: 16.7107, lng: 81.0952 };
 const WA_LINK = "https://wa.me/919959134666";
-const DEFAULTS = { on: true, rupees: 300, days: 3, km: 30, ageMin: 20, ageMax: 60, maxPerDay: 900 };
+// Two radii, because the two things this clinic sells are not the same
+// journey. Nobody drives 80 km for a facial, so a clinic poster shown that
+// wide fills the book with people who will never walk in. A six-week course
+// with a certificate at the end is worth the bus from Bhimavaram, so the
+// academy posters get the whole 80 km Meta allows around a point.
+const DEFAULTS = { on: true, rupees: 300, days: 3, km: 30, kmAcademy: 80, ageMin: 20, ageMax: 60, maxPerDay: 900 };
 // Meta will not run a lifetime budget that works out to less than about ₹95 a
 // day on this account (min_daily_budget_cents = 9491). ₹300 over 3 days is
 // ₹100 — just over. Stretch the same ₹300 over 5 days and Meta refuses the
@@ -41,6 +46,22 @@ const istDay = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkat
 // than silently ignored.
 const num = (v, lo, hi, dflt) => { const n = Math.round(Number(v)); return isFinite(n) && n > 0 ? Math.max(lo, Math.min(hi, n)) : dflt; };
 
+// Required late: the topic list lives in the daily engine, and the staff API
+// loads this file on every Ads screen without ever needing it.
+function pillarOf(topicKey) {
+  const k = String(topicKey || "");
+  if (!k) return "";
+  try {
+    // The academy topics live in their own list, apart from the clinic's.
+    // Asking only the first one answers "" for every academy poster there is.
+    const d = require("./_daily.js");
+    const t = [].concat(d.TOPICS || [], d.ACADEMY_TOPICS || []).find((x) => x.key === k);
+    return t ? String(t.pillar || "") : "";
+  } catch (e) { return ""; }
+}
+// The radius this particular poster goes out at.
+const kmFor = (c, topicKey) => (pillarOf(topicKey) === "academy" ? c.kmAcademy : c.km) || c.km;
+
 const token = () => process.env.META_ADS_TOKEN || process.env.IG_SYSTEM_TOKEN || process.env.IG_PAGE_TOKEN || "";
 const account = () => String(process.env.META_AD_ACCOUNT_ID || "").replace(/^act_/, "");
 const pageId = () => String(process.env.IG_PAGE_ID || "");
@@ -54,6 +75,7 @@ async function load(cfg) {
     rupees: num(c.rupees, 100, 5000, DEFAULTS.rupees),      // Meta's own floor for a 3-day lifetime budget is well under this
     days: num(c.days, 1, 14, DEFAULTS.days),
     km: num(c.km, 17, 80, DEFAULTS.km),                     // Meta's own range for a radius around a point
+    kmAcademy: num(c.kmAcademy, 17, 80, DEFAULTS.kmAcademy),
     ageMin: num(c.ageMin, 18, 60, DEFAULTS.ageMin),
     ageMax: num(c.ageMax, 20, 65, DEFAULTS.ageMax),
     maxPerDay: num(c.maxPerDay, 100, 20000, DEFAULTS.maxPerDay),
@@ -67,6 +89,7 @@ async function save(cfg, input, by) {
     rupees: input.rupees !== undefined ? num(input.rupees, 100, 5000, cur.rupees) : cur.rupees,
     days: input.days !== undefined ? num(input.days, 1, 14, cur.days) : cur.days,
     km: input.km !== undefined ? num(input.km, 17, 80, cur.km) : cur.km,
+    kmAcademy: input.kmAcademy !== undefined ? num(input.kmAcademy, 17, 80, cur.kmAcademy) : cur.kmAcademy,
     maxPerDay: input.maxPerDay !== undefined ? num(input.maxPerDay, 100, 20000, cur.maxPerDay) : cur.maxPerDay,
     by: String(by || "").slice(0, 40), ts: Date.now(),
   });
@@ -263,7 +286,8 @@ async function run(cfg, post) {
   // Belt and braces: whatever is in the settings, never send Meta a lifetime
   // budget it will refuse — shorten the run instead of losing the day.
   const days = Math.min(c.days, maxDays(c.rupees));
-  const out = await create(cfg, post, Object.assign({}, c, { days }));
+  const km = kmFor(c, post.topic);
+  const out = await create(cfg, post, Object.assign({}, c, { days, km }));
   if (out.ok) console.log(`boost: ₹${c.rupees} · ${days} rojulu · campaign ${out.made.campaign} ad ${out.made.ad}`);
   else console.error(`boost: Meta refused — ${out.error}${out.code ? " (code " + out.code + ")" : ""}`);
   if (!out.ok) {
@@ -272,18 +296,18 @@ async function run(cfg, post) {
   }
   await guard.kvCommand(cfg, ["LPUSH", "boost:log", JSON.stringify({
     ts: Date.now(), day: istDay(), post: post.id || "", topic: post.topic || "", link: post.link || "",
-    ok: out.ok, rupees: c.rupees, days, km: c.km,
+    ok: out.ok, rupees: c.rupees, days, km,
     campaign: out.made.campaign || "", ad: out.made.ad || "", error: out.ok ? "" : out.error,
   })]).catch(() => {});
   await guard.kvCommand(cfg, ["LTRIM", "boost:log", "0", "199"]).catch(() => {});
   try {
     const notify = require("./_notify.js");
     const text = out.ok
-      ? `📣 *Ee roju poster ki ₹${c.rupees} pettam* (${days} rojulu)\n\n📍 Eluru chuttu ${c.km} km · ${c.ageMin}-${c.ageMax} years\n💬 Tap chesthe direct ga mana WhatsApp agent ki\n${post.link ? "\n" + post.link : ""}\n\nApp → Control panel → Ads boost lo aapocchu / budget marchocchu.`
+      ? `📣 *Ee roju poster ki ₹${c.rupees} pettam* (${days} rojulu)\n\n📍 Eluru chuttu ${km} km · ${c.ageMin}-${c.ageMax} years\n💬 Tap chesthe direct ga mana WhatsApp agent ki\n${post.link ? "\n" + post.link : ""}\n\nApp → Control panel → Ads boost lo aapocchu / budget marchocchu.`
       : `⚠️ *Ee roju poster ki ad pettaleka poyam*\n\n${out.error}\n\nMeta lo payment method / ad account chudandi. Repu malli try chestundi — leda app → Control panel → Ads boost lo off cheyyandi.`;
     for (const to of guard.ownerPhones()) await notify.sendWa(to, text).catch(() => {});
   } catch (e) {}
-  return Object.assign(res, { boosted: out.ok, why: out.ok ? "" : out.error, campaign: out.made.campaign, ad: out.made.ad, rupees: c.rupees, days });
+  return Object.assign(res, { boosted: out.ok, why: out.ok ? "" : out.error, campaign: out.made.campaign, ad: out.made.ad, rupees: c.rupees, days, km });
 }
 
 // What the boosts did — for the control panel and the weekly report.
@@ -338,4 +362,4 @@ async function promote(cfg, o) {
   return { ok: true, rupees, days, campaign: out.made.campaign };
 }
 
-module.exports = { load, save, run, promote, recent, ready, maxDays, DEFAULTS, MIN_PER_DAY, ELURU, WA_LINK };
+module.exports = { kmFor, pillarOf, load, save, run, promote, recent, ready, maxDays, DEFAULTS, MIN_PER_DAY, ELURU, WA_LINK };

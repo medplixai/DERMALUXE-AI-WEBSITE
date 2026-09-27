@@ -965,12 +965,14 @@
           <div class="box"><h2>Ads boost — roju poster ki <span class="te" style="font-size:.9rem;color:var(--g3)">· రోజువారీ ప్రకటన</span></h2>
             <p>Roju podduna poster publish ayina ventane, ade poster ki Meta lo ad pedatam — tap chesthe patient direct ga mana WhatsApp agent ki vastaru. Okko poster ki okkasaare; campaign taanantata taane aagipotundi.</p>
             <div id="bstState" class="meta" style="margin-top:8px"></div>
+            <p class="meta" style="margin-top:6px">Rendu radius lu enduku: facial ki, PRP ki 80 km evaru prayanam cheyyaru — clinic poster daggare undali. Academy course six weeks, certificate — daani kosam Bhimavaram, Tadepalligudem, Vijayawada nunchi vastaru. (Meta ki max 80 km.)</p>
             <div style="margin-top:10px;display:grid;gap:8px">
               <label class="meta"><input type="checkbox" id="bstOn"> Roju automatic ga ad pettu</label>
               <div class="noteform" style="flex-wrap:wrap">
                 <span class="meta">Okko poster ki ₹</span><input id="bstRupees" inputmode="numeric" style="width:80px">
                 <span class="meta">·</span><input id="bstDays" inputmode="numeric" style="width:60px"><span class="meta">rojulu</span>
-                <span class="meta">· Eluru chuttu</span><input id="bstKm" inputmode="numeric" style="width:60px"><span class="meta">km</span>
+                <span class="meta">· Clinic poster: Eluru chuttu</span><input id="bstKm" inputmode="numeric" style="width:60px"><span class="meta">km</span>
+                <span class="meta">· Academy poster:</span><input id="bstKmAcad" inputmode="numeric" style="width:60px"><span class="meta">km</span>
                 <span class="meta">· roju max ₹</span><input id="bstMax" inputmode="numeric" style="width:80px">
                 <span class="meta" id="bstHint"></span>
                 <button class="btn btn--gold btn--sm" id="bstSave" type="button">Save</button>
@@ -3865,7 +3867,7 @@
     // Money behind the day's poster.
     function renderBoost() {
       var b = (panel && panel.boost) || null; if (!$("bstOn") || !b) return;
-      $("bstOn").checked = !!b.on; $("bstRupees").value = b.rupees; $("bstDays").value = b.days; $("bstKm").value = b.km; $("bstMax").value = b.maxPerDay;
+      $("bstOn").checked = !!b.on; $("bstRupees").value = b.rupees; $("bstDays").value = b.days; $("bstKm").value = b.km; $("bstKmAcad").value = b.kmAcademy; $("bstMax").value = b.maxPerDay;
       // Meta will not run a lifetime budget under about ₹100 a day.
       var maxD = Math.max(1, Math.floor(Number(b.rupees) / 100));
       $("bstHint").textContent = "(₹" + b.rupees + " ki max " + maxD + " rojulu)";
@@ -3882,7 +3884,7 @@
     }
     if ($("bstSave")) $("bstSave").onclick = function () {
       var btn = this; btn.disabled = true; $("bstErr").textContent = "";
-      api("boost-set", { on: $("bstOn").checked, rupees: $("bstRupees").value, days: $("bstDays").value, km: $("bstKm").value, maxPerDay: $("bstMax").value })
+      api("boost-set", { on: $("bstOn").checked, rupees: $("bstRupees").value, days: $("bstDays").value, km: $("bstKm").value, kmAcademy: $("bstKmAcad").value, maxPerDay: $("bstMax").value })
         .then(function (j) { panel.boost = Object.assign({}, panel.boost, j.boost); renderBoost(); toast("Save ayindi ✅"); })
         .catch(function (x) { $("bstErr").textContent = x.message; }).then(function () { btn.disabled = false; });
     };
