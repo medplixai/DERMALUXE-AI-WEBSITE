@@ -1450,7 +1450,7 @@ module.exports = async (req, res) => {
     // Voice note in → voice note out; and whoever asked to listen (text still follows as the readable copy).
     if (speak) {
       try {
-        const mp3 = await synthesizeVoice(voiceScript || stripForTts(out.reply).slice(0, 350));
+        const mp3 = await synthesizeVoice(voiceScript || stripForTts(out.reply).slice(0, 350), cfg);
         if (mp3) await sendCloudVoice(cloud.phoneNumberId, cloud.to, mp3);
       } catch (e) { console.error("wa: voice reply error", e && e.message); }
     }

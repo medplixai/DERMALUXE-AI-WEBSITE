@@ -571,7 +571,7 @@ module.exports = async (req, res) => {
   // Voice note in → voice note out (text still follows as the readable copy).
   if (audioUrl) {
     try {
-      const mp3 = await voice.synthesize(voiceScript || voice.stripForTts(out.reply).slice(0, 350));
+      const mp3 = await voice.synthesize(voiceScript || voice.stripForTts(out.reply).slice(0, 350), cfg);
       const aid = mp3 ? await voice.parkAudio(cfg, mp3) : "";
       if (aid) await sendDmAudio(igsid, `${voice.publicBase(req)}/api/media?aud=${aid}`, ptok);
     } catch (e) { console.error("ig: voice reply error", e && e.message); }

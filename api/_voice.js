@@ -96,12 +96,35 @@ async function pcmToMp3(pcm, rate) {
   return Buffer.concat(out);
 }
 
+// A model that has answered 429 will answer 429 again until its quota window
+// rolls over — on the free tier these are daily, and gemini-2.5-pro-preview-tts
+// is limit:0 there, so it can never succeed at all. Asking anyway is not free:
+// this runs BEFORE the patient's text reply is sent, so every doomed call is
+// time somebody sits looking at a chat with no answer in it. Remembered for an
+// hour: long enough to take the cost away, short enough that the moment the
+// quota comes back — or billing is switched on — voice returns by itself.
+//
+// KV: voice:out:<model> (1 h)
+const OUT_TTL = 3600;
+async function modelOut(cfg, model) {
+  if (!cfg) return false;
+  const r = await guard.kvCommand(cfg, ["GET", `voice:out:${model}`]).catch(() => ({}));
+  return !!(r && r.result);
+}
+async function markModelOut(cfg, model) {
+  if (!cfg) return;
+  await guard.kvCommand(cfg, ["SET", `voice:out:${model}`, "1", "EX", String(OUT_TTL)]).catch(() => {});
+}
+
 // Text → MP3 Buffer (null on any failure; callers fall back to text-only).
-async function synthesize(script) {
+// `cfg` is optional: without it nothing is remembered and every model is tried,
+// which is the old behaviour.
+async function synthesize(script, cfg) {
   const key = process.env.GEMINI_API_KEY;
   if (!key || !script) return null;
   const models = [process.env.TTS_MODEL || "gemini-3.1-flash-tts-preview", "gemini-2.5-flash-preview-tts", "gemini-2.5-pro-preview-tts"];
   for (const model of models) {
+    if (await modelOut(cfg, model)) continue;
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`, {
         method: "POST",
@@ -117,6 +140,7 @@ async function synthesize(script) {
       if (r.status === 404 || r.status === 429) {
         let d = ""; try { d = (await r.text()).slice(0, 400); } catch (e) {}
         console.error("voice: tts skipping model", model, r.status, d);
+        await markModelOut(cfg, model);   // 404 too: a model this key cannot use will not appear within the hour
         continue;
       }
       if (!r.ok) {
@@ -159,4 +183,4 @@ function publicBase(req) {
   return `https://${host}`;
 }
 
-module.exports = { VOICE_CTX, parseVoiceScript, stripForTts, transcribe, synthesize, pcmToMp3, parkAudio, publicBase };
+module.exports = { VOICE_CTX, parseVoiceScript, stripForTts, transcribe, synthesize, pcmToMp3, parkAudio, publicBase, modelOut, markModelOut, OUT_TTL };

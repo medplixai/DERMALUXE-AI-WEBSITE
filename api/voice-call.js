@@ -66,7 +66,7 @@ function twilioValid(req) {
 async function speak(cfg, req, text) {
   const clean = voice.stripForTts(text).slice(0, 420);
   try {
-    const mp3 = await voice.synthesize(clean);
+    const mp3 = await voice.synthesize(clean, cfg);
     if (mp3) {
       const aid = await voice.parkAudio(cfg, mp3, 1800);
       if (aid) return `<Play>${esc(voice.publicBase(req) + "/api/media?aud=" + aid)}</Play>`;
