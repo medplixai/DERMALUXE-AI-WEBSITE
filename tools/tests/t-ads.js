@@ -122,7 +122,7 @@ const A = (q, b) => h.call(ads, q, b);
   // capLeft 0 in the default account means "there IS a cap and it is spent",
   // which is not what these cases are about — pass a real one so the
   // no-ceiling rule does not fire in every other assertion.
-  const sg = (camps, acct, ours) => ads.suggestions(acct || { spend: 1000, capLeft: 9000 }, camps, 300, 30, [], ours || { leads: 0 });
+  const sg = (camps, acct, ours, adIds) => ads.suggestions(acct || { spend: 1000, capLeft: 9000 }, camps, 300, 30, [], ours || { leads: 0 }, adIds);
   const camp = (o) => Object.assign({ id: "1", name: "C", running: true, spend: 1000, results: 5, costEach: 200, daily: 0 }, o);
 
   is(sg([camp({ spend: 150, results: 0 })]).length, 0, "a campaign that has barely spent anything is not judged — noise is not a finding");
@@ -258,12 +258,39 @@ const A = (q, b) => h.call(ads, q, b);
   console.log("\n  — written in a language the doctor cannot answer —");
   const hi = (n, adRing) => ({ leads: 20, booked: 0, where: { near: { local: 0, district: 0, far: 0, unknown: 20 }, said: 0, towns: [], hindi: n, adRing: adRing || {} } });
   is(sg([], { spend: 1000, capLeft: 9000 }, hi(2)).some((x) => /Hindi/.test(x.title || "")), false, "two is not a pattern");
-  const hindi = sg([], { spend: 1000, capLeft: 9000 }, hi(7, { "52570534911773": { local: 0, district: 0, far: 0, unknown: 7, hindi: 6 } }))
+  const OUT = "52570534911773";                      // an ad id, not one of ours
+  const ring = (extra) => ({ [OUT]: Object.assign({ local: 0, district: 0, far: 0, unknown: 7, hindi: 6 }, extra || {}) });
+  const hindi = sg([], { spend: 1000, capLeft: 9000 }, hi(7, ring()), ["120252370950820560"])
     .find((x) => /Hindi/.test(x.title || ""));
   is(/7 mandi Hindi lo raastunnaru/.test(hindi.title), true, "seven is: " + hindi.title);
   is(/52570534911773/.test(hindi.why) && /Boost post/.test(hindi.why), true,
     "and it names the ad, and where to switch it off when it is not ours");
   is(/no town/.test(hindi.why), false, "without needing a single town to have been given");
+
+  // An ad id and a campaign id are different numbers. Checking one against the
+  // other always answers "not ours" — which would tell the owner to go and
+  // switch off the clinic's own ad.
+  const ownAd = sg([], { spend: 1000, capLeft: 9000 }, hi(7, ring()), [OUT]).find((x) => /Hindi/.test(x.title || ""));
+  is(/mana ad account lo ledu/.test(ownAd.why), false, "our OWN ad is never called somebody else's: " + ownAd.why);
+  is(/language Telugu\/English/.test(ownAd.gain), true, "it says to set the language on it instead");
+
+  // With no ad list — the Meta call failed — whose ad it is has no answer, and
+  // a guess dressed as a finding is worse than saying less.
+  const noList = sg([], { spend: 1000, capLeft: 9000 }, hi(7, ring())).find((x) => /Hindi/.test(x.title || ""));
+  is(/52570534911773/.test(noList.why), true, "with no ad list it still names the ad");
+  is(/mana ad account lo ledu/.test(noList.why), false, "but claims nothing about whose it is");
+
+  // Meta sends the headline with every referral. A sentence is findable in the
+  // Instagram app; a fourteen-digit id is not.
+  const named = sg([], { spend: 1000, capLeft: 9000 }, hi(7, ring({ headline: "Beauty therapist kaavaala?" })), ["x1"])
+    .find((x) => /Hindi/.test(x.title || ""));
+  is(/"Beauty therapist kaavaala\?"/.test(named.why), true, "so it names the post: " + named.why);
+
+  // source_type "post" is an organic post with a message button: no money, no
+  // switch. Sending somebody to pause it would send them after nothing.
+  const post = sg([], { spend: 1000, capLeft: 9000 }, hi(7, ring({ src: "post" })), ["x1"]).find((x) => /Hindi/.test(x.title || ""));
+  is(/kharchu ledu/.test(post.why), true, "an organic post is called what it is: " + post.why);
+  is(/Boost settings/.test(post.gain), false, "and nobody is sent looking for a switch that is not there");
 
   console.log("\n  — leads from too far to come —");
   const where = (local, district, far, adRing) => ({ leads: local + district + far, booked: 0,
@@ -272,14 +299,14 @@ const A = (q, b) => h.call(ads, q, b);
     "leads from around Eluru are the point, and nothing is said");
   is(sg([], { spend: 1000, capLeft: 9000 }, where(2, 1, 2)).some((x) => /dooram/.test(x.title || "")), false,
     "five leads is too few to call it a pattern");
-  const farOnes = sg([], { spend: 1000, capLeft: 9000 }, where(3, 2, 11, { "52570534911773": { local: 1, district: 0, far: 10, unknown: 0 } }))
+  const farOnes = sg([], { spend: 1000, capLeft: 9000 }, where(3, 2, 11, { [OUT]: { local: 1, district: 0, far: 10, unknown: 0 } }), ["x1"])
     .find((x) => /dooram/.test(x.title || ""));
   is(!!farOnes, true, "eleven of sixteen from far away is");
   is(/11 leads mana ooriki dooram nunchi \(69%\)/.test(farOnes.title), true, "with the share: " + farOnes.title);
   is(/52570534911773/.test(farOnes.why) && /mana ad account lo ledu/.test(farOnes.why), true,
     "naming the ad, and that it is not one of ours: " + farOnes.why);
   const mine = sg([{ id: "c9", name: "Ours", running: true, spend: 500, results: 3, costEach: 166, daily: 0, patients: { leads: 0, came: 0 } }],
-    { spend: 1000, capLeft: 9000 }, where(3, 2, 11, { c9: { local: 1, district: 0, far: 10, unknown: 0 } }))
+    { spend: 1000, capLeft: 9000 }, where(3, 2, 11, { a9: { local: 1, district: 0, far: 10, unknown: 0 } }), ["a9"])
     .find((x) => /dooram/.test(x.title || ""));
   is(/mana ad account lo ledu/.test(mine.why), false, "and when it IS one of ours, it says to narrow it instead");
 

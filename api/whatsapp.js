@@ -889,7 +889,7 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
   if (cfg) {
     const ar = await guard.kvCommand(cfg, ["GET", `ad:ref:${phone}`]).catch(() => ({}));
     let ref = null; try { ref = ar && ar.result ? JSON.parse(ar.result) : null; } catch (e) {}
-    if (ref && ref.ad) { lead.ad_id = ref.ad; if (ref.headline) lead.ad_headline = ref.headline; }
+    if (ref && ref.ad) { lead.ad_id = ref.ad; if (ref.headline) lead.ad_headline = ref.headline; if (ref.src) lead.ad_src = ref.src; }
   }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
@@ -1007,7 +1007,10 @@ module.exports = async (req, res) => {
     // Ads screen can say what each campaign cost per patient, not per chat.
     if (cfg && msg.referral && (msg.referral.source_type === "ad" || msg.referral.source_id)) {
       const rph = String(msg.from || "").replace(/\D/g, "").slice(-10);
-      const ref = { ad: String(msg.referral.source_id || "").slice(0, 40), headline: String(msg.referral.headline || "").slice(0, 120), ts: Date.now() };
+      // "ad" is money being spent; "post" is an organic post with a message
+      // button and nothing to switch off. Told apart only by this field, and
+      // a day went into guessing which it was for want of storing it.
+      const ref = { ad: String(msg.referral.source_id || "").slice(0, 40), headline: String(msg.referral.headline || "").slice(0, 120), src: String(msg.referral.source_type || "").slice(0, 12).toLowerCase(), ts: Date.now() };
       if (rph.length === 10 && ref.ad) {
         await guard.kvCommand(cfg, ["SET", `ad:ref:${rph}`, JSON.stringify(ref), "EX", String(30 * 86400)]).catch(() => {});
         // The ad already told us the concern: the grade starts from it, and the

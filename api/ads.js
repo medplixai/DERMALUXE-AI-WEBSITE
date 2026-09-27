@@ -177,7 +177,14 @@ async function ourSide(cfg, sinceMs) {
     near[ring]++;
     if (v) towns[p.label || v] = (towns[p.label || v] || 0) + 1;
     const ad = String(l.ad_id || "");
-    if (ad) { (adRing[ad] || (adRing[ad] = { local: 0, district: 0, far: 0, unknown: 0, hindi: 0 }))[ring]++; }
+    if (ad) {
+      const r = adRing[ad] || (adRing[ad] = { local: 0, district: 0, far: 0, unknown: 0, hindi: 0, headline: "" });
+      r[ring]++;
+      // Meta sends the ad's headline with every click-to-WhatsApp referral.
+      // "Beauty therapist kaavaala?" is a post somebody can find; an id is not.
+      if (!r.headline && l.ad_headline) r.headline = String(l.ad_headline).slice(0, 80);
+      if (!r.src && l.ad_src) r.src = String(l.ad_src);
+    }
     if (HINDI.test(`${l.message || ""} ${l.concern || ""} ${l.name || ""}`)) {
       hindi++;
       if (ad && adRing[ad]) adRing[ad].hindi = (adRing[ad].hindi || 0) + 1;
@@ -223,7 +230,7 @@ const perMonth = (spend, days) => Math.round((spend / Math.max(1, days)) * 30);
 // silence it at 24 — but it should not ask again at 9 either.
 const bucket = (n) => Math.floor(Math.log2(Math.max(1, Number(n) || 1)));
 
-function suggestions(account, campaigns, target, days, dismissed, ours) {
+function suggestions(account, campaigns, target, days, dismissed, ours, adIds) {
   const out = [];
   const live = (campaigns || []).filter((c) => c.running);
   const scored = live.filter((c) => c.spend >= FLOOR);
@@ -276,20 +283,33 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
   // cheapest inside the radius, and outside the radius the ad is not ours at
   // all — an Instagram in-app Boost is targeted nationwide by default and
   // points at the same WhatsApp number.
+  // An ad id is not a campaign id. The account's own ad ids come from the ad
+  // list; with no list, "is this one ours" has no answer and must not be
+  // invented — an empty set would accuse every ad, our own included.
+  const adSet = new Set((adIds || []).map(String));
+  const outside = (ad) => adSet.size > 0 && !adSet.has(String(ad));
+  const nameOf = (ad, r) => (r && r.headline ? `"${r.headline}"` : ad);
+  // An organic post with a message button costs nothing and cannot be paused;
+  // telling somebody to go and stop it would send them looking for a switch
+  // that is not there.
+  const organic = (r) => r && r.src === "post";
+
   const w = o.where || null;
   // Written in Devanagari to a Telugu clinic. It needs no town and no
   // threshold of politeness — the doctor cannot hold that consultation.
   if (w && (w.hindi || 0) >= 3) {
     const worstH = Object.entries(w.adRing || {})
-      .map(([ad, r]) => ({ ad, hindi: r.hindi || 0 })).filter((x) => x.hindi >= 2)
+      .map(([ad, r]) => ({ ad, r, hindi: r.hindi || 0 })).filter((x) => x.hindi >= 2)
       .sort((a, b) => b.hindi - a.hindi)[0];
-    const mine = new Set((campaigns || []).map((c) => String(c.id)));
+    const away = worstH && outside(worstH.ad) && !organic(worstH.r);
+    const org = worstH && organic(worstH.r);
     out.push({
       id: `hindi:leads:${bucket(w.hindi)}`, kind: "track",
       title: `${w.hindi} mandi Hindi lo raastunnaru`,
       why: `Mana doctor Telugu lo consult chestaru — vaalliki mana valla labham ledu, manaki vaalla valla ledu.` +
-        (worstH ? ` Ekkuva mandi okey ad nunchi: ${worstH.ad}${mine.has(worstH.ad) ? "" : " — idi mana ad account lo ledu. Instagram app lo 'Boost post' tho pettinadi avutundi, daani targeting India motham."}` : ""),
-      gain: worstH && !mine.has(worstH.ad)
+        (worstH ? ` Ekkuva mandi okey ad nunchi: ${nameOf(worstH.ad, worstH.r)}${away ? " — idi mana ad account lo ledu. Instagram app lo 'Boost post' tho pettinadi avutundi, daani targeting India motham." : org ? " — idi ad kaadu, maamulu post. Daaniki kharchu ledu, aapedi kuda ledu — Reels India motham veltayi." : ""}` : ""),
+      gain: org ? "Idi paisalu tine adi kaadu. Post lo 'Eluru' ani spashtam ga raayandi, appudu dooram vaallu raaru."
+        : away
         ? "Instagram app lo aa post → Boost settings lo aapandi. Ikkada 'Plan cheyyi' tho pettinavi Telugu/English ki matrame veltayi."
         : "Aa campaign ki language Telugu/English ani pettandi",
       action: null,
@@ -299,15 +319,15 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
     const far = w.near.far, share = Math.round((far / w.said) * 100);
     // Name the ad doing it, when one ad is doing most of it.
     const worst = Object.entries(w.adRing || {})
-      .map(([ad, r]) => ({ ad, far: r.far, all: r.local + r.district + r.far + r.unknown }))
+      .map(([ad, r]) => ({ ad, r, far: r.far, all: r.local + r.district + r.far + r.unknown }))
       .filter((x) => x.far >= 3).sort((a, b) => b.far - a.far)[0];
-    const ours = new Set((campaigns || []).map((c) => String(c.id)));
+    const away = worst && outside(worst.ad) && !organic(worst.r);
     out.push({
       id: `far:leads:${bucket(far)}`, kind: "track",
       title: `${far} leads mana ooriki dooram nunchi (${share}%)`,
       why: `Town cheppina ${w.said} mandi lo ${far} mandi 80 km kanna dooram — vaallu clinic ki raaru.` +
-        (worst ? ` Andulo ekkuva mandi okey ad nunchi: ${worst.ad}${ours.has(worst.ad) ? "" : " — idi mana ad account lo ledu, Instagram app lo 'Boost post' tho pettinadi avutundi, daani targeting India motham"}.` : ""),
-      gain: worst && !ours.has(worst.ad)
+        (worst ? ` Andulo ekkuva mandi okey ad nunchi: ${nameOf(worst.ad, worst.r)}${away ? " — idi mana ad account lo ledu, Instagram app lo 'Boost post' tho pettinadi avutundi, daani targeting India motham" : ""}.` : ""),
+      gain: away
         ? "Instagram app lo aa post → Boost chusi aapandi, leda ikkada Plan cheyyi tho Eluru ki matrame pettandi"
         : "Radius taggichandi, leda Telugu/English matrame ani language pettandi",
       action: null,
@@ -317,7 +337,6 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
   // Leads Meta attributed to an ad that is no longer among the campaigns —
   // six of eight, on the day this was written. Without saying so, the screen
   // quietly credits them to nothing.
-  const known = new Set((campaigns || []).map((c) => String(c.id)));
   const orphan = Object.entries(o.byAd || {})
     .filter(([, r]) => (r.leads || 0) > 0)
     .reduce((n, [, r]) => n + r.leads, 0);
@@ -612,6 +631,10 @@ module.exports = async (req, res) => {
     const since_s = new Date(since).toISOString().slice(0, 10);
     const until_s = new Date().toISOString().slice(0, 10);
 
+    // The account's own ad ids, kept outside the try: the "is this ad ours"
+    // question is asked below even when the fetch failed, and an empty list
+    // there must mean "we do not know", not "none of them are ours".
+    let ourAdIds = [];
     let account = null, campaigns = [], today = null, err = "";
     try {
       const [acc, ins, todayIns, camps, adsList] = await Promise.all([
@@ -637,6 +660,7 @@ module.exports = async (req, res) => {
         if (cr.thumbnail_url && !campArt[cid].thumb) campArt[cid].thumb = cr.thumbnail_url;
         if (cr.effective_object_story_id && !campArt[cid].story) campArt[cid].story = cr.effective_object_story_id;
       }
+      ourAdIds = Object.keys(adToCamp);
 
       const conv = (actions) => {
         const rows = actions || [];
@@ -696,7 +720,7 @@ module.exports = async (req, res) => {
     // What the owner has already said no to, so it does not come back tomorrow.
     const dm = await guard.kvCommand(cfg, ["SMEMBERS", "ads:no"]).catch(() => ({}));
     const dismissed = Array.isArray(dm.result) ? dm.result : [];
-    const suggest = suggestions(account, campaigns, target, days, dismissed, ours);
+    const suggest = suggestions(account, campaigns, target, days, dismissed, ours, ourAdIds);
 
     return json(res, 200, {
       ok: true, connected: true, days, target, canChange,
