@@ -253,6 +253,18 @@ const A = (q, b) => h.call(ads, q, b);
   // Cheap leads from four states away look like success on every money
   // number there is: lots of them, ₹16 each, and not one of them will ever
   // walk into a clinic in Eluru.
+  // Most of these chats stop before the agent gets a town, so the town alone
+  // cannot answer it. What somebody writes in can.
+  console.log("\n  — written in a language the doctor cannot answer —");
+  const hi = (n, adRing) => ({ leads: 20, booked: 0, where: { near: { local: 0, district: 0, far: 0, unknown: 20 }, said: 0, towns: [], hindi: n, adRing: adRing || {} } });
+  is(sg([], { spend: 1000, capLeft: 9000 }, hi(2)).some((x) => /Hindi/.test(x.title || "")), false, "two is not a pattern");
+  const hindi = sg([], { spend: 1000, capLeft: 9000 }, hi(7, { "52570534911773": { local: 0, district: 0, far: 0, unknown: 7, hindi: 6 } }))
+    .find((x) => /Hindi/.test(x.title || ""));
+  is(/7 mandi Hindi lo raastunnaru/.test(hindi.title), true, "seven is: " + hindi.title);
+  is(/52570534911773/.test(hindi.why) && /Boost post/.test(hindi.why), true,
+    "and it names the ad, and where to switch it off when it is not ours");
+  is(/no town/.test(hindi.why), false, "without needing a single town to have been given");
+
   console.log("\n  — leads from too far to come —");
   const where = (local, district, far, adRing) => ({ leads: local + district + far, booked: 0,
     where: { near: { local, district, far, unknown: 0 }, said: local + district + far, towns: [], adRing: adRing || {} } });

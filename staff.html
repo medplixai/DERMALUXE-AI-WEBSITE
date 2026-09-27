@@ -2503,7 +2503,7 @@
         (function () {
           // Where they actually are. Cheap leads from four states away look
           // like success on every money number there is.
-          var w = o.where; if (!w || !w.said) return "";
+          var w = o.where; if (!w || (!w.said && !w.hindi)) return "";
           var bar = function (n, c) { return w.said ? '<i style="width:' + Math.round((n / w.said) * 100) + '%;background:' + c + '"></i>' : ""; };
           return '<div style="margin-top:10px"><div class="meta">Ekkada nunchi — town cheppina ' + w.said + " mandi lo</div>" +
             '<div class="goalbar" style="height:9px;display:flex">' + bar(w.near.local, "var(--ok)") + bar(w.near.district, "var(--g2)") + bar(w.near.far, "var(--bad)") + "</div>" +
@@ -2511,6 +2511,7 @@
             w.near.district + '</b> 80 km lopu · <b style="color:var(--bad)">' + w.near.far + "</b> chaala dooram" +
             (w.near.unknown ? ' · <span style="opacity:.7">' + w.near.unknown + " mandi ooru cheppaledu</span>" : "") + "</div>" +
             (w.towns.length ? '<div class="meta" style="margin-top:4px">' + w.towns.map(function (t) { return esc(t.name) + " " + t.n; }).join(" · ") + "</div>" : "") +
+            (w.hindi ? '<div class="meta" style="margin-top:4px;color:var(--bad)">' + w.hindi + " mandi Hindi lo raasaru — mana doctor Telugu lo consult chestaru</div>" : "") +
             "</div>";
         })() +
         '<p class="meta" style="margin-top:6px;opacity:.75">Meta lekka inka mana lekka veru veru — Meta taanu modalu petta సంభాషణలు lekkistundi, manam patient ayyina vaallani.</p>' +

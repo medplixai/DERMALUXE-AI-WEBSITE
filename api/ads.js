@@ -164,6 +164,12 @@ async function ourSide(cfg, sinceMs) {
   const near = { local: 0, district: 0, far: 0, unknown: 0 };
   const towns = {};
   const adRing = {};
+  // Most of these chats stop before the agent gets a town out of them, so the
+  // town alone cannot answer "are these people near enough to come". The
+  // script they write in can: Devanagari on a Telugu clinic's WhatsApp is
+  // somebody the doctor cannot consult, wherever they are.
+  const HINDI = /[\u0900-\u097F]/;
+  let hindi = 0;
   for (const l of paid) {
     const v = String(l.village || l.town || "").trim();
     const p = (Q.placeOf ? Q.placeOf(v) : { known: false, km: null });
@@ -171,10 +177,14 @@ async function ourSide(cfg, sinceMs) {
     near[ring]++;
     if (v) towns[p.label || v] = (towns[p.label || v] || 0) + 1;
     const ad = String(l.ad_id || "");
-    if (ad) { (adRing[ad] || (adRing[ad] = { local: 0, district: 0, far: 0, unknown: 0 }))[ring]++; }
+    if (ad) { (adRing[ad] || (adRing[ad] = { local: 0, district: 0, far: 0, unknown: 0, hindi: 0 }))[ring]++; }
+    if (HINDI.test(`${l.message || ""} ${l.concern || ""} ${l.name || ""}`)) {
+      hindi++;
+      if (ad && adRing[ad]) adRing[ad].hindi = (adRing[ad].hindi || 0) + 1;
+    }
   }
   const where = {
-    near, adRing,
+    near, adRing, hindi,
     towns: Object.entries(towns).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([name, n]) => ({ name, n })),
     // "unknown" is a chat that stopped before the agent got a town out of
     // them — not evidence either way, so it is counted apart.
@@ -267,6 +277,24 @@ function suggestions(account, campaigns, target, days, dismissed, ours) {
   // all — an Instagram in-app Boost is targeted nationwide by default and
   // points at the same WhatsApp number.
   const w = o.where || null;
+  // Written in Devanagari to a Telugu clinic. It needs no town and no
+  // threshold of politeness — the doctor cannot hold that consultation.
+  if (w && (w.hindi || 0) >= 3) {
+    const worstH = Object.entries(w.adRing || {})
+      .map(([ad, r]) => ({ ad, hindi: r.hindi || 0 })).filter((x) => x.hindi >= 2)
+      .sort((a, b) => b.hindi - a.hindi)[0];
+    const mine = new Set((campaigns || []).map((c) => String(c.id)));
+    out.push({
+      id: `hindi:leads:${bucket(w.hindi)}`, kind: "track",
+      title: `${w.hindi} mandi Hindi lo raastunnaru`,
+      why: `Mana doctor Telugu lo consult chestaru — vaalliki mana valla labham ledu, manaki vaalla valla ledu.` +
+        (worstH ? ` Ekkuva mandi okey ad nunchi: ${worstH.ad}${mine.has(worstH.ad) ? "" : " — idi mana ad account lo ledu. Instagram app lo 'Boost post' tho pettinadi avutundi, daani targeting India motham."}` : ""),
+      gain: worstH && !mine.has(worstH.ad)
+        ? "Instagram app lo aa post → Boost settings lo aapandi. Ikkada 'Plan cheyyi' tho pettinavi Telugu/English ki matrame veltayi."
+        : "Aa campaign ki language Telugu/English ani pettandi",
+      action: null,
+    });
+  }
   if (w && w.said >= 6 && (w.near.far / Math.max(1, w.said)) >= 0.4) {
     const far = w.near.far, share = Math.round((far / w.said) * 100);
     // Name the ad doing it, when one ad is doing most of it.
