@@ -22,10 +22,13 @@ const notify = require("./_notify.js");
 const GAPS_MIN = [60, 20 * 60, 48 * 60];
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
 
-async function candidates(cfg) {
+// `ctx`: see _recover.findStranded — the shared inbox rows and opt-out list.
+async function candidates(cfg, ctx) {
   const out = [];
   const qualify = require("./_qualify.js");
-  for (const t of await inbox.threads(cfg, 200)) {
+  const rows = (ctx && ctx.rows) || await inbox.threads(cfg, 200);
+  const optSet = ctx && ctx.optout;
+  for (const t of rows) {
     if (t.human || t.lastDir !== "out") continue;                 // we spoke last, and no colleague holds it
     if (!t.lastIn || Date.now() - t.lastIn > 23.5 * 3600000) continue;   // inside the window
     const st = parse(((await guard.kvCommand(cfg, ["GET", `rg:${t.phone}`]).catch(() => ({}))) || {}).result || "", null) || { n: 0, at: 0 };
@@ -33,7 +36,7 @@ async function candidates(cfg) {
     if (st.lastIn && st.lastIn !== t.lastIn) { st.n = 0; }         // they wrote again: start over
     const since = Date.now() - Math.max(Number(t.ts) || 0, Number(st.at) || 0);
     if (since < GAPS_MIN[st.n] * 60000) continue;
-    if (await guard.setHas(cfg, "optout", t.phone)) continue;
+    if (optSet ? optSet.has(t.phone) : await guard.setHas(cfg, "optout", t.phone)) continue;
     const q = await qualify.read(cfg, t.phone).catch(() => null);
     if (q && (q.grade === "D" || ["booked", "visited", "closed"].includes(q.status))) continue;
     out.push({ phone: t.phone, name: t.name || "", n: st.n, lastIn: t.lastIn, grade: (q && q.grade) || "" });
@@ -43,12 +46,12 @@ async function candidates(cfg) {
 
 // `until`: see _recover. One Claude call per person, one after another — on a
 // busy hour that alone can outlast the whole function.
-async function run(cfg, max, until) {
+async function run(cfg, max, until, ctx) {
   const res = { found: 0, sent: 0, quiet: false, stopped: false, left: 0 };
   if (!cfg || process.env.WA_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) return res;
   const hour = new Date(Date.now() + 330 * 60000).getUTCHours();
   res.quiet = hour < 8 || hour >= 21;
-  const list = await candidates(cfg);
+  const list = await candidates(cfg, ctx);
   res.found = list.length;
   if (res.quiet) return res;
   const wa = require("./whatsapp.js"), lint = require("./_lint.js"), rules = require("./_rules.js");

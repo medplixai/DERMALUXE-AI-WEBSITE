@@ -17,9 +17,10 @@ const notify = require("./_notify.js");
 const ALERT_MIN = 20, RESUME_MIN = 60;
 const ten = (p) => String(p || "").replace(/\D/g, "").slice(-10);
 
-async function waiting(cfg) {
+// `ctx`: see _recover.findStranded — the shared inbox rows.
+async function waiting(cfg, ctx) {
   const out = [];
-  for (const t of await inbox.threads(cfg, 200)) {
+  for (const t of ((ctx && ctx.rows) || await inbox.threads(cfg, 200))) {
     if (!t.human || t.lastDir !== "in" || !t.lastIn) continue;
     const mins = Math.round((Date.now() - t.lastIn) / 60000);
     if (mins < ALERT_MIN) continue;
@@ -31,10 +32,10 @@ async function waiting(cfg) {
 // `until`: see _recover. Only the AI hand-back is held to it — telling the
 // team somebody has been waiting twenty minutes is cheap and cannot wait for
 // a quieter hour.
-async function run(cfg, max, until) {
+async function run(cfg, max, until, ctx) {
   const res = { waiting: 0, alerted: 0, resumed: 0, stopped: false };
   if (!cfg) return res;
-  const list = await waiting(cfg);
+  const list = await waiting(cfg, ctx);
   res.waiting = list.length;
   for (const w of list) {
     // 20 minutes: tell the team, once.

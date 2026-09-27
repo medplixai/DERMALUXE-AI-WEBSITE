@@ -397,11 +397,18 @@ module.exports = async (req, res) => {
   } catch (e) { console.error("cron: early nudge", e && e.message); }
 
   // ---- chats that went quiet, and colleagues who went quiet ---------------
+  // The three jobs below each used to fetch the same 200 inbox rows for
+  // themselves, and then ask the opt-out list once per chat — a whole set read
+  // per candidate. Read once here, handed to all three.
+  let inboxRows = null;
+  try { inboxRows = await require("./_inbox.js").threads(cfg, 200); } catch (e) { console.error("cron: inbox rows", e && e.message); }
+  const ctx = inboxRows ? { rows: inboxRows, optout: optSet } : null;
+
   let reengaged = 0, rescued = null;
-  try { if (room("reengage")) reengaged = (await require("./_reengage.js").run(cfg, 10, UNTIL)).sent; } catch (e) { console.error("cron: reengage", e && e.message); }
+  try { if (room("reengage")) reengaged = (await require("./_reengage.js").run(cfg, 10, UNTIL, ctx)).sent; } catch (e) { console.error("cron: reengage", e && e.message); }
   // Rescue always runs: its alerts are cheap, and only its AI hand-back is
   // held to the deadline. Somebody waiting twenty minutes cannot wait an hour.
-  try { rescued = await require("./_rescue.js").run(cfg, 5, UNTIL); } catch (e) { console.error("cron: rescue", e && e.message); }
+  try { rescued = await require("./_rescue.js").run(cfg, 5, UNTIL, ctx); } catch (e) { console.error("cron: rescue", e && e.message); }
 
   // ---- who calls whom, and who has not called -----------------------------
   let assigned = 0, overdue = null;
@@ -437,7 +444,7 @@ module.exports = async (req, res) => {
 
   // ---- stranded chats: the people the agent could not answer ---------------
   let recovered = 0;
-  try { if (room("recover")) recovered = (await require("./_recover.js").run(cfg, 20, UNTIL)).answered; } catch (e) { console.error("cron: recover", e && e.message); }
+  try { if (room("recover")) recovered = (await require("./_recover.js").run(cfg, 20, UNTIL, ctx)).answered; } catch (e) { console.error("cron: recover", e && e.message); }
 
   // ---- yesterday's agent, reviewed (8:15 AM) ------------------------------
   let reviewed = 0;

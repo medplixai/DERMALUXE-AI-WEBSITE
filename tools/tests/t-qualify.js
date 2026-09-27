@@ -167,6 +167,54 @@ const cfg = { kind: "pg" };
   is((await recover.findStranded(cfg, 30)).length, 1, "and the chat is still stranded, for the run an hour later to pick up");
   claude.push({ reply: "Hair fall ki PRP baaga pani chestundi andi 🙏 Entakalam nundi?", lead: null });
   is((await recover.run(cfg, 20, at11 + 60000)).answered, 1, "with time on the clock, the same chat is answered");
+
+  // Three jobs in the same hourly run each fetched the same 200 inbox rows,
+  // and then asked the opt-out list once per chat — a whole set read per
+  // candidate. Read once by the caller, handed to all three.
+  console.log("\n  — reading the inbox once, not three times —");
+  const guardMod = require(path.join(API, "_guard.js"));
+  const realKv = guardMod.kvCommand;
+  let listReads = 0, optReads = 0, threadReads = 0;
+  guardMod.kvCommand = async (c2, c) => {
+    if (c[0] === "LRANGE" && c[1] === "ib:list") listReads++;
+    if (c[0] === "SMEMBERS" && c[1] === "optout") optReads++;
+    // What inbox.thread() fetched beyond the messages: this chat's meta and
+    // its human flag — both already sitting in the row we were handed.
+    if (c[0] === "GET" && /^ib:(t|human):/.test(String(c[1]))) threadReads++;
+    return realKv(c2, c);
+  };
+  const inboxMod = require(path.join(API, "_inbox.js"));
+  const reengage = require(path.join(API, "_reengage.js"));
+  const rescue = require(path.join(API, "_rescue.js"));
+  const rows = await inboxMod.threads(cfg, 200);
+  is(rows.length > 0, true, "there are chats to scan");
+  listReads = 0; optReads = 0; threadReads = 0;
+  const shared = { rows, optout: new Set() };
+  await recover.findStranded(cfg, 30, shared);
+  await reengage.candidates(cfg, shared);
+  await rescue.waiting(cfg, shared);
+  is(listReads, 0, "given the rows, not one of the three fetches them again: " + listReads);
+  is(threadReads, 0, "and nothing re-reads a chat's meta or its human flag — both were in the row: " + threadReads);
+
+  // A stranded chat, so the walk actually reaches the opt-out line — counting
+  // reads on a path nothing travels proves nothing at all.
+  claude.push(500);
+  await say("9876501908", "Acne scars ki em treatment?", "Padma");
+  const one = (await recover.findStranded(cfg, 30, { rows: await inboxMod.threads(cfg, 200), optout: new Set() }))
+    .map((x) => x.phone);
+  is(one.includes("9876501908"), true, "a stranded chat is found");
+  optReads = 0;
+  const none = await recover.findStranded(cfg, 30, { rows: await inboxMod.threads(cfg, 200), optout: new Set(["9876501908"]) });
+  is(none.some((x) => x.phone === "9876501908"), false, "somebody on the handed-in opt-out list is left out of it");
+  is(optReads, 0, "without the list being read again for that chat, or for any other: " + optReads);
+
+  // Handed nothing, each still stands on its own — the tests above, and any
+  // other caller, go on working.
+  listReads = 0; optReads = 0;
+  await recover.findStranded(cfg, 30);
+  is(listReads, 1, "handed nothing, it fetches the rows itself");
+  is(optReads >= 0, true, "and falls back to asking the opt-out list directly");
+  guardMod.kvCommand = realKv;
   const D2 = Date.now; const at23 = (() => { const d = new Date(D2() + 19800000); d.setUTCHours(23, 0, 0, 0); return d.getTime() - 19800000; })();
   Date.now = () => at23;
   is((await recover.run(cfg, 20)).quiet, true, "and nothing is sent at night");

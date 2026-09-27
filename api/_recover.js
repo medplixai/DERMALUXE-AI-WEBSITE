@@ -16,14 +16,22 @@ const notify = require("./_notify.js");
 const HOLD = facts.FALLBACK_REPLY.slice(0, 60);
 const isHold = (t) => String(t || "").slice(0, 60) === HOLD;
 
-async function findStranded(cfg, hoursBack) {
+// `ctx` is the work three jobs would otherwise each do for themselves: the
+// same 200 inbox rows, and the same opt-out list. Read once by the caller and
+// handed round; read here only when nobody handed anything over.
+async function findStranded(cfg, hoursBack, ctx) {
   const out = [];
   const since = Date.now() - (hoursBack || 30) * 3600000;
-  for (const t of await inbox.threads(cfg, 200)) {
+  const rows = (ctx && ctx.rows) || await inbox.threads(cfg, 200);
+  const optSet = ctx && ctx.optout;
+  for (const t of rows) {
     if (!t.ts || t.ts < since) continue;
     if (t.human) continue;
-    const th = await inbox.thread(cfg, t.phone);
-    const msgs = th.msgs || [];
+    // Only the messages. `inbox.thread` would also fetch this thread's meta
+    // and its human flag — both already in the row above — which is three
+    // round trips per chat where one will do.
+    const mr = await guard.kvCommand(cfg, ["LRANGE", `ib:m:${t.phone}`, "0", "199"]).catch(() => ({}));
+    const msgs = ((mr && mr.result) || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean).reverse();
     let li = -1; for (let i = msgs.length - 1; i >= 0; i--) if (msgs[i].dir === "in") { li = i; break; }
     if (li < 0) continue;
     const lastIn = msgs[li];
@@ -31,7 +39,7 @@ async function findStranded(cfg, hoursBack) {
     const after = msgs.slice(li + 1).filter((m) => m.dir === "out");
     // answered by anything that was not the holding line — the desk, or the agent once it recovered
     if (!after.length || after.some((m) => !isHold(m.text))) continue;
-    if (await guard.setHas(cfg, "optout", t.phone)) continue;
+    if (optSet ? optSet.has(t.phone) : await guard.setHas(cfg, "optout", t.phone)) continue;
     out.push({ phone: t.phone, name: t.name || "", lastIn, msgs, windowOpen: Date.now() - lastIn.ts < 24 * 3600000 - 120000 });
   }
   return out.sort((a, b) => a.lastIn.ts - b.lastIn.ts);
@@ -41,12 +49,12 @@ async function findStranded(cfg, hoursBack) {
 // Vercel kills at a fixed wall-clock time, and being killed here means every
 // job AFTER this one — the evening report, the key sweep — never runs at all.
 // So this stops between chats and says it stopped.
-async function run(cfg, max, until) {
+async function run(cfg, max, until, ctx) {
   const res = { found: 0, answered: 0, skippedClosed: 0, failed: 0, quiet: false, stopped: false, left: 0 };
   if (!cfg || process.env.WA_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) return res;
   const hour = new Date(Date.now() + 330 * 60000).getUTCHours();
   res.quiet = hour >= 21 || hour < 8;
-  const all = await findStranded(cfg, 30);
+  const all = await findStranded(cfg, 30, ctx);
   res.found = all.length;
   const open = all.filter((s) => s.windowOpen);
   res.skippedClosed = all.length - open.length;
