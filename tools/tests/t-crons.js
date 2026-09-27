@@ -142,6 +142,33 @@ process.env.LEAD_NOTIFY_PHONES = "9989325777";
   is(to("9876500751").some((s) => s[0] === "tpl" && s[2] === "daily_digest_ping"), true, "which asks them to reply 'report'");
   is((await h.call(digest, { key: "guess" })).code, 401, "and nobody else can trigger it");
 
+  // Vercel kills this function at maxDuration wherever it has got to, and on
+  // 27 September it did. What made that a bug rather than a slow morning is
+  // WHERE the jobs sit: the Claude work is in the middle, and the evening
+  // report, the dues reminders and the hourly key sweep are below it. Killed
+  // in the middle, none of those ever ran, and the only trace was one timeout
+  // line. So: out of time, the expensive blocks are skipped by name and the
+  // cheap tail still finishes.
+  console.log("\n  — an hour that runs out of time —");
+  const realFetch = global.fetch;
+  let reaped = 0;
+  global.fetch = async (url) => { if (/dl_kv_reap/.test(String(url))) reaped++; return { ok: true, json: async () => 7 }; };
+  process.env.FOLLOWUP_BUDGET_MS = "1";            // the clock is already gone
+  delete require.cache[path.join(API, "cron-followup.js")];
+  const broke = h.load("cron-followup");
+  now = at(8, 15);                                  // the hour the review runs
+  const late = await run(broke);
+  process.env.FOLLOWUP_BUDGET_MS = "";
+  global.fetch = realFetch;
+  is(late.code, 200, "the job still finishes and answers");
+  is(late.body.skipped.includes("review"), true, "the Opus review — the longest thing it does — is not started: " + JSON.stringify(late.body.skipped));
+  is(["reengage", "recover", "backfill"].every((k) => late.body.skipped.includes(k)), true, "nor is any of the other Claude work");
+  is(late.body.reviewed, 0, "so nothing claims to have been reviewed");
+  is(h.run(["GET", "review:done:" + new Date(now + 19800000 - 86400000).toISOString().slice(0, 10)]), null,
+    "and the once-a-day marker is NOT taken, so 8:15 tomorrow tries again instead of skipping the day");
+  is(reaped, 1, "the key sweep at the very bottom still runs — that is the whole point");
+  is(typeof late.body.ms, "number", "and the run says how long it took");
+
   Date.now = realNow;
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe scheduled jobs behave");
   process.exit(fails ? 1 : 0);

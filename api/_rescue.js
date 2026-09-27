@@ -28,8 +28,11 @@ async function waiting(cfg) {
   return out.sort((a, b) => b.mins - a.mins);
 }
 
-async function run(cfg, max) {
-  const res = { waiting: 0, alerted: 0, resumed: 0 };
+// `until`: see _recover. Only the AI hand-back is held to it — telling the
+// team somebody has been waiting twenty minutes is cheap and cannot wait for
+// a quieter hour.
+async function run(cfg, max, until) {
+  const res = { waiting: 0, alerted: 0, resumed: 0, stopped: false };
   if (!cfg) return res;
   const list = await waiting(cfg);
   res.waiting = list.length;
@@ -48,6 +51,7 @@ async function run(cfg, max) {
       res.alerted++;
     }
     // An hour: the agent takes it back rather than leaving them there.
+    if (until && Date.now() > until) { res.stopped = true; continue; }
     if (w.mins >= RESUME_MIN && w.windowOpen && res.resumed < (max || 5)
       && process.env.WA_AGENT_ENABLED === "1" && process.env.ANTHROPIC_API_KEY) {
       try {

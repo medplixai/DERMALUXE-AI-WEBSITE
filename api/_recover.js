@@ -37,8 +37,12 @@ async function findStranded(cfg, hoursBack) {
   return out.sort((a, b) => a.lastIn.ts - b.lastIn.ts);
 }
 
-async function run(cfg, max) {
-  const res = { found: 0, answered: 0, skippedClosed: 0, failed: 0, quiet: false };
+// `until` is an absolute deadline in ms. The caller runs inside a function
+// Vercel kills at a fixed wall-clock time, and being killed here means every
+// job AFTER this one — the evening report, the key sweep — never runs at all.
+// So this stops between chats and says it stopped.
+async function run(cfg, max, until) {
+  const res = { found: 0, answered: 0, skippedClosed: 0, failed: 0, quiet: false, stopped: false, left: 0 };
   if (!cfg || process.env.WA_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) return res;
   const hour = new Date(Date.now() + 330 * 60000).getUTCHours();
   res.quiet = hour >= 21 || hour < 8;
@@ -48,7 +52,10 @@ async function run(cfg, max) {
   res.skippedClosed = all.length - open.length;
   if (res.quiet) return res;
   const wa = require("./whatsapp.js");
-  for (const s of open.slice(0, max || 20)) {
+  const todo = open.slice(0, max || 20);
+  for (let i = 0; i < todo.length; i++) {
+    const s = todo[i];
+    if (until && Date.now() > until) { res.stopped = true; res.left = todo.length - i; break; }
     const once = await guard.kvCommand(cfg, ["SET", `recov:${s.phone}:${s.lastIn.ts}`, "1", "NX", "EX", "172800"]).catch(() => ({}));
     if (!once || !once.result) continue;
     try {

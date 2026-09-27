@@ -41,8 +41,10 @@ async function candidates(cfg) {
   return out;
 }
 
-async function run(cfg, max) {
-  const res = { found: 0, sent: 0, quiet: false };
+// `until`: see _recover. One Claude call per person, one after another — on a
+// busy hour that alone can outlast the whole function.
+async function run(cfg, max, until) {
+  const res = { found: 0, sent: 0, quiet: false, stopped: false, left: 0 };
   if (!cfg || process.env.WA_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) return res;
   const hour = new Date(Date.now() + 330 * 60000).getUTCHours();
   res.quiet = hour < 8 || hour >= 21;
@@ -51,7 +53,10 @@ async function run(cfg, max) {
   if (res.quiet) return res;
   const wa = require("./whatsapp.js"), lint = require("./_lint.js"), rules = require("./_rules.js");
   const sys = await rules.block(cfg).catch(() => "");
-  for (const c of list.slice(0, max || 10)) {
+  const todo = list.slice(0, max || 10);
+  for (let i = 0; i < todo.length; i++) {
+    const c = todo[i];
+    if (until && Date.now() > until) { res.stopped = true; res.left = todo.length - i; break; }
     try {
       const th = await inbox.thread(cfg, c.phone);
       const msgs = (th.msgs || []).slice(-10);

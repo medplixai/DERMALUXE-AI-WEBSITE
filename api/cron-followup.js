@@ -7,6 +7,21 @@ const guard = require("./_guard.js");
 const notify = require("./_notify.js");
 const admin = require("./_admin.js");
 
+// Vercel kills this function at maxDuration, wherever it happens to be. That
+// is not merely "slow": everything BELOW the kill never runs, so an hour that
+// spends its whole budget answering stranded chats silently drops the 9:45 PM
+// closing report, the dues reminders and the hourly key sweep — and the only
+// trace is a timeout line nobody reads.
+//
+// So the expensive work is held to a deadline and the cheap tail is not. Past
+// the deadline a block is skipped, named in `skipped`, and picked up by the
+// next run an hour later — every one of them is either capped per run or
+// guarded by an NX marker, so nothing is lost by waiting.
+// Settable so the deadline can be proved without faking a clock, and so it
+// can be tightened on a live account without a deploy.
+const BUDGET_MS = Math.max(1, Number(process.env.FOLLOWUP_BUDGET_MS) || 210000);  // of the 300s ceiling; the tail needs the rest
+const SPARE_MS = 25000;        // a block is not started without at least this
+
 module.exports = async (req, res) => {
   const gate = guard.cronAuth(req);
   if (!gate.ok) return res.status(401).json({ error: "unauthorized", note: gate.note });
@@ -19,6 +34,12 @@ module.exports = async (req, res) => {
   // until somebody happens to look. So: write something, read it back, throw
   // it away. If that does not work, say so on WhatsApp — which does not need
   // the database to work, unlike the push notifications.
+  const UNTIL = Date.now() + BUDGET_MS;
+  const timeLeft = () => UNTIL - Date.now();
+  const skipped = [];
+  // Enough clock left to start something that may take a while?
+  const room = (what, ms) => { if (timeLeft() > (ms || SPARE_MS)) return true; skipped.push(what); return false; };
+
   let health = "ok";
   try {
     const nonce = String(Date.now());
@@ -245,7 +266,7 @@ module.exports = async (req, res) => {
   // ---- a treatment's natural next time (Hydrafacial monthly, peel at three
   // weeks…) for single treatments on a bill; packages are the block below.
   let cycled = null;
-  try { if (istHour === 10) cycled = await require("./_cycles.js").run(cfg, 25); } catch (e) { console.error("cron: cycles", e && e.message); }
+  try { if (istHour === 10 && room("cycles")) cycled = await require("./_cycles.js").run(cfg, 25); } catch (e) { console.error("cron: cycles", e && e.message); }
 
   // ---- next sitting is due -------------------------------------------------
   // Once a day, tell anyone whose multi-sitting treatment is due. This is what
@@ -377,8 +398,10 @@ module.exports = async (req, res) => {
 
   // ---- chats that went quiet, and colleagues who went quiet ---------------
   let reengaged = 0, rescued = null;
-  try { reengaged = (await require("./_reengage.js").run(cfg, 10)).sent; } catch (e) { console.error("cron: reengage", e && e.message); }
-  try { rescued = await require("./_rescue.js").run(cfg, 5); } catch (e) { console.error("cron: rescue", e && e.message); }
+  try { if (room("reengage")) reengaged = (await require("./_reengage.js").run(cfg, 10, UNTIL)).sent; } catch (e) { console.error("cron: reengage", e && e.message); }
+  // Rescue always runs: its alerts are cheap, and only its AI hand-back is
+  // held to the deadline. Somebody waiting twenty minutes cannot wait an hour.
+  try { rescued = await require("./_rescue.js").run(cfg, 5, UNTIL); } catch (e) { console.error("cron: rescue", e && e.message); }
 
   // ---- who calls whom, and who has not called -----------------------------
   let assigned = 0, overdue = null;
@@ -387,7 +410,7 @@ module.exports = async (req, res) => {
 
   // ---- grade the leads that came in before any of this existed -------------
   let backfilled = 0;
-  try { backfilled = (await qualify.backfill(cfg, 25)).graded; } catch (e) { console.error("cron: qualify backfill", e && e.message); }
+  try { if (room("backfill")) backfilled = (await qualify.backfill(cfg, 25)).graded; } catch (e) { console.error("cron: qualify backfill", e && e.message); }
 
   // ---- an A-grade lead the desk has not booked in two hours ----------------
   let callNags = 0;
@@ -414,15 +437,21 @@ module.exports = async (req, res) => {
 
   // ---- stranded chats: the people the agent could not answer ---------------
   let recovered = 0;
-  try { recovered = (await require("./_recover.js").run(cfg, 20)).answered; } catch (e) { console.error("cron: recover", e && e.message); }
+  try { if (room("recover")) recovered = (await require("./_recover.js").run(cfg, 20, UNTIL)).answered; } catch (e) { console.error("cron: recover", e && e.message); }
 
   // ---- yesterday's agent, reviewed (8:15 AM) ------------------------------
   let reviewed = 0;
   try {
     if (istHour === 8) {
       const day = new Date(now + 330 * 60000 - 86400000).toISOString().slice(0, 10);
-      const nx = await guard.kvCommand(cfg, ["SET", `review:done:${day}`, "1", "NX", "EX", "172800"]).catch(() => ({}));
-      if (nx && nx.result) { const rv = await require("./_review.js").run(cfg, day); reviewed = rv ? rv.checked : 0; }
+      // One Opus call over up to forty transcripts — the single longest thing
+      // this job ever does. Started without room for it, it is what the kill
+      // lands in the middle of. The NX marker is only taken once there IS room,
+      // so a skipped review is retried at 8:15 tomorrow rather than lost.
+      if (room("review", 90000)) {
+        const nx = await guard.kvCommand(cfg, ["SET", `review:done:${day}`, "1", "NX", "EX", "172800"]).catch(() => ({}));
+        if (nx && nx.result) { const rv = await require("./_review.js").run(cfg, day); reviewed = rv ? rv.checked : 0; }
+      }
     }
   } catch (e) { console.error("cron: review", e && e.message); }
 
@@ -513,5 +542,5 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: reap", e && e.message); }
 
-  return res.status(200).json({ ok: true, health, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, ms: Date.now() - (UNTIL - BUDGET_MS), skipped, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
 };

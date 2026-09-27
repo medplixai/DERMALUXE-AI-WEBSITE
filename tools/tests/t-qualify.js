@@ -151,6 +151,22 @@ const cfg = { kind: "pg" };
   is([r1.found, r1.answered], [1, 1], "and answered properly once the model is back");
   is(sentTo("9876501906").length === 1 && /PICO/.test(sentTo("9876501906")[0][2]), true, "with a real answer to their own question");
   is((await recover.findStranded(cfg, 30)).length, 0, "after which they are no longer stranded");
+
+  // The platform kills this function at a fixed wall-clock time, wherever it
+  // has got to. Killed here, every job BELOW it — the evening report, the key
+  // sweep — never runs at all, and the only trace is a timeout line. So it
+  // stops between chats when the clock is gone and says what it left behind.
+  claude.push(500);
+  await say("9876501907", "Hair fall ekkuva ayindi, em cheyyali?", "Radha");
+  Date.now = () => at11;
+  h.sent.length = 0;
+  const askedBefore = claude.length;
+  const stopped = await recover.run(cfg, 20, at11 - 1);
+  is([stopped.stopped, stopped.answered, stopped.left], [true, 0, 1], "out of time, it stops BEFORE a chat rather than in the middle of one");
+  is([claude.length, h.sent.length], [askedBefore, 0], "nothing is asked of the model and nothing is sent");
+  is((await recover.findStranded(cfg, 30)).length, 1, "and the chat is still stranded, for the run an hour later to pick up");
+  claude.push({ reply: "Hair fall ki PRP baaga pani chestundi andi 🙏 Entakalam nundi?", lead: null });
+  is((await recover.run(cfg, 20, at11 + 60000)).answered, 1, "with time on the clock, the same chat is answered");
   const D2 = Date.now; const at23 = (() => { const d = new Date(D2() + 19800000); d.setUTCHours(23, 0, 0, 0); return d.getTime() - 19800000; })();
   Date.now = () => at23;
   is((await recover.run(cfg, 20)).quiet, true, "and nothing is sent at night");
