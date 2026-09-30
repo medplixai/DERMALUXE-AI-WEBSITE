@@ -38,6 +38,25 @@ or when you have name + concern:
 Optionally add "urgent":"<one line>" and "end":true.`;
 
 const CLINIC_FACTS = facts.clinicFacts("phone call", CALL_RULES);
+// The clinic's whole brief — fees, treatments, rules, academy — is about seven
+// thousand tokens, and it was going to Anthropic in full on EVERY message: every
+// patient reply, every hourly re-engage, every simulated exam patient. Paid at
+// the input rate, every time.
+//
+// It is byte-identical on every call (built once at module load, no dates or
+// randomness in it), which is exactly what prompt caching wants. Cached reads
+// cost about a tenth of the input rate.
+//
+// Caching is a PREFIX match, so the order matters: the unchanging part carries
+// the breakpoint and goes first, and anything that varies per call — the owner's
+// own rules, the A/B line — goes after it, where it cannot invalidate the cache.
+function sysBlocks(stable, volatile) {
+  const out = [{ type: "text", text: stable, cache_control: { type: "ephemeral" } }];
+  const v = String(volatile || "").trim();
+  if (v) out.push({ type: "text", text: v });
+  return out;
+}
+
 
 function xml(res, body) {
   res.setHeader("Content-Type", "text/xml; charset=utf-8");
@@ -194,7 +213,7 @@ module.exports = async (req, res) => {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 600, system: CLINIC_FACTS, messages }),
+      body: JSON.stringify({ model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 600, system: sysBlocks(CLINIC_FACTS), messages }),
     });
     if (!resp.ok) throw new Error("claude HTTP " + resp.status);
     const data = await resp.json();

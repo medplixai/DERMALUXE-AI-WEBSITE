@@ -27,13 +27,17 @@ stub("_hr.js", { handle: async () => null });
 stub("_clinic.js", { forwardLead: async () => ({ attempted: false }) });
 stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () => null, transcribe: async () => null });
 
-let claude = [], lastSystem = "", cloudOut = [];
+// The system prompt is no longer one string: the clinic's unchanging brief is
+// its own block, marked for caching, and anything that varies per call follows
+// it. `lastSystem` flattens that back to text so the assertions below read the
+// same; `sysParts` keeps the blocks for the ones that care WHERE a rule landed.
+let claude = [], lastSystem = "", cloudOut = [], sysParts = [];
 global.fetch = async (url, opt) => {
   const u = String(url);
   if (u.includes("api.anthropic.com")) {
     const body = JSON.parse(opt.body);
     if (/You fix one WhatsApp reply/.test(body.system)) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: body.messages[0].content.split("\n")[1] || "ok" }] }) };
-    lastSystem = body.system;
+    sysParts = Array.isArray(body.system) ? body.system : [{ type: "text", text: String(body.system || "") }]; lastSystem = sysParts.map((b) => b.text).join("\n");
     const next = claude.length ? claude.shift() : { reply: "Namaste 🙏 Em problem andi?", lead: null };
     return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(next) }] }) };
   }

@@ -72,6 +72,25 @@ cancel: if the patient wants to CANCEL their appointment (and is not picking a n
 Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, "send_catalog":true when someone asks about the DermaLuxe Academy / training courses (the course catalog PDF is sent automatically with your reply — mention "Course catalog PDF ikkada pampistunnanu 📄"), "trust":true when the patient hesitates (asks who the doctor is / whether results come / is it safe / will think about it) — the doctor card, Google rating and before/after go out after your reply, "family":[{"name":"…","concern":"…"}] inside lead when more than one person is coming in the same slot (amma + koothuru), "voice":true when the patient would clearly rather listen than read (asks for voice, says they cannot read well, elderly writing with difficulty) — your reply is also sent as a voice note from then on, and "urgent":"<one line>" for medical emergencies.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
+// The clinic's whole brief — fees, treatments, rules, academy — is about seven
+// thousand tokens, and it was going to Anthropic in full on EVERY message: every
+// patient reply, every hourly re-engage, every simulated exam patient. Paid at
+// the input rate, every time.
+//
+// It is byte-identical on every call (built once at module load, no dates or
+// randomness in it), which is exactly what prompt caching wants. Cached reads
+// cost about a tenth of the input rate.
+//
+// Caching is a PREFIX match, so the order matters: the unchanging part carries
+// the breakpoint and goes first, and anything that varies per call — the owner's
+// own rules, the A/B line — goes after it, where it cannot invalidate the cache.
+function sysBlocks(stable, volatile) {
+  const out = [{ type: "text", text: stable, cache_control: { type: "ephemeral" } }];
+  const v = String(volatile || "").trim();
+  if (v) out.push({ type: "text", text: v });
+  return out;
+}
+
 const PHOTO_RULES = facts.photoRules("WhatsApp");
 
 function xmlEscape(s) {
@@ -162,12 +181,19 @@ async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
     body: JSON.stringify({
       model: (opts && opts.model) || process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 1000,
-      system: CLINIC_FACTS + (sysExtra || ""),
+      system: sysBlocks(CLINIC_FACTS, sysExtra),
       messages,
     }),
   });
   if (!resp.ok) throw new Error(`claude HTTP ${resp.status} ${await why(resp)}`);
   const data = await resp.json();
+  // Whether the cached half was actually read. A silent invalidator — a date
+  // that crept into the brief, a reordered block — turns the saving off without
+  // breaking anything, so it would never be noticed. One line an hour says so.
+  try {
+    const u = data.usage || {};
+    if (Math.random() < 0.02) console.log(`claude tokens: in ${u.input_tokens || 0} · cache read ${u.cache_read_input_tokens || 0} · cache write ${u.cache_creation_input_tokens || 0} · out ${u.output_tokens || 0}`);
+  } catch (e) {}
   const text = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
   try {
     const m = text.match(/\{[\s\S]*\}/);
@@ -842,7 +868,9 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx, sysE
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 1000,
-      system: CLINIC_FACTS + (sysExtra || "") + "\n\n" + PHOTO_RULES,
+      // PHOTO_RULES is constant too, so it joins the cached half; the owner's
+      // rules stay after the breakpoint.
+      system: sysBlocks(CLINIC_FACTS + "\n\n" + PHOTO_RULES, sysExtra),
       messages,
     }),
   });

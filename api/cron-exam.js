@@ -1,7 +1,12 @@
-// GET /api/cron-exam — Vercel Cron, 02:30 UTC = 08:00 IST, before the clinic
-// opens, so the score reaches the owner with the morning and not at 3 AM. Twelve invented patients talk to the real
-// agent; a judge scores each chat; the owner hears the score and the two
-// worst chats. See _exam.js.
+// GET /api/cron-exam — Vercel Cron, Mondays 02:30 UTC = 08:00 IST, before the
+// clinic opens, so the score reaches the owner with the morning and not at 3 AM.
+// Twelve invented patients talk to the real agent; a judge scores each chat; the
+// owner hears the score and the two worst chats. See _exam.js.
+//
+// Weekly, not daily: each sitting is twelve conversations against the real
+// agent, and the agent carries the clinic's whole brief on every turn. Run every
+// morning it was a standing bill for testing ourselves. The 03:15 entry is the
+// same day's retry — the "already sat today" guard stops it repeating the exam.
 //
 // Manual: ?key=<ADMIN_KEY or CRON_SECRET>&n=3[&ids=p04,p07][&dry=1][&keep=1]
 // or from the app with a staff session that has settings.manage.

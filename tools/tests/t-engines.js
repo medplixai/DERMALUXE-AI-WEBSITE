@@ -31,14 +31,18 @@ stub("_hr.js", { handle: async () => null });
 stub("_clinic.js", { forwardLead: async () => ({ attempted: false }) });
 stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () => null, transcribe: async () => null });
 
-let claude = [], lastSystem = "", lastUser = "";
+// The system prompt is no longer one string: the clinic's unchanging brief is
+// its own block, marked for caching, and anything that varies per call follows
+// it. `lastSystem` flattens that back to text so the assertions below read the
+// same; `sysParts` keeps the blocks for the ones that care WHERE a rule landed.
+let claude = [], lastSystem = "", lastUser = "", sysParts = [];
 global.fetch = async (url, opt) => {
   const u = String(url);
   if (u.includes("api.anthropic.com")) {
     const body = JSON.parse(opt.body);
     if (/You fix one WhatsApp reply/.test(body.system)) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: body.messages[0].content.split("\n")[1] || "ok" }] }) };
     if (/quality reviewer/.test(body.system)) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify({ score: 80, summary: "ok", findings: [] }) }] }) };
-    lastSystem = body.system; lastUser = body.messages[body.messages.length - 1].content;
+    sysParts = Array.isArray(body.system) ? body.system : [{ type: "text", text: String(body.system || "") }]; lastSystem = sysParts.map((b) => b.text).join("\n"); lastUser = body.messages[body.messages.length - 1].content;
     const next = claude.length ? claude.shift() : { reply: "Namaste 🙏 Em problem andi?", lead: null };
     return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(next) }] }) };
   }
@@ -79,6 +83,15 @@ const lead = (o) => h.run(["RPUSH", "dl_leads", JSON.stringify(Object.assign({ t
   is([/OWNER RULES/.test(blk), /laser offer cheppaku/.test(blk), /win over anything above/.test(blk)], [true, true, true], "the agent is told these beat the standing prompt");
   await say("9876502010", "Laser treatment gurinchi cheppandi");
   is(/laser offer cheppaku/.test(lastSystem), true, "and the very next patient message carries them to the model");
+  // The clinic's brief is ~7,000 tokens and went in full on every single call.
+  // It never changes, so it is now its own cached block — and the owner's rules,
+  // which DO change, must sit after it or they would invalidate the cache on
+  // every edit and the saving would quietly never happen.
+  is(sysParts.length >= 2, true, "the prompt goes as blocks, not one string");
+  is(sysParts[0].cache_control, { type: "ephemeral" }, "the unchanging brief is the cached one");
+  is(/OWNER RULES/.test(sysParts[0].text), false, "and the owner's rules are not inside it");
+  is(/laser offer cheppaku/.test(sysParts[sysParts.length - 1].text), true, "they come after the breakpoint, where changing them costs nothing");
+  is("cache_control" in sysParts[sysParts.length - 1], false, "which is why that block is not itself cached");
   const r2 = await rules.remove(cfg, r1.rule.id);
   is([r2.ok, await rules.block(cfg)], [true, ""], "taking it off leaves nothing behind");
   is((await rules.remove(cfg, "nope")).ok, false, "removing a rule that is not there says so");

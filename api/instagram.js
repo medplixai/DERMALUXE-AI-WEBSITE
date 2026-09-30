@@ -69,6 +69,25 @@ or when booking info is ready:
 Optionally add "send_location":true when the patient asks for the address/directions.`;
 
 const CLINIC_FACTS = facts.clinicFacts("Instagram", IG_RULES);
+// The clinic's whole brief — fees, treatments, rules, academy — is about seven
+// thousand tokens, and it was going to Anthropic in full on EVERY message: every
+// patient reply, every hourly re-engage, every simulated exam patient. Paid at
+// the input rate, every time.
+//
+// It is byte-identical on every call (built once at module load, no dates or
+// randomness in it), which is exactly what prompt caching wants. Cached reads
+// cost about a tenth of the input rate.
+//
+// Caching is a PREFIX match, so the order matters: the unchanging part carries
+// the breakpoint and goes first, and anything that varies per call — the owner's
+// own rules, the A/B line — goes after it, where it cannot invalidate the cache.
+function sysBlocks(stable, volatile) {
+  const out = [{ type: "text", text: stable, cache_control: { type: "ephemeral" } }];
+  const v = String(volatile || "").trim();
+  if (v) out.push({ type: "text", text: v });
+  return out;
+}
+
 const PHOTO_RULES = facts.photoRules("Instagram");
 const FALLBACK_REPLY = facts.FALLBACK_REPLY;
 
@@ -242,7 +261,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, imageBlock) {
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 1000,
-      system: imageBlock ? CLINIC_FACTS + "\n\n" + PHOTO_RULES : CLINIC_FACTS,
+      system: sysBlocks(imageBlock ? CLINIC_FACTS + "\n\n" + PHOTO_RULES : CLINIC_FACTS),
       messages,
     }),
   });
@@ -329,7 +348,7 @@ async function askClaudeComment(username, commentText) {
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
       max_tokens: 600,
-      system: CLINIC_FACTS + "\n\n" + COMMENT_RULES,
+      system: sysBlocks(CLINIC_FACTS + "\n\n" + COMMENT_RULES),
       messages: [{ role: "user", content: `[Instagram comment by @${username} on our post] ${commentText}` }],
     }),
   });
