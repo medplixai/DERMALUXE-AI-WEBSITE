@@ -16,15 +16,26 @@ const REAL_NOW = Date.now;
 const at = (iso) => { Date.now = () => Date.parse(iso); };
 const restore = () => { Date.now = REAL_NOW; };
 
-const DURING = "2026-09-18T10:00:00+05:30";           // offer open, batch ahead
-const AFTER_OFFER = "2026-10-05T10:00:00+05:30";      // offer closed, batch ahead
-const AFTER_BATCH = "2026-11-01T10:00:00+05:30";      // batch has started
+// Worked out from the dates in _docs.js, not typed out beside them. Written
+// as literals, these three quietly became wrong the day the owner moved the
+// launch offer — one of them was testing "after the offer closes" on a day the
+// offer was still running, and said nothing.
+const dayAt = (iso, plusDays) => new Date(Date.parse(iso + "T10:00:00+05:30") + plusDays * 86400000).toISOString();
+const DURING = dayAt(docs.BATCH.offerEndISO, -12);    // offer open, batch ahead, 12 days of it left
+const AFTER_OFFER = dayAt(docs.BATCH.offerEndISO, 2); // offer closed, batch still ahead
+const AFTER_BATCH = dayAt(docs.BATCH.startISO, 12);   // batch has started
 
 const booked = (n) => h.run(["SET", "acad:booked", String(n)]);
 const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
 
 (async () => {
   console.log("ACADEMY POSTER CAMPAIGN\n");
+  // The three moments above only mean what they are named if the offer still
+  // ends before the batch starts. Move the dates close enough together and
+  // they stop testing what they say — so that is checked first, out loud.
+  is(Date.parse(AFTER_OFFER) > docs.BATCH.offerEndMs && Date.parse(AFTER_OFFER) < docs.BATCH.startMs, true,
+    "there is room between the offer closing and the batch starting to test the gap");
+  is(Date.parse(DURING) < docs.BATCH.offerEndMs, true, "and the 'offer open' moment really is inside it");
   is(daily.ACADEMY_TOPICS.length, 5, "five posters, one per reason somebody does not sign up");
   is(new Set(keys).size, 5, "all with their own key");
   is(daily.ACADEMY_TOPICS.every((t) => t.page === "academy.html"), true, "all pointing at the academy page");
@@ -35,7 +46,10 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   is(st.on, true, "seats left and the batch ahead: it runs");
   is(st.left, 7, "seven of ten left");
   is(st.offerDays, 12, "twelve days of launch price left — counted by the calendar, not by dividing a duration");
-  is(st.batchDays, 32, "and thirty-two to the batch");
+  // Also worked out, for the same reason: a number typed here goes stale the
+  // moment either date moves.
+  const daysBetween = (a, b) => Math.round((Date.parse(b + "T00:00:00+05:30") - Date.parse(a.slice(0, 10) + "T00:00:00+05:30")) / 86400000);
+  is(st.batchDays, daysBetween(DURING, docs.BATCH.startISO), `and ${daysBetween(DURING, docs.BATCH.startISO)} to the batch`);
   const t1 = await daily.academyTopic({ kind: "pg" });
   is(!!t1 && keys.includes(t1.key), true, "and a poster comes back");
 

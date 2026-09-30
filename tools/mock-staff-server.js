@@ -459,7 +459,7 @@ http.createServer((req, res) => {
     if (a === "funnel") return send(200, { ok: true,
       seats: { total: 10, booked: 4, left: 6 }, money: { collected: 139996, pending: 159998 },
       counts: { reserved: 4, enquiry: 2, lost: 1 },
-      deadline: { offerDays: 11, batchDays: 31, offer: "30 Sep 2026", batch: "20 October 2026" },
+      deadline: { offerDays: 11, batchDays: 31, offer: "15 Oct 2026", batch: "20 October 2026" },
       rows: [
         { phone: "9876500031", name: "Divya", course: "skin", stage: "enquiry", quietDays: 3, paid: 0, balance: 49999, lastTouch: Date.now() - 3 * 86400000 },
         { phone: "9876500033", name: "Swathi", course: "hair", stage: "enquiry", quietDays: 0, paid: 0, balance: 49999, lastTouch: Date.now() - 3600000 },

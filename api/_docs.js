@@ -25,7 +25,7 @@ const COURSES = {
 const BATCH = {
   no: 1, start: "20 October 2026", startISO: "2026-10-20",
   seats: 10, venue: "DermaLuxe Skin & Hair Clinics, Eluru",
-  offerEnd: "30 Sep 2026", offerEndLong: "30 September 2026", offerEndISO: "2026-09-30",
+  offerEnd: "15 Oct 2026", offerEndLong: "15 October 2026", offerEndISO: "2026-10-15",
 };
 // Last moment of the launch offer, 23:59:59 IST on offerEndISO.
 BATCH.offerEndMs = Date.parse(BATCH.offerEndISO + "T23:59:59+05:30");
