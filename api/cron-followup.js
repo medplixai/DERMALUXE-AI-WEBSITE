@@ -87,9 +87,14 @@ module.exports = async (req, res) => {
     const c = qualify.cadenceOf(await gradeOf(ph));
     return c.paid === true || (c.paid === "day3" && rung === 3);
   };
+  // The academy test comes from the ladder that now chases them, so the rule
+  // that holds them OUT of these rungs and the rule that decides who goes INTO
+  // that one are the same line of code. Two copies is how they ended up
+  // excluded from everything with nothing standing in the gap.
+  const acadfu = require("./_acadfu.js");
   const leaveAlone = (l, ph) => optSet.has(ph) || booked.has(ph)
     || ["booked", "visited", "closed"].includes(deskStatus[leadKey(l)])
-    || /^\s*academy/i.test(String(l.concern || ""));
+    || acadfu.isAcademyLead(l);
   // The hour of the day in Eluru, worked out once. Every timed block below
   // compares against this; a block that computed its own copy inside a try
   // was invisible to the blocks after it, and one of them had been silently
@@ -397,6 +402,12 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: early nudge", e && e.message); }
 
+  // ---- the academy enquiries, which until now nobody ever wrote to again ---
+  let acad = null;
+  try {
+    if (room("academy")) acad = await acadfu.run(cfg, { optout: optSet, deskStatus, now });
+  } catch (e) { console.error("cron: academy followup", e && e.message); }
+
   // ---- chats that went quiet, and colleagues who went quiet ---------------
   // The three jobs below each used to fetch the same 200 inbox rows for
   // themselves, and then ask the opt-out list once per chat — a whole set read
@@ -555,6 +566,6 @@ module.exports = async (req, res) => {
   // get to" — so it says both where somebody can read it afterwards.
   const took = Date.now() - STARTED;
   console.log(`cron-followup ${took}ms hour=${istHour}${skipped.length ? " skipped=" + skipped.join(",") : ""}` +
-    ` sent=${sent} early=${early} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled}`);
-  return res.status(200).json({ ok: true, health, ms: took, skipped, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
+    ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled}`);
+  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
 };

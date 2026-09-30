@@ -37,6 +37,7 @@ const followup = h.load("cron-followup"), post = h.load("cron-post"), digest = h
 const run = (mod) => h.call(mod, { key: "local-admin" });
 const lead = (o) => h.run(["LPUSH", "dl_leads", JSON.stringify(Object.assign({ type: "whatsapp", heat: "warm" }, o))]);
 const to = (ph) => h.sent.filter((s) => (s[0] === "wa" || s[0] === "tpl") && s[1] === ph);
+const said = (ph) => String(((to(ph)[0] || [])[2]) || "");   // "" rather than a stack trace
 process.env.LEAD_NOTIFY_PHONES = "9989325777";
 
 (async () => {
@@ -59,7 +60,12 @@ process.env.LEAD_NOTIFY_PHONES = "9989325777";
   is(f1.body.health, "ok", "the database answers its health check");
   is(to("9876500701").length, 1, "an enquiry that never booked gets one friendly nudge");
   is([to("9876500702").length, to("9876500703").length, to("9876500704").length], [0, 0, 0], "not somebody who said STOP, the desk closed, or who is already booked");
-  is(to("9876500705").length, 0, "not an academy enquiry — that is not a consultation");
+  // An academy enquiry used to get NOTHING from this job — held out of every
+  // rung on the promise of a follow-up that did not exist. It now gets one
+  // message: its own, from the academy ladder, never the consultation nudge.
+  is(to("9876500705").length, 1, "an academy enquiry gets one message too — exactly one");
+  is(/catalog/i.test(said("9876500705")), true, "and it is the academy ladder's: " + said("9876500705").slice(0, 60));
+  is(/slot/i.test(said("9876500705")), false, "nobody is offered a doctor's slot for a course");
   is([to("9876500706").length, to("9876500707").length], [0, 0], "nor one with a slot, nor one whose free window has shut");
   h.sent.length = 0;
   await run(followup);
@@ -76,7 +82,10 @@ process.env.LEAD_NOTIFY_PHONES = "9989325777";
   const f2 = await run(followup);
   is(f2.body.day3, 1, "one day-3 template goes out");
   is(((to("9876500711")[0] || [])[3] || [])[0], "Hari", "to the enquiry, by first name");
-  is([to("9876500712").length, to("9876500713").length, to("9876500714").length], [0, 0, 0], "not to one the desk marked visited, a job applicant, or an academy enquiry");
+  is([to("9876500712").length, to("9876500713").length], [0, 0], "not to one the desk marked visited, or to a job applicant");
+  is(to("9876500714").length, 1, "the academy enquiry gets the academy ladder's message instead");
+  is(/Batch/.test(said("9876500714")), true, "which at three days names the batch and the seats: " + said("9876500714").slice(0, 70));
+  is(f2.body.day3, 1, "and is still not counted as a day-3 consultation template");
 
   console.log("\n  — the day before an appointment (6:15 PM) —");
   h.sent.length = 0;
