@@ -102,8 +102,12 @@ async function save(cfg, input, by) {
   return { ok: true, boost: next };
 }
 
-async function graph(path, body) {
-  const r = await fetch(`${GRAPH}${path}`, {
+// POST unless a caller asks for GET — reading back what Meta actually has is
+// the only way to know a standing ad set is still there.
+async function graph(path, body, method) {
+  const get = String(method || "").toUpperCase() === "GET";
+  const qs = get ? "?" + new URLSearchParams(Object.assign({ access_token: token() }, body || {})).toString() : "";
+  const r = await fetch(`${GRAPH}${path}${qs}`, get ? { method: "GET" } : {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(Object.assign({ access_token: token() }, body)),
@@ -173,8 +177,82 @@ const targeting = (c, t) => Object.assign({
     ? { flexible_spec: [{ interests: t.interests.map((i) => ({ id: String(i.id), name: String(i.name || "") })) }] }
     : {});
 
-// One poster → one campaign, one ad set, one ad. Every id is written down as
-// it is made, so a failure half way can be undone instead of left spending.
+// The standing ad set a pillar's posters go into.
+//
+// Every morning used to build a whole new campaign and ad set for one poster —
+// ₹300, three days, then dead. Meta spends the first stretch of any new ad set
+// working out who to show it to, and on that budget none of ours ever lived
+// long enough to finish: ₹95 and 1,650 people, ₹170 and one conversation,
+// ₹47 and 592. Seven campaigns, seven learning phases, none completed. Worse,
+// they all chased the same people in Eluru, so the clinic was bidding against
+// itself in every auction it entered.
+//
+// One ad set per pillar instead, standing, on a daily budget with no end date.
+// Each poster becomes an AD inside it. What Meta learns about who answers a
+// click-to-WhatsApp ad from this clinic accumulates instead of being thrown
+// away at dawn, and the posters compete with each other on merit rather than
+// on price.
+//
+// Created PAUSED. Nothing here starts spending because a cron ran.
+//
+// KV: ads:home:<pillar>
+const HOME_ADS = 3;                    // live ads kept in a set; older ones are paused
+const dailyOf = (c) => Math.max(MIN_PER_DAY, Math.round(c.rupees / Math.max(1, c.days)));
+
+async function home(cfg, c, pillar, tgt) {
+  const key = `ads:home:${pillar}`;
+  const got = parse(((await guard.kvCommand(cfg, ["GET", key]).catch(() => ({}))) || {}).result || "", null);
+  if (got && got.adset) {
+    // It is written down, but Meta is where it actually lives: an ad set the
+    // owner deleted in Ads Manager would otherwise send every poster from now
+    // on into a hole.
+    const still = await graph(`/${got.adset}`, null, "GET").catch(() => null);
+    if (still && still.id && !/DELETED|ARCHIVED/.test(String(still.effective_status || ""))) return got;
+    await guard.kvCommand(cfg, ["DEL", key]).catch(() => {});
+  }
+  const name = pillar === "academy" ? "DermaLuxe Academy — WhatsApp leads" : "DermaLuxe Clinic — WhatsApp leads";
+  const camp = await graph(`/act_${account()}/campaigns`, {
+    name, objective: "OUTCOME_ENGAGEMENT", status: "PAUSED",
+    special_ad_categories: [], buying_type: "AUCTION",
+    is_adset_budget_sharing_enabled: false,
+  });
+  const adset = await graph(`/act_${account()}/adsets`, {
+    name: `${name} · Eluru ${tgt.radius || c.km} km`,
+    campaign_id: camp.id, status: "PAUSED",
+    // Daily, and no end_time. A lifetime budget with an end date is what
+    // silently stopped the academy ad set at midnight on the 30th while the
+    // campaign still read ACTIVE.
+    daily_budget: dailyOf(c) * 100,
+    billing_event: "IMPRESSIONS", optimization_goal: "CONVERSATIONS",
+    bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    destination_type: "WHATSAPP", promoted_object: { page_id: pageId() },
+    targeting: targeting(c, tgt),
+  });
+  const rec = { campaign: camp.id, adset: adset.id, pillar, daily: dailyOf(c), ts: Date.now() };
+  await guard.kvCommand(cfg, ["SET", key, JSON.stringify(rec)]).catch(() => {});
+  return rec;
+}
+
+// Older posters in a standing set, stood down. Without this the set collects
+// every poster ever made and the budget is spread across all of them.
+async function trim(cfg, adsetId, keep) {
+  try {
+    const r = await graph(`/${adsetId}/ads`, { fields: "id,created_time,effective_status", limit: 50 }, "GET");
+    const live = (r.data || [])
+      .filter((a) => !/PAUSED|DELETED|ARCHIVED/.test(String(a.effective_status || "")))
+      .sort((a, b) => Date.parse(b.created_time) - Date.parse(a.created_time));
+    let paused = 0;
+    for (const a of live.slice(Math.max(1, keep || HOME_ADS))) {
+      await graph(`/${a.id}`, { status: "PAUSED" }).catch(() => {});
+      paused++;
+    }
+    return paused;
+  } catch (e) { console.error("boost: trim", e && e.message); return 0; }
+}
+
+// One poster → one ad inside its pillar's standing ad set. Every id is written
+// down as it is made, so a failure half way can be undone instead of left
+// spending.
 async function create(cfg, post, c) {
   const made = { campaign: "", adset: "", creative: "", ad: "" };
   const name = post.name || `Daily poster ${istDay()} · ${String(post.topic || post.kind || "post").slice(0, 30)}`;
@@ -187,35 +265,16 @@ async function create(cfg, post, c) {
   const loc = parse(((await guard.kvCommand(cfg, ["GET", "ads:locales"]).catch(() => ({}))) || {}).result || "", null);
   const tgt = Object.assign({}, post.targeting || {},
     (!(post.targeting || {}).locales && loc && (loc.ids || []).length) ? { locales: loc.ids } : {});
+  // Which standing set this poster belongs in. Asked of the topic list that
+  // defines the pillars, the same question the radius is picked by.
+  const pillar = pillarOf(post.topic) === "academy" ? "academy" : "clinic";
   const start = Date.now() + 2 * 60000;
-  const end = start + c.days * 86400000;
   try {
-    const camp = await graph(`/act_${account()}/campaigns`, {
-      name, objective: "OUTCOME_ENGAGEMENT", status,
-      special_ad_categories: [], buying_type: "AUCTION",
-      // Meta will not publish an ad set that carries its own budget until the
-      // CAMPAIGN answers this either way: "You must specify True or False in
-      // the field is_adset_budget_sharing_enabled if you are not using
-      // campaign budget." It reads like an ad set field and it is not — sent
-      // there it is ignored, and 22, 23 and 24 September each lost their ad.
-      // false = this ad set keeps its own ₹300; it lends none of it away.
-      is_adset_budget_sharing_enabled: false,
-    });
-    made.campaign = camp.id;
-    const adset = await graph(`/act_${account()}/adsets`, {
-      name, campaign_id: camp.id, status,
-      lifetime_budget: c.rupees * 100,                  // Meta counts paise
-      start_time: new Date(start).toISOString(), end_time: new Date(end).toISOString(),
-      billing_event: "IMPRESSIONS", optimization_goal: "CONVERSATIONS",
-      // Say which bidding this is, or Meta picks one that needs a bid cap and
-      // then refuses the ad set for not having one ("Bid amount or bid
-      // constraints required"). Lowest cost without a cap is what the Ads
-      // Manager calls Highest volume: spend the ₹300, get the most chats.
-      bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-      destination_type: "WHATSAPP", promoted_object: { page_id: pageId() },
-      targeting: targeting(c, tgt),
-    });
-    made.adset = adset.id;
+    const set = await home(cfg, c, pillar, tgt);
+    made.campaign = set.campaign;
+    made.adset = set.adset;
+    const adset = { id: set.adset };
+
     const image_hash = await uploadImage(cfg, post.imgId, post.imageUrl);
     const creative = await graph(`/act_${account()}/adcreatives`, {
       name,
@@ -239,21 +298,18 @@ async function create(cfg, post, c) {
     made.creative = creative.id;
     const ad = await graph(`/act_${account()}/ads`, { name, adset_id: adset.id, creative: { creative_id: creative.id }, status });
     made.ad = ad.id;
-    return { ok: true, made, start, end };
+    // Yesterday's posters stand down, or the set's budget ends up spread
+    // across every poster the clinic has ever made.
+    const stood = await trim(cfg, set.adset, HOME_ADS);
+    return { ok: true, made, start, home: set, daily: set.daily, stoodDown: stood };
   } catch (e) {
-    // Never leave a half-built boost running. Without an ad it can never
-    // spend, and it is litter: five attempts at one campaign left five empty
-    // shells on the account, all named the same. So a build that never
-    // reached an ad is DELETED; one that did is only paused, because by then
-    // there is a real thing somebody might want to look at.
-    if (made.ad) {
-      for (const id of [made.adset, made.campaign].filter(Boolean)) {
-        await graph(`/${id}`, { status: "PAUSED" }).catch(() => {});
-      }
-    } else {
-      for (const id of [made.adset, made.campaign].filter(Boolean)) {
-        await fetch(`${GRAPH}/${id}?access_token=${encodeURIComponent(token())}`, { method: "DELETE" }).catch(() => {});
-      }
+    // Clean up only what THIS poster made. The ad set and campaign are the
+    // pillar's standing ones now, shared by every poster and by whatever is
+    // already running in them — the old code deleted them on a failure, which
+    // would have taken the whole structure down over one bad morning.
+    if (made.ad) await graph(`/${made.ad}`, { status: "PAUSED" }).catch(() => {});
+    else if (made.creative) {
+      await fetch(`${GRAPH}/${made.creative}?access_token=${encodeURIComponent(token())}`, { method: "DELETE" }).catch(() => {});
     }
     return { ok: false, made, error: String(e && e.message).slice(0, 200), code: (e && e.meta && e.meta.code) || 0 };
   }
@@ -307,7 +363,7 @@ async function run(cfg, post) {
       : `⚠️ *Ee roju poster ki ad pettaleka poyam*\n\n${out.error}\n\nMeta lo payment method / ad account chudandi. Repu malli try chestundi — leda app → Control panel → Ads boost lo off cheyyandi.`;
     for (const to of guard.ownerPhones()) await notify.sendWa(to, text).catch(() => {});
   } catch (e) {}
-  return Object.assign(res, { boosted: out.ok, why: out.ok ? "" : out.error, campaign: out.made.campaign, ad: out.made.ad, rupees: c.rupees, days, km });
+  return Object.assign(res, { boosted: out.ok, why: out.ok ? "" : out.error, campaign: out.made.campaign, ad: out.made.ad, rupees: c.rupees, days, km, stoodDown: out.stoodDown || 0, daily: out.daily || 0 });
 }
 
 // What the boosts did — for the control panel and the weekly report.
@@ -362,4 +418,4 @@ async function promote(cfg, o) {
   return { ok: true, rupees, days, campaign: out.made.campaign };
 }
 
-module.exports = { kmFor, pillarOf, load, save, run, promote, recent, ready, maxDays, DEFAULTS, MIN_PER_DAY, ELURU, WA_LINK };
+module.exports = { kmFor, pillarOf, home, trim, dailyOf, HOME_ADS, load, save, run, promote, recent, ready, maxDays, DEFAULTS, MIN_PER_DAY, ELURU, WA_LINK };
