@@ -107,7 +107,14 @@ module.exports = async (req, res) => {
   const preview = now
     ? (published && published.ok ? `✅ *Daily post live!* (${out.topic.h1})${published.fb ? " + 📘 FB" : ""}${storyOut && storyOut.ok ? " + 📸 Story" : ""}\n${published.link || ""}` : `❌ Publish fail: ${(published && published.msg) || "unknown"}`)
     : `🗓 *Today's auto post — ${out.topic.h1}*\nSchedule: ${when} → Instagram feed + story + Facebook.\n\nSkip cheyyalante: *unschedule 1* & *unschedule 2* · Topics: *daily topics*`;
-  const caption = `${preview}\n\n${out.caption}`.slice(0, 900);
+  // The photograph comes from Gemini. When that key stops working — billing
+  // declined, quota spent, the model withdrawn — the poster is still drawn and
+  // still posted, just on a plain background, and the morning message said
+  // nothing about it. The warning existed, but only on the preview path, which
+  // is the one nobody uses daily. So the clinic could post a week of pictureless
+  // posters and find out by noticing.
+  const noPhoto = out.hadImage ? "" : "\n⚠️ Photo raaledu — background matrame. Gemini key / billing chudandi.";
+  const caption = `${preview}${noPhoto}\n\n${out.caption}`.slice(0, 900);
   for (const ph of out.notify) {
     const ok = await waImage(ph, url, caption);
     if (!ok) await waText(ph, caption);

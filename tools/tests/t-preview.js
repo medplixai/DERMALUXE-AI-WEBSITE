@@ -28,9 +28,10 @@ stub("_daily.js", Object.assign({}, real, {
       h.run(["SET", "dp:today", "{}"]);
     }
     return { imgId: "i1", storyId: "s1", caption: "c", topic: { key: "acad-seats", h1: "Ten seats. One batch.", sub: "Only 2 seats left" },
-      due: Date.now() + 3600000, by: "Owner", notify: ["9010427777"], hadImage: true, queued: !opts.preview, preview: !!opts.preview };
+      due: Date.now() + 3600000, by: "Owner", notify: ["9010427777"], hadImage: hasPhoto, queued: !opts.preview, preview: !!opts.preview };
   },
 }));
+let hasPhoto = true;     // whether Gemini drew the photograph this morning
 let publishes = 0;
 stub("_admin.js", { publishNow: async () => { publishes++; return { ok: true, link: "l", id: "ig_now" }; }, fmtIst: () => "8:30 AM" });
 const boosts = [];
@@ -117,6 +118,20 @@ const C = (q) => h.call(cron, Object.assign({ key: "k" }, q || {}));
   is(String(open.body.note || "").includes("unset"), true, "saying why");
   is(publishes, 0, "nothing reached Instagram");
   process.env.ADMIN_KEY = ak;
+
+  // The photograph comes from Gemini. If that key stops working the poster is
+  // still drawn and still posted — on a plain background — and the morning
+  // message used to say nothing at all. A week of pictureless posters would
+  // have been found by somebody noticing.
+  console.log("\n  — the morning the photograph does not come —");
+  hasPhoto = false; sentWa.length = 0;
+  await C({ now: "1" });
+  const said = sentWa.map((x) => JSON.stringify(x.body)).join(" ");
+  is(/Photo raaledu/.test(said), true, "the owner is told the poster went out without its photograph");
+  is(/Gemini key \/ billing chudandi/.test(said), true, "and where to look");
+  hasPhoto = true; sentWa.length = 0;
+  await C({ now: "1" });
+  is(/Photo raaledu/.test(sentWa.map((x) => JSON.stringify(x.body)).join(" ")), false, "and on a normal morning it says nothing of the sort");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe preview behaves");
   process.exit(fails ? 1 : 0);
