@@ -270,6 +270,18 @@ const policyFee = (read("api/_prices.js").match(/const DEFAULT = \{[^}]*consult:
 const pageFees = ["skin-clinic-eluru.html", "skin-doctor-eluru-telugu.html"]
   .flatMap((f) => [...read(f).matchAll(/consultation[^.<]{0,40}\u20b9(\d+)|\u0c15\u0c28\u0c4d\u0c38\u0c32\u0c4d\u0c1f\u0c47\u0c37\u0c28\u0c4d \u20b9(\d+)/gi)].map((m) => m[1] || m[2]));
 const fees = [...new Set([deskFee, policyFee, ...pageFees].filter(Boolean))];
+// The consultation fee is charged separately and is NOT adjusted against
+// treatment \u2014 the clinic confirmed this on 10 Oct 2026, having first said the
+// opposite. api/_prices.js had carried "adjusted in the treatment if they take
+// one" since before any of this work; it never reached a patient while the
+// price policy was "none", and it became live the moment the default changed.
+// So the check is that nothing anywhere claims the adjustment.
+const adjustClaims = ["api/_prices.js", "api/_facts.js", "skin-clinic-eluru.html", "skin-doctor-eluru-telugu.html"]
+  .filter((f) => /adjusted (in|against) the treatment|adjusted against your treatment|\u0c38\u0c30\u0c4d\u0c26\u0c41\u0c2c\u0c3e\u0c1f\u0c41 \u0c05\u0c35\u0c41\u0c24\u0c41\u0c02\u0c26\u0c3f/.test(read(f)));
+ok(adjustClaims.length === 0, adjustClaims.length
+  ? `8.1(x) \u00b7 still claims the consultation fee is adjusted against treatment: ${adjustClaims.join(", ")}`
+  : "8.1(x) \u00b7 nothing claims the fee is adjusted against treatment \u2014 it is charged separately");
+
 ok(deskFee && policyFee && pageFees.length >= 2 && fees.length === 1,
   fees.length === 1 && deskFee
     ? `8.1(x) \u00b7 the consultation fee is \u20b9${fees[0]} and says so everywhere \u2014 rate card, agent, both pages`

@@ -71,7 +71,7 @@ const bandText = (b) => `${b.name} ${rupee(b.from)}${b.to && b.to !== b.from ? "
 function block(p) {
   if (!p || p.mode === "none") return "";
   const lines = [`\n\nPRICE POLICY — set by the owner; this overrides the "never quote prices" rule EXACTLY this far and no further:`];
-  if (p.consult) lines.push(`- The consultation fee is ${rupee(p.consult)}. Say it when asked about consultation cost or "free na?" — in one line, adding that it is adjusted in the treatment if they take one. Never volunteer it.`);
+  if (p.consult) lines.push(`- The consultation fee is ${rupee(p.consult)}. Say it when asked about consultation cost or "free na?" — in one line, adding that it is charged separately and is NOT adjusted against treatment cost. Never volunteer it. NEVER say it is free, adjusted, waived or refunded.`);
   if (p.mode === "bands" && p.bands.length) {
     lines.push(`- When asked the price of one of THESE treatments, you may give the range, always as "starts from / approx", always followed by "exact plan & cost doctor consultation lo" and the slot question in the same message: ${p.bands.map(bandText).join(" · ")}.`);
     lines.push("- Any treatment NOT in that list: no number at all — the old rule. Never a discount, never a package total, never a per-session figure the list does not carry.");
