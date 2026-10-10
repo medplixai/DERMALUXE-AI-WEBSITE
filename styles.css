@@ -508,6 +508,28 @@ h3 { font-size: 1.4rem; }
   border-left: 2px solid var(--gold-4);
 }
 .svc:hover { transform: translateY(-5px); border-color: var(--line); border-left-color: var(--gold-2); box-shadow: 0 24px 50px -28px rgba(0,0,0,.9); }
+/* The picture on a treatment card. It sits flush to the card's top corners,
+   so the card's own padding is cancelled on three sides. NMC 7.2's source mark
+   for these is stated once for the whole list in .svc-ai-note — forty-three
+   captions under forty-three thumbnails would be unreadable, and the clause
+   asks for the origin to be stated explicitly, not forty-three times. */
+.svc__img {
+  display: block; margin: -1.5rem -1.5rem 1.1rem;
+  /* max-width is reset because the global img rule at the top of this file caps
+     every image at 100%, which cancelled the bleed and left the picture inset. */
+  width: calc(100% + 3rem); max-width: none;
+  /* height is set because the img tag carries height="800" as a presentational
+     hint, which otherwise beats aspect-ratio and made every card 800px tall. */
+  height: auto; aspect-ratio: 3 / 2; object-fit: cover;
+  border-radius: 0 calc(var(--radius-sm) - 1px) 0 0;
+  border-bottom: 1px solid var(--line-soft);
+}
+.svc-ai-note {
+  max-width: 640px; margin: -1.6rem auto 2.4rem; text-align: center;
+  font-size: .74rem; line-height: 1.65; color: var(--muted-2);
+}
+.svc-ai-note .te { display: block; margin-top: .2rem; }
+
 .svc h4 { font-family: var(--font-serif); font-size: 1.28rem; font-weight: 600; margin-bottom: .1rem; line-height: 1.15; }
 .svc__te { display: block; font-family: "Noto Sans Telugu", var(--font-sans); font-size: .82rem; color: var(--gold-3); margin-bottom: .55rem; line-height: 1.4; }
 .htsub-te { display: block; margin-top: .7rem; color: var(--gold-3); font-size: .95rem; line-height: 1.65; }
