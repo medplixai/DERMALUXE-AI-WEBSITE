@@ -14,7 +14,9 @@ const path = require("path");
 const ROOT = path.resolve(__dirname, "..");
 
 // card heading (exactly as it appears in the HTML) → image slug.
-// `null` means no bespoke image yet; NEAREST fills in until one exists.
+// `null`, or a file that does not exist yet, means the card shows no picture.
+// It never borrows another card's: the alt text names the condition, so a
+// borrowed picture makes the markup state something untrue.
 const MAP = {
   "Acne &amp; Acne Scars": "acne-treatment-eluru",
   "Pigmentation &amp; Melasma": "pigmentation-treatment-eluru",
@@ -23,7 +25,7 @@ const MAP = {
   "Vitiligo": "vitiligo-treatment-eluru",
   "Skin Allergies": "skin-allergy-treatment-eluru",
   "Fungal &amp; Skin Infections": "fungal-infection-treatment-eluru",
-  "Laser Skin Resurfacing": "mnrf-treatment-eluru",
+  "Laser Skin Resurfacing": "card-laser-resurfacing",
   "Skin Cancer Screening": "skin-cancer-screening-eluru",
   "Children's Skin Care": "kids-skin-care-eluru",
   "Leprosy": "card-leprosy",
@@ -32,7 +34,7 @@ const MAP = {
   "STD Care &middot; Confidential": "std-intimate-skin-care-eluru",
   "Hair Fall Treatment": "hair-fall-treatment-eluru",
   "Dandruff Management": "dandruff-treatment-eluru",
-  "Baldness Solutions": "hair-transplant-eluru",
+  "Baldness Solutions": "card-baldness",
   "Alopecia Areata (Patchy)": "alopecia-areata-treatment-eluru",
   "PRP &amp; GFC Hair Therapy": "prp-gfc-hair-therapy-eluru",
   "Hair Transplant (FUE / DHI / Bio-FUE)": "hair-transplant-eluru",
@@ -63,33 +65,21 @@ const MAP = {
 
 // Until the bespoke ones exist, the nearest honest stand-in. A card with no
 // picture in a grid of pictures looks broken, and these are not misleading —
-// each shows the same region of the body the card is about.
-const NEAREST = {
-  "card-ingrown-nail": "nail-problems-treatment-eluru",
-  "card-brittle-nails": "nail-problems-treatment-eluru",
-  "card-nail-surgery": "nail-problems-treatment-eluru",
-  "card-fillers": "anti-ageing-treatment-eluru",
-  "card-fat-reduction": "body-contouring-eluru",
-  "card-cellulite": "body-contouring-eluru",
-  "card-double-chin": "hifu-face-lift-eluru",
-  "card-post-weightloss": "weight-loss-clinic-eluru",
-  "card-hiv-skin": "online-dermatologist-consultation",
-  "card-leprosy": null,      // no honest stand-in — a specific sign
-  "card-skin-tb": null,
-};
 
 const exists = (slug) => slug && fs.existsSync(path.join(ROOT, "assets", "tx", `${slug}.webp`));
 
 function main() {
   const f = path.join(ROOT, "index.html");
   let s = fs.readFileSync(f, "utf8");
-  let done = 0, fallback = 0, none = [];
+  let done = 0, none = [];
 
-  s = s.replace(/(<article class="svc[^"]*"[^>]*>)(<h4>(.*?)<\/h4>)/g, (all, open, h4, title) => {
-    if (all.includes("svc__img")) return all;
-    let slug = MAP[title];
-    if (!exists(slug)) { const n = NEAREST[slug]; if (exists(n)) { slug = n; fallback++; } else { none.push(title); return all; } }
-    else done++;
+  s = s.replace(/(<article class="svc[^"]*"[^>]*>(?:<img class="svc__img"[^>]*>)?)(<h4>(.*?)<\/h4>)/g, (all, open, h4, title) => {
+    // Rewrite rather than skip, so a picture placed by an earlier run that is
+    // now wrong — or withdrawn from the map — is taken back off the card.
+    open = open.replace(/<img class="svc__img"[^>]*>/, "");
+    const slug = MAP[title];
+    if (!exists(slug)) { none.push(title); return open + h4; }
+    done++;
     const alt = `Illustration of ${title.replace(/&amp;/g, "and").replace(/&middot;/g, "·")} — generated, not a patient`;
     return `${open}<img class="svc__img" src="assets/tx/${slug}.webp" alt="${alt}" width="1200" height="800" loading="lazy" decoding="async" />${h4}`;
   });
@@ -105,7 +95,7 @@ function main() {
 
   fs.writeFileSync(f, s);
   console.log(`  cards with their own image : ${done}`);
-  console.log(`  cards using the nearest    : ${fallback}`);
-  console.log(`  cards left without         : ${none.length}${none.length ? " — " + none.join(", ") : ""}`);
+  console.log(`  cards still waiting        : ${none.length}`);
+  none.forEach(t => console.log(`      ${t}  ->  ${MAP[t] || "(no subject yet)"}`));
 }
 main();

@@ -87,6 +87,8 @@ const SUBJECTS = {
   "card-leprosy":                    "Skin of the forearm with a single pale hypopigmented patch, dry and slightly thickened, well-defined edge.",
   "card-skin-tb":                    "Skin with a slowly expanding reddish-brown plaque, slightly scaly at its edge.",
   "card-hiv-skin":                   "Plain healthy skin texture in close macro, neutral and calm, nothing that identifies a condition or a person.",
+  "card-laser-resurfacing":          "Cheek skin with shallow rolling scars and enlarged pores, uneven surface in raking light.",
+  "card-baldness":                   "A crown of the scalp seen from above where the hair has thinned to bare skin over a wide area.",
   "card-ingrown-nail":               "A big toe where the nail edge presses into the swollen nail fold beside it, skin reddened along the groove.",
   "card-brittle-nails":              "Fingernails that are brittle and discoloured: ridged, dull, splitting at the free edges.",
   "card-nail-surgery":               "A clean healthy toenail and the skin folds around it, neutral clinical macro, no instruments.",
