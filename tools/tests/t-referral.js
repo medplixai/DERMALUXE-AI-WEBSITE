@@ -85,5 +85,16 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   is((await R({ a: "of", phone: LATHA })).code, 403, "somebody with no lead access sees none of it");
   h.as(["*"]);
 
+  // The WhatsApp side, which nothing used to cover. api/whatsapp.js uses
+  // _referral.js directly, not this endpoint, and when the reward was removed
+  // from here the three `${offer}` strings over there were left pointing at a
+  // variable that no longer existed — a ReferenceError on the one path a real
+  // patient takes. No test went near it, so nothing said so.
+  console.log("\n  — the patient's side of it —");
+  const wa = require("fs").readFileSync(require("path").join(__dirname, "..", "..", "api", "whatsapp.js"), "utf8");
+  is(/\$\{offer\}/.test(wa), false, "the agent's referral replies name no reward, and no undefined variable");
+  const words = (wa.match(/REFER[\s\S]{0,900}?code accept/i) || [""])[0];
+  is(/benefit|discount|offer|gift/i.test(words), false, "nothing is promised to either person for a referral");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nreferrals behave");
 })();

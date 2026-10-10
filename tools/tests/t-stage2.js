@@ -123,7 +123,11 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   console.log("\n  — campaigns from the clinic's calendar —");
   const sep = camp.suggest(Date.UTC(2026, 8, 20));
   is(sep.map((s) => s.key).sort(), ["hairfall", "monsoon"], "September suggests monsoon fungal care (and the year-round hair-fall check-in)");
-  is(camp.suggest(Date.UTC(2027, 0, 5)).map((s) => s.key).includes("sankranti"), true, "January suggests Sankranti");
+  // "sankranti" and "diwali" were festival_offer sends — a glow package with
+  // "slots limited" — so they are gone under 8.1(x)/10.1(iv). January still
+  // has its non-promotional entries, which is what should be suggested now.
+  is(camp.suggest(Date.UTC(2027, 0, 5)).map((s) => s.key).includes("sankranti"), false, "January no longer suggests a festival offer");
+  is(camp.suggest(Date.UTC(2027, 0, 5)).length > 0, true, "but January still has something factual to say");
   h.run(["DEL", "dl_leads"]);
   const lead = (ph, name, concern, daysAgo) => h.run(["RPUSH", "dl_leads", JSON.stringify({ ts: NOW - daysAgo * DAY, type: "whatsapp", phone: ph, name, concern })]);
   lead("9876504020", "Hair One", "Hair fall", 10); lead("9876504021", "Skin One", "Pigmentation", 20); lead("9876504022", "Fresh", "Acne", 2); lead("9876504023", "Stopped", "Hair fall", 15);
@@ -133,7 +137,11 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   is((await camp.audience(cfg, "all")).map((t) => t.ph).sort(), ["9876504020", "9876504021", "9876504022"], "'everyone' is every opted-in number in the lead book");
   is((await camp.audience(cfg, "seg", "hair")).map((t) => t.ph), ["9876504020"], "a concern word narrows it");
   is((await camp.audience(cfg, "visited")).map((t) => t.ph), ["9876504030"], "'visited' is the people who actually came — a no-show is not one");
-  is((await camp.audience(cfg, "cold")).map((t) => t.ph).sort(), ["9876504020", "9876504021"], "'cold' is 7–90 day enquiries that never booked — the two-day-old one is not cold yet");
+  // "cold" was enquiries 7-90 days old that never booked — people who looked
+  // at the clinic and decided not to come. Messaging them again to sell a
+  // treatment is solicitation under 8.1(ii), and to a list it is the digital
+  // mass solicitation 10.1(iv) grades as serious. The audience is gone.
+  is((await camp.audience(cfg, "cold")).length, 0, "there is no 'cold' audience any more — people who declined are left alone");
   h.as(["msg.send", "settings.manage"], DESK);
   const pv = await h.call(campaignApi, {}, { a: "preview", aud: "all" });
   is([pv.code, pv.body.count, pv.body.rested], [200, 3, 0], "preview says how many would get it");

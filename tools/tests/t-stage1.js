@@ -116,8 +116,13 @@ const slotTs = (daysAhead) => { const d = new Date(Date.now() + daysAhead * DAY 
   h.sent.length = 0;
   claude.push({ reply: "Doctor garu MD DVL andi 🙏 Eppudu convenient?", lead: null, trust: true, qual: { problem: "acne scars" } });
   await hook(HS, "Doctor evaru andi? results nijam ga vastaya?");
-  is(sentTo(HS, "img").length, 1, "the doctor's photo goes out with her degrees");
-  is(/Dr\. Nikhitha Priyanka.*MD \(DVL\)/s.test(sentTo(HS, "img")[0][3]), true, "in the caption");
+  // Her photograph used to go out here. NMC 9.2: an RMP's photograph is not
+  // permitted where the use is solicitation or promotional publicity, and this
+  // fires the moment somebody wavers, right before the slot buttons. The
+  // degrees and the registration number still go — as words, which is what
+  // 3.2 Expl. III asks for and what the patient was actually asking about.
+  is(sentTo(HS, "img").length, 0, "no photograph of the doctor is pushed at them");
+  is(sentTo(HS, "wa").some((s) => /Dr\. Nikhitha Priyanka[\s\S]*MD \(DVL\)/.test(s[2])), true, "her name, degrees and registration number go as words instead");
   const pack = sentTo(HS, "btn")[0];
   // The rating used to go out here too. NMC 3.2 Explanation V forbids sharing
   // patient reviews for professional promotion, and pushing a star rating at
@@ -125,7 +130,7 @@ const slotTs = (daysAhead) => { const d = new Date(Date.now() + daysAhead * DAY 
   // it is factual information a reader went looking for. What a consultation
   // involves is factual and allowed by 8.3(i), so that is all that is left.
   is([/4\.9|132 reviews|⭐/.test(pack[2]), /Consultation lo em jarugutundi/.test(pack[2]), pack[3].length], [false, true, 3], "then what a consultation is and three ways to say yes — no rating pushed at them");
-  is(sentTo(HS, "img").length, 1, "and no patient's before/after photo is sent — only the doctor's own card");
+  is(sentTo(HS, "img").length, 0, "and no patient's before/after photo is sent either");
   h.sent.length = 0;
   claude.push({ reply: "Ok", lead: null, trust: true });
   await hook(HS, "safe na?");

@@ -44,7 +44,13 @@ async function send(cfg, phone, opts) {
   if (!nx || !nx.result) return { sent: false, why: "already this week" };
   const o = opts || {};
   let n = 0;
-  if (await notify.sendWaImageLink(ph, BASE() + DOCTOR.img, DOCTOR.caption())) n++;
+  // The photograph used to go out here. NMC 9.2: an RMP's photograph is not
+  // permitted "where such use constitutes self-advertisement, solicitation or
+  // promotional publicity" — and this fires precisely when somebody is
+  // wavering, immediately before the slot buttons, which is solicitation.
+  // The words stay: the name, qualifications and registration number are what
+  // 3.2 Expl. III asks for, and they are what the patient actually wanted.
+  if (await notify.sendWa(ph, DOCTOR.caption())) n++;
   const text = `🩺 *Consultation lo em jarugutundi?*\n🔬 Doctor garu skin/hair ni dermoscope tho chusi cause cheptaru\n📋 Meeku correct treatment plan + exact cost — ade roju\n🙂 Treatment teesukovala vaddaa — mee ishtam, pressure ledu\n\nEppudu convenient andi?`;
   const ok = await notify.sendWaButtons(ph, text, ["📅 Slot chudandi", "🎥 Video consult", "❓ Inka doubt undi"]);
   if (ok) n++;

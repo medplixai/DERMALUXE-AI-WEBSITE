@@ -17,12 +17,12 @@ const DAY = 86400000;
 
 // The clinic's year. `m` = months (1-12) the suggestion shows in.
 const SEASONS = [
-  { key: "sankranti", m: [12, 1], name: "Sankranti glow", seg: "", tpl: "festival_offer", p2: "Sankranti", text: "Panduga ki mundu skin glow kosam Hydrafacial / peel slots open — ee vaaram book cheskondi, doctor consultation tho ✨" },
+  // "sankranti" and "diwali" were festival_offer sends — a glow package with
   { key: "wedding", m: [11, 12, 1, 2], name: "Wedding season", seg: "", tpl: "clinic_update", text: "Pelli season vachesindi 💍 Bride/groom & family ki skin & hair glow plans — 4-6 vaaralu mundu start chesthe marpu baaga kanipistundi. Doctor consultation ki reply cheyandi." },
   { key: "summer", m: [3, 4, 5], name: "Summer pigmentation & tan", seg: "pigment", tpl: "seasonal_tips", text: "Enda lo tan & pigmentation penugutayi ☀️ 1) SPF 50 prathi 3 gantalaki 2) 3L neellu 3) Madhyahnam 12-3 enda avoid — tan/pigmentation ki peel & PICO sessions unnayi, doubt unte reply cheyandi." },
   { key: "monsoon", m: [6, 7, 8, 9], name: "Monsoon fungal care", seg: "", tpl: "seasonal_tips", text: "Varsha kalam lo fungal infections & dandruff ekkuva 🌧 1) Tadi battalu ventane marchandi 2) Feet & folds dry ga unchandi 3) Sharing towels vaddu — itching/rash unte doctor ni chupinchandi, reply cheyandi." },
-  { key: "diwali", m: [10, 11], name: "Diwali offer", seg: "", tpl: "festival_offer", p2: "Diwali", text: "Deepavali ki mundu glow package — Hydrafacial + peel slots limited. Doctor consultation tho mee skin ki correct plan. Book cheyalante reply cheyandi 🪔" },
-  { key: "hairfall", m: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], name: "Hair fall check-in", seg: "hair", tpl: "clinic_update", text: "Hair fall gurinchi adigaru kada — PRP/GFC sessions tho 3 nelallo visible difference chala mandiki vachindi. Doctor tho okasari scalp check cheyinchukondi — slot ki reply cheyandi 💆‍♀️" },
+  // "slots limited". Both retired: NMC 8.1(x) inducement, 10.1(iv) mass solicitation.
+  { key: "hairfall", m: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12], name: "Hair fall check-in", seg: "hair", tpl: "clinic_update", text: "Hair fall gurinchi adigaru kada — PRP/GFC sessions tho doctor consultation lo mee scalp chusi cheptaru. Doctor tho okasari scalp check cheyinchukondi — slot ki reply cheyandi 💆‍♀️" },
   { key: "newyear", m: [12, 1], name: "New year skin plan", seg: "", tpl: "clinic_update", text: "Kotha samvatsaram — kotha skin routine ✨ Doctor consultation lo mee skin/hair ki 3-month plan istaru. Ee vaaram slots ki reply cheyandi." },
 ];
 const suggest = (now) => { const m = new Date((now || Date.now()) + 330 * 60000).getUTCMonth() + 1; return SEASONS.filter((s) => s.m.includes(m)).map((s) => Object.assign({}, s, { m: undefined })); };
@@ -32,7 +32,13 @@ const suggest = (now) => { const m = new Date((now || Date.now()) + 330 * 60000)
 //   seg      — those whose concern mentions a word
 //   visited  — people who actually came (appointments done, or a bill)
 //   cold     — enquiries 7–90 days old that never booked
+// NMC 8.1(ii) forbids soliciting patients directly or indirectly, and
+// 10.1(iv) grades DIGITAL MASS SOLICITATION as a serious violation. The
+// "cold" audience was enquiries 7-90 days old that never booked — people who
+// looked and decided not to come. Messaging them again to sell a treatment has
+// no defence, so that audience is gone rather than rate-limited.
 async function audience(cfg, aud, seg) {
+  if (aud === "cold") return [];
   const admin = require("./_admin.js");
   if (aud === "visited") {
     const opt = new Set((((await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}))) || {}).result) || []);

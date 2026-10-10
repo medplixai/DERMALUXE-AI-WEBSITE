@@ -187,8 +187,8 @@ module.exports = async (req, res) => {
     }
     if (cfg) await guard.kvCommand(cfg, ["DEL", histKey]).catch(() => {});
     const greet = open
-      ? "Namaste! DermaLuxe by Medicare ki call chesinanduku thanks. Nenu clinic assistant ni. Cheppandi, meeku em kavali?"
-      : "Namaste! DermaLuxe by Medicare. Ippudu clinic close ayindi, kani nenu mee appointment ippude book chestanu. Cheppandi, mee samasya emiti?";
+      ? "Namaste! DermaLuxe by Medicare ki call chesinanduku thanks. Nenu clinic AI assistant ni. Doctor garu tho nerugaa maatladali ante cheppandi. Cheppandi, meeku em kavali?"
+      : "Namaste! DermaLuxe by Medicare. Nenu clinic AI assistant ni. Ippudu clinic close ayindi, kani mee appointment ippude book chestanu. Cheppandi, mee samasya emiti?";
     return xml(res, gather(req, await speak(cfg, req, greet)));
   }
 

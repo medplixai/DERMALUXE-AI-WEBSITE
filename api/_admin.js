@@ -519,26 +519,26 @@ async function publishPending(cfg, digits) {
 // mirrors each template body for the preview bubble, promoParams() builds the
 // {{n}} params for the actual send (shared with cron-post's bc:q drain).
 const PROMO_DEFS = {
-  festival_offer: {
-    usage: "festival: Diwali | Festival Glow Package — Hydrafacial pai 20% off!",
-    render: (text, p2) => `Hi <name>! 🪔 *${p2} Subhakankshalu* from DermaLuxe! ✨\n\n${text}\n\n📲 Book cheyalante ee message ki reply cheyandi, leda call: +91 99491 34666\n📍 Rama Mahal, Kasturi Vari Street, Eluru`,
-  },
-  flash_offer: {
-    usage: "flash: Laser package pai 25% off | Ee Sunday",
-    render: (text, p2) => `Hi <name>! ⚡ *DermaLuxe Flash Offer:*\n\n${text}\n\n⏰ ${p2} varaku matrame — slots limited!\n📲 Book cheyalante ee message ki reply cheyandi 🏃‍♀️`,
-  },
-  new_service: {
-    usage: "launch: HydraFacial Platinum | Launch offer: first 20 bookings ki 30% off!",
-    render: (text, p2) => `Hi <name>! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *${p2}*\n${text}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: +91 99491 34666`,
-  },
+  // RETIRED (NMC 8.1(x), 10.1(iv)). These four templates carry the inducement
+  // in their own body — "Flash Offer", "slots limited", "FREE Check-up Camp" —
+  // so no wording the owner types could make a send of one lawful. The send
+  // path refuses before it reaches here (see mkPromo). The entries stay, with
+  // neutral bodies, so that a message already queued in bc:q from before the
+  // gate still renders instead of throwing, and so the names remain known.
+  // The templates themselves still exist at Meta and should be deleted there.
+  festival_offer: { usage: "(retired — NMC 8.1(x))", render: (text) => `Hi <name>! ${text}` },
+  flash_offer:    { usage: "(retired — NMC 8.1(x))", render: (text) => `Hi <name>! ${text}` },
+  new_service:    { usage: "(retired — NMC 8.1(x))", render: (text) => `Hi <name>! ${text}` },
+  free_camp:      { usage: "(retired — NMC 8.1(x))", render: (text) => `Hi <name>! ${text}` },
+
   seasonal_tips: {
     usage: "tips: Varsha kalam lo fungal infections ekkuva — 1) Tadi battalu ventane marchandi 2) Roju rendu sarlu mild soap tho snanam",
     render: (text) => `Hi <name>! 🌿 *DermaLuxe Care Tips:*\n\n${text}\n\nMee skin/hair gurinchi emaina doubts unte ee message ki reply cheyandi — free ga guide chestam 💖\n\n— DermaLuxe by Medicare, Eluru`,
   },
-  free_camp: {
-    usage: "camp: Ee Sunday udayam 10 – sayantram 5. Doctor consultation FREE!",
-    render: (text) => `Hi <name>! 🩺 *FREE Skin & Hair Check-up Camp* — DermaLuxe lo!\n\n${text}\n\n🎟 Slots limited — mee slot book cheyalante ee message ki reply cheyandi!\n📍 Rama Mahal, Kasturi Vari Street, Eluru`,
-  },
+
+
+
+
 };
 
 function promoParams(tpl, name, text, p2) {
@@ -662,7 +662,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• weekplan — week antha posts okesari plan (photos → done)",
       "• report — daily report ippude chudandi",
       "• appointments — bookings · arrived <phone> ✅ · noshow <phone> 🔁",
-      "• 📷 photo + 'result: hair transplant' — before/after gallery",
+      "• 📷 photo + 'result: <tag>' — clinical photo record (patients ki pampadu)",
       "• referrals — evaru patients ni pampistunnaro",
       "• missed <phone> — miss ayina call ki WhatsApp rescue",
       "• leave repu · block repu 2pm-5pm — agent aa time book cheyadu",
@@ -671,7 +671,7 @@ async function handle(cfg, digits, text, photo, video) {
       "• paid <phone> — advance confirm · birthday <phone> — wish",
       "• checkup <phone> 7d — review reminder · session <phone> 30d | PRP",
       "• campaign: GLOW | <offer reply> — keyword campaign",
-      "• review <phone> — patient ki Google review ask",
+      "• review <phone> — (aagipoyindi: NMC 3.2 Expl. V)",
       "• unschedule <n> — scheduled post remove"];
     if (owner) lines.push(
       "• broadcast: <offer> — andariki · broadcast hair: — segment ki (paid)",
@@ -1142,7 +1142,7 @@ async function handle(cfg, digits, text, photo, video) {
   if ((um = t.match(/^birth\s*day\s+(\d{10})(?:\s+([\s\S]+))?$/i))) {
     const ph = um[1];
     const offer = (um[2] || "").trim().slice(0, 200)
-      || "Birthday gift ga ee nela lo e treatment pai aina special discount — mee kosam!";
+      || "Mee birthday ki DermaLuxe family nunchi shubhakankshalu! Aarogyam ga, santosham ga undali 🎂";
     const name = String(await findPatientName(cfg, ph)).split(" ")[0] || "friend";
     const out = await notify.sendWaTemplate(ph, "birthday_wish", [name, offer]);
     return out.ok ? `🎂 Birthday wish ${name} (${ph}) ki vellindi.`
@@ -1245,13 +1245,13 @@ async function handle(cfg, digits, text, photo, video) {
     await guard.kvCommand(cfg, ["LTRIM", `gal:${tag}`, "0", "5"]);
     await guard.kvCommand(cfg, ["SADD", "gal:_tags", tag]).catch(() => {});
     const n = await guard.kvCommand(cfg, ["LLEN", `gal:${tag}`]).catch(() => ({}));
-    return `🖼 *Gallery lo add ayindi!*\n\n🏷 Tag: *${tag}* (ippudu ${n.result || 1} photo)\n${caption ? "✍️ " + caption + "\n" : ""}\nPatient "results ela untayi" ani adigithe ee photo automatic ga veltundi ✨\n\n⚠️ Patient consent unna photos matrame pettandi 🙏\nList: *results*`;
+    return `🖼 *Gallery lo add ayindi!*\n\n🏷 Tag: *${tag}* (ippudu ${n.result || 1} photo)\n${caption ? "✍️ " + caption + "\n" : ""}\nIdi clinic record matrame — patient ki EPPUDU pampabadadu. NMC 8.1(v): before/after photos promotion kosam chupinchadam nishedham.\n\n⚠️ Patient consent unna photos matrame pettandi 🙏\nList: *results*`;
   }
   if (/^results?$/i.test(t) && !photo) {
     if (!cfg) return "Storage ledu.";
     const tg = await guard.kvCommand(cfg, ["SMEMBERS", "gal:_tags"]).catch(() => ({}));
     const tags = tg.result || [];
-    if (!tags.length) return "🖼 Gallery khali.\n\nBefore/after photo pampi caption lo ila rayandi:\n*result: hair transplant | 6 nelala tarvata*\n\nPatient results adigithe avi automatic ga veltayi ✨";
+    if (!tags.length) return "🖼 Gallery khali.\n\nClinical photo record kosam: photo pampi caption lo ila rayandi:\n*result: hair transplant | 6 nelala tarvata*\n\nIvi clinic record matrame — patient ki pampabadavu (NMC 8.1(v)).";
     const lines = ["🖼 *Results gallery:*", ""];
     for (const tag of tags) {
       const n = await guard.kvCommand(cfg, ["LLEN", `gal:${tag}`]).catch(() => ({}));
@@ -1363,9 +1363,9 @@ async function handle(cfg, digits, text, photo, video) {
     rows.slice(0, 8).forEach((x) => lines.push(`${Number(x.rating) >= 4 ? "😊" : "⚠️"} ${x.rating}⭐ ${x.name || "?"} (${x.ph})${x.concern ? " · " + String(x.concern).slice(0, 24) : ""} · ${fmtIst(x.ts).split(",")[0]}`));
     const low = base.filter((x) => Number(x.rating) <= 3).length;
     lines.push("", low ? `⚠️ ${low} low rating(s) — owner/manager call chesi service recovery cheyandi 🙏` : "👏 Low ratings levu — great service!");
-    const rvLink = await require("./reviews.js").reviewLink(cfg).catch(() => "");
-    if (!rvLink) lines.push("ℹ️ Google review link inka ledu — GOOGLE_PLACE_ID leda REVIEW_LINK pettandi.");
-    else if (!process.env.REVIEW_LINK) lines.push(`ℹ️ 4-5⭐ vaallaki Google review link automatic ga veltundi:\n${rvLink}`);
+  // The 4-5 star auto-reply used to carry the Google review link. NMC 3.2
+  // Explanation V stopped that, so there is no review link status to report.
+
     return lines.join("\n");
   }
 
@@ -1598,13 +1598,17 @@ async function handle(cfg, digits, text, photo, video) {
   // skips STOP opt-outs, dedupes phones, excludes job applicants.
   if (/^broadcast$/i.test(t)) {
     if (!owner) return "🔒 Broadcast owner ki matrame.";
-    return "📣 *Broadcast — pata patients ki offer pampadam*\n\nAndariki:\nbroadcast: Ee week Hydrafacial pai special offer! 😍\n\nOka segment ki matrame:\nbroadcast hair: Hair transplant free consultation ee week!\n(hair / skin / laser / acne / bridal — concern match ayina vallake)\n\n• Template message ga veltundi (24h window avasaram ledu)\n• STOP cheppina patients ki veladu\n• Approx ₹0.80 per message charge";
+    return "📣 *Broadcast — pata patients ki factual information*\n\nAndariki:\nbroadcast: Clinic Dasara roju kuda Mon-Sat 9 AM - 9 PM open\n\nOka segment ki matrame:\nbroadcast hair: Hair transplant consultations ki Saturday slots ippudu unnayi\n(hair / skin / laser / acne / bridal / acad)\n\n⚠️ Offer, discount, free, \"slots limited\" — ivi pampalemu (NMC 8.1(x), 10.1(iv)). Academy course fees students ki, avi pampochu.";
   }
   // broadcast: <offer>  — everyone;  broadcast hair: <offer> — only leads
   // whose concern/treatments mention that word (waste spend down, relevance up)
   let bm;
   if ((bm = t.match(/^broadcast(?:\s+([a-z]{3,20}))?\s*[:\-]\s*([\s\S]{10,550})$/i))) {
     if (!owner) return "🔒 Broadcast owner ki matrame.";
+    // Academy enquirers sit in the same lead book, and course fees sold to
+    // students are not patient inducement under 8.1(x) \u2014 so the gate applies to
+    // the patient segments, not to an explicit academy broadcast.
+    if (!/^acad/i.test(bm[1] || "") && INDUCEMENT_TEXT.test(bm[2] || "")) return inducementRefusal("ee text lo offer/discount/free undi");
     if (!cfg) return "Storage ledu.";
     const seg = (bm[1] || "").toLowerCase();
     const targets = await bcTargets(cfg, seg);
@@ -1630,8 +1634,30 @@ async function handle(cfg, digits, text, photo, video) {
       + "\n\n🌿 " + PROMO_DEFS.seasonal_tips.usage
       + "\n\nPreview vachaka *ok* antene veltundi · STOP patients auto-skip";
   }
+  // NMC 8.1(x) forbids "discounts, limited-period offers, contests, coupons,
+  // gifts, cashbacks, referral benefits, free procedures or similar
+  // inducements" aimed at patients, and 10.1(iv) grades inducement for
+  // patients and DIGITAL MASS SOLICITATION as a SERIOUS violation carrying
+  // 6-12 months' suspension. flash_offer, festival_offer, new_service and
+  // free_camp carry the inducement in the template body itself — "Flash
+  // Offer", "slots limited", "FREE Skin & Hair Check-up Camp" — so no wording
+  // the owner types can make a send of one lawful.
+  //
+  // These are the clinic's Meta-approved templates and its own marketing, so
+  // nothing is deleted here: the send refuses and says which clause stopped
+  // it. Reversing this is one constant, deliberately, so that turning the
+  // machinery back on is a decision somebody makes rather than a default.
+  const INDUCEMENT_TPL = new Set(["flash_offer", "festival_offer", "new_service", "free_camp"]);
+  // Text the owner types which would turn even a factual template into an
+  // inducement or manufactured scarcity.
+  const INDUCEMENT_TEXT = /\boffer\b|\bdiscount\b|\bfree\b|\d{1,2}\s*%|\bcashback\b|\bcoupon\b|slots? limited|limited (period|time)|last chance|hurry|only today|\bgift\b/i;
+  const inducementRefusal = (what) =>
+    `\u26d4 Idi pampalemu \u2014 *${what}*.\n\nNMC 8.1(x) prakaram patients ki offer, discount, free procedure, "slots limited" lanti vi pampakoodadhu; 10.1(iv) daanini *serious violation* (6-12 nelalu suspension) ga cheputundi.\n\nFactual information pampochu \u2014 clinic timings, kotha facility, oka service ippudu available ani. Academy (students ki) course fees veru, avi pampochu.`;
+
   const mkPromo = async (tpl, promoText, p2) => {
     if (!owner) return "🔒 Promo broadcasts owner ki matrame.";
+    if (INDUCEMENT_TPL.has(tpl)) return inducementRefusal(tpl);
+    if (INDUCEMENT_TEXT.test(promoText || "")) return inducementRefusal("ee text lo offer/discount/free undi");
     if (!cfg) return "Storage ledu.";
     const targets = await bcTargets(cfg, "");
     if (!targets.length) return "Patients evaru leru inka — leads lo phone numbers unte veltundi.";
@@ -1691,12 +1717,11 @@ async function handle(cfg, digits, text, photo, video) {
 
   // review <10-digit> — sends the Google-review ask to a patient (post-visit).
   if ((km = t.match(/^review\s+(\d{10})$/i))) {
-    const rvl = await require("./reviews.js").reviewLink(cfg).catch(() => "");
-    if (!rvl) return "Google review link inka ledu — GOOGLE_PLACE_ID leda REVIEW_LINK pettandi.";
-    const ok = await notify.sendWa(km[1],
-      `Thank you for visiting DermaLuxe! 💖 Mee experience baga unte oka Google review ivvagalara? 🙏\n⭐ ${rvl}\nMee feedback tho memu inka improve avutam!`);
-    return ok ? `✅ Review request ${km[1]} ki vellindi.`
-      : `❌ Deliver avvaledu — aa patient 24h lo agent tho chat cheyakapothe message veladu. Vallu manaki last message pampi 24h dati unte, valle mundu em aina pampaka malli try cheyandi.`;
+    // This command sent a Google-review request to any number, one tap.
+    // NMC 3.2 Explanation V forbids an RMP requesting a review for
+    // professional promotion, so it refuses and says why — rather than being
+    // deleted and rediscovered later as a feature that went missing.
+    return "Review request pampalemu 🙏\n\nNMC 3.2 Explanation V prakaram — vaidyudu gaani, clinic gaani patient ni review raayamani adagakoodadhu. Patient thame adigithe link ivvandi, antey.";
   }
 
   // Bare "change" (the ✏️ button) → ask for the correction text

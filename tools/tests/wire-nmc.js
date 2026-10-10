@@ -28,19 +28,23 @@ const ok = (good, what) => { if (!good) bad++; console.log(`  ${good ? "ok " : "
 // before/after timeline inside them is a clinical record — 6.1 permits that,
 // it is 8.1(v) promotion that does not.
 const SKIP_DIR = /^(node_modules|\.git|\.vercel|app|tools)$/;
-// Not advertising, and each for its own reason: the staff console and the
-// legal pages are not promotion; _admin.js is the owner's own WhatsApp console;
-// _exam.js is the weekly test's cast of imaginary patients, whose whole job is
-// to say the forbidden thing and see whether the agent repeats it; consent.js
-// is the consent form a patient signs, which states that nothing is guaranteed.
-const SKIP_FILE = /^(staff|privacy|terms)\.html$|^(_admin|_exam|consent)\.js$/;
+// Blanket-skipping a whole file was a mistake the first time: _admin.js was on
+// this list, and it was the file quietly inviting the owner to collect patient
+// before/after photographs. Nothing is skipped outright now. _exam.js is the
+// weekly test's cast of imaginary patients, whose entire job is to say the
+// forbidden thing and see whether the agent repeats it, so only that one keeps
+// a blanket pass — and it is named here rather than hidden in a regex.
+const SKIP_FILE = /^(staff|privacy|terms)\.html$|^_exam\.js$/;
 const files = [];
 (function walk(d) {
   for (const e of fs.readdirSync(d, { withFileTypes: true })) {
     if (SKIP_DIR.test(e.name)) continue;
     const p = path.join(d, e.name);
     if (e.isDirectory()) walk(p);
-    else if (/\.(html|js)$/.test(e.name) && !SKIP_FILE.test(e.name)) files.push(p);
+    // Not only .html and .js. "Gold Medalist" sat in llms.txt for a day
+    // because this line used to read /\.(html|js)$/ — a published file the
+    // audit could not see is a published file nobody is checking.
+    else if (/\.(html|js|txt|json|md|xml|css)$/.test(e.name) && !SKIP_FILE.test(e.name)) files.push(p);
   }
 })(ROOT);
 const rel = (p) => path.relative(ROOT, p);
@@ -90,7 +94,7 @@ const RULES = [
     // "your best self" is the patient, not the clinic; "Best for" heads a list
     // of who a treatment suits; "best results when started early" is about
     // timing. The rest are ordinary identifiers for a highest-scoring item.
-    allow: /your best self|మీ ఉత్తమ రూపాని|>Best for<|\b(let|const|var)\s+best|best(Score|Cost|Day|Img)|\bbest\s*[=!<>,);.\]]|[.[]best\b|\bbest\)|Best-effort|best effort|which should I choose|బెస్ట్ ఫలితం కోసం చాలా మంది|NEVER write|binds every word|best topic|\$\{best\}|Best for|best suits|best when|works best|best combined|best control|at its best|బెస్ట్‌గా|బెస్ట్ కంట్రోల్|All the best/i,
+    allow: /your best self|మీ ఉత్తమ రూపాని|>Best for<|\b(let|const|var)\s+best|best(Score|Cost|Day|Img)|\bbest\s*(&&|\|\||[=!<>,);.\]])|[.[]best\b|\bbest\)|Best-effort|best effort|which should I choose|బెస్ట్ ఫలితం కోసం చాలా మంది|NEVER write|binds every word|best topic|\$\{best\}|Best for|best suits|best when|works best|best combined|best control|at its best|బెస్ట్‌గా|బెస్ట్ కంట్రోల్|All the best/i,
     // "Starting early gives the best results" is advice about when to begin,
     // not a claim that this clinic beats another one.
     allowEarly: /\b(early|fresh|starting early|sooner)\b|ముందుగా|ముందే/i },
@@ -110,7 +114,7 @@ const RULES = [
     // saying plainly that nothing is guaranteed — which is the disclosure the
     // clause wants, not a breach of it — and the academy's promise of machine
     // time to a student, which is not a treatment outcome.
-    allow: /NEVER|never|not (a )?guarantee|shall not|guarantee (ledu|levu)|no guarantee|no "guaranteed"|Guaranteed machine time|no permanent cure|శాశ్వత క్యూర్ లేదు|not miracle promises|గోప్యత/i,
+    allow: /NEVER|never|not (a )?guarantee|shall not|guarantee (ledu|levu|ivvaledu)|no guarantee|no "guaranteed"|Guaranteed machine time|no permanent cure|శాశ్వత క్యూర్ లేదు|not miracle promises|గోప్యత/i,
     // Telugu: "హామీ" next to a denial — "అద్భుత హామీలు కాదు", "తప్పుడు హామీలు
     // ఉండవు", "హామీ ఇచ్చేవారు నిజాయితీగా లేరు" — is the clinic refusing to
     // promise, which is what 8.1(vi) wants, not a breach of it.
@@ -124,6 +128,26 @@ const RULES = [
     // The academy's own certificate is a thing it issues to a student, not a
     // prize a doctor won; the rule that forbids the claim has to name it.
     allow: /educationalCredentialAwarded|Academy Certificate|NEVER write|binds every word|an award\b/i },
+  { clause: "8.1(x)", what: "inducements — free procedures, discounts, limited offers, scarcity",
+    // 10.1(iv) grades "inducement for patients" as a SERIOUS violation. The
+    // academy sells training to students, and 8.1(x) is scoped to inducements
+    // that encourage unnecessary medical consultation or solicit PATIENTS, so
+    // academy fees and the launch offer are allowed and named below.
+    re: /\bfree (consultation|assessment|check.?up|camp|procedure|treatment|session)\b|\bspecial offer\b|\bflash offer\b|\b\d{1,2}% ?off\b|\bslots limited\b|\blimited period\b|\bcashback\b|ఉచిత (కన్సల్టేషన్|పరీక్ష)/gi,
+    allow: /NEVER|never|shall not|prohibit|forbid|8\.1\(x\)|academy|Academy|course|batch|trainee|student|used to/i },
+  { clause: "3.2 Expl. V", what: "asking a patient for a review or a recommendation",
+    re: /review (raas|raay|ivv)|write a review|Google review|review ivvagalara|recommend (cheyandi|chey)|రివ్యూ రాయండి/gi,
+    // A rule telling the agent NOT to ask, and the refusal the owner's console
+    // now returns, both have to name the thing in order to refuse it.
+    // Showing the reviews Google already holds, labelled as Google's, is not
+    // the same act as asking for one: Expl. V's second sentence reaches a
+    // request, and sharing "for professional promotion on social media" — and
+    // 3.6 defines social media as platforms where users create and share, not
+    // a clinic's own website. The display is a judgement call flagged to the
+    // owner rather than a finding; the ASK is gone everywhere.
+    allow: /ADAGAKU|adagakoodadhu|Explanation V|Expl\. V|shall not|NEVER|never|used to|pampalemu|nishedhist|aria-label|reviewsCount|reviews__|as published on Google/i },
+  { clause: "8.1(iii)", what: "numbers of patients treated",
+    re: /treated (thousands|hundreds|\d[\d,]*)|\b\d[\d,]*\+? (patients|cases) (treated|done)|వేల(ాది)? (కేసులు|రోగులు)/gi },
   { clause: "8.1(v)", what: "before/after offered to a prospective patient",
     re: /before[\s-]?(and[\s-]?)?after|before\/after/gi,
     // Planning a procedure with the surgeon, a rule forbidding the claim, and
@@ -202,6 +226,31 @@ ok(readsOffer.length === 0, readsOffer.length
 // 8.1(ix)/(iii): the ad planner is told the rules, because it writes the copy.
 const plan = read("api/_adplan.js");
 ok(/NMC Guidelines/.test(plan) && /"painless"/.test(plan), "8.1 · the ad planner is given the prohibited words");
+
+// 9.2: an RMP's photograph may not be used where the use is solicitation or
+// promotional publicity. The two places it was: the daily poster, which is
+// boosted into a paid ad, and the pack pushed at a patient who wavered.
+ok(!/class="ph"/.test(daily) && !/doc\.b64/.test(daily.split("posterHtml")[1] || ""),
+  "9.2 \u00b7 the paid poster carries no photograph of a doctor");
+ok(!/sendWaImageLink\(ph, BASE\(\) \+ DOCTOR\.img/.test(read("api/_trust.js")),
+  "9.2 \u00b7 no doctor's photograph is pushed at a hesitating patient");
+
+// 8.1(v): a before/after photograph does not have to be linked to be published.
+const assetDirs = ["assets", "assets/academy"];
+const badAssets = assetDirs.filter((d) => fs.existsSync(path.join(ROOT, d)))
+  .flatMap((d) => fs.readdirSync(path.join(ROOT, d)).filter((f) => /before.?after|b4.?after/i.test(f)).map((f) => d + "/" + f));
+ok(badAssets.length === 0, badAssets.length
+  ? `8.1(v) \u00b7 before/after image files are still served: ${badAssets.join(", ")}`
+  : "8.1(v) \u00b7 no before/after image is published in assets");
+
+// 7.2(c): where the artificial nature of the content is material to the
+// audience, disclosure is required. A patient asking a "receptionist" about
+// their skin plainly qualifies, and the website widget already discloses.
+const facts = read("api/_facts.js");
+ok(/AI assistant/.test(facts) && /NMC 7\.2\(c\)/.test(facts),
+  "7.2(c) \u00b7 the chat agent is told to say it is an AI");
+ok(/AI assistant ni/.test(read("api/voice-call.js")),
+  "7.2(c) \u00b7 the phone receptionist says it is an AI");
 
 // 3.2 Explanations III/IV: name, qualifications, registration status and the
 // SMR/NMR number, on everything we publish. The sentence is generated once by

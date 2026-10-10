@@ -549,14 +549,14 @@ async function recordRating(cfg, phone, rating, askRaw, profileName) {
   await guard.kvCommand(cfg, ["LPUSH", "rv:log", JSON.stringify({ ph: phone, name, rating, concern: ask.concern || "", ts: Date.now() })]).catch(() => {});
   await guard.kvCommand(cfg, ["LTRIM", "rv:log", "0", "499"]).catch(() => {});
   if (rating >= 4) {
-    // Google's own write-review link for this place when the owner has not
-    // pinned one — a four or five star patient is the only moment this ask
-    // ever works, and it was being skipped.
-    const link = await require("./reviews.js").reviewLink(cfg).catch(() => "");
-    return `${rating === 5 ? "🌟" : "😊"} Thank you ${name}! Mee ${rating}⭐ maaku chala important 💖\n\n` +
-      (link
-        ? `Google lo oka chinna review raasthe inka chala mandiki help avutundi 🙏\n⭐ ${link}\n\n`
-        : `Friends/family ki DermaLuxe ni recommend cheyandi — *REFER* ani pampithe mee referral code vastundi 🎁\n\n`) +
+    // This used to answer a four- or five-star rating with the Google
+    // write-review link, and, when there was no link, with "recommend us to
+    // your friends". Both are gone. NMC 3.2 Explanation V: "An RMP shall not
+    // request or share patient testimonials, recommendations, endorsements or
+    // reviews for professional promotion." A patient who has just given five
+    // stars is the moment the ask works, which is the moment the clause is
+    // aimed at. Thanking them and leaving the door open is not an ask.
+    return `${rating === 5 ? "\u{1F31F}" : "\u{1F60A}"} Thank you ${name}! Mee ${rating}⭐ maaku chala important 💖\n\n` +
       "Inka emaina doubts unte ikkade adagandi 😊";
   }
   const team = Array.from(new Set(
@@ -1199,10 +1199,10 @@ module.exports = async (req, res) => {
             .concat(guard.ownerPhones())
             .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
         for (const to of team) {
-          await notify.sendWa(to, `🎁 *Referral!*\n\n👤 ${profileName || "Patient"} (${digits})\n🔗 Code *${out.code}* — referrer: ${out.owner}\n\nVisit lo iddariki ${offer} ivvandi 🙏`).catch(() => {});
+          await notify.sendWa(to, `*Referral*\n\n👤 ${profileName || "Patient"} (${digits})\n🔗 Code *${out.code}* — referrer: ${out.owner}\n\nEvaru cheppi vachcharo telusukovadaniki matrame — referral ki emi ivvakoodadhu (NMC 8.1(vii)).`).catch(() => {});
         }
-        await notify.sendWa(out.owner, `🎉 Super! Mee referral code tho *${profileName || "oka friend"}* DermaLuxe ki vachharu 💖\n\nMeeku ${offer} — next visit lo cheppandi. Thank you! 🙏`).catch(() => {});
-        return respond(`🎉 *Code accept ayindi!*\n\n✅ *${out.code}* — mee friend meeku recommend chesaru, thank you! 💖\n🎁 Visit lo ee code cheppandi — ${offer} vartistundi\n\nAppointment book cheyala? Mee concern cheppandi 😊`);
+        await notify.sendWa(out.owner, `Mee referral code tho *${profileName || "oka friend"}* DermaLuxe ki vachcharu — dhanyavadalu 🙏`).catch(() => {});
+        return respond(`*Code accept ayindi*\n\n✅ *${out.code}* — mee friend mimmalni pampincharu, dhanyavadalu 🙏\n\nMee concern cheppandi, appointment chuddam 😊`);
       }
       if (out.reason === "self") return respond("😄 Adi mee own code andi — friends ki share cheyandi!\n\nAppointment kavali ante cheppandi 🙏");
       if (out.reason === "already") return respond(`Meeru already *${out.code}* code use chesaru 👍\n\nInkem kavali? Appointment book cheyala? 😊`);

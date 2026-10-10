@@ -40,8 +40,13 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   delete require.cache[path.join(process.env.DL_API, "_facts.js")];
   const facts = require(path.join(process.env.DL_API, "_facts.js"));
   const brief = facts.clinicFacts("WhatsApp", "");
-  is(/writereview/.test(brief), true, "the agent is now given a review link to offer");
-  is(/ALREADY VISITED/.test(brief), true, "and told to ask only somebody who actually came");
+  // The briefing used to hand the agent a review link and tell it to ask a
+  // patient who had just visited. NMC 3.2 Explanation V: "An RMP shall not
+  // request or share patient testimonials, recommendations, endorsements or
+  // reviews for professional promotion." The link still resolves — a patient
+  // who asks where to leave one can be told — but the agent never asks.
+  is(/writereview/.test(brief), false, "the agent is not handed a review link to push");
+  is(/ADAGAKU|adagakoodadhu/.test(brief), true, "it is told in plain words never to ask for one");
 
   delete process.env.GOOGLE_PLACE_ID;
   delete require.cache[path.join(process.env.DL_API, "_facts.js")];

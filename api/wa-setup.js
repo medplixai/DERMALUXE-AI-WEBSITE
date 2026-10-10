@@ -9,6 +9,15 @@ const notify = require("./_notify.js");
 const guard = require("./_guard.js");
 
 const TEMPLATES = [
+  // Four MARKETING templates were defined here and are now gone: festival_offer,
+  // flash_offer, new_service and free_camp. Each carried the inducement in its
+  // own BODY — "Flash Offer ... slots limited", "FREE Skin & Hair Check-up Camp
+  // ... Slots limited", a launch discount — so no wording the owner typed could
+  // make a send of one lawful under NMC 8.1(x), and 10.1(iv) grades inducement
+  // for patients and digital mass solicitation as a SERIOUS violation. They are
+  // deleted here so that re-running setup can never submit them again. They may
+  // still exist in the Meta account and should be deleted there too.
+
   {
     name: "appointment_reminder",
     category: "UTILITY",
@@ -29,7 +38,7 @@ const TEMPLATES = [
       {
         type: "BODY",
         text: "Hi {{1}}! ✨ DermaLuxe by Medicare, Eluru nunchi update:\n\n{{2}}\n\n📲 Appointment ki ee message ki reply cheyandi, leda call: +91 99491 34666",
-        example: { body_text: [["Priya", "Ee week Hydrafacial pai special offer — slots limited!"]] },
+        example: { body_text: [["Priya", "Clinic Dasara roju kuda Mon-Sat 9 AM - 9 PM open"]] },
       },
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
     ],
@@ -108,45 +117,6 @@ const TEMPLATES = [
     ],
   },
   {
-    name: "festival_offer",
-    category: "MARKETING",
-    language: "en",
-    components: [
-      {
-        type: "BODY",
-        text: "Hi {{1}}! 🪔 *{{2}} Subhakankshalu* from DermaLuxe! ✨\n\n{{3}}\n\n📲 Book cheyalante ee message ki reply cheyandi, leda call: +91 99491 34666\n📍 Rama Mahal, Kasturi Vari Street, Eluru",
-        example: { body_text: [["Priya", "Diwali", "Festival Glow Package — Hydrafacial pai 20% off, ee week matrame!"]] },
-      },
-      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
-    ],
-  },
-  {
-    name: "flash_offer",
-    category: "MARKETING",
-    language: "en",
-    components: [
-      {
-        type: "BODY",
-        text: "Hi {{1}}! ⚡ *DermaLuxe Flash Offer:*\n\n{{2}}\n\n⏰ {{3}} varaku matrame — slots limited!\n📲 Book cheyalante ee message ki reply cheyandi 🏃‍♀️",
-        example: { body_text: [["Priya", "Laser hair removal package pai 25% off", "Ee Sunday (Aug 17)"]] },
-      },
-      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
-    ],
-  },
-  {
-    name: "new_service",
-    category: "MARKETING",
-    language: "en",
-    components: [
-      {
-        type: "BODY",
-        text: "Hi {{1}}! 🎉 DermaLuxe lo *kotha service*:\n\n✨ *{{2}}*\n{{3}}\n\n📲 Details & booking ki ee message ki reply cheyandi, leda call: +91 99491 34666",
-        example: { body_text: [["Priya", "HydraFacial Platinum", "Launch offer: first 20 bookings ki 30% off + free skin analysis!"]] },
-      },
-      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
-    ],
-  },
-  {
     name: "daily_digest_ping",
     category: "UTILITY",
     language: "en",
@@ -202,7 +172,7 @@ const TEMPLATES = [
       {
         type: "BODY",
         text: "Hi {{1}}! 🎂 *Happy Birthday* from the DermaLuxe family! 🎉\n\nEe special roju meeku andanga, healthy ga undali ani korukuntunnam ✨\n\n🎁 {{2}}\n\n📲 Book cheyalante ee message ki reply cheyandi. Have a wonderful day! 💖",
-        example: { body_text: [["Priya", "Birthday gift ga ee nela lo e treatment pai aina 20% off — mee kosam!"]] },
+        example: { body_text: [["Priya", "Mee birthday ki DermaLuxe family nunchi shubhakankshalu!"]] },
       },
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
     ],
@@ -268,19 +238,6 @@ const TEMPLATES = [
         type: "BODY",
         text: "Hi {{1}}! 💖 DermaLuxe nunchi oka chinna hello!\n\nMeeru adigina *{{2}}* ki ippudu manchi time — mana Dr. Nikhitha Priyanka garu (MD DVL) tho consultation book cheskondi. Ee message ki reply cheyandi, slot fix chestam 😊\n\n📍 Rama Mahal, Kasturi Vari Street, Eluru · Mon-Sat 9 AM - 9 PM",
         example: { body_text: [["Priya", "pigmentation"]] },
-      },
-      { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
-    ],
-  },
-  {
-    name: "free_camp",
-    category: "MARKETING",
-    language: "en",
-    components: [
-      {
-        type: "BODY",
-        text: "Hi {{1}}! 🩺 *FREE Skin & Hair Check-up Camp* — DermaLuxe lo!\n\n{{2}}\n\n🎟 Slots limited — mee slot book cheyalante ee message ki reply cheyandi!\n📍 Rama Mahal, Kasturi Vari Street, Eluru",
-        example: { body_text: [["Priya", "Ee Sunday (Aug 17) udayam 10 – sayantram 5. Doctor consultation kuda FREE!"]] },
       },
       { type: "FOOTER", text: "Offers vaddu ante STOP ani reply cheyandi" },
     ],

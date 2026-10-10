@@ -401,7 +401,11 @@ h3 { font-size: 1.4rem; }
   aspect-ratio: 4/5; border-radius: var(--radius); border: 1px solid var(--line); position: relative; overflow: hidden;
   background:
     linear-gradient(180deg, rgba(10,10,12,0), rgba(10,10,12,.25)),
-    url("assets/ht-before-after.webp") center top / cover no-repeat,
+    /* A hair-transplant before/after photograph used to be the background of
+       this card, visible on the home page. NMC 8.1(v) forbids displaying
+       "before and after" photographs for promotion, whoever is in them, and
+       6.2 says a patient's consent would not have cured it. The card keeps its
+       gradient; the facts about the procedure are in the text beside it. */
     linear-gradient(160deg, #1c1b1f, #121115);
 }
 .ht__visual-stat {
