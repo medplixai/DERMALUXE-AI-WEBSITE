@@ -9,8 +9,28 @@ const BRAND = { name: "DermaLuxe by Medicare Skin And Hair Clinics", nameTe: "�
   addr: "Rama Mahal, Door No. 3-12, Ground Floor, Ramachandra Rao Peta, Kasturi Vari Street, Opposite Happy Mobiles, Eluru – 534002, Andhra Pradesh",
   addrTe: "రామ మహల్, కస్తూరి వారి వీధి, హ్యాపీ మొబైల్స్ ఎదురుగా, ఆర్.ఆర్. పేట, ఏలూరు – 534002",
   wa: "99591 34666", call: "+91 99491 34666", site: "dermaluxe.ai/academy", email: "support@dermaluxe.ai",
-  trainer: "Dr. Meghana Valeti", trainerQ: "MD, DVL · Gold Medalist · Dermatologist & Cosmetologist",
+  trainer: "Dr. Meghana Valeti", trainerQ: "MD, DVL · Dermatologist & Cosmetologist",
   director: "Nagaraju Bandaru", directorQ: "Founder & CEO, DermaLuxeAI Private Limited" };
+
+// NMC Guidelines on advertising (6 Oct 2026), clause 3.2 Explanations III and
+// IV: an RMP publishing any electronic-media post, and a clinical establishment
+// publishing one, must transparently disclose the RMP's name, qualifications,
+// registration status and SMR/NMR registration number. The numbers themselves
+// are not in the code — a wrong medical registration number is a far worse
+// thing to publish than a missing one — so each doctor's `reg` is read from
+// the environment and every place that shows a doctor simply leaves the line
+// out until it is set. tools/tests/wire-nmc.js reports which are still blank.
+const DOCTORS = {
+  nikhitha: { name: "Dr. Nikhitha Priyanka", q: "MD (DVL)", reg: process.env.REG_NIKHITHA || "" },
+  meghana:  { name: "Dr. Meghana Valeti",    q: "MD (DVL)", reg: process.env.REG_MEGHANA  || "" },
+  divija:   { name: "Dr. Sai Divija",        q: "MD (DVL)", reg: process.env.REG_DIVIJA   || "" },
+};
+// "Reg. No. APMC/12345 (Andhra Pradesh Medical Council)" — or "" when unset.
+const regLine = (who) => {
+  const d = DOCTORS[String(who || "").toLowerCase()];
+  return d && d.reg ? `Reg. No. ${d.reg}` : "";
+};
+const regMissing = () => Object.keys(DOCTORS).filter((k) => !DOCTORS[k].reg);
 
 const COURSES = {
   skin:  { name: "Advanced Skin Care Treatments", te: "అడ్వాన్స్‌డ్ స్కిన్ కేర్ ట్రీట్‌మెంట్స్", fee: 100000, offer: 49999 },
@@ -354,4 +374,4 @@ async function renderBatch(jobs) {
   return out;
 }
 
-module.exports = { BRAND, COURSES, BATCH, receiptHtml, admissionHtml, idCardHtml, certificateHtml, renderPdf, renderImage, renderBatch, inWords, money, dmy, course };
+module.exports = { BRAND, COURSES, BATCH, DOCTORS, regLine, regMissing, receiptHtml, admissionHtml, idCardHtml, certificateHtml, renderPdf, renderImage, renderBatch, inWords, money, dmy, course };

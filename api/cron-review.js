@@ -45,10 +45,24 @@ function istDayBack(n) {
     .format(new Date(Date.now() - (Number(n) || 0) * 86400000));
 }
 
+// DISABLED — NMC Guidelines on advertising (6 Oct 2026), clause 3.2
+// Explanation V: "An RMP shall not request or share patient testimonials,
+// recommendations, endorsements or reviews for professional promotion."
+// Our ask was genuine, unpaid and carried no incentive, which answers the
+// first sentence of that Explanation but not the second: it is still a
+// request for a review, made to promote the practice. The schedule is gone
+// from vercel.json; this gate is what stops a manual run or a stray caller.
+// Patients who want to leave a review can still find the link on their own.
+const DISABLED = "NMC 3.2 Explanation V — an RMP may not request reviews for professional promotion";
+
 module.exports = async (req, res) => {
   const q = req.query || {};
   const gate = guard.cronAuth(req);
   if (!gate.ok) return res.status(401).json({ error: "unauthorized", note: gate.note });
+  if (!gate.ok) return res.status(401).json({ error: "unauthorized" });
+  return res.status(200).json({ ok: true, sent: 0, disabled: true, note: DISABLED });
+
+  /* eslint-disable no-unreachable */
   const cfg = guard.kvConfig();
   if (!cfg) return res.status(200).json({ ok: true, note: "kv not configured" });
 

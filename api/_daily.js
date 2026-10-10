@@ -48,10 +48,10 @@ const TOPICS = [
   { key: "hydrafacial", pillar: "tx", h1: "Hydrafacial glow in 30 minutes", te: "హైడ్రాఫేషియల్ — వెంటనే గ్లో", sub: "Cleanse · Exfoliate · Extract · Hydrate · Zero downtime", page: "hydrafacial-eluru.html", img: "Close-up of dewy hydrated glowing facial skin of a young South Indian woman with eyes closed, tiny water droplets on cheek, soft golden light." },
   { key: "pigmentation", pillar: "tx", h1: "Pigmentation & melasma", te: "పిగ్మెంటేషన్ & మెలాస్మా చికిత్స", sub: "Prescription care · Medical peels · PICO laser", page: "pigmentation-treatment-eluru.html", img: "Radiant even-toned face of a South Indian woman in her 30s, calm expression, soft side lighting on smooth clear cheeks, dark elegant background." },
   { key: "dandruff", pillar: "edu", h1: "Dandruff that keeps coming back", te: "చుండ్రు మళ్ళీ మళ్ళీ వస్తోందా?", sub: "It's a scalp condition, not a shampoo problem", page: "dandruff-treatment-eluru.html", img: "Healthy clean scalp and shiny dark hair being parted gently, extreme close-up macro detail, warm golden lighting, dark background." },
-  { key: "prp", pillar: "tx", h1: "PRP & GFC hair therapy", te: "జుట్టు కోసం PRP & GFC థెరపీ", sub: "Your own growth factors · 30-minute sessions · No downtime", page: "prp-gfc-hair-therapy-eluru.html", img: "Abstract luxurious macro shot of glossy dark hair strands with golden light streaks and soft bokeh, dark background." },
+  { key: "prp", pillar: "tx", h1: "PRP & GFC hair therapy", te: "జుట్టు కోసం PRP & GFC థెరపీ", sub: "Your own growth factors · 30-minute sessions · Little or no downtime", page: "prp-gfc-hair-therapy-eluru.html", img: "Abstract luxurious macro shot of glossy dark hair strands with golden light streaks and soft bokeh, dark background." },
   { key: "peel", pillar: "tx", h1: "Medical chemical peels", te: "కెమికల్ పీల్ — డెర్మటాలజిస్ట్ చేత", sub: "Acne · Tan · Pigmentation · Dull skin", page: "chemical-peel-eluru.html", img: "Serene South Indian woman with eyes closed receiving a gentle facial treatment, a gloved hand applying a soft brush to her cheek, clinical yet luxurious, dark warm tones." },
   { key: "mnrf", pillar: "tx", h1: "MNRF for acne scars", te: "MNRF — మొటిమల మచ్చలు, ఓపెన్ పోర్స్", sub: "Rebuilds collagen under the scar · Safe on Indian skin", page: "mnrf-treatment-eluru.html", img: "Macro close-up of smooth refined poreless skin texture on a cheek, soft gold light raking across the surface, dark background." },
-  { key: "hifu", pillar: "tx", h1: "HIFU non-surgical face lift", te: "HIFU — సర్జరీ లేకుండా ఫేస్ లిఫ్ట్", sub: "Jawline · Double chin · Cheeks · No cuts, no downtime", page: "hifu-face-lift-eluru.html", img: "Elegant profile silhouette of a South Indian woman in her 40s with a defined jawline, chin slightly raised, dramatic golden rim light on dark background." },
+  { key: "hifu", pillar: "tx", h1: "HIFU non-surgical face lift", te: "HIFU — సర్జరీ లేకుండా ఫేస్ లిఫ్ట్", sub: "Jawline · Double chin · Cheeks · No cuts, little downtime", page: "hifu-face-lift-eluru.html", img: "Elegant profile silhouette of a South Indian woman in her 40s with a defined jawline, chin slightly raised, dramatic golden rim light on dark background." },
   { key: "bridal", pillar: "season", h1: "Bridal skin & hair programme", te: "బ్రైడల్ స్కిన్ & హెయిర్ ప్యాకేజీ", sub: "Start 6 months early · Groom packages too", page: "bridal-skin-hair-package-eluru.html", img: "Glowing South Indian bride in a subtle gold-and-maroon silk saree, flawless skin, soft smile, close portrait, warm golden light, dark backdrop, minimal jewellery." },
   { key: "mens", pillar: "tx", h1: "Men's skin & hair clinic", te: "పురుషుల స్కిన్ & హెయిర్ క్లినిక్", sub: "Hair loss · Beard · Acne marks · Quick, private, doctor-led", page: "mens-skin-hair-clinic-eluru.html", img: "Well-groomed South Indian man in his 30s with a full beard and clear skin, looking slightly off camera, dark moody studio portrait with golden key light." },
   { key: "kids", pillar: "edu", h1: "Children's skin care", te: "పిల్లల చర్మ సంరక్షణ", sub: "Eczema · Rashes · Warts · Teen acne — gentle, child-safe care", page: "kids-skin-care-eluru.html", img: "Happy South Indian child around 6 years old with healthy skin, laughing, gently held by a mother's hands, warm soft light, dark cosy background." },
@@ -63,7 +63,7 @@ const TOPICS = [
   { key: "myth-oil", pillar: "myth", h1: "Coconut oil does not stop hair fall", te: "కొబ్బరి నూనె జుట్టు రాలడం ఆపదు", sub: "It conditions the hair shaft — the root needs a diagnosis", page: "hair-fall-treatment-eluru.html", img: "Close-up of healthy dark hair and a small glass bottle of golden oil on a dark surface, warm golden light, luxurious mood." },
   { key: "dark-circles", pillar: "tx", h1: "Dark circles under the eyes", te: "కళ్ళ కింద నలుపు — చికిత్స ఉంది", sub: "Pigment, hollows or thin skin — each needs a different fix", page: "dark-circles-treatment-eluru.html", img: "Close-up of bright rested eyes of a South Indian woman, smooth under-eye skin, soft golden lighting, dark background." },
   { key: "pores", pillar: "tx", h1: "Open pores & oily skin", te: "ఓపెన్ పోర్స్ & జిడ్డు చర్మం", sub: "Salicylic peels · Carbon laser · MNRF", page: "open-pores-oily-skin-treatment-eluru.html", img: "Macro close-up of smooth matte refined skin on a nose and cheek, golden light, dark background." },
-  { key: "stretch", pillar: "tx", h1: "Stretch marks can be treated", te: "స్ట్రెచ్ మార్క్స్ చికిత్స", sub: "MNRF · Fractional laser · Best when marks are still red", page: "stretch-marks-treatment-eluru.html", img: "Elegant close-up of smooth skin on a woman's waist and hip in soft golden light, tasteful, dark background." },
+  { key: "stretch", pillar: "tx", h1: "Stretch marks can be treated", te: "స్ట్రెచ్ మార్క్స్ చికిత్స", sub: "MNRF · Fractional laser · Most responsive while marks are still red", page: "stretch-marks-treatment-eluru.html", img: "Elegant close-up of smooth skin on a woman's waist and hip in soft golden light, tasteful, dark background." },
   { key: "fungal", pillar: "season", h1: "Ringworm keeps coming back?", te: "తామర మళ్ళీ మళ్ళీ వస్తోందా?", sub: "Steroid creams make it worse — get the right antifungal course", page: "fungal-infection-treatment-eluru.html", img: "Clean folded cotton towels and a bar of soap on a dark surface with warm golden light, hygiene mood, no skin shown." },
   { key: "grey-hair", pillar: "edu", h1: "Grey hair in your 20s?", te: "20ల లోనే తెల్ల జుట్టు?", sub: "B12 · Thyroid · Stress · Genetics — check before you dye", page: "premature-grey-hair-treatment-eluru.html", img: "Close-up of thick glossy dark hair with a few silver strands catching golden light, dark background." },
   { key: "female-hair", pillar: "edu", h1: "Hair thinning after delivery or PCOS", te: "డెలివరీ, PCOS తర్వాత జుట్టు పలుచబడటం", sub: "Very common, very treatable — don't wait a year", page: "female-hair-loss-treatment-eluru.html", img: "South Indian woman gently tying her long thick hair, calm expression, warm golden light, dark background." },
@@ -79,7 +79,7 @@ const TOPICS = [
   { key: "psoriasis", pillar: "edu", h1: "Psoriasis flares can be controlled", te: "సోరియాసిస్ — అదుపులో ఉంచొచ్చు", sub: "Modern treatments · Long remissions · Stop the itch cycle", page: "psoriasis-treatment-eluru.html", img: "Calm South Indian person's relaxed hands resting on a dark surface in warm golden light, serene mood." },
   { key: "monsoon", pillar: "season", h1: "Monsoon skin & hair care", te: "వర్షాకాలం చర్మం & జుట్టు సంరక్షణ", sub: "Fungal infections · Frizz & hair fall · Sticky skin", page: "fungal-infection-treatment-eluru.html", img: "A young South Indian woman laughing under a big umbrella in light rain, droplets on her glowing skin and glossy hair, warm street lights behind." },
   { key: "festive", pillar: "season", h1: "Festival-ready glow in 2 weeks", te: "పండుగకు 2 వారాల్లో గ్లో", sub: "Hydrafacial · Peel · Carbon laser — plan it early", page: "hydrafacial-eluru.html", img: "Elegant South Indian woman in a silk saree with glowing skin beside warm golden diya lights, dark background." },
-  { key: "review", pillar: "trust", h1: "3 lakh+ happy clients, 10 branches", te: "3 లక్షలకు పైగా సంతృప్త క్లయింట్లు", sub: "Medicare Skin & Hair family · Now in Eluru", page: "index.html", img: "A South Indian mother and her grown-up daughter laughing together, both with healthy glowing skin, a warm candid moment at home." },
+  { key: "review", pillar: "trust", h1: "MD dermatologists · 10 clinics in AP", te: "ఏలూరులో ఇప్పుడు · AP లో 10 బ్రాంచ్‌లు", sub: "DermaLuxe by Medicare, Eluru · Mon–Sat 9 AM – 9 PM", page: "index.html", img: "A South Indian mother and her grown-up daughter laughing together, both with healthy glowing skin, a warm candid moment at home." },
 ];
 
 const PILLAR_BY_DAY = ["tips", "edu", "tx", "myth", "trust", "cta", "season"]; // Sun..Sat
@@ -276,7 +276,7 @@ async function planTopic(cfg) {
   const season = (SEASONS.find((x) => x[0] === month) || [0, ""])[1];
   const insights = await leadInsights(cfg);
   const lib = TOPICS.filter((t) => recent.indexOf(t.key) === -1).map((t) => `${t.key} [${t.pillar}] — ${t.h1}`).join("\n");
-  const sys = `You are the content strategist for DermaLuxe by Medicare — premium skin, hair & aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA lasers, part of Medicare Skin & Hair, 10 branches). Goal of every post: make a local Telugu patient message the clinic on WhatsApp today. Rules: no prices, no "guaranteed"/"permanent cure", no before/after claims, medically accurate, warm not salesy. Output ONLY JSON.`;
+  const sys = `You are the content strategist for DermaLuxe by Medicare — a skin, hair & aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA lasers, part of Medicare Skin & Hair, 10 branches in Andhra Pradesh). Goal of every post: make a local Telugu patient message the clinic on WhatsApp today. Rules: no prices, no "guaranteed"/"permanent cure", no before/after claims, medically accurate, warm not salesy. Output ONLY JSON.`;
   const user = `Today: ${d.toISOString().slice(0, 10)} (${dow}, IST). Season/context for this month: ${season}.
 Patient demand signal: ${insights || "no lead data yet"}.
 Last 20 posts (do not repeat these keys): ${recent.join(", ") || "none"}.
@@ -353,12 +353,21 @@ function academyCaptionFallback(topic, st) {
     ? `Launch fees close ${docs.BATCH.offerEnd}.\n`
     : "";
   const seats = st && st.left > 0 && st.left <= 4 ? `Only ${st.left} seat${st.left > 1 ? "s" : ""} left.\n` : `${docs.BATCH.seats} seats in the batch.\n`;
-  return `${topic.h1}\n${topic.te}\n\nDermaLuxe Academy, Eluru — Advanced Skin & Hair Aesthetics training.\nHands-on, on USFDA-approved machines, with Dr. Meghana Valeti (MD DVL).\nFor cosmetologists, therapists, salon & spa staff, nurses and serious freshers.\n\nBatch ${docs.BATCH.no} starts ${docs.BATCH.start}.\n${seats}${closing}\n📲 WhatsApp *ACADEMY* to 99591 34666 · wa.me/919959134666\n📍 DermaLuxe Academy, R.R. Peta, Eluru\n\n#DermaLuxeAcademy #CosmetologyCourse #Eluru #AndhraPradesh #SkinCareTraining #HairCareTraining #AestheticsCourse #DermaLuxeEluru`;
+  return withDisclosure(`${topic.h1}\n${topic.te}\n\nDermaLuxe Academy, Eluru — Advanced Skin & Hair Aesthetics training.\nHands-on, on USFDA-approved machines, with Dr. Meghana Valeti (MD DVL).\nFor cosmetologists, therapists, salon & spa staff, nurses and serious freshers.\n\nBatch ${docs.BATCH.no} starts ${docs.BATCH.start}.\n${seats}${closing}\n📲 WhatsApp *ACADEMY* to 99591 34666 · wa.me/919959134666\n📍 DermaLuxe Academy, R.R. Peta, Eluru\n\n#DermaLuxeAcademy #CosmetologyCourse #Eluru #AndhraPradesh #SkinCareTraining #HairCareTraining #AestheticsCourse #DermaLuxeEluru`);
+}
+
+// NMC 7.2 — the source mark goes on the post, not only on the pixels, so it
+// survives someone saving the image or reading the caption in a feed preview.
+// 7.2(c) wants the disclosure wherever the content's artificial nature could
+// matter to the viewer, which a generated clinic photograph plainly does.
+const AI_MARK = "🖼️ Image generated with AI.";
+function withDisclosure(c) {
+  return /generated with AI/i.test(c) ? c : `${c}\n\n${AI_MARK}`;
 }
 
 async function writeCaption(topic) {
   const acad = topic && topic.pillar === "academy";
-  const sys = acad ? academyCaptionSys(topic.academy) : `You write Instagram captions for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly these 3 lines:\n"📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY the caption text itself — no JSON, no quotes, no preamble.`;
+  const sys = acad ? academyCaptionSys(topic.academy) : `You write Instagram captions for DermaLuxe by Medicare — a skin, hair and aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA technology, part of Medicare Skin & Hair, 10 branches in Andhra Pradesh). Style: premium yet warm, patient-first, educational; 4-7 short lines; English with ONE Telugu line; NEVER prices, NEVER "guaranteed" or "permanent cure", no emojis in the first line, max 3 emojis total. End with exactly these 3 lines:\n"📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru"\nthen 7-9 hashtags mixing #DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru plus topic tags. Output ONLY the caption text itself — no JSON, no quotes, no preamble.`;
   const user = `Today's poster: headline "${topic.h1}" · Telugu line "${topic.te}" · sub-line "${topic.sub}". Website page: ${SITE}/${topic.page}. Write the caption.`;
   try {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
@@ -375,6 +384,7 @@ async function writeCaption(topic) {
     if (t.length > 40) {
       let c = t.slice(0, 1900);
       if (!/wa\.me\/919959134666/.test(c)) c += "\n\n📲 WhatsApp: 99591 34666 · wa.me/919959134666";
+      c = withDisclosure(c);
       // The academy poster is only worth posting if the word that triggers the
       // agent is in the caption. A model that drifted off the instruction gets
       // the line added rather than the post going out with no way in.
@@ -383,7 +393,7 @@ async function writeCaption(topic) {
     }
   } catch (e) { console.error("daily: caption", e && e.message); }
   if (acad) return academyCaptionFallback(topic, topic.academy);
-  return `${topic.h1}\n${topic.te}\n\n${topic.sub}.\nEvery treatment at DermaLuxe is planned by MD dermatologists with USFDA-approved technology.\n\n📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru\n\n#DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru #HairClinicEluru #SkinCare #AndhraPradesh`;
+  return withDisclosure(`${topic.h1}\n${topic.te}\n\n${topic.sub}.\nEvery treatment at DermaLuxe is planned by MD dermatologists with USFDA-approved technology.\n\n📲 WhatsApp: 99591 34666 · wa.me/919959134666\nFree AI skin & hair analysis — link in bio 👆\n📍 Opposite Happy Mobiles, R.R. Peta, Eluru\n\n#DermaLuxeEluru #SkinClinicEluru #DermatologistEluru #Eluru #HairClinicEluru #SkinCare #AndhraPradesh`);
 }
 
 // ---- 3. Background image (Gemini) ---------------------------------------
@@ -503,12 +513,17 @@ async function genImage(topic) {
 // crop is centred on the face rather than on a white coat. The credentials are
 // the ones the WhatsApp agent is allowed to quote (see _facts.js) — nothing
 // here is embellished.
+// NMC 3.2 Explanation IV: a clinical establishment publishing an electronic
+// media post must disclose the RMP's name, qualifications, registration status
+// and SMR/NMR number. `reg` is the key into docs.DOCTORS, which reads the
+// number from the environment; posterHtml appends it to the credit line when
+// it is set and leaves it out when it is not, rather than printing a guess.
 const DOCTORS = {
-  nikhitha: { name: "Dr. Nikhitha Priyanka", cred: "MD (DVL) · Senior Dermatologist",
+  nikhitha: { name: "Dr. Nikhitha Priyanka", cred: "MD (DVL) · Senior Dermatologist", reg: "nikhitha",
     file: ["dr-nikhitha.webp"], aspect: 1050 / 1400, fx: 0.53, fy: 0.33 },
-  meghana: { name: "Dr. Meghana Valeti", cred: "MD (DVL) · Gold Medalist · Medical Director",
+  meghana: { name: "Dr. Meghana Valeti", cred: "MD (DVL) · Medical Director", reg: "meghana",
     file: ["founders", "meghana.webp"], aspect: 600 / 720, fx: 0.51, fy: 0.31 },
-  sai: { name: "Dr. Sai Divija", cred: "MD (DVL) · Dermatologist",
+  sai: { name: "Dr. Sai Divija", cred: "MD (DVL) · Dermatologist", reg: "divija",
     file: ["dr-sai-divija.webp"], aspect: 880 / 1100, fx: 0.47, fy: 0.30 },
 };
 const _docPhoto = {};
@@ -628,11 +643,21 @@ h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;
 .wa svg{width:38px;height:38px}
 .wa .l{font-size:13px;letter-spacing:.24em;text-transform:uppercase;font-weight:500;line-height:1.1}
 .wa .num{font-size:31px;font-weight:500;letter-spacing:.03em;line-height:1.1;white-space:nowrap}
+/* NMC Guidelines on advertising (6 Oct 2026), clause 7.2: AI-generated
+   promotional content "shall compulsorily carry the source mark, explicitly
+   stating that the origin of the content is AI". The background photograph on
+   every one of these posters is generated, so the mark is required somewhere.
+   It is NOT on the poster: the owner asked for the artwork to stay exactly as
+   it was, so the disclosure rides in the caption instead — see withDisclosure()
+   above, which puts "Image generated with AI" on every post, by every path.
+   The trade-off is written down here rather than left to be rediscovered: a
+   post carries its caption, but an image saved and forwarded on its own does
+   not, and that copy then has no mark on it. */
 </style></head><body><div class="photo"></div><div class="shade"></div><div class="vign"></div><div class="frame"></div><div class="cn c1"></div><div class="cn c2"></div><div class="cn c3"></div><div class="cn c4"></div>
 <div class="head"><img class="logo" src="data:image/png;base64,${logoB64()}" alt=""><div class="city">ఏలూరు</div></div>
 <div class="txt"><div class="eyebrow"><i></i>${esc(eyebrow)}<i class="r"></i></div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="sub">${esc(topic.sub)}</div></div>
 ${doc
-  ? `<div class="foot withdoc"><div class="dr"><div class="ph"></div><div class="t"><div class="k">${acad ? "Your trainer" : "Your doctor"}</div><div class="dn">${esc(doc.name)}</div><div class="dc">${esc(doc.cred)}</div></div></div>`
+  ? `<div class="foot withdoc"><div class="dr"><div class="ph"></div><div class="t"><div class="k">${acad ? "Your trainer" : "Your doctor"}</div><div class="dn">${esc(doc.name)}</div><div class="dc">${esc(doc.cred + (doc.reg && docs.regLine(doc.reg) ? " · " + docs.regLine(doc.reg) : ""))}</div></div></div>`
   : `<div class="foot"><div class="brand"><div class="n">${esc(brandName)}</div><div class="nt">${esc(brandTe)}</div><div class="a">Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div></div>`}
 <div class="wa"><svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#15120d" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg><div><div class="l">${esc(waLabel)}</div><div class="num">99591 34666</div></div></div></div>
 ${doc ? `<div class="addr">${acad ? "DermaLuxe Academy" : "DermaLuxe by Medicare"} · Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div>` : ""}

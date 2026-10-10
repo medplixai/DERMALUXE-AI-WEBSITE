@@ -69,7 +69,7 @@ or when booking info is ready:
 heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
 slot_ts: when the patient CONFIRMS a specific day + time, ALSO add "slot_ts":"YYYY-MM-DD HH:mm" (24-hour, IST) inside lead — compute the real calendar date from the current IST date/time given in context (e.g. if today is Sun Aug 10 2026 and they pick "Repu 6:30 PM" → "2026-08-11 18:30"). Omit until a specific time is fixed — our reminder system auto-messages the patient from this.
 cancel: if the patient wants to CANCEL their appointment (and is not picking a new time), add "cancel":true inside lead. For reschedule just output the new slot_ts — old booking auto-replace avutundi. The context shows this patient's upcoming appointment if any — confirm that time with them before cancelling, and be warm about rebooking later.
-Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "show_results":"<concern>" when they ask for before/after proof, "send_catalog":true when someone asks about the DermaLuxe Academy / training courses (the course catalog PDF is sent automatically with your reply — mention "Course catalog PDF ikkada pampistunnanu 📄"), "trust":true when the patient hesitates (asks who the doctor is / whether results come / is it safe / will think about it) — the doctor card, Google rating and before/after go out after your reply, "family":[{"name":"…","concern":"…"}] inside lead when more than one person is coming in the same slot (amma + koothuru), "voice":true when the patient would clearly rather listen than read (asks for voice, says they cannot read well, elderly writing with difficulty) — your reply is also sent as a voice note from then on, and "urgent":"<one line>" for medical emergencies.`;
+Optionally add "send_location":true when the patient asks for the address/directions, "buttons":["option1","option2"] when offering choices, "slots":["Ivala 6:30 PM","Repu 11:00 AM",...] when asking for the appointment time, "send_catalog":true when someone asks about the DermaLuxe Academy / training courses (the course catalog PDF is sent automatically with your reply — mention "Course catalog PDF ikkada pampistunnanu 📄"), "trust":true when the patient hesitates (asks who the doctor is / whether results come / is it safe / will think about it) — the doctor's card with her qualifications goes out after your reply, "family":[{"name":"…","concern":"…"}] inside lead when more than one person is coming in the same slot (amma + koothuru), "voice":true when the patient would clearly rather listen than read (asks for voice, says they cannot read well, elderly writing with difficulty) — your reply is also sent as a voice note from then on, and "urgent":"<one line>" for medical emergencies.`;
 
 const CLINIC_FACTS = facts.clinicFacts("WhatsApp", WA_RULES);
 // The clinic's whole brief — fees, treatments, rules, academy — is about seven
@@ -1520,24 +1520,19 @@ module.exports = async (req, res) => {
     if (out.send_location === true || LOCATION_ASK.test(text)) {
       await sendCloudLocation(cloud.phoneNumberId, cloud.to);
     }
-    // Before/after proof: send the matching gallery shots (max 2) if we have any.
-    if (out.show_results) {
-      try {
-        const shots = await galleryFor(cfg, out.show_results);
-        const base = `https://${String(req.headers["x-forwarded-host"] || req.headers.host || "www.dermaluxe.ai")}`;
-        for (const it of shots) {
-          await sendCloudImage(cloud.phoneNumberId, cloud.to, `${base}/api/media?id=${it.imgId}`, it.caption);
-        }
-      } catch (e) { console.error("wa: gallery send", e && e.message); }
-    }
-    // The patient hesitated: the doctor, the rating and real results, once a week.
+    // Before/after proof used to go out here. NMC 8.1(v) forbids displaying
+    // "before and after" photographs for promotion, and 6.2 says the patient's
+    // consent does not make it permissible, so nothing is sent. The agent is
+    // told (in _facts.js) to answer the question honestly in words instead.
+    //
+    // The patient hesitated: the doctor's card with her qualifications, once a week.
     if (cfg && (out.trust === true || trust.hesitant(text)) && !imageId) {
       try {
         const base = `https://${String(req.headers["x-forwarded-host"] || req.headers.host || "www.dermaluxe.ai")}`;
         const want = (out.qual && out.qual.problem) || (out.lead && out.lead.concern) || (profile && profile.concern) || adLead || "";
-        const tp = await trust.send(cfg, digits, { concern: want, gallery: async (c) => (await galleryFor(cfg, c)).map((it) => ({ url: `${base}/api/media?id=${it.imgId}`, caption: it.caption })) });
+        const tp = await trust.send(cfg, digits, { concern: want });
         if (tp.sent && hist.length) {
-          hist[hist.length - 1].a += "\n[Doctor card + Google rating + results photos pampanu — malli describe cheyyaku, slot question meeda focus]";
+          hist[hist.length - 1].a += "\n[Doctor card pampanu — malli describe cheyyaku, slot question meeda focus]";
           await saveHistory(cfg, histKey, hist);
         }
       } catch (e) { console.error("wa: trust pack", e && e.message); }

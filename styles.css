@@ -701,6 +701,12 @@ h3 { font-size: 1.4rem; }
 .footer__bar { border-top: 1px solid var(--line-soft); padding: 1.4rem 0; }
 .footer__bar-inner { display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .footer__bar p { font-size: .8rem; color: var(--muted-2); }
+/* Medical registration disclosure (NMC 3.2 Expl. III/IV). Full width under the
+   copyright line so the names, qualifications and registration numbers read as
+   one statement rather than being squeezed into the flex row beside it. */
+.footer__bar .legal-reg { flex-basis: 100%; order: 9; font-size: .72rem; line-height: 1.6; color: var(--muted-2); opacity: .85; }
+.footer__bar .legal-reg b { font-weight: 500; color: var(--muted); }
+.footer__bar .legal-reg .te { display: block; margin-top: .25rem; }
 .footer__fine { font-style: italic; }
 
 /* ---------- Teleconsultation ---------- */

@@ -15,7 +15,15 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   is(mine.code, 200, "a patient's referral panel opens");
   is(/^DL\d{4}$/.test(mine.body.code), true, "with a code of their own: " + mine.body.code);
   is(mine.body.count, 0, "and nobody brought yet");
-  is(mine.body.offer, "20% off next sitting", "the offer is shown, so messages can name it");
+  // NMC 8.1(vii) forbids any gift, gratuity or consideration connected with
+  // the referral of a patient, and 8.1(x) names "referral benefits" among the
+  // inducements that amount to solicitation. Knowing who told whom is plain
+  // attribution and stays; nothing may be offered for it, and REFERRAL_OFFER
+  // is no longer read, so it cannot be switched back on from the dashboard.
+  process.env.REFERRAL_OFFER = "20% off next sitting";
+  const bribed = await R({ a: "of", phone: LATHA });
+  is(bribed.body.offer, "", "nothing is offered for bringing a friend, even with REFERRAL_OFFER set");
+  delete process.env.REFERRAL_OFFER;
 
   const again = await R({ a: "of", phone: LATHA });
   is(again.body.code, mine.body.code, "the same person always gets the same code");

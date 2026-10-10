@@ -27,7 +27,13 @@ const json = (res, code, body) => {
 const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
 const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
-const offer = () => process.env.REFERRAL_OFFER || "";
+// NMC 8.1(vii): no RMP shall offer, pay or receive any commission, rebate,
+// bonus, gift, gratuity or referral fee connected with the referral or
+// procurement of patients, and 8.1(x) names "referral benefits" among the
+// inducements that amount to solicitation. Knowing who told whom is plain
+// attribution and stays; the reward attached to it is gone, and REFERRAL_OFFER
+// is no longer read so it cannot be switched back on from the dashboard.
+const offer = () => "";
 
 // Who this patient has brought, and whether we have thanked them for each one.
 async function broughtBy(cfg, phone) {

@@ -112,7 +112,7 @@ async function snapshot(cfg, me) {
   return out.join("\n");
 }
 
-const CLINIC = `DermaLuxe by Medicare — Premium Skin, Hair & Aesthetics, Eluru (part of Medicare Skin & Hair Clinics: 10 branches, 3 lakh+ clients).
+const CLINIC = `DermaLuxe by Medicare — Skin, Hair & Aesthetics, Eluru (part of Medicare Skin & Hair Clinics: 10 branches in Andhra Pradesh).
 Mon–Sat 9 AM–9 PM, Sunday closed. Rama Mahal, Kasturi Vari Street, Opposite Happy Mobiles, R.R. Peta, Eluru 534002.
 WhatsApp 99591 34666 (AI agent, 24×7) · Calls +91 99491 34666 · www.dermaluxe.ai
 Doctors: Dr. Nikhitha Priyanka (MD DVL, main consultant), Dr. Meghana Valeti (MD DVL, Gold Medalist, Founder & Medical Director), Dr. Sai Divija (MD DVL).

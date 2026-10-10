@@ -2,7 +2,7 @@
 //
 // A patient the clinic has treated is greeted as one, with their last visit
 // and the sitting that is due. Somebody who tapped an ad is not asked what
-// their concern is. Somebody who hesitates is shown the doctor, the rating
+// their concern is. Somebody who hesitates is shown the doctor
 // and real results — once. A slot is locked the moment the advance is paid,
 // without anyone reading a "PAID" reply. Meta is told who booked and who
 // paid. Half an hour after a missed slot the patient is asked, not the desk.
@@ -119,7 +119,13 @@ const slotTs = (daysAhead) => { const d = new Date(Date.now() + daysAhead * DAY 
   is(sentTo(HS, "img").length, 1, "the doctor's photo goes out with her degrees");
   is(/Dr\. Nikhitha Priyanka.*MD \(DVL\)/s.test(sentTo(HS, "img")[0][3]), true, "in the caption");
   const pack = sentTo(HS, "btn")[0];
-  is([/4\.9.*132 reviews/.test(pack[2]), /Consultation lo em jarugutundi/.test(pack[2]), pack[3].length], [true, true, 3], "then the Google rating, what a consultation is, and three ways to say yes");
+  // The rating used to go out here too. NMC 3.2 Explanation V forbids sharing
+  // patient reviews for professional promotion, and pushing a star rating at
+  // somebody who is hesitating is exactly that. It stays on the website, where
+  // it is factual information a reader went looking for. What a consultation
+  // involves is factual and allowed by 8.3(i), so that is all that is left.
+  is([/4\.9|132 reviews|⭐/.test(pack[2]), /Consultation lo em jarugutundi/.test(pack[2]), pack[3].length], [false, true, 3], "then what a consultation is and three ways to say yes — no rating pushed at them");
+  is(sentTo(HS, "img").length, 1, "and no patient's before/after photo is sent — only the doctor's own card");
   h.sent.length = 0;
   claude.push({ reply: "Ok", lead: null, trust: true });
   await hook(HS, "safe na?");

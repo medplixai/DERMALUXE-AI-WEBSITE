@@ -18,7 +18,7 @@ const DAY = 86400000;
 // The clinic's year. `m` = months (1-12) the suggestion shows in.
 const SEASONS = [
   { key: "sankranti", m: [12, 1], name: "Sankranti glow", seg: "", tpl: "festival_offer", p2: "Sankranti", text: "Panduga ki mundu skin glow kosam Hydrafacial / peel slots open — ee vaaram book cheskondi, doctor consultation tho ✨" },
-  { key: "wedding", m: [11, 12, 1, 2], name: "Wedding season", seg: "", tpl: "clinic_update", text: "Pelli season vachesindi 💍 Bride/groom & family ki skin & hair glow plans — 4-6 vaaralu mundu start chesthe best results. Doctor consultation ki reply cheyandi." },
+  { key: "wedding", m: [11, 12, 1, 2], name: "Wedding season", seg: "", tpl: "clinic_update", text: "Pelli season vachesindi 💍 Bride/groom & family ki skin & hair glow plans — 4-6 vaaralu mundu start chesthe marpu baaga kanipistundi. Doctor consultation ki reply cheyandi." },
   { key: "summer", m: [3, 4, 5], name: "Summer pigmentation & tan", seg: "pigment", tpl: "seasonal_tips", text: "Enda lo tan & pigmentation penugutayi ☀️ 1) SPF 50 prathi 3 gantalaki 2) 3L neellu 3) Madhyahnam 12-3 enda avoid — tan/pigmentation ki peel & PICO sessions unnayi, doubt unte reply cheyandi." },
   { key: "monsoon", m: [6, 7, 8, 9], name: "Monsoon fungal care", seg: "", tpl: "seasonal_tips", text: "Varsha kalam lo fungal infections & dandruff ekkuva 🌧 1) Tadi battalu ventane marchandi 2) Feet & folds dry ga unchandi 3) Sharing towels vaddu — itching/rash unte doctor ni chupinchandi, reply cheyandi." },
   { key: "diwali", m: [10, 11], name: "Diwali offer", seg: "", tpl: "festival_offer", p2: "Diwali", text: "Deepavali ki mundu glow package — Hydrafacial + peel slots limited. Doctor consultation tho mee skin ki correct plan. Book cheyalante reply cheyandi 🪔" },
