@@ -1334,3 +1334,20 @@ h3 { font-size: 1.4rem; }
 .post-card h2 a { color: var(--text); }
 .post-card h2 a:hover { color: var(--gold-2); }
 .post-card__te { display: inline-block; margin-top: .2rem; color: var(--gold-2); font-family: "Noto Sans Telugu", var(--font-sans); font-size: .92rem; }
+
+
+/* A picture on a treatment page. These are generated, and NMC 7.2 requires the
+   source mark to say so "explicitly" — so it is in the caption under the image
+   where a reader sees it, not in an attribute nobody reads. The images carry no
+   people, no clinic interiors and nothing that reads as a result; 7.2(a)/(b)
+   and 8.1(v) between them rule all three out. */
+.tx-fig { margin: 2rem 0 0; }
+.tx-fig img {
+  width: 100%; height: auto; display: block; aspect-ratio: 3 / 2; object-fit: cover;
+  border-radius: var(--radius); border: 1px solid var(--line);
+}
+.tx-fig figcaption {
+  margin-top: .55rem; font-size: .72rem; line-height: 1.6;
+  color: var(--muted-2); letter-spacing: .01em;
+}
+.tx-fig figcaption .te { display: block; }
