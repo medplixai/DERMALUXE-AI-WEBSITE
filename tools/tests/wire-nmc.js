@@ -249,6 +249,36 @@ ok(badAssets.length === 0, badAssets.length
   ? `8.1(v) \u00b7 before/after image files are still served: ${badAssets.join(", ")}`
   : "8.1(v) \u00b7 no before/after image is published in assets");
 
+// An image no page references is still served at its public URL. All three
+// before/after pictures found so far were reachable that way, and the third
+// was called "hair-transplant.jpg", so the filename rule above did not see it.
+// Nothing here can look at a picture; what it can do is refuse to let an
+// unreferenced one sit in the published folder unnoticed.
+const imgRefs = new Set();
+for (const f of files) {
+  const t = fs.readFileSync(f, "utf8");
+  for (const m of t.matchAll(/[\w\-./]+\.(?:webp|jpg|jpeg|png)/g)) imgRefs.add(path.basename(m[0]));
+}
+const orphanImgs = ["assets", "assets/academy"]
+  .filter((d) => fs.existsSync(path.join(ROOT, d)))
+  .flatMap((d) => fs.readdirSync(path.join(ROOT, d))
+    .filter((f) => /\.(webp|jpg|jpeg|png)$/i.test(f) && !imgRefs.has(f))
+    .map((f) => d + "/" + f))
+  // Reviewed and kept on purpose. Each was opened and looked at on 10 Oct 2026;
+  // a new orphan is NOT covered by this list and will be reported.
+  //   og-image.jpg            social card, fetched by platforms at an absolute URL
+  //   *.jpg beside a *.webp   the fallback the pages already reference
+  //   aesthetics.jpg          spa still-life: towel, bottle, candle. No person, no claim.
+  //   hero-lady-backup.jpg    beauty stock: a model having lipstick applied. Not a
+  //                           patient, not a result, not in use.
+  //   academy/batch1-*        the Batch 1 posters, generated here and published to
+  //                           Instagram on purpose; no page links them.
+  .filter((f) => !/og-image\.jpg$|aesthetics\.jpg$|hero-lady-backup\.jpg$|academy\/batch1-/.test(f))
+  .filter((f) => !fs.existsSync(path.join(ROOT, f.replace(/\.jpg$/, ".webp"))));
+ok(orphanImgs.length === 0, orphanImgs.length
+  ? `8.1(v) \u00b7 published but referenced by no page \u2014 look at each before keeping it: ${orphanImgs.join(", ")}`
+  : "8.1(v) \u00b7 every published image is referenced by a page");
+
 // 7.2(c): where the artificial nature of the content is material to the
 // audience, disclosure is required. A patient asking a "receptionist" about
 // their skin plainly qualifies, and the website widget already discloses.
