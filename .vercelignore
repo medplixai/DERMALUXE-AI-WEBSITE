@@ -1,3 +1,10 @@
+# When this file exists, Vercel uses it INSTEAD of .gitignore — so .env being
+# ignored by git is not enough, and a `vercel --prod` from a laptop with a real
+# key in .env uploads that key into the deployment. It did, once, on 11 Oct 2026.
+.env
+.env.*
+*.env
+
 # Leading slash matters: "app/" alone would also match assets/app/, which is
 # where the downloadable APK and the app icons live.
 /app/
