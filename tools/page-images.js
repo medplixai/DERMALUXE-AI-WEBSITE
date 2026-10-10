@@ -145,6 +145,20 @@ async function main() {
     if (!fs.existsSync(webp)) {
       if (dry) { console.log(`  would draw  ${slug}`); skipped++; continue; }
       if (!key) { console.log(`  no key, cannot draw ${slug} — skipping`); skipped++; continue; }
+      // Vercel can mark a variable "Sensitive", and then it is write-only:
+      // `vercel env pull` returns the literal string [SENSITIVE] instead of the
+      // value. Every secret on this project is marked that way, so a pull looks
+      // like it worked and the first API call fails with an unhelpful 400.
+      // Say so here instead.
+      if (/^\[SENSITIVE\]?$/i.test(key) || key.length < 20) {
+        console.error("\n  The key is not a key — it is Vercel's [SENSITIVE] placeholder.");
+        console.error("  Those variables are write-only; nobody can read them back, which is");
+        console.error("  why the pull looked fine. Get the key from Google AI Studio instead");
+        console.error("  (aistudio.google.com/apikey) and put it in a local .env:");
+        console.error("      echo 'GEMINI_API_KEY=…' > .env");
+        console.error("  .env is already in .gitignore, so it cannot be committed.");
+        process.exit(3);
+      }
       process.stdout.write(`  drawing ${slug} … `);
       const buf = await draw(subject, key);
       if (!buf) { console.log("failed"); skipped++; continue; }
