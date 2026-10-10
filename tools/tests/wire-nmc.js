@@ -19,6 +19,7 @@
 const fs = require("fs");
 const path = require("path");
 const ROOT = path.resolve(__dirname, "..", "..");
+const docs = require(path.join(ROOT, "api", "_docs.js"));
 let bad = 0;
 const ok = (good, what) => { if (!good) bad++; console.log(`  ${good ? "ok " : "✗  "} ${what}`); };
 
@@ -186,18 +187,41 @@ ok(!/process\.env\.REFERRAL_OFFER/.test(read("api/referral.js")), "8.1(vii) · n
 const plan = read("api/_adplan.js");
 ok(/NMC Guidelines/.test(plan) && /"painless"/.test(plan), "8.1 · the ad planner is given the prohibited words");
 
-// 3.2 Explanations III/IV: name, qualifications, registration status, number.
-const idx = read("index.html");
-const slots = [...idx.matchAll(/data-reg="([a-z]+)"><\/b>/g)].map((m) => m[1]);
-ok(/legal-reg/.test(idx), "3.2 Expl. IV · the site carries a medical registration disclosure");
-ok(slots.length === 0, slots.length
-  ? `3.2 Expl. IV · registration numbers still blank for: ${slots.join(", ")} — fill the <b data-reg="…"> in index.html`
-  : "3.2 Expl. IV · every treating doctor's registration number is published");
-const docs = require(path.join(ROOT, "api", "_docs.js"));
+// 3.2 Explanations III/IV: name, qualifications, registration status and the
+// SMR/NMR number, on everything we publish. The sentence is generated once by
+// docs.regDisclosure(); every public page carries a copy of it. Checking the
+// copies against the generator — rather than against each other — is what
+// catches a number corrected in one place and left stale in ninety others.
 const missing = docs.regMissing();
 ok(missing.length === 0, missing.length
-  ? `3.2 Expl. III · REG_${missing.map((m) => m.toUpperCase()).join(", REG_")} unset — the poster and WhatsApp card omit the number`
-  : "3.2 Expl. III · the poster and the doctor card carry the registration number");
+  ? `3.2 Expl. III · no registration number for: ${missing.join(", ")}`
+  : "3.2 Expl. III · every treating doctor has a registration number");
+
+const EN = docs.regDisclosure().replace(/&/g, "&amp;");
+const TE = docs.regDisclosure("te").replace(/&/g, "&amp;");
+// staff-app.html is the download page for the staff's own app and says so on
+// its face; it is not advertising, and it is the only page with a footer that
+// is deliberately without the disclosure.
+const NOT_ADVERTISING = new Set(["staff-app.html"]);
+const pages = fs.readdirSync(ROOT).filter((f) => /\.html$/.test(f))
+  .filter((f) => /<footer/.test(fs.readFileSync(path.join(ROOT, f), "utf8")))
+  .filter((f) => !NOT_ADVERTISING.has(f));
+const noDisclosure = [], stale = [];
+for (const f of pages) {
+  const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+  if (!/class="legal-reg"/.test(t)) { noDisclosure.push(f); continue; }
+  if (t.indexOf(EN) === -1 && t.indexOf(TE) === -1) stale.push(f);
+}
+ok(noDisclosure.length === 0, noDisclosure.length
+  ? `3.2 Expl. IV · ${noDisclosure.length} public page(s) carry no disclosure: ${noDisclosure.slice(0, 6).join(", ")}`
+  : `3.2 Expl. IV · all ${pages.length} public pages carry the disclosure`);
+ok(stale.length === 0, stale.length
+  ? `3.2 Expl. IV · ${stale.length} page(s) disagree with api/_docs.js: ${stale.slice(0, 6).join(", ")}`
+  : "3.2 Expl. IV · every copy of it matches api/_docs.js, word for word");
+
+// The number has to reach the places that are not pages, too.
+ok(/docs\.regLine\(doc\.reg\)/.test(daily), "3.2 Expl. IV · the poster's doctor credit carries the number");
+ok(/docs\.regLine\("nikhitha"\)/.test(read("api/_trust.js")), "3.2 Expl. III · the WhatsApp doctor card carries it");
 
 console.log("");
 console.log(bad ? `${bad} problem(s) — a patient can still read these` : "nothing a patient should not read");

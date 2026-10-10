@@ -704,9 +704,14 @@ h3 { font-size: 1.4rem; }
 /* Medical registration disclosure (NMC 3.2 Expl. III/IV). Full width under the
    copyright line so the names, qualifications and registration numbers read as
    one statement rather than being squeezed into the flex row beside it. */
-.footer__bar .legal-reg { flex-basis: 100%; order: 9; font-size: .72rem; line-height: 1.6; color: var(--muted-2); opacity: .85; }
-.footer__bar .legal-reg b { font-weight: 500; color: var(--muted); }
-.footer__bar .legal-reg .te { display: block; margin-top: .25rem; }
+/* Medical registration disclosure (NMC 3.2 Expl. III/IV). It sits in three
+   different footers — the home page's bar, the generated pages' seo-foot and
+   the legal pages' — so the rule is not scoped to any one of them. On the home
+   page's flex row it takes a line of its own. */
+.legal-reg { font-size: .72rem; line-height: 1.6; color: var(--muted-2); opacity: .85; }
+.legal-reg .te { display: block; margin-top: .25rem; }
+.footer__bar .legal-reg { flex-basis: 100%; order: 9; }
+.seo-foot .legal-reg, .legal__footer .legal-reg { margin-top: .6rem; }
 .footer__fine { font-style: italic; }
 
 /* ---------- Teleconsultation ---------- */

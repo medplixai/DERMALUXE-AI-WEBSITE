@@ -1117,16 +1117,12 @@
         <!-- NMC Guidelines on advertising (6 Oct 2026), clause 3.2 Explanations III
              and IV: a clinical establishment publishing electronic-media content must
              transparently disclose the treating RMPs' names, qualifications, registration
-             status and SMR/NMR registration number. The numbers are the one part not
-             filled in: put each doctor's number inside its own <b> below, exactly as it
-             appears on the Andhra Pradesh Medical Council / NMC register, and delete
-             nothing else. tools/tests/wire-nmc.js fails while any of them is empty, so
-             this cannot be quietly forgotten. -->
-        <p class="legal-reg">Treating Registered Medical Practitioners —
-          Dr. Nikhitha Priyanka, MD (DVL), Reg. No. <b data-reg="nikhitha"></b> ·
-          Dr. Meghana Valeti, MD (DVL), Reg. No. <b data-reg="meghana"></b> ·
-          Dr. Sai Divija, MD (DVL), Reg. No. <b data-reg="divija"></b>
-          <span class="te tsub">చికిత్స చేసే రిజిస్టర్డ్ వైద్యులు — పైన పేర్కొన్న అర్హతలు మరియు రిజిస్ట్రేషన్ నంబర్లతో.</span></p>
+             status and SMR/NMR registration number. The same sentence is on every public
+             page of this site, generated once by docs.regDisclosure() in api/_docs.js;
+             tools/tests/wire-nmc.js checks each page against that function, so a number
+             corrected in one place and not the others is caught rather than published. -->
+        <p class="legal-reg">Treating Registered Medical Practitioners — Dr. Nikhitha Priyanka, MD (DVL), Reg. No. APMC/FMR/99660 · Dr. Meghana Valeti, MD (DVL), Reg. No. APMC/RMR260526001 · Dr. K. Sai Divija, MD (DVL), Reg. No. APMC/FMC/108959
+          <span class="te tsub" lang="te">చికిత్స చేసే రిజిస్టర్డ్ వైద్యులు — డా. నిఖితా ప్రియాంక, MD (DVL), రిజి. నం. APMC/FMR/99660 · డా. మేఘన వలేటి, MD (DVL), రిజి. నం. APMC/RMR260526001 · డా. కె. సాయి దివిజ, MD (DVL), రిజి. నం. APMC/FMC/108959</span></p>
         <p>© <span id="year"></span> DermaLuxeAI Private Limited · Skin, Hair &amp; Aesthetic Centre, Eluru.</p>
         <nav class="footer__legal">
           <a href="academy.html">🎓 Academy</a>

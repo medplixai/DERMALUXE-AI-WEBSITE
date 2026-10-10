@@ -20,11 +20,30 @@ const BRAND = { name: "DermaLuxe by Medicare Skin And Hair Clinics", nameTe: "�
 // thing to publish than a missing one — so each doctor's `reg` is read from
 // the environment and every place that shows a doctor simply leaves the line
 // out until it is set. tools/tests/wire-nmc.js reports which are still blank.
+// Supplied by the clinic on 10 October 2026 and written exactly as given —
+// not reformatted, not tidied. Meghana's has no slash before the digits where
+// the other two do; that is how it was provided, and a registration number is
+// not something to make consistent on a hunch. The env names stay as an
+// override so a correction does not need a code change.
 const DOCTORS = {
-  nikhitha: { name: "Dr. Nikhitha Priyanka", q: "MD (DVL)", reg: process.env.REG_NIKHITHA || "" },
-  meghana:  { name: "Dr. Meghana Valeti",    q: "MD (DVL)", reg: process.env.REG_MEGHANA  || "" },
-  divija:   { name: "Dr. Sai Divija",        q: "MD (DVL)", reg: process.env.REG_DIVIJA   || "" },
+  nikhitha: { name: "Dr. Nikhitha Priyanka", q: "MD (DVL)", reg: process.env.REG_NIKHITHA || "APMC/FMR/99660" },
+  meghana:  { name: "Dr. Meghana Valeti",    q: "MD (DVL)", reg: process.env.REG_MEGHANA  || "APMC/RMR260526001" },
+  divija:   { name: "Dr. K. Sai Divija",     q: "MD (DVL)", reg: process.env.REG_DIVIJA   || "APMC/FMC/108959" },
 };
+// The same three, in Telugu, for the Telugu half of the site. Kept beside the
+// English so the two cannot drift apart unnoticed.
+const DOCTORS_TE = {
+  nikhitha: "డా. నిఖితా ప్రియాంక",
+  meghana:  "డా. మేఘన వలేటి",
+  divija:   "డా. కె. సాయి దివిజ",
+};
+// The disclosure 3.2 Explanation IV asks a clinical establishment to publish.
+// It is one string, built here, so that the ninety-odd static pages that carry
+// it can be checked against this file instead of against each other.
+const ORDER = ["nikhitha", "meghana", "divija"];
+const regDisclosure = (lang) => (lang === "te"
+  ? "చికిత్స చేసే రిజిస్టర్డ్ వైద్యులు — " + ORDER.map((k) => `${DOCTORS_TE[k]}, ${DOCTORS[k].q}, రిజి. నం. ${DOCTORS[k].reg}`).join(" · ")
+  : "Treating Registered Medical Practitioners — " + ORDER.map((k) => `${DOCTORS[k].name}, ${DOCTORS[k].q}, Reg. No. ${DOCTORS[k].reg}`).join(" · "));
 // "Reg. No. APMC/12345 (Andhra Pradesh Medical Council)" — or "" when unset.
 const regLine = (who) => {
   const d = DOCTORS[String(who || "").toLowerCase()];
@@ -374,4 +393,4 @@ async function renderBatch(jobs) {
   return out;
 }
 
-module.exports = { BRAND, COURSES, BATCH, DOCTORS, regLine, regMissing, receiptHtml, admissionHtml, idCardHtml, certificateHtml, renderPdf, renderImage, renderBatch, inWords, money, dmy, course };
+module.exports = { BRAND, COURSES, BATCH, DOCTORS, DOCTORS_TE, regLine, regMissing, regDisclosure, receiptHtml, admissionHtml, idCardHtml, certificateHtml, renderPdf, renderImage, renderBatch, inWords, money, dmy, course };
