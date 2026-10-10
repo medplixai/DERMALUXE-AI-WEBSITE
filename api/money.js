@@ -35,7 +35,7 @@ function istDay(ts) {
 }
 
 const DEFAULT_RATES = [
-  { id: "consult", name: "Consultation", price: 500 },
+  { id: "consult", name: "Consultation", price: 300 },
   { id: "skin-analysis", name: "Skin & hair analysis", price: 1000 },
   { id: "hydrafacial", name: "HydraFacial", price: 3500 },
   { id: "peel", name: "Chemical peel", price: 2500 },

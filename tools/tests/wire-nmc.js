@@ -252,6 +252,23 @@ ok(/AI assistant/.test(facts) && /NMC 7\.2\(c\)/.test(facts),
 ok(/AI assistant ni/.test(read("api/voice-call.js")),
   "7.2(c) \u00b7 the phone receptionist says it is an AI");
 
+// 8.1(x), last sentence: "Any lawful disclosure of charges, packages or fees
+// shall be factual, transparent and not misleading." The consultation fee was
+// advertised as free in four places while the rate card billed a different
+// number again, so the fee now has to agree wherever it is stated: the desk's
+// rate card, the agent's price policy, and both language editions of the page
+// that answers "how much does a consultation cost".
+const money = read("api/money.js");
+const deskFee = (money.match(/\{ id: "consult",[^}]*price: (\d+)/) || [])[1];
+const policyFee = (read("api/_prices.js").match(/const DEFAULT = \{[^}]*consult: (\d+)/) || [])[1];
+const pageFees = ["skin-clinic-eluru.html", "skin-doctor-eluru-telugu.html"]
+  .flatMap((f) => [...read(f).matchAll(/consultation[^.<]{0,40}\u20b9(\d+)|\u0c15\u0c28\u0c4d\u0c38\u0c32\u0c4d\u0c1f\u0c47\u0c37\u0c28\u0c4d \u20b9(\d+)/gi)].map((m) => m[1] || m[2]));
+const fees = [...new Set([deskFee, policyFee, ...pageFees].filter(Boolean))];
+ok(deskFee && policyFee && pageFees.length >= 2 && fees.length === 1,
+  fees.length === 1 && deskFee
+    ? `8.1(x) \u00b7 the consultation fee is \u20b9${fees[0]} and says so everywhere \u2014 rate card, agent, both pages`
+    : `8.1(x) \u00b7 the consultation fee disagrees between places: desk ${deskFee || "?"}, agent ${policyFee || "?"}, pages ${pageFees.join("/") || "none stated"}`);
+
 // 3.2 Explanations III/IV: name, qualifications, registration status and the
 // SMR/NMR number, on everything we publish. The sentence is generated once by
 // docs.regDisclosure(); every public page carries a copy of it. Checking the

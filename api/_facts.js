@@ -41,7 +41,7 @@ HAIR TRANSPLANT (our flagship):
 - FUE: follicles taken one-by-one from the back of the head → implanted in bald area. No linear scar, local anesthesia (scalp numbed; tarvata 1-2 rojulu konchem noppi, vapu normal), day procedure (6-8 hrs), back to work in 2-3 days. New growth starts ~3-4 months, full result 9-12 months. Naatina follicles permanent ga perugutayi; migilina sonta juttu inka sannabadachu — daaniki veru care kavali.
 - DHI: implanter-pen technique — denser packing, precise natural hairline, no stitches, faster healing. Best for hairline design.
 - Bio-FUE: FUE + growth factors (PRP/GFC) during the procedure → faster healing, better graft survival.
-- Beard & eyebrow transplants also done. Graft count depends on baldness grade (Norwood) — decided free in consultation by senior hair transplant surgeons. Natural undetectable hairline is our specialty.
+- Beard & eyebrow transplants also done. Graft count depends on baldness grade (Norwood) — consultation lo senior hair transplant surgeon chusi cheptaru. Hairline ni sahajam ga kanipinchela plan chestaru.
 AESTHETICS quick facts:
 - Hydrafacial: 3-step machine facial — vortex deep cleanse → gentle exfoliation → serum hydration push. ~45 min, chaala mandiki comfortable, same-day glow, downtime daadapu undadu (same day makeup OK; konchem erupu vasthe konni gantallo thaggutundi). Events mundu 2-3 rojulu manchidi; monthly maintenance baaga pani chestundi. Andariki suitable, sensitive skin ki kuda.
 - Chemical peels: doctor-grade peel solution controlled ga paita layer exfoliate chestundi — pigmentation, acne marks, tanning, dullness ki. 15-20 min sitting, light tingling matrame; 2-4 rojulu mild flaking. 4-6 sittings (3-4 weeks gap); first peel nunche glow difference kanipistundi.

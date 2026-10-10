@@ -18,18 +18,31 @@ const guard = require("./_guard.js");
 
 const KEY = "agent:prices";
 const MODES = ["none", "consult", "bands"];
+// The consultation used to be advertised as free in four places while the rate
+// card billed ₹500. It is ₹300, and NMC 8.1(x) is explicit that a lawful
+// disclosure of charges "shall be factual, transparent and not misleading" —
+// so the default is now to tell a patient the fee when they ask, rather than
+// to say nothing and leave them guessing after "free" was taken away. The
+// owner's own setting in the staff app still overrides this.
+const DEFAULT = { mode: "consult", consult: 300 };
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
 const rupee = (n) => "₹" + Number(n).toLocaleString("en-IN");
 const money = (v) => Math.max(0, Math.min(500000, Math.round(Number(String(v == null ? "" : v).replace(/[^\d.]/g, "")) || 0)));
 
 async function load(cfg) {
-  if (!cfg) return { mode: "none", consult: 0, bands: [] };
-  const v = parse(((await guard.kvCommand(cfg, ["GET", KEY]).catch(() => ({}))) || {}).result || "", null) || {};
+  if (!cfg) return { mode: DEFAULT.mode, consult: DEFAULT.consult, bands: [] };
+  const raw = ((await guard.kvCommand(cfg, ["GET", KEY]).catch(() => ({}))) || {}).result || "";
+  const v = parse(raw, null);
+  // The default applies only when the owner has never set a policy. Once they
+  // have, what they chose is returned exactly as they chose it — including
+  // "none", which has to keep meaning silence, and a zero fee, which has to
+  // keep failing validation rather than being quietly filled in from here.
+  if (!v) return { mode: DEFAULT.mode, consult: DEFAULT.consult, bands: [], by: "", ts: 0, set: false };
   return {
     mode: MODES.includes(v.mode) ? v.mode : "none",
     consult: money(v.consult),
     bands: (Array.isArray(v.bands) ? v.bands : []).map((b) => ({ name: String(b.name || "").trim().slice(0, 40), from: money(b.from), to: money(b.to) })).filter((b) => b.name && b.from > 0).slice(0, 8),
-    by: v.by || "", ts: Number(v.ts) || 0,
+    by: v.by || "", ts: Number(v.ts) || 0, set: true,
   };
 }
 
@@ -37,7 +50,10 @@ async function save(cfg, input, by) {
   const cur = await load(cfg);
   const next = {
     mode: MODES.includes(input.mode) ? input.mode : cur.mode,
-    consult: input.consult != null ? money(input.consult) : cur.consult,
+    // cur.set is false when nothing has ever been saved, and in that case the
+    // \u20b9300 default must not stand in for a fee the owner did not type \u2014 or
+    // "set the consult mode" with no number stops being an error.
+    consult: input.consult != null ? money(input.consult) : (cur.set ? cur.consult : 0),
     bands: Array.isArray(input.bands) ? input.bands.map((b) => ({ name: String(b.name || "").trim().slice(0, 40), from: money(b.from), to: money(b.to) })).filter((b) => b.name && b.from > 0).slice(0, 8) : cur.bands,
     by: String(by || "").slice(0, 40), ts: Date.now(),
   };

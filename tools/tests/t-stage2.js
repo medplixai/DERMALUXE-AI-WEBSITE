@@ -65,8 +65,14 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   console.log("STAGE 2 — THE PATIENTS WE ALREADY HAVE\n");
 
   console.log("  — what the agent may say about money —");
-  is((await prices.load(cfg)).mode, "none", "until the owner decides, the old rule stands: nothing");
-  is(await prices.blockFor(cfg), "", "and the prompt says nothing extra");
+  // The default used to be silence. The consultation was advertised as free in
+  // four places while the desk billed something else, so taking "free" away and
+  // leaving nothing in its place would have left a patient worse informed than
+  // before. NMC 8.1(x): a disclosure of fees "shall be factual, transparent and
+  // not misleading" \u2014 so the fee is told when asked, and only when asked.
+  is((await prices.load(cfg)).mode, "consult", "with nothing set, the agent may state the consultation fee");
+  is(/consultation fee is \u20b9300/.test(await prices.blockFor(cfg)), true, "and the fee it states is \u20b9300");
+  is(/Never volunteer it/.test(await prices.blockFor(cfg)), true, "but it never brings the price up itself");
   is((await prices.save(cfg, { mode: "consult" }, "Owner")).ok, false, "a consultation policy without a fee is refused");
   is((await prices.save(cfg, { mode: "bands", consult: 500, bands: [{ name: "Hydrafacial", from: 4000, to: 3000 }] }, "Owner")).error, "Hydrafacial: 'to' 'from' kanna takkuva undi", "a range that runs backwards is refused");
   const ps = await prices.save(cfg, { mode: "bands", consult: "₹500", bands: [{ name: "Hydrafacial", from: "3,000", to: 4500 }, { name: "Laser hair removal", from: 2500, to: 0 }] }, "Owner");

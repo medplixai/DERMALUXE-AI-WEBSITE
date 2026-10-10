@@ -93,7 +93,9 @@ const lead = (o) => h.run(["RPUSH", "dl_leads", JSON.stringify(Object.assign({ t
   is(/laser offer cheppaku/.test(sysParts[sysParts.length - 1].text), true, "they come after the breakpoint, where changing them costs nothing");
   is("cache_control" in sysParts[sysParts.length - 1], false, "which is why that block is not itself cached");
   const r2 = await rules.remove(cfg, r1.rule.id);
-  is([r2.ok, await rules.block(cfg)], [true, ""], "taking it off leaves nothing behind");
+  // The block is no longer empty at rest: it carries the consultation fee
+  // policy. What has to be gone is the rule the owner just removed.
+  is([r2.ok, /laser offer cheppaku/.test(await rules.block(cfg))], [true, false], "taking it off leaves nothing of that rule behind");
   is((await rules.remove(cfg, "nope")).ok, false, "removing a rule that is not there says so");
 
   console.log("\n  — the desk asks the agent to write it —");
