@@ -1185,11 +1185,10 @@ module.exports = async (req, res) => {
   // ---- Referral program: personal code out, friend's code in -------------
   if (cfg && !imageId && !audioId) {
     const raw = text.trim();
-    const offer = process.env.REFERRAL_OFFER || "special benefit";
     if (/^(refer|referral|refer friend|my code|code|referral code)$/i.test(raw)) {
       const code = await referral.myCode(cfg, digits);
       const n = await referral.countFor(cfg, digits);
-      return respond(`🎁 *Mee referral code: ${code}*\n\n👨‍👩‍👧 Friends/family ki ee code share cheyandi\n💝 Vaallu first visit lo ee code cheppithe — *iddariki ${offer}*\n${n ? `🏆 Ippativaraku meeru pampinchina vaallu: *${n}*\n` : ""}\nShare cheyadaniki 👇 (copy chesi pampandi)\n\n_DermaLuxe by Medicare, Eluru — skin & hair treatments ki chala manchi clinic 😊 Naa referral code *${code}* cheppandi: wa.me/919959134666_`);
+      return respond(`*Mee referral code: ${code}*\n\n👨‍👩‍👧 Mee friends/family ki ee code ivvandi — vaallu first visit lo cheppithe, meeru cheppi vachcharani manaki telustundi.\n${n ? `Ippativaraku mee code tho vachchina vaallu: *${n}*\n` : ""}\nShare cheyadaniki 👇 (copy chesi pampandi)\n\n_DermaLuxe by Medicare, Eluru — skin & hair treatments ki chala manchi clinic 😊 Naa referral code *${code}* cheppandi: wa.me/919959134666_`);
     }
     const cm = raw.match(/\b(DL\d{4})\b/i);
     if (cm && raw.length <= 60) {

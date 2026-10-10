@@ -1332,7 +1332,7 @@ async function handle(cfg, digits, text, photo, video) {
     if (!cfg) return "Storage ledu.";
     const rows = await referral.leaderboard(cfg, 10);
     if (!rows.length) {
-      return "🎁 *Referrals*\n\nInka evaru referral tho raaledu.\n\nPatients ki cheppandi: agent ki *REFER* ani type chesthe valla personal code vastundi 👍\nOffer marchali ante REFERRAL_OFFER env set cheyandi.";
+      return "🎁 *Referrals*\n\nInka evaru referral tho raaledu.\n\nPatients ki cheppandi: agent ki *REFER* ani type chesthe valla personal code vastundi 👍\nIdi evaru evarini pampincharo telusukovadaniki matrame — referral ki emi ivvakoodadhu (NMC 8.1(vii)).";
     }
     const total = rows.reduce((a, r2) => a + r2.n, 0);
     const lines = [`🎁 *Referrals — total ${total} patients*`, ""];

@@ -118,7 +118,7 @@ const ACADEMY_TOPICS = [
     img: "Confident South Indian woman in her late 20s in a white clinic coat standing in the doorway of her own small treatment room, warm golden light, dark background." },
   { key: "acad-trainer", pillar: "academy",
     h1: "Taught by an MD dermatologist", te: "MD డెర్మటాలజిస్ట్ చేత శిక్షణ",
-    sub: "Dr. Meghana Valeti · MD DVL, Gold Medalist · Not a parlour course", page: "academy.html",
+    sub: "Dr. Meghana Valeti · MD DVL · Not a parlour course", page: "academy.html",
     img: "Over-the-shoulder view of an instructor's gloved hand guiding a young trainee's hand as she positions a laser handpiece, both faces out of frame, focused hands-on teaching." },
 ];
 
@@ -334,7 +334,7 @@ Facts you may use, and nothing beyond them:
 - Batch ${docs.BATCH.no} starts ${docs.BATCH.start}, at ${docs.BATCH.venue}. ${docs.BATCH.seats} seats.
 - Courses: Advanced Skin Care, Advanced Hair Care, or Skin + Hair Master Programme.
 - Launch fees: Skin ₹49,999 and Hair ₹49,999 (regular ₹1,00,000 each); Skin + Hair ₹99,999 (regular ₹2,00,000). ₹9,999 reserves a seat.
-- Trained by Dr. Meghana Valeti, MD DVL, Gold Medalist. Hands-on, on USFDA-approved machines, on real supervised cases.
+- Trained by Dr. Meghana Valeti, MD DVL. Hands-on, on USFDA-approved machines, on real supervised cases.
 - ${seats}
 - ${when}
 

@@ -102,7 +102,7 @@ h1 .g{color:var(--gold)}
     <div class="seats"><div class="n">${B.seats}</div><div class="l">SEATS ONLY</div></div>
   </div>
   <div class="dr"><img src="${TRAINER}">
-    <div><div class="n">Dr. Meghana Valeti <span>— MD, DVL · Gold Medalist</span></div>
+    <div><div class="n">Dr. Meghana Valeti <span>— MD, DVL · Dermatologist &amp; Cosmetologist</span></div>
     <div class="t">Meeru nerchukunedi aame daggara ne. 1 nela course, leda 2 nelalu — internship + placement interviews tho.</div></div>
   </div>
 </div>

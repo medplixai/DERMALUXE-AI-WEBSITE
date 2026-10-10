@@ -115,7 +115,7 @@ async function snapshot(cfg, me) {
 const CLINIC = `DermaLuxe by Medicare — Skin, Hair & Aesthetics, Eluru (part of Medicare Skin & Hair Clinics: 10 branches in Andhra Pradesh).
 Mon–Sat 9 AM–9 PM, Sunday closed. Rama Mahal, Kasturi Vari Street, Opposite Happy Mobiles, R.R. Peta, Eluru 534002.
 WhatsApp 99591 34666 (AI agent, 24×7) · Calls +91 99491 34666 · www.dermaluxe.ai
-Doctors: Dr. Nikhitha Priyanka (MD DVL, main consultant), Dr. Meghana Valeti (MD DVL, Gold Medalist, Founder & Medical Director), Dr. Sai Divija (MD DVL).
+Doctors: Dr. Nikhitha Priyanka (MD DVL, main consultant), Dr. Meghana Valeti (MD DVL, Founder & Medical Director), Dr. Sai Divija (MD DVL).
 Services: lasers (Diode LHR, PICO, CO2, MNRF), peels, Hydrafacial, acne/pigmentation/anti-ageing, hair fall, PRP & GFC, hair transplant (FUE/DHI), medical dermatology, weight loss, bridal packages.
 DermaLuxe Academy: Skin Care / Hair Care / Skin+Hair courses, 1 or 2 months, ${docs.BATCH.seats} seats per batch, Batch ${docs.BATCH.no} starts ${docs.BATCH.start}. Launch offer ₹49,999 / ₹49,999 / ₹99,999 till ${docs.BATCH.offerEnd}; ₹9,999 reserves a seat. Trainer Dr. Meghana Valeti.
 Automation already running: WhatsApp AI agent (bookings, reminders, follow-ups, reviews, referrals), Instagram/Facebook DM agents, daily auto-post to Instagram + Facebook, academy daily study material + fee reminders, staff dashboard.`;

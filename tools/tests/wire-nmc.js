@@ -115,6 +115,15 @@ const RULES = [
     // ఉండవు", "హామీ ఇచ్చేవారు నిజాయితీగా లేరు" — is the clinic refusing to
     // promise, which is what 8.1(vi) wants, not a breach of it.
     allowTe: /హామీ[^.।]{0,60}(కాదు|లేరు|ఉండవు|లేదు)|(తప్పుడు|అద్భుత)\s*హామీ|హామీ ఇచ్చే/ },
+  { clause: "8.1(iii)", what: "awards and personal achievements",
+    // This one was missing on the first pass and "Gold Medalist" went live in
+    // eleven places — the home page, its JSON-LD, the academy page, the agent's
+    // briefing, the academy poster and the owner's own summary. The audit said
+    // the site was clean; curl said otherwise. Hence the rule.
+    re: /gold medal(l?ist)?|medall?ist|\b(award|awarded)\b|rank holder|university (first|topper)|🏅|🥇|🏆/gi,
+    // The academy's own certificate is a thing it issues to a student, not a
+    // prize a doctor won; the rule that forbids the claim has to name it.
+    allow: /educationalCredentialAwarded|Academy Certificate|NEVER write|binds every word|an award\b/i },
   { clause: "8.1(v)", what: "before/after offered to a prospective patient",
     re: /before[\s-]?(and[\s-]?)?after|before\/after/gi,
     // Planning a procedure with the surgeon, a rule forbidding the claim, and
@@ -181,7 +190,14 @@ ok(!/show_results/.test(read("api/_facts.js")) || /pampakoodadhu/.test(read("api
 ok(!/o\.gallery/.test(read("api/_trust.js")), "8.1(v) · the trust pack carries no patient photographs");
 
 // 8.1(vii)/(x): nothing may be given for referring a patient.
-ok(!/process\.env\.REFERRAL_OFFER/.test(read("api/referral.js")), "8.1(vii) · no reward is attached to a referral");
+// Checking only api/referral.js was not enough: whatsapp.js read the same
+// variable itself and, with it unset, still promised both people "a special
+// benefit". So the question is whether ANY file reads it.
+const readsOffer = fs.readdirSync(path.join(ROOT, "api")).filter((f) => /\.js$/.test(f))
+  .filter((f) => /process\.env\.REFERRAL_OFFER/.test(fs.readFileSync(path.join(ROOT, "api", f), "utf8")));
+ok(readsOffer.length === 0, readsOffer.length
+  ? `8.1(vii) · still reads REFERRAL_OFFER: ${readsOffer.join(", ")}`
+  : "8.1(vii) · nothing anywhere attaches a reward to a referral");
 
 // 8.1(ix)/(iii): the ad planner is told the rules, because it writes the copy.
 const plan = read("api/_adplan.js");
