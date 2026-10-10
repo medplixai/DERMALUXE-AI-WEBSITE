@@ -21,6 +21,17 @@ const path = require("path");
 const { execFileSync } = require("child_process");
 
 const ROOT = path.resolve(__dirname, "..");
+
+// Node does not read .env by itself, and telling somebody to write one and
+// then not reading it is a trap. No dependency: the file is KEY=value lines.
+(function loadEnv() {
+  const f = path.join(ROOT, ".env");
+  if (!fs.existsSync(f)) return;
+  for (const line of fs.readFileSync(f, "utf8").split("\n")) {
+    const m = line.match(/^\s*([A-Z0-9_]+)\s*=\s*(.*)\s*$/);
+    if (m && !process.env[m[1]]) process.env[m[1]] = m[2].replace(/^["']|["']$/g, "");
+  }
+})();
 const OUT = path.join(ROOT, "assets", "tx");
 const MODELS = [process.env.DAILY_IMAGE_MODEL, "gemini-3-pro-image", "gemini-2.5-flash-image"].filter((m, i, a) => m && a.indexOf(m) === i);
 
@@ -145,18 +156,26 @@ async function main() {
     if (!fs.existsSync(webp)) {
       if (dry) { console.log(`  would draw  ${slug}`); skipped++; continue; }
       if (!key) { console.log(`  no key, cannot draw ${slug} — skipping`); skipped++; continue; }
-      // Vercel can mark a variable "Sensitive", and then it is write-only:
-      // `vercel env pull` returns the literal string [SENSITIVE] instead of the
-      // value. Every secret on this project is marked that way, so a pull looks
-      // like it worked and the first API call fails with an unhelpful 400.
-      // Say so here instead.
-      if (/^\[SENSITIVE\]?$/i.test(key) || key.length < 20) {
-        console.error("\n  The key is not a key — it is Vercel's [SENSITIVE] placeholder.");
-        console.error("  Those variables are write-only; nobody can read them back, which is");
-        console.error("  why the pull looked fine. Get the key from Google AI Studio instead");
-        console.error("  (aistudio.google.com/apikey) and put it in a local .env:");
-        console.error("      echo 'GEMINI_API_KEY=…' > .env");
-        console.error("  .env is already in .gitignore, so it cannot be committed.");
+      // Two ways the key is present but not a key, and they need different
+      // answers — a message that names the wrong one sends somebody looking in
+      // the wrong place.
+      const placeholder = /^\[SENSITIVE\]?$/i.test(key) ? "sensitive"
+        : /^(mee_key|your_key|…|\.\.\.|xxx+)$/i.test(key) ? "example"
+        : key.length < 20 ? "short" : null;
+      if (placeholder) {
+        if (placeholder === "sensitive") {
+          console.error("\n  That is Vercel's [SENSITIVE] placeholder, not a key. Every variable on");
+          console.error("  this project is marked Sensitive, which makes it write-only: `vercel env");
+          console.error("  pull` reports success and returns [SENSITIVE] for all of them.");
+        } else if (placeholder === "example") {
+          console.error(`\n  .env still holds the example text (${key}), not a real key.`);
+        } else {
+          console.error(`\n  The key in .env is ${key.length} characters. A Gemini key is about 39 and starts AIza.`);
+        }
+        console.error("\n  Take the real one from Google AI Studio — aistudio.google.com/apikey —");
+        console.error("  and put it in .env, replacing what is there:");
+        console.error("      echo 'GEMINI_API_KEY=AIza…' > .env");
+        console.error("  .env is in .gitignore (line 7, `.env*`), so it cannot be committed.");
         process.exit(3);
       }
       process.stdout.write(`  drawing ${slug} … `);
