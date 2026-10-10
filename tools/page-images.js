@@ -57,9 +57,43 @@ const SUBJECTS = {
   "bridal-skin-hair-package-eluru":  "Dark silk with a few gold threads woven through, soft folds.",
   "beard-eyebrow-transplant-eluru":  "Fine dark fibres of varying length on a dark ground, gold rim light.",
   "prp-gfc-hair-therapy-eluru":      "Warm amber fluid suspended in dark glass, a single slow swirl.",
+  "hair-fall-treatment-eluru":       "A dark field of fine soft fibres thinning towards one side, warm gold rim light.",
+  "female-hair-loss-treatment-eluru":"Long dark fibres falling in a soft curve, a few gold threads among them.",
+  "dandruff-treatment-eluru":        "Fine pale flakes suspended in dark air, caught in a shaft of warm gold light.",
+  "premature-grey-hair-treatment-eluru": "Dark and silver fibres side by side on a dark ground, warm light along the parting.",
+  "hair-transplant-eluru":           "Fine dark fibres rising from a dark ground in even rows, gold rim light along each.",
+  "eczema-dry-skin-treatment-eluru": "Dry cracked dark clay softening where water has touched it, warm gold light.",
+  "skin-allergy-treatment-eluru":    "Soft dark fabric with a faint warm bloom spreading across it, then fading.",
+  "fungal-infection-treatment-eluru":"Still dark water with a single clean ring spreading outward, gold light on the ring.",
+  "warts-moles-skin-tags-removal-eluru": "A smooth dark stone with one raised bead on its surface, lit from the side in gold.",
+  "std-intimate-skin-care-eluru":    "A closed dark envelope of heavy paper with a single gold seal, private and quiet.",
+  "mnrf-treatment-eluru":            "A grid of fine gold points of light on dark velvet, evenly spaced, receding into shadow.",
+  "body-contouring-eluru":           "Smooth dark sculpted forms in soft shadow, one gold edge light following the curve.",
+  "online-dermatologist-consultation": "A single warm gold light in a dark room, as if a lamp were left on for someone.",
+  "blog-why-pimples-keep-coming-back": "A dark surface with a repeating pattern that fades and returns, gold light across it.",
   "skin-clinic-eluru":               "A still, dark, luxurious surface of stone and glass with warm gold light pooling softly.",
   "treatments":                      "An arrangement of dark glass and stone forms, warm gold light between them.",
 };
+
+// The Telugu edition of an English page, read from the page's own link.
+function twin(enPage) {
+  const f = path.join(ROOT, enPage);
+  if (!fs.existsSync(f)) return null;
+  const m = fs.readFileSync(f, "utf8").match(/href="([a-z0-9-]*telugu[a-z0-9-]*\.html)"/);
+  return m && fs.existsSync(path.join(ROOT, m[1])) ? m[1] : null;
+}
+
+// Every public page that ought to get a picture, so one with no subject is
+// reported rather than quietly left out.
+const NOT_A_TREATMENT = new Set(["staff.html", "leads.html", "marketing.html", "my.html", "pay.html",
+  "offline.html", "404.html", "academy-join.html", "staff-app.html", "portal.html", "privacy.html",
+  "terms.html", "cookies.html", "careers.html", "index.html", "academy.html", "blog.html"]);
+function uncovered() {
+  return fs.readdirSync(ROOT)
+    .filter((f) => f.endsWith(".html") && !/telugu/.test(f) && !NOT_A_TREATMENT.has(f) && !f.startsWith("google"))
+    .map((f) => f.replace(/\.html$/, ""))
+    .filter((s) => !(s in SUBJECTS));
+}
 
 async function gemini(model, body, key) {
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
@@ -122,8 +156,14 @@ async function main() {
       console.log(`${Math.round(fs.statSync(webp).size / 1024)} KB`);
       made++;
     }
-    // put it on both language editions of the page
-    for (const page of [`${slug}.html`, `${slug.replace(/-eluru$/, "")}-eluru-telugu.html`, `${slug}-telugu.html`]) {
+    // Put it on both language editions. The Telugu file is NOT a predictable
+    // transform of the English one — alopecia-areata-treatment-eluru pairs with
+    // alopecia-areata-eluru-telugu, glutathione-skin-whitening with
+    // glutathione-eluru-telugu — and a guessed name fails silently, leaving
+    // half the Telugu site without pictures and nothing to say so. Every
+    // English page names its twin in the "ఈ పేజీ తెలుగులో చదవండి" link, so ask
+    // the page.
+    for (const page of [`${slug}.html`, twin(`${slug}.html`)].filter(Boolean)) {
       const f = path.join(ROOT, page);
       if (!fs.existsSync(f)) continue;
       let s = fs.readFileSync(f, "utf8");
@@ -137,5 +177,14 @@ async function main() {
     }
   }
   console.log(`\n  drawn ${made} · placed on ${placed} page(s) · skipped ${skipped}${dry ? "  (dry run — nothing written)" : ""}`);
+  const gaps = uncovered();
+  if (gaps.length) {
+    console.log(`\n  ✗ ${gaps.length} public page(s) have no subject and would get nothing:`);
+    gaps.forEach((g) => console.log("      " + g));
+  } else {
+    console.log("  every public treatment page has a subject");
+  }
+  const noTwin = Object.keys(SUBJECTS).filter((s2) => fs.existsSync(path.join(ROOT, `${s2}.html`)) && !twin(`${s2}.html`));
+  if (noTwin.length) console.log(`\n  note — no Telugu edition found for: ${noTwin.join(", ")}`);
 }
 main();
