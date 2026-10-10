@@ -401,13 +401,26 @@ h3 { font-size: 1.4rem; }
   aspect-ratio: 4/5; border-radius: var(--radius); border: 1px solid var(--line); position: relative; overflow: hidden;
   background:
     linear-gradient(180deg, rgba(10,10,12,0), rgba(10,10,12,.25)),
-    /* A hair-transplant before/after photograph used to be the background of
-       this card, visible on the home page. NMC 8.1(v) forbids displaying
-       "before and after" photographs for promotion, whoever is in them, and
-       6.2 says a patient's consent would not have cured it. The card keeps its
-       gradient; the facts about the procedure are in the text beside it. */
     linear-gradient(160deg, #1c1b1f, #121115);
 }
+/* The card used to show a hair-transplant before/after photograph. NMC 8.1(v)
+   forbids displaying "before and after" pictures for promotion, whoever is in
+   them, and 6.2 says a patient's consent would not have cured it. It holds a
+   drawn diagram of the procedure instead: a generated photograph of a
+   treatment room would be a depiction of this clinic's facilities that nobody
+   could verify, which 7.2(a) forbids and 9.1 answers by allowing only
+   objective, verifiable particulars. A diagram claims nothing about the room,
+   says something true about the operation, and is plainly a drawing. */
+.ht__diagram { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ht__diagram text { fill: var(--muted); font-family: inherit; }
+.htd-lbl { font-size: 13px; letter-spacing: .14em; text-transform: uppercase; fill: var(--gold-2); }
+.htd-sub { font-size: 12px; fill: var(--muted-2); }
+.htd-num { font-size: 15px; text-anchor: middle; fill: var(--gold-2); font-weight: 500; }
+/* Right-aligned on purpose: the "5000+ grafts" badge sits over the bottom-left
+   of this card, from x -14 to 149 in the diagram's own coordinates, and a
+   centred caption disappeared behind it. */
+.htd-cap { font-size: 13px; text-anchor: end; }
+.htd-te { font-size: 12px; fill: var(--muted-2); }
 .ht__visual-stat {
   position: absolute; bottom: -20px; left: -16px; background: var(--panel); border: 1px solid var(--line);
   border-radius: var(--radius-sm); padding: 1rem 1.3rem; box-shadow: 0 24px 50px -20px rgba(0,0,0,.8); max-width: 200px;

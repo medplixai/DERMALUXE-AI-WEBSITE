@@ -695,7 +695,78 @@
 
         <div class="ht__intro">
           <div class="ht__visual reveal">
-            <div class="ht__visual-img"></div>
+            <div class="ht__visual-img">
+            <!-- How FUE/DHI actually works, drawn rather than photographed.
+                 A generated "photo" of a treatment room would be a depiction of
+                 this clinic's facilities that nobody could verify, which NMC
+                 7.2(a) forbids; a diagram makes no claim about the room, says
+                 something true about the procedure, and is plainly a drawing. -->
+            <svg class="ht__diagram" viewBox="0 0 400 500" role="img"
+                 aria-label="Diagram: follicular units are taken from the permanent donor area at the back of the scalp and implanted in the thinning area at the front.">
+              <defs>
+                <linearGradient id="htGold" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0%" stop-color="#f4e2b8"/><stop offset="100%" stop-color="#a87f3c"/>
+                </linearGradient>
+                <radialGradient id="htGlow" cx="50%" cy="38%" r="62%">
+                  <stop offset="0%" stop-color="#c6a25c" stop-opacity=".16"/>
+                  <stop offset="100%" stop-color="#c6a25c" stop-opacity="0"/>
+                </radialGradient>
+              </defs>
+              <rect width="400" height="500" fill="url(#htGlow)"/>
+
+              <!-- head, in profile, facing left -->
+              <path d="M258 128c0-50-42-88-96-88-54 0-94 38-94 92 0 26 8 44 8 62 0 14-10 20-10 30 0 9 8 13 14 15 0 14-2 24 2 32 5 10 18 13 32 13"
+                    fill="none" stroke="url(#htGold)" stroke-width="2.2" stroke-linecap="round" opacity=".9"/>
+              <path d="M150 300c22 0 40-4 56-14 26-16 42-44 48-78"
+                    fill="none" stroke="url(#htGold)" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>
+
+              <!-- thinning zone, front and crown -->
+              <g fill="#e9cf8f" opacity=".40">
+                <circle cx="108" cy="72" r="2"/><circle cx="126" cy="60" r="2"/><circle cx="146" cy="54" r="2"/>
+                <circle cx="166" cy="52" r="2"/><circle cx="186" cy="56" r="2"/><circle cx="118" cy="88" r="2"/>
+                <circle cx="140" cy="74" r="2"/><circle cx="162" cy="68" r="2"/><circle cx="184" cy="72" r="2"/>
+              </g>
+              <text x="88" y="38" class="htd-lbl">Thinning area</text>
+
+              <!-- donor band, dense -->
+              <path d="M214 186c22-16 36-44 38-74" fill="none" stroke="#e9cf8f" stroke-width="20" opacity=".16" stroke-linecap="round"/>
+              <g fill="#f4e2b8" opacity=".85">
+                <circle cx="222" cy="168" r="2.1"/><circle cx="232" cy="152" r="2.1"/><circle cx="240" cy="136" r="2.1"/>
+                <circle cx="246" cy="118" r="2.1"/><circle cx="214" cy="180" r="2.1"/><circle cx="238" cy="166" r="2.1"/>
+                <circle cx="247" cy="148" r="2.1"/><circle cx="252" cy="130" r="2.1"/>
+              </g>
+              <text x="262" y="150" class="htd-lbl">Donor area</text>
+              <text x="262" y="168" class="htd-sub">permanent hair</text>
+
+              <!-- the move -->
+              <path d="M246 196c-28 34-70 44-116 38" fill="none" stroke="#c6a25c" stroke-width="1.6"
+                    stroke-dasharray="5 7" stroke-linecap="round" opacity=".8"/>
+              <path d="M136 232l-12 2 9 8z" fill="#c6a25c" opacity=".9"/>
+
+              <!-- follicular units, magnified -->
+              <g transform="translate(62 330)">
+                <circle cx="0" cy="0" r="34" fill="none" stroke="url(#htGold)" stroke-width="1.4" opacity=".5"/>
+                <path d="M0 14c0-14-1-22-1-30" stroke="#f4e2b8" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <circle cx="0" cy="16" r="3" fill="#e9cf8f"/>
+                <text x="0" y="52" class="htd-num">1</text>
+              </g>
+              <g transform="translate(150 330)">
+                <circle cx="0" cy="0" r="34" fill="none" stroke="url(#htGold)" stroke-width="1.4" opacity=".5"/>
+                <path d="M-5 14c-2-14-4-22-6-30M5 14c2-14 4-22 6-30" stroke="#f4e2b8" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <circle cx="0" cy="16" r="3" fill="#e9cf8f"/>
+                <text x="0" y="52" class="htd-num">2</text>
+              </g>
+              <g transform="translate(238 330)">
+                <circle cx="0" cy="0" r="34" fill="none" stroke="url(#htGold)" stroke-width="1.4" opacity=".5"/>
+                <path d="M-8 14c-3-14-6-21-9-28M0 14c0-14 0-22 0-31M8 14c3-14 6-21 9-28" stroke="#f4e2b8" stroke-width="2" fill="none" stroke-linecap="round"/>
+                <circle cx="0" cy="16" r="3" fill="#e9cf8f"/>
+                <text x="0" y="52" class="htd-num">3</text>
+              </g>
+              <text x="392" y="412" class="htd-cap">1–3 hair grafts,</text>
+              <text x="392" y="432" class="htd-cap">moved one by one</text>
+              <text x="392" y="456" class="htd-cap htd-te">1–3 వెంట్రుకల గ్రాఫ్ట్‌లు</text>
+            </svg>
+          </div>
             <div class="ht__visual-stat">
               <span class="gold-text">5000+</span>
               <small>grafts in a single session<span class="te">ఒకే సెషన్‌లో గ్రాఫ్ట్‌లు</span></small>
