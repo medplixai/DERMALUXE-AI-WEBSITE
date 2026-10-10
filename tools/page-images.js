@@ -172,10 +172,20 @@ async function main() {
         } else {
           console.error(`\n  The key in .env is ${key.length} characters. A Gemini key is about 39 and starts AIza.`);
         }
-        console.error("\n  Take the real one from Google AI Studio — aistudio.google.com/apikey —");
-        console.error("  and put it in .env, replacing what is there:");
-        console.error("      echo 'GEMINI_API_KEY=AIza…' > .env");
+        // Do NOT print a copyable command containing a placeholder. Twice now
+        // an example line has been run verbatim, which is a fair thing to do
+        // with a command somebody hands you — so hand over one that is whole.
+        console.error("\n  The key is at aistudio.google.com/apikey — it starts AIza and is about");
+        console.error("  39 characters. To put it in, run this (it opens the file, nothing to");
+        console.error("  fill in on the command line):");
+        console.error("\n      open -e .env\n");
+        console.error("  then replace everything after the = with the key, save, and close.");
         console.error("  .env is in .gitignore (line 7, `.env*`), so it cannot be committed.");
+        process.exit(3);
+      }
+      if (!/^AIza[\w-]{30,}$/.test(key)) {
+        console.error(`\n  That does not look like a Gemini key (starts "${key.slice(0, 4)}", ${key.length} chars).`);
+        console.error("  Expected AIza… and about 39 characters. Check aistudio.google.com/apikey.");
         process.exit(3);
       }
       process.stdout.write(`  drawing ${slug} … `);
