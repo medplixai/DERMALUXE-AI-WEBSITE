@@ -35,56 +35,58 @@ const ROOT = path.resolve(__dirname, "..");
 const OUT = path.join(ROOT, "assets", "tx");
 const MODELS = [process.env.DAILY_IMAGE_MODEL, "gemini-3-pro-image", "gemini-2.5-flash-image"].filter((m, i, a) => m && a.indexOf(m) === i);
 
-const LOOK = "Dark, luxurious, editorial still life on a near-black background (#0d0d0f) with warm champagne-gold light. Soft shadows, shallow depth of field, fine grain, nothing clinical, nothing medical, no instruments. ABSOLUTELY NO PEOPLE, no faces, no hands, no skin, no body parts. No text, no letters, no numbers, no logos, no watermark. Photographic, 3:2 landscape.";
+const LOOK = "Clinical dermatology reference photograph, extreme macro, filling the whole frame. Indian / South Asian skin. Natural indoor light, honest and unretouched, not beautified, not dramatised. NO face — no eyes, no mouth, no nose, no recognisable portrait, nothing by which a person could be identified. ONE untreated area only: never a treated side, never a comparison, never a split frame, never anything that suggests a result or an improvement. No text, no logos, no instruments, no hands, no clinic, no people posing.";
 
 // page → the thing the picture is ABOUT, kept abstract on purpose.
 const SUBJECTS = {
-  "acne-treatment-eluru":            "A single clear water droplet resting on a matte dark stone, lit from one side with a thin gold rim.",
-  "chemical-peel-eluru":             "Several sheets of translucent frosted glass, stacked and slightly offset, warm gold light passing through the edges.",
-  "laser-hair-removal-eluru":        "Fine parallel threads of warm gold light crossing a dark field, like a beam split into strands.",
-  "pigmentation-treatment-eluru":    "A drop of warm sepia ink dispersing in still dark water, caught mid-bloom.",
-  "hydrafacial-eluru":               "A slow vortex in dark water, gold light catching the spiral, tiny bubbles suspended.",
-  "hifu-face-lift-eluru":            "Concentric ripples converging to one point on a dark liquid surface, gold light along each ring.",
-  "prp-hair-treatment-eluru":        "Warm amber liquid in motion inside dark glass, caught spinning, light through the fluid.",
-  "botox-fillers-eluru":             "A single ribbon of smooth silk suspended in dark air, one gold highlight running along the fold.",
-  "carbon-laser-facial-eluru":       "Fine black carbon powder on a dark surface, a sweep of gold light lifting it.",
-  "open-pores-oily-skin-treatment-eluru": "Macro of dark volcanic stone with fine pores, raking gold light across the surface.",
-  "anti-ageing-treatment-eluru":     "A length of heavy dark silk drawn taut, the folds smoothing out, gold light along the grain.",
-  "dark-circles-treatment-eluru":    "Soft shadow dissolving into warm gold light across a dark gradient, like dawn on a matte surface.",
-  "stretch-marks-treatment-eluru":   "Fine cracks in dark glazed ceramic, filled with warm gold in the manner of kintsugi.",
-  "tan-removal-skin-brightening-eluru": "Warm gold light breaking through dark cloud texture, soft and diffused.",
-  "psoriasis-treatment-eluru":       "Calm still water meeting dark stone, a soft gold reflection, nothing disturbed.",
-  "vitiligo-treatment-eluru":        "Pale and dark marble meeting in a soft natural boundary, warm gold light across the join.",
-  "alopecia-areata-treatment-eluru": "A dark field of fine soft fibres, a small clearing within it catching gold light.",
-  "glutathione-skin-whitening-eluru":"Clear liquid in dark glass, light refracting into a warm gold line.",
-  "thread-lift-eluru":               "Fine gold threads drawn taut in parallel across a dark field, slight tension visible.",
-  "nail-problems-treatment-eluru":   "Smooth polished dark shell with a gold sheen along its curve, macro.",
-  "grey-hair-treatment-eluru":       "Dark and silver fibres interleaved, warm gold light along a few of them.",
-  "skin-cancer-screening-eluru":     "A fine gold ring of light on dark stone, as if a single point were being examined.",
-  "pico-laser-tattoo-removal-eluru": "Dark ink breaking into fine particles in still water, gold light behind.",
-  "weight-loss-clinic-eluru":        "Smooth dark pebbles balanced in a quiet stack, warm gold light from one side.",
-  "kids-skin-care-eluru":            "Soft dark cotton folds with warm gold light, gentle and calm.",
-  "mens-skin-hair-clinic-eluru":     "Dark brushed metal with a warm gold edge light, clean and spare.",
-  "bridal-skin-hair-package-eluru":  "Dark silk with a few gold threads woven through, soft folds.",
-  "beard-eyebrow-transplant-eluru":  "Fine dark fibres of varying length on a dark ground, gold rim light.",
-  "prp-gfc-hair-therapy-eluru":      "Warm amber fluid suspended in dark glass, a single slow swirl.",
-  "hair-fall-treatment-eluru":       "A dark field of fine soft fibres thinning towards one side, warm gold rim light.",
-  "female-hair-loss-treatment-eluru":"Long dark fibres falling in a soft curve, a few gold threads among them.",
-  "dandruff-treatment-eluru":        "Fine pale flakes suspended in dark air, caught in a shaft of warm gold light.",
-  "premature-grey-hair-treatment-eluru": "Dark and silver fibres side by side on a dark ground, warm light along the parting.",
-  "hair-transplant-eluru":           "Fine dark fibres rising from a dark ground in even rows, gold rim light along each.",
-  "eczema-dry-skin-treatment-eluru": "Dry cracked dark clay softening where water has touched it, warm gold light.",
-  "skin-allergy-treatment-eluru":    "Soft dark fabric with a faint warm bloom spreading across it, then fading.",
-  "fungal-infection-treatment-eluru":"Still dark water with a single clean ring spreading outward, gold light on the ring.",
-  "warts-moles-skin-tags-removal-eluru": "A smooth dark stone with one raised bead on its surface, lit from the side in gold.",
-  "std-intimate-skin-care-eluru":    "A closed dark envelope of heavy paper with a single gold seal, private and quiet.",
-  "mnrf-treatment-eluru":            "A grid of fine gold points of light on dark velvet, evenly spaced, receding into shadow.",
-  "body-contouring-eluru":           "Smooth dark sculpted forms in soft shadow, one gold edge light following the curve.",
-  "online-dermatologist-consultation": "A single warm gold light in a dark room, as if a lamp were left on for someone.",
-  "blog-why-pimples-keep-coming-back": "A dark surface with a repeating pattern that fades and returns, gold light across it.",
-  "skin-clinic-eluru":               "A still, dark, luxurious surface of stone and glass with warm gold light pooling softly.",
-  "treatments":                      "An arrangement of dark glass and stone forms, warm gold light between them.",
+  // What the patient arrives with — the condition, on skin, never a result.
+  "acne-treatment-eluru":            "Cheek skin with active inflammatory acne: papules, a few pustules, post-acne marks, visible pores.",
+  "pigmentation-treatment-eluru":    "Cheekbone skin with melasma: soft-edged brown patches of uneven pigment.",
+  "dark-circles-treatment-eluru":    "The under-eye area only, cropped well below the eye itself: darkened, slightly hollowed skin.",
+  "open-pores-oily-skin-treatment-eluru": "Nose and inner-cheek skin with enlarged open pores and an oily sheen.",
+  "stretch-marks-treatment-eluru":   "Skin of the flank with fresh reddish-purple stretch marks running in parallel bands.",
+  "anti-ageing-treatment-eluru":     "Skin at the outer corner of the eye socket, cropped away from the eye: fine crepey lines and loss of firmness.",
+  "chemical-peel-eluru":             "Dull, uneven facial skin with blocked pores, patchy tone and rough texture.",
+  "carbon-laser-facial-eluru":       "Oily T-zone skin with congestion, blackheads and visible pores.",
+  "hydrafacial-eluru":               "Cheek skin that is dehydrated and dull: fine flaking, blocked pores, warm natural skin colour, clearly living skin and not grey or clay-like.",
+  "tan-removal-skin-brightening-eluru": "Forearm skin with a sharp sun-tan line: darkened exposed skin beside untanned skin.",
+  "glutathione-skin-whitening-eluru":"Uneven, sun-dulled facial skin with blotchy tone.",
+  "skin-allergy-treatment-eluru":    "Skin with an urticarial allergic rash: raised pink weals on normal skin.",
+  "eczema-dry-skin-treatment-eluru": "Skin at the inner elbow with eczema: dry, cracked, thickened and scaly.",
+  "psoriasis-treatment-eluru":       "Skin at the knee with a psoriasis plaque: thickened red skin under silvery scale.",
+  "fungal-infection-treatment-eluru":"Skin with tinea: a ring-shaped scaly patch with a raised active edge.",
+  "vitiligo-treatment-eluru":        "Skin with vitiligo: a well-defined patch of depigmented white skin beside normal skin.",
+  "warts-moles-skin-tags-removal-eluru": "Skin of the neck with several small skin tags and a raised mole.",
+  "nail-problems-treatment-eluru":   "A toenail with onychomycosis: thickened, yellowed, crumbling at the free edge.",
+  "skin-cancer-screening-eluru":     "A single asymmetric mole on skin with irregular borders and uneven colour.",
+  "kids-skin-care-eluru":            "A child's cheek skin with dry atopic patches, gentle and non-distressing.",
+  "mens-skin-hair-clinic-eluru":     "Male jaw skin with razor bumps, ingrown hairs and post-inflammatory marks.",
+  "std-intimate-skin-care-eluru":    "Plain healthy skin texture, neutral and non-specific, nothing identifiable or intimate.",
+  "pico-laser-tattoo-removal-eluru": "Forearm skin with a small dark amateur tattoo, ink visibly within the skin.",
+  "laser-hair-removal-eluru":        "Skin of a forearm with coarse dark unwanted hair and a few ingrown bumps.",
+  "beard-eyebrow-transplant-eluru":  "Jawline skin with patchy beard growth: bare areas between sparse coarse hairs.",
+  "hair-fall-treatment-eluru":       "A scalp parting with hair fall: the parting widened, loose hairs visible.",
+  "female-hair-loss-treatment-eluru":"A woman's centre parting widened by diffuse thinning, scalp showing through.",
+  "hair-transplant-eluru":           "Macro of a receded frontal hairline seen from above, cropped to hairline and scalp only with no eyebrows, eyes or face in frame: bare scalp behind, thinner hair at the temples.",
+  "prp-hair-treatment-eluru":        "A crown with early thinning: finer, shorter hairs and scalp visible between them.",
+  "prp-gfc-hair-therapy-eluru":      "A scalp with reduced density: fine hairs spaced wide apart.",
+  "alopecia-areata-treatment-eluru": "A scalp with one smooth round bald patch of alopecia areata, surrounding hair normal.",
+  "grey-hair-treatment-eluru":       "Dark hair with early greying: scattered white strands through the dark.",
+  "premature-grey-hair-treatment-eluru": "Macro of hair at the temple only, cropped to hair and scalp with no facial features in frame: dark hair with scattered premature grey strands.",
+  "dandruff-treatment-eluru":        "A scalp with dandruff: white flakes among the hair at the parting.",
+  "mnrf-treatment-eluru":            "Cheek skin with rolling and boxcar acne scars, uneven in depth.",
+  "thread-lift-eluru":               "Macro of the jawline and upper neck only, cropped below the mouth with no lips or chin tip in frame: skin with early laxity and softened definition.",
+  "hifu-face-lift-eluru":            "Skin under the jaw with mild sagging and loss of contour.",
+  "botox-fillers-eluru":             "Forehead skin with dynamic lines across it, at rest.",
+  "body-contouring-eluru":           "Skin of the flank with soft localised fullness and mild laxity.",
+  "weight-loss-clinic-eluru":        "Skin of the abdomen with mild laxity after weight change.",
+  "bridal-skin-hair-package-eluru":  "Dull, uneven facial skin with blocked pores and patchy tone.",
+  "online-dermatologist-consultation": "Plain healthy skin texture, neutral, nothing identifiable.",
+  "skin-clinic-eluru":               "Facial skin showing several common concerns together: uneven tone, visible pores, a few marks.",
+  "treatments":                      "Plain healthy skin texture in close macro, neutral and calm.",
+  "blog-why-pimples-keep-coming-back": "Cheek skin with recurring acne: a mix of active spots and older marks.",
 };
+
 
 // The Telugu edition of an English page, read from the page's own link.
 function twin(enPage) {
@@ -134,10 +136,10 @@ async function draw(subject, key) {
 
 // The <figure> that goes into the page. The AI line is part of the caption,
 // not a hidden attribute: 7.2 wants the source mark where the reader sees it.
-const figure = (slug, alt, te) => `
+const figure = (slug, alt) => `
       <figure class="tx-fig">
         <img src="assets/tx/${slug}.webp" alt="${alt}" width="1200" height="800" loading="lazy" decoding="async" />
-        <figcaption>🖼️ Image generated with AI.<span class="te"> AI తో రూపొందించిన చిత్రం.</span></figcaption>
+        <figcaption>Illustration of the condition — not a photograph of a patient, and not a result. Generated with AI.<span class="te">ఇది ఆ సమస్య ఎలా ఉంటుందో చూపే బొమ్మ — ఏ రోగి ఫోటో కాదు, ఫలితం కాదు. AI తో రూపొందించినది.</span></figcaption>
       </figure>`;
 
 async function main() {
@@ -183,11 +185,11 @@ async function main() {
         console.error("  .env is in .gitignore (line 7, `.env*`), so it cannot be committed.");
         process.exit(3);
       }
-      if (!/^AIza[\w-]{30,}$/.test(key)) {
-        console.error(`\n  That does not look like a Gemini key (starts "${key.slice(0, 4)}", ${key.length} chars).`);
-        console.error("  Expected AIza… and about 39 characters. Check aistudio.google.com/apikey.");
-        process.exit(3);
-      }
+      // No format check beyond "not obviously a placeholder". Google issues
+      // keys starting AIza and, more recently, AQ. — a pattern test here would
+      // have rejected a perfectly good key and sent somebody back to look for
+      // one they already had. The API is the only authority on whether a key
+      // works, so let it answer.
       process.stdout.write(`  drawing ${slug} … `);
       const buf = await draw(subject, key);
       if (!buf) { console.log("failed"); skipped++; continue; }

@@ -279,6 +279,31 @@ ok(orphanImgs.length === 0, orphanImgs.length
   ? `8.1(v) \u00b7 published but referenced by no page \u2014 look at each before keeping it: ${orphanImgs.join(", ")}`
   : "8.1(v) \u00b7 every published image is referenced by a page");
 
+// The treatment pages carry generated photographs of skin conditions. What
+// keeps that lawful is entirely in the caption: it has to say the picture is an
+// illustration, that it is NOT a patient, that it is NOT a result, and that it
+// came from AI. 8.1(v) bars publishing cases and results; 6.1 bars patient
+// photographs; 7.2(b) bars a synthetic representation purporting to be a real
+// patient; 7.2 requires the source mark. Strip any one of those four sentences
+// and the picture stops being defensible, so all four are checked on every page
+// that carries one.
+const txPages = fs.readdirSync(ROOT).filter((f) => /\.html$/.test(f) && /tx-fig/.test(fs.readFileSync(path.join(ROOT, f), "utf8")));
+const capBad = txPages.filter((f) => {
+  const t = fs.readFileSync(path.join(ROOT, f), "utf8");
+  return !/Illustration of the condition/.test(t) || !/not a photograph of a patient/.test(t)
+      || !/not a result/.test(t) || !/Generated with AI/.test(t);
+});
+ok(capBad.length === 0, capBad.length
+  ? `8.1(v)/7.2 \u00b7 ${capBad.length} page(s) carry a condition image without the full caption: ${capBad.slice(0, 5).join(", ")}`
+  : `8.1(v)/7.2 \u00b7 all ${txPages.length} condition images say illustration, not a patient, not a result, AI`);
+
+// And the pictures themselves must not have been made into comparisons.
+const txFiles = fs.existsSync(path.join(ROOT, "assets", "tx")) ? fs.readdirSync(path.join(ROOT, "assets", "tx")) : [];
+const badName = txFiles.filter((f) => /before|after|result|vs-|compare/i.test(f));
+ok(badName.length === 0, badName.length
+  ? `8.1(v) \u00b7 a condition image is named like a comparison: ${badName.join(", ")}`
+  : `8.1(v) \u00b7 ${txFiles.length} condition images, none named as a before, after or comparison`);
+
 // 7.2(c): where the artificial nature of the content is material to the
 // audience, disclosure is required. A patient asking a "receptionist" about
 // their skin plainly qualifies, and the website widget already discloses.
