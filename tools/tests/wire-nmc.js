@@ -98,6 +98,12 @@ const RULES = [
     // "Starting early gives the best results" is advice about when to begin,
     // not a claim that this clinic beats another one.
     allowEarly: /\b(early|fresh|starting early|sooner)\b|ముందుగా|ముందే/i },
+  { clause: "8.1(vi)", what: "outcomes promised as certainties",
+    re: /\bundetectable\b|\bflawless\b|\bcompletely natural\b|\bnever (fades?|returns?)\b|\bforever\b|\u0c17\u0c41\u0c30\u0c4d\u0c24\u0c3f\u0c02\u0c1a\u0c32\u0c47\u0c28\u0c3f/gi,
+    // The academy's day-one lesson tells trainees that one overheard joke about
+    // hair loss "loses a client forever". That is advice about how to behave,
+    // not a promise about a treatment.
+    allow: /loses a client forever|colleagues/i },
   { clause: "8.1(vi)", what: "absolutes that conceal risk — no downtime / no risk / no side effects",
     re: /\bno (downtime|risk|redness|peeling|side.?effects?|scars)\b|రిస్క్\s*లేదు|డౌన్‌టైమ్\s*లేదు|ఎరుపు\s*లేదు/gi,
     // "No linear scar" is the one absolute that is simply true of FUE, and a
