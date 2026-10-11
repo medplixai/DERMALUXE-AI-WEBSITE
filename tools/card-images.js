@@ -73,15 +73,17 @@ function main() {
   let s = fs.readFileSync(f, "utf8");
   let done = 0, none = [];
 
-  s = s.replace(/(<article class="svc[^"]*"[^>]*>(?:<img class="svc__img"[^>]*>)?)(<h4>(.*?)<\/h4>)/g, (all, open, h4, title) => {
-    // Rewrite rather than skip, so a picture placed by an earlier run that is
-    // now wrong — or withdrawn from the map — is taken back off the card.
-    open = open.replace(/<img class="svc__img"[^>]*>/, "");
+  s = s.replace(/<div class="svc__head">\s*(?:<img class="svc__img"[^>]*>)?\s*<div class="svc__htx">([\s\S]*?)<\/div>\s*<\/div>/g, "$1");
+  s = s.replace(/<img class="svc__img"[^>]*>/g, "");
+
+  s = s.replace(/(<article class="svc[^"]*"[^>]*>)(<h4>(.*?)<\/h4>)(<span class="te svc__te">[\s\S]*?<\/span>)?/g, (all, open, h4, title, te) => {
     const slug = MAP[title];
-    if (!exists(slug)) { none.push(title); return open + h4; }
+    if (!exists(slug)) { none.push(title); return all; }
     done++;
     const alt = `Illustration of ${title.replace(/&amp;/g, "and").replace(/&middot;/g, "·")} — generated, not a patient`;
-    return `${open}<img class="svc__img" src="assets/tx/${slug}.webp" alt="${alt}" width="1200" height="800" loading="lazy" decoding="async" />${h4}`;
+    return `${open}<div class="svc__head">` +
+      `<img class="svc__img" src="assets/tx/${slug}.webp" alt="${alt}" width="1200" height="800" loading="lazy" decoding="async" />` +
+      `<div class="svc__htx">${h4}${te || ""}</div></div>`;
   });
 
   // One source mark for the whole list, placed under the filter row.
