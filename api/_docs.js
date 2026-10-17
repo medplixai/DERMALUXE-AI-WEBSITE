@@ -27,8 +27,8 @@ const BRAND = { name: "DermaLuxe by Medicare Skin And Hair Clinics", nameTe: "à°
 // override so a correction does not need a code change.
 const DOCTORS = {
   nikhitha: { name: "Dr. Nikhitha Priyanka", q: "MD (DVL)", reg: process.env.REG_NIKHITHA || "APMC/FMR/99660" },
-  meghana:  { name: "Dr. Meghana Valeti",    q: "MD (DVL)", reg: process.env.REG_MEGHANA  || "APMC/RMR260526001" },
-  divija:   { name: "Dr. K. Sai Divija",     q: "MD (DVL)", reg: process.env.REG_DIVIJA   || "APMC/FMC/108959" },
+  meghana:  { name: "Dr. Meghana Valeti",    q: "MD (DVL)", reg: process.env.REG_MEGHANA  || "APMC/FMR/91692" },
+  divija:   { name: "Dr. K. Sai Divija",     q: "MD (DVL)", reg: process.env.REG_DIVIJA   || "APMC/FMR/108959" },
 };
 // The same three, in Telugu, for the Telugu half of the site. Kept beside the
 // English so the two cannot drift apart unnoticed.
