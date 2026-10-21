@@ -233,11 +233,22 @@ ok(readsOffer.length === 0, readsOffer.length
 const plan = read("api/_adplan.js");
 ok(/NMC Guidelines/.test(plan) && /"painless"/.test(plan), "8.1 · the ad planner is given the prohibited words");
 
-// 9.2: an RMP's photograph may not be used where the use is solicitation or
-// promotional publicity. The two places it was: the daily poster, which is
-// boosted into a paid ad, and the pack pushed at a patient who wavered.
-ok(!/class="ph"/.test(daily) && !/doc\.b64/.test(daily.split("posterHtml")[1] || ""),
-  "9.2 \u00b7 the paid poster carries no photograph of a doctor");
+// 9.2: an RMP's photograph may not be used where the use is "self-advertisement,
+// solicitation or promotional publicity".
+//
+// The poster carried no photograph until 20 Oct 2026, when the owner asked for
+// one on every poster. The clause bites on the *paid* use, so what is guarded
+// here changed with it: the photograph is allowed, and instead nothing may turn
+// a poster into an advertisement on its own. _boost.run() — the automatic path —
+// must stay switched off, and no cron may call it. promote(), which a person
+// drives from the Ads screen or a planned campaign, is deliberately untouched.
+const boostjs = read("api/_boost.js");
+ok(/automatic boosting is off/.test(boostjs) && !/image_hash/.test(boostjs.split("async function run")[1].split("\n}")[0]),
+  "9.2 \u00b7 the automatic boost is off at the source, not merely unwired");
+const autocalls = ["api/cron-post.js", "api/cron-daily.js", "api/_daily.js", "api/admin.js", "api/post.js"]
+  .filter((f) => fs.existsSync(path.join(ROOT, f)) && /_boost\.js"\)\.run\(/.test(read(f)));
+autocalls.forEach((f) => console.log(`  \u2717  ${f} boosts a poster without a person asking`));
+ok(autocalls.length === 0, "9.2 \u00b7 no cron turns the day's poster into a paid advertisement");
 ok(!/sendWaImageLink\(ph, BASE\(\) \+ DOCTOR\.img/.test(read("api/_trust.js")),
   "9.2 \u00b7 no doctor's photograph is pushed at a hesitating patient");
 

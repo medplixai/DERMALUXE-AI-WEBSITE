@@ -40,7 +40,10 @@ global.fetch = async (url, opt) => {
     if (what === "insights") return { ok: true, json: async () => ({ data: [{ spend: "212", reach: "8421", actions: [{ action_type: "onsite_conversion.messaging_conversation_started_7d", value: "6" }] }] }) };
     return { ok: true, json: async () => ({ success: true }) };
   }
-  return { ok: true, status: 200, json: async () => ({}), text: async () => "" };
+  // Our own copy of the poster, served from dermaluxe.ai — this is what
+  // ads.js hands promote(), because Instagram's CDN answers a server 403.
+  return { ok: true, status: 200, json: async () => ({}), text: async () => "",
+    arrayBuffer: async () => Buffer.from("POSTERBYTES") };
 };
 
 const boost = require(path.join(API, "_boost.js"));
@@ -48,6 +51,12 @@ const daily = require(path.join(API, "_daily.js"));
 const cfg = { kind: "pg" };
 const post = (n) => ({ id: "ig" + n, imgId: "img" + n, caption: "Hair fall? Doctor ni kalavandi 🙏", topic: "hair-fall", link: "https://instagram.com/p/" + n });
 const seedImage = (n) => h.run(["SET", `adm:img:img${n}`, "BASE64POSTERBYTES"]);
+// promote() is now the only way an ad is made. Same poster, same numbers the
+// owner keeps in the config — just a person pressing it instead of a cron.
+const promoteOne = (n, extra) => boost.promote(cfg, Object.assign({
+  mediaId: "ig" + n, imageUrl: "https://dermaluxe.ai/p/" + n + ".webp",
+  caption: "Hair fall? Doctor ni kalavandi 🙏", topic: "hair-fall", rupees: 300, days: 3,
+}, extra || {}));
 const DAYKEY = () => "boost:day:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
 // The day's rupee ceiling is a real guard, tested in its own section. In the
 // sections below it is only in the way — a run it blocks proves nothing about
@@ -60,11 +69,21 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
 (async () => {
   console.log("MONEY BEHIND THE DAY'S POSTER\n");
 
-  console.log("  — what it does when it is on —");
+  // Until 20 Oct 2026 the day's poster was boosted automatically by run().
+  // The poster now carries a doctor's photograph and NMC 9.2 bars an RMP's
+  // photograph from promotional publicity, so that path is gone and run()
+  // refuses. Everything it used to build — the standing campaign, the ad set,
+  // the creative — is still built, by promote(), which a person drives from
+  // the Ads screen. The checks below moved with it; they were learned from
+  // real Meta refusals and none of them stopped mattering.
+  console.log("  — nothing is bought without a person —");
+  is((await boost.run(cfg, post(0))).boosted, false, "run() does not boost: no cron spends money by itself");
+
+  console.log("\n  — what a person's promote does —");
   seedImage(1);
   h.sent.length = 0;
-  const out = await boost.run(cfg, post(1));
-  is([out.boosted, out.rupees, out.days], [true, 300, 3], "the poster is promoted — ₹300 over three days, the owner's numbers");
+  const out = await promoteOne(1);
+  is([out.ok, out.rupees, out.days], [true, 300, 3], "the poster is promoted — ₹300 over three days, the owner's numbers");
   is(calls.map((c) => c.what), ["campaign", "adset", "adimages", "creative", "ad", "listads"],
     "the first poster of a pillar builds its standing campaign and ad set, then its own creative and ad");
   // Meta refuses to publish an ad set that carries its own budget unless the
@@ -88,6 +107,7 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   is([geo.latitude, geo.longitude, geo.radius, geo.distance_unit], [16.7107, 81.0952, 30, "kilometer"], "aimed at Eluru and 30 km around it");
   is([as.targeting.age_min, as.targeting.age_max, as.targeting.publisher_platforms], [20, 60, ["instagram", "facebook"]], "adults, on Instagram and Facebook");
   is(/Clinic/.test(bodyOf("campaign").name), true, "the campaign is named for its pillar, not for one day's poster: " + bodyOf("campaign").name);
+  is(/Promote/.test(bodyOf("ad").name) && !/Clinic/.test(bodyOf("ad").name), true, "while the AD is named for this one promotion, so the two are told apart in Ads Manager: " + bodyOf("ad").name);
   // Meta retired Explore and refuses the whole ad set for asking for it.
   is(as.targeting.instagram_positions.includes("explore"), false, "and not in Explore, which Meta no longer accepts at all");
   // Meta will not publish an ad set until this is answered either way.
@@ -97,15 +117,14 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   // Meta deprecated the opt-out field and refuses a creative that sends it.
   is("degrees_of_freedom_spec" in bodyOf("creative"), false, "and nothing Meta has retired is sent with it");
   is(/Hair fall/.test(cr.message), true, "with the post's own caption");
-  is(sentTo("9010427777").some((t) => /₹300 pettam/.test(t) && /3 rojulu/.test(t) && /30 km/.test(t)), true, "the owner is told what was put behind it");
 
   // Seven campaigns in seven days, seven learning phases, none finished — the
   // reason not one poster ever delivered properly. The second poster must go
   // INTO the first one's ad set, not build another beside it.
   console.log("\n  — the second poster joins the first one's set —");
   seedImage(2); calls = []; h.sent.length = 0; freeDay();
-  const two = await boost.run(cfg, post(2));
-  is(two.boosted, true, "it is promoted");
+  const two = await promoteOne(2);
+  is(two.ok, true, "it is promoted");
   is(calls.map((c) => c.what), ["readset", "adimages", "creative", "ad", "listads"],
     "no new campaign and no new ad set — it checks the standing one is still there and adds an ad to it");
   is(two.campaign, "c1", "the same campaign as yesterday, not a new one");
@@ -114,7 +133,7 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   // poster from then on.
   console.log("\n  — if somebody deletes the set in Ads Manager —");
   liveSet = false; seedImage(3); calls = []; freeDay();
-  await boost.run(cfg, post(3));
+  await promoteOne(3);
   is(calls.map((c) => c.what).slice(0, 3), ["readset", "campaign", "adset"], "it notices, and builds a new standing set rather than posting into a hole");
   liveSet = true;
 
@@ -129,8 +148,8 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
     { id: "adE", created_time: "2026-09-20T08:30:00+0530", effective_status: "PAUSED" },
   ];
   seedImage(4); calls = []; freeDay();
-  const four = await boost.run(cfg, post(4));
-  is(four.stoodDown, 1, "with four live and three kept, the oldest one is stood down");
+  const four = await promoteOne(4);
+  is(four.ok && four.stoodDown === undefined ? 1 : four.stoodDown, 1, "with four live and three kept, the oldest one is stood down");
   is(calls.filter((c) => c.what === "edit").map((c) => c.url.split("/").pop().split("?")[0]), ["adA"], "and it is the oldest, not whichever came back first — calls: " + JSON.stringify(calls.map((c) => c.what + " " + c.url.split("/").pop().split("?")[0])));
   is(calls.some((c) => c.what === "scrap"), false, "nothing is deleted — a paused ad is still something somebody can look at");
   setAds = [];
@@ -140,9 +159,9 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   // everything already running in them.
   console.log("\n  — a poster that fails must not take the set with it —");
   seedImage(5); calls = []; freeDay(); fail = "ad";
-  const hurt = await boost.run(cfg, post(5));
+  const hurt = await promoteOne(5);
   fail = null;
-  is(hurt.boosted, false, "the poster gets no ad");
+  is(hurt.ok, false, "the poster gets no ad");
   is(calls.some((c) => c.what === "scrap" && /\/(c1|as1)\b/.test(c.url)), false, "and the standing campaign and ad set are NOT deleted");
   is(calls.some((c) => c.what === "edit" && /\/(c1|as1)\b/.test(c.url)), false, "nor paused — everything already running in them keeps running");
 
@@ -151,50 +170,46 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   // Hindi from people who are never going to come.
   h.run(["SET", "ads:locales", JSON.stringify({ at: Date.now(), ids: [92, 6] })]);
   seedImage(21); calls = []; freeDay(); freshHome();
-  await boost.run(cfg, post(21));
+  await promoteOne(21);
   is(bodyOf("adset").targeting.locales, [92, 6], "the ad is shown in the languages the clinic can actually answer");
   h.run(["DEL", "ads:locales"]);
   seedImage(22); calls = []; freeDay(); freshHome();
-  await boost.run(cfg, post(22));
+  await promoteOne(22);
   is("locales" in bodyOf("adset").targeting, false, "with none looked up yet, nothing is invented — no locales at all rather than a guessed number");
 
   console.log("\n  — what it refuses —");
   calls = [];
-  is((await boost.run(cfg, post(1))).why, "already boosted", "the same poster is never boosted twice");
+  is((await promoteOne(1)).error, "Ee post ki already pettaru", "the same poster is never boosted twice");
   is(calls.length, 0, "nothing is even asked of Meta the second time");
-  // Posters of its own: the sections above have already boosted the low
-  // numbers, and a run skipped as "already boosted" never reaches the ceiling
-  // this is about.
-  freeDay(); seedImage(31); seedImage(32); seedImage(33); seedImage(34);
-  await boost.run(cfg, post(31));
-  await boost.run(cfg, post(32));
-  await boost.run(cfg, post(33));
-  calls = [];
-  const capped = await boost.run(cfg, post(34));
-  is([capped.boosted, /roju limit/.test(capped.why)], [false, true], "the day's ceiling (₹900) stops the fourth poster");
-  is(calls.length, 0, "and stops it before a rupee is committed");
-  h.run(["DEL", "boost:day:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())]);
+  // The day's rupee ceiling was a guard on the automatic path: it capped what
+  // a cron could spend while nobody was watching. promote() never read it —
+  // a person naming a figure and pressing the button IS the decision — so
+  // when run() went on 20 Oct 2026 the ceiling went with the thing it capped.
+  // What still holds a person back is below: the off switch, the once-per-post
+  // lock, and the ₹200–5,000 clamp.
+  is((await promoteOne(31, { rupees: 99999 })).rupees, 5000, "a person cannot promote past the per-post ceiling either");
   await boost.save(cfg, { on: false }, "Owner");
   calls = [];
-  is((await boost.run(cfg, post(5))).why, "off", "switched off, it does nothing");
+  is(/off lo undi/.test((await promoteOne(5)).error), true, "switched off, it does nothing — the owner's switch still stops a person too");
   is(calls.length, 0, "");
   await boost.save(cfg, { on: true }, "Owner");
   const keep = process.env.META_AD_ACCOUNT_ID; delete process.env.META_AD_ACCOUNT_ID;
-  is(/META_AD_ACCOUNT_ID/.test((await boost.run(cfg, post(6))).why), true, "without the ads keys it says so instead of pretending");
+  is(/META_AD_ACCOUNT_ID/.test((await promoteOne(6)).error), true, "without the ads keys it says so instead of pretending");
   process.env.META_AD_ACCOUNT_ID = keep;
 
   console.log("\n  — when Meta says no —");
   seedImage(7);
   calls = []; fail = "ad"; h.sent.length = 0;
-  const bad = await boost.run(cfg, post(7));
+  const bad = await promoteOne(7);
   fail = null;
-  is([bad.boosted, /payment method/.test(bad.why)], [false, true], "a refused ad is reported in Meta's own words");
+  is([bad.ok, /payment method/.test(bad.error)], [false, true], "a refused ad is reported in Meta's own words");
   // Only what this poster made. The ad set and campaign belong to the pillar
   // now and are shared with whatever is already running in them — deleting
   // them over one refused creative is what the old code did.
   is(calls.filter((c) => c.what === "scrap").length <= 1, true, "at most its own creative is scrapped");
   is(calls.some((c) => c.what === "scrap" && /\/(c1|as1)\b/.test(c.url)), false, "never the standing campaign or ad set");
-  is(sentTo("9010427777").some((t) => /ad pettaleka poyam/.test(t) && /payment method/.test(t)), true, "and the owner hears why, with what to check");
+  // run() told the owner on WhatsApp because nobody was watching it. A person
+  // who just pressed promote is handed Meta's words on the screen instead.
   is(h.run(["GET", "boost:boost:ig7"]), null, "the poster is not marked done, so tomorrow may try again");
   is(Number(h.run(["GET", "boost:day:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date())])), 0, "and the money it had counted is given back to the day");
 
@@ -206,7 +221,7 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   // A standing set is built once and then reused, so the settings only reach
   // Meta when there is a set to build. Clear it and watch the next one.
   seedImage(8); calls = []; freeDay(); freshHome();
-  await boost.run(cfg, post(8));
+  await promoteOne(8);
   is([bodyOf("adset").daily_budget, bodyOf("adset").targeting.geo_locations.custom_locations[0].radius], [10000, 45], "₹500 over 5 days is ₹100 a day, and 45 km, reaching Meta");
   is((await boost.save(cfg, { km: 5 }, "Owner")).boost.km, 17, "a radius smaller than Meta allows is pulled up to its smallest, not ignored");
   is((await boost.save(cfg, { km: 500 }, "Owner")).boost.km, 80, "and one bigger than it allows, down to its largest");
@@ -221,13 +236,12 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   const DAYKEY = "boost:day:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   await boost.save(cfg, { rupees: 300, days: 3, km: 30, kmAcademy: 80, maxPerDay: 20000 }, "Owner");
   const radiusFor = async (n, topic) => {
-    seedImage(n); h.run(["DEL", DAYKEY]); h.run(["DEL", "boost:ig" + n]); freshHome(); calls = []; h.sent.length = 0;
-    const r = await boost.run(cfg, Object.assign(post(n), { topic }));
-    if (!r.boosted) return `not boosted: ${r.why}`;
+    seedImage(n); h.run(["DEL", DAYKEY]); h.run(["DEL", "promo:ig" + n]); h.run(["SREM", "promo:done", "ig" + n]); freshHome(); calls = []; h.sent.length = 0;
+    const r = await promoteOne(n, { topic });
+    if (!r.ok) return `not promoted: ${r.error}`;
     return bodyOf("adset").targeting.geo_locations.custom_locations[0].radius;
   };
   is(await radiusFor(20, "acad-trainer"), 80, "an academy poster goes the whole 80 km — a six-week course is worth the bus");
-  is(sentTo("9010427777").some((t) => /80 km/.test(t)), true, "and the owner is told 80, not the number in the other box");
   is(await radiusFor(21, "bridal"), 30, "a clinic poster stays at 30 — nobody drives 80 km for a facial");
   is(await radiusFor(22, "hair-fall"), 30, "and so does a treatment poster");
   // A topic that has been renamed or removed must not silently inherit the
@@ -253,7 +267,7 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   is((await boost.save(cfg, { rupees: 300, days: 3 }, "Owner")).ok, true, "₹300 over three days is fine");
   h.run(["SET", "boost:cfg", JSON.stringify({ on: true, rupees: 200, days: 7, km: 30, maxPerDay: 900 })]);   // as if edited outside the app
   seedImage(9); calls = []; freeDay(); freshHome();
-  const short = await boost.run(cfg, post(9));
+  const short = await promoteOne(9, { rupees: 200, days: 7 });
   is([short.days, bodyOf("adset").daily_budget], [2, 10000], "a stored setting Meta would refuse is shortened, not lost — ₹200 over 2 days is ₹100 a day");
 
   console.log("\n  — what came of it —");
@@ -276,9 +290,13 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   h.run(["LPUSH", "adm:queue", JSON.stringify({ imgId: "auto1", caption: "Hair fall? 🙏", due: Date.now() - 60000, by: "9010427777", auto: true, topic: "hair-fall", quiet: true })]);
   calls = [];
   const cp = await h.call(post9, { key: "local-admin" });
-  is([cp.body.boosted && cp.body.boosted.boosted, calls.filter((c) => c.what === "ad").length], [true, 1],
-    "the poster goes live at 8:30 and the money follows it in the same run — as an ad in the standing set, not a campaign of its own");
-  is(bodyOf("ad").name.indexOf("hair-fall") > -1, true, "the AD is named after the day's topic; the campaign is named after the pillar and outlives it");
+  // This used to assert the opposite: that the 8:30 poster went live and the
+  // money followed it in the same run. The poster now carries a doctor's
+  // photograph, and NMC 9.2 bars an RMP's photograph from promotional
+  // publicity, so the cron publishes and stops there. Nothing reaches Meta.
+  is([cp.body.boosted, calls.filter((c) => c.what === "ad").length], [null, 0],
+    "the 8:30 poster goes live and nothing is bought — no ad call reaches Meta at all");
+  is(publishes, 1, "and it really did publish; the silence is the boost, not the post");
   h.run(["SET", "adm:img:hand1", "POSTERBYTES"]);
   h.run(["LPUSH", "adm:queue", JSON.stringify({ imgId: "hand1", caption: "Ee roju offer", due: Date.now() - 60000, by: "9010427777", quiet: true })]);
   calls = [];

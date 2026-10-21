@@ -316,54 +316,16 @@ async function create(cfg, post, c) {
 }
 
 // Called after a poster is published. `post` = {id, imgId, caption, topic, link}
-async function run(cfg, post) {
-  const res = { boosted: false, why: "" };
-  if (!cfg || !post || !post.imgId) return Object.assign(res, { why: "no post" });
-  const c = await load(cfg);
-  // Every one of these was silent, so a morning with no ad looked exactly
-  // like a morning with one. The owner's WhatsApp is not a log.
-  if (!c.on) { console.log("boost: skipped — switched off"); return Object.assign(res, { why: "off" }); }
-  if (!ready()) {
-    console.error(`boost: cannot run — missing ${[!token() && "META_ADS_TOKEN", !account() && "META_AD_ACCOUNT_ID", !pageId() && "IG_PAGE_ID"].filter(Boolean).join(", ")}`);
-    return Object.assign(res, { why: "META_ADS_TOKEN / META_AD_ACCOUNT_ID / IG_PAGE_ID ledu" });
-  }
-  const key = `boost:${post.id || post.imgId}`;
-  const once = await guard.kvCommand(cfg, ["SET", key, "1", "NX", "EX", String(90 * 86400)]).catch(() => ({}));
-  if (!once || !once.result) { console.log("boost: skipped — this poster already has one"); return Object.assign(res, { why: "already boosted" }); }
-  // The day's ceiling, counted before anything is created.
-  const dayKey = `boost:day:${istDay()}`;
-  const spent = await guard.kvCommand(cfg, ["INCRBY", dayKey, String(c.rupees)]).catch(() => ({}));
-  await guard.kvCommand(cfg, ["EXPIRE", dayKey, "172800"]).catch(() => {});
-  if (Number(spent && spent.result) > c.maxPerDay) {
-    await guard.kvCommand(cfg, ["INCRBY", dayKey, String(-c.rupees)]).catch(() => {});
-    await guard.kvCommand(cfg, ["DEL", key]).catch(() => {});
-    return Object.assign(res, { why: `roju limit ₹${c.maxPerDay} daatindi` });
-  }
-  // Belt and braces: whatever is in the settings, never send Meta a lifetime
-  // budget it will refuse — shorten the run instead of losing the day.
-  const days = Math.min(c.days, maxDays(c.rupees));
-  const km = kmFor(c, post.topic);
-  const out = await create(cfg, post, Object.assign({}, c, { days, km }));
-  if (out.ok) console.log(`boost: ₹${c.rupees} · ${days} rojulu · campaign ${out.made.campaign} ad ${out.made.ad}`);
-  else console.error(`boost: Meta refused — ${out.error}${out.code ? " (code " + out.code + ")" : ""}`);
-  if (!out.ok) {
-    await guard.kvCommand(cfg, ["INCRBY", dayKey, String(-c.rupees)]).catch(() => {});
-    await guard.kvCommand(cfg, ["DEL", key]).catch(() => {});   // so tomorrow's run may try again
-  }
-  await guard.kvCommand(cfg, ["LPUSH", "boost:log", JSON.stringify({
-    ts: Date.now(), day: istDay(), post: post.id || "", topic: post.topic || "", link: post.link || "",
-    ok: out.ok, rupees: c.rupees, days, km,
-    campaign: out.made.campaign || "", ad: out.made.ad || "", error: out.ok ? "" : out.error,
-  })]).catch(() => {});
-  await guard.kvCommand(cfg, ["LTRIM", "boost:log", "0", "199"]).catch(() => {});
-  try {
-    const notify = require("./_notify.js");
-    const text = out.ok
-      ? `📣 *Ee roju poster ki ₹${c.rupees} pettam* (${days} rojulu)\n\n📍 Eluru chuttu ${km} km · ${c.ageMin}-${c.ageMax} years\n💬 Tap chesthe direct ga mana WhatsApp agent ki\n${post.link ? "\n" + post.link : ""}\n\nApp → Control panel → Ads boost lo aapocchu / budget marchocchu.`
-      : `⚠️ *Ee roju poster ki ad pettaleka poyam*\n\n${out.error}\n\nMeta lo payment method / ad account chudandi. Repu malli try chestundi — leda app → Control panel → Ads boost lo off cheyyandi.`;
-    for (const to of guard.ownerPhones()) await notify.sendWa(to, text).catch(() => {});
-  } catch (e) {}
-  return Object.assign(res, { boosted: out.ok, why: out.ok ? "" : out.error, campaign: out.made.campaign, ad: out.made.ad, rupees: c.rupees, days, km, stoodDown: out.stoodDown || 0, daily: out.daily || 0 });
+// run() was the automatic path: publish the day's poster, put money behind it,
+// no person involved. It is switched off at the source rather than merely
+// unwired, because a poster now carries a doctor's photograph and NMC 9.2 bars
+// an RMP's photograph where the use is promotional publicity. Unwiring alone
+// would let a future edit restore paid ads with a doctor's face in them and
+// say nothing. promote() — the path a person drives from the Ads screen or a
+// planned campaign — is untouched, and that is the owner's to use.
+async function run(cfg, post) {   // eslint-disable-line no-unused-vars
+  console.log("boost: automatic boosting is off — a poster is promoted only when a person picks it (NMC 9.2, owner's decision 20 Oct 2026)");
+  return { boosted: false, why: "automatic boosting is off" };
 }
 
 // What the boosts did — for the control panel and the weekly report.
@@ -401,11 +363,20 @@ async function promote(cfg, o) {
   const days = Math.max(1, Math.min(maxDays(rupees), Math.round(Number(o && o.days) || 3)));
   const id = String((o && o.mediaId) || "");
   if (!id || !(o && o.imageUrl)) return { ok: false, error: "Post teliyadu" };
+  const saved = await load(cfg);
+  // The owner's own off switch. It used to be read only by run(), the
+  // automatic path; when that went on 20 Oct 2026 the switch stopped stopping
+  // anything, and "Ads boost: off" in the dashboard would have been a lie.
+  if (!saved.on) return { ok: false, error: "Ads boost off lo undi — Control panel lo on cheyandi" };
   const once = await guard.kvCommand(cfg, ["SET", `promo:${id}`, "1", "NX", "EX", String(90 * 86400)]).catch(() => ({}));
   if (!once || !once.result) return { ok: false, error: "Ee post ki already pettaru" };
-  const c = Object.assign({}, await load(cfg), { rupees, days, status: "PAUSED" });
+  const c = Object.assign({}, saved, { rupees, days, status: "PAUSED" });
   const out = await create(cfg, {
-    id, imageUrl: o.imageUrl, caption: o.caption || "", targeting: o.targeting || null,
+    id, imageUrl: o.imageUrl, caption: o.caption || "", topic: (o && o.topic) || "",
+    // kmFor keeps the academy's own radius meaningful. It was read only by
+    // run(); without this the academy setting in the dashboard would do
+    // nothing once automatic boosting went off.
+    targeting: Object.assign({ radius: kmFor(saved, (o && o.topic) || "") }, o.targeting || {}),
     name: o.name || `Promote ${istDay()} · ${String(o.caption || "post").replace(/\s+/g, " ").slice(0, 28)}`,
   }, c);
   if (!out.ok) {
@@ -414,6 +385,17 @@ async function promote(cfg, o) {
     return { ok: false, error: out.error };
   }
   await guard.kvCommand(cfg, ["SADD", "promo:done", id]).catch(() => {});
+  // boost:log feeds the weekly scoreboard (_weekly.js) and the dashboard's
+  // recent-boosts list (recent()). Only run() ever wrote it, so when automatic
+  // boosting went off on 20 Oct 2026 the owner's own promotes stopped showing
+  // up in either — the week would have read "no ads" while money was being
+  // spent. promote() writes the same row now.
+  await guard.kvCommand(cfg, ["LPUSH", "boost:log", JSON.stringify({
+    ts: Date.now(), day: istDay(), post: id, topic: (o && o.topic) || "", link: (o && o.link) || "",
+    ok: true, rupees, days, km: (o && o.targeting && o.targeting.radius) || c.km,
+    campaign: out.made.campaign || "", ad: out.made.ad || "", error: "", by: (o && o.by) || "",
+  })]).catch(() => {});
+  await guard.kvCommand(cfg, ["LTRIM", "boost:log", "0", "199"]).catch(() => {});
   console.log(`promote: ₹${rupees} · ${days} rojulu · campaign ${out.made.campaign} (PAUSED)`);
   return { ok: true, rupees, days, campaign: out.made.campaign };
 }

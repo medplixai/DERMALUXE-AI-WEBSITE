@@ -543,15 +543,19 @@ function doctorPhoto(key) {
 // meant the picture promised whoever the calendar landed on. The owner can
 // still pin somebody else with KV dp:doctor (nikhitha / meghana / sai) or
 // take the doctor off with dp:doctor = "off".
+// The owner's instruction on 20 Oct 2026: a doctor is compulsory on every
+// poster. So there is no "off" any more, and a missing photograph file throws
+// rather than returning null — returning null would have published a poster
+// with no doctor on it and told nobody, which is the failure the word
+// "compulsory" exists to prevent.
 async function pickDoctor(cfg, topic) {
   let pin = "";
   if (cfg) { try { pin = String((await guard.kvCommand(cfg, ["GET", "dp:doctor"])).result || "").toLowerCase(); } catch (e) {} }
-  if (pin === "off") return null;
-  let key = DOCTORS[pin] ? pin
+  const key = DOCTORS[pin] ? pin
     : topic && topic.pillar === "academy" ? "meghana"
     : "nikhitha";
   const b64 = doctorPhoto(key);
-  if (!b64) return null;
+  if (!b64) throw new Error(`daily: no photograph on disk for ${key} — a poster may not go out without a doctor`);
   return Object.assign({ key, b64 }, DOCTORS[key]);
 }
 
@@ -592,15 +596,16 @@ function posterHtml(topic, img, doc, shape) {
   // The doctor's round photo: the image is scaled so the face fills about half
   // the circle, then moved so the face sits in its middle.
   const D = 116, BH = D * 2.5, BW = doc ? BH * doc.aspect : 0;
-  // The doctor's photograph used to fill this circle. NMC 9.2: "Use of the
-// photograph/image of an RMP shall not be permitted; where such use constitutes
-// self-advertisement, solicitation or promotional publicity." Every poster is
-// handed to _boost.js and becomes a paid, geo-targeted click-to-WhatsApp
-// advertisement, so the photograph was sitting in the one place the clause
-// names. The written credit below it stays: 3.2 Expl. IV requires the name,
-// qualification and registration number, and removing the whole block would
-// have traded a 9.2 breach for an Expl. IV one.
-const docCss = "";
+  // The doctor's photograph fills this circle. It came off on 10 Oct 2026 for
+  // NMC 9.2 — "Use of the photograph/image of an RMP shall not be permitted;
+  // where such use constitutes self-advertisement, solicitation or promotional
+  // publicity" — because every poster was then handed straight to _boost.js and
+  // became a paid, geo-targeted click-to-WhatsApp advertisement.
+  //
+  // The owner put it back on 20 Oct 2026 and closed the paid route instead: the
+  // two automatic boost calls are gone, so no poster becomes an advertisement
+  // unless a person chooses it. wire-nmc guards that, not the photograph.
+  const docCss = doc ? `background:#1b1812 url("data:image/webp;base64,${doc.b64}") no-repeat;background-size:${BW.toFixed(0)}px ${BH.toFixed(0)}px;background-position:${(D / 2 - doc.fx * BW).toFixed(1)}px ${(D / 2 - doc.fy * BH).toFixed(1)}px` : "";
   // Feed: the picture fills the frame. Story: it fills the top 1180px and
   // fades out below, because covering the whole 9:16 would throw away a third
   // of the width on each side and cut the subject in half.
@@ -636,6 +641,7 @@ h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;
 .sub{font-size:25px;font-weight:300;color:var(--mute);line-height:1.45;max-width:880px;text-wrap:balance}
 .foot{position:absolute;left:66px;right:66px;bottom:${S.bottom}px;display:flex;align-items:center;justify-content:space-between;gap:24px;padding-top:24px;border-top:1px solid rgba(230,201,138,.38)}
 .foot.withdoc{bottom:${S.bottom + 40}px}
+.dr .ph{flex:none;width:${D}px;height:${D}px;border-radius:50%;${docCss};box-shadow:0 0 0 3px #0a0a0c,0 0 0 5px rgba(230,201,138,.9),0 8px 26px rgba(0,0,0,.6)}
 .dr{display:flex;align-items:center;gap:20px;min-width:0}
 .dr .t{min-width:0}
 .dr .k{font-size:14px;letter-spacing:.26em;text-transform:uppercase;color:var(--gold);font-weight:500}
@@ -664,7 +670,7 @@ h1{font-family:"Cormorant Garamond",serif;font-weight:600;font-size:${h1size}px;
 <div class="head"><img class="logo" src="data:image/png;base64,${logoB64()}" alt=""><div class="city">ఏలూరు</div></div>
 <div class="txt"><div class="eyebrow"><i></i>${esc(eyebrow)}<i class="r"></i></div><h1>${esc(topic.h1)}</h1><div class="te">${esc(topic.te)}</div><div class="sub">${esc(topic.sub)}</div></div>
 ${doc
-  ? `<div class="foot withdoc"><div class="dr"><div class="t"><div class="k">${acad ? "Your trainer" : "Your doctor"}</div><div class="dn">${esc(doc.name)}</div><div class="dc">${esc(doc.cred + (doc.reg && docs.regLine(doc.reg) ? " · " + docs.regLine(doc.reg) : ""))}</div></div></div>`
+  ? `<div class="foot withdoc"><div class="dr"><div class="ph"></div><div class="t"><div class="k">${acad ? "Your trainer" : "Your doctor"}</div><div class="dn">${esc(doc.name)}</div><div class="dc">${esc(doc.cred + (doc.reg && docs.regLine(doc.reg) ? " · " + docs.regLine(doc.reg) : ""))}</div></div></div>`
   : `<div class="foot"><div class="brand"><div class="n">${esc(brandName)}</div><div class="nt">${esc(brandTe)}</div><div class="a">Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div></div>`}
 <div class="wa"><svg viewBox="0 0 448 512" aria-hidden="true"><path fill="#15120d" d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-30.3 1.8-3.7.9-6.9-.5-9.7-1.4-2.8-12.5-30.1-17.1-41.2-4.5-10.8-9.1-9.3-12.5-9.5-3.2-.2-6.9-.2-10.6-.2-3.7 0-9.7 1.4-14.8 6.9-5.1 5.6-19.4 19-19.4 46.3 0 27.3 19.9 53.7 22.6 57.4 2.8 3.7 39.1 59.7 94.8 83.8 35.2 15.2 49 16.5 66.6 13.9 10.7-1.6 32.8-13.4 37.4-26.4 4.6-13 4.6-24.1 3.2-26.4-1.3-2.5-5-3.9-10.5-6.6z"/></svg><div><div class="l">${esc(waLabel)}</div><div class="num">99591 34666</div></div></div></div>
 ${doc ? `<div class="addr">${acad ? "DermaLuxe Academy" : "DermaLuxe by Medicare"} · Opp. Happy Mobiles, R.R. Peta, Eluru · dermaluxe.ai</div>` : ""}
@@ -740,7 +746,7 @@ async function createDailyPost(cfg, opts = {}) {
     : ((!opts.noAlternate && isAcademyDay() && await academyTopic(cfg).catch(() => null)) || await planTopic(cfg));
   const topic = Object.assign({}, picked, { look: await pickLook(cfg).catch(() => LOOKS[0]), note: opts.note || "" });
   const [img, caption] = await Promise.all([genImage(topic), writeCaption(topic)]);
-  const doc = await pickDoctor(cfg, topic).catch(() => null);
+  const doc = await pickDoctor(cfg, topic);   // throws rather than drawing a poster with no doctor
   const b64 = await renderPoster(posterHtml(topic, img, doc, "post"), 1350);
   // The story is drawn, not cropped. Posting the 4:5 poster as a story cut
   // the WhatsApp number in half — the one thing on it that has to survive.

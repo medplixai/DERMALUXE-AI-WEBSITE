@@ -88,16 +88,16 @@ module.exports = async (req, res) => {
     // The story is its own 1080×1920 drawing, not the feed poster squeezed
     // into 9:16 — that crop cut the WhatsApp number off the right edge.
     if (published && published.ok && out.storyId) storyOut = await admin.publishNow(cfg, { imgId: out.storyId, story: true, auto: true }).catch(() => null);
-    // Posted by hand at noon it is still the day's own poster, so it gets the
-    // day's money behind it — cron-post does this for the 8:30 one, and
-    // without it "daily post now" quietly meant "and no ad today". The same
-    // guards apply: once per post, and the day's rupee ceiling.
-    if (published && published.ok) {
-      try {
-        boosted = await require("./_boost.js").run(cfg, { id: published.id, imgId: out.imgId, caption: out.caption, topic: out.topic.key, link: published.link || "" });
-        console.log(`cron-daily: posted now (${out.topic.key}) — boost: ${boosted.boosted ? "created" : boosted.why || "no"}`);
-      } catch (e) { console.error("cron-daily: boost", e && e.message); }
-    }
+    // No automatic boost. Until 20 Oct 2026 the day's poster was handed
+    // straight to _boost.js and became a paid, geo-targeted
+    // click-to-WhatsApp advertisement. The owner then asked for a doctor's
+    // photograph on every poster, and NMC 9.2 bars an RMP's photograph where
+    // the use is "self-advertisement, solicitation or promotional publicity".
+    // Rather than drop the photograph, the owner chose to close the paid
+    // route: a poster is now an ordinary post, and money goes behind one only
+    // when a person picks it (Ads screen -> promote, or a planned campaign,
+    // which Meta still creates PAUSED).
+    if (published && published.ok) console.log(`cron-daily: posted now (${out.topic.key}) — no boost, by design`);
   } else if (out.storyId) {
     // queue the story 3 minutes after the feed post; cron-post handles story items
     await guard.kvCommand(cfg, ["LPUSH", "adm:queue", JSON.stringify({ imgId: out.storyId, story: true, due: out.due + 180000, by: out.by, tries: 0, auto: true, quiet: true })]).catch(() => {});

@@ -99,9 +99,13 @@ const C = (q) => h.call(cron, Object.assign({ key: "k" }, q || {}));
   built = []; sentWa.length = 0; boosts.length = 0;
   const nowRun = await C({ now: "1" });
   is(nowRun.code, 200, "it publishes");
-  is(boosts.length, 1, "and the boost runs once");
-  is([boosts[0].id, boosts[0].topic], ["ig_now", "acad-seats"], "against the post that actually went out, named for the day's topic");
-  is(nowRun.body.boosted.boosted, true, "and the answer says what the money did");
+  // Until 20 Oct 2026 publishing the day's poster also bought an
+  // advertisement for it. The poster now carries a doctor's photograph, and
+  // NMC 9.2 bars an RMP's photograph from promotional publicity, so the
+  // automatic purchase is gone: money goes behind a post only when a person
+  // picks it on the Ads screen.
+  is(boosts.length, 0, "and no advertisement is bought for it");
+  is(!nowRun.body.boosted || nowRun.body.boosted.boosted === false, true, "and the answer does not claim any money was spent");
 
   console.log("\n  — who may ask —");
   is((await h.call(cron, { preview: "1" })).code, 401, "no key, no preview");

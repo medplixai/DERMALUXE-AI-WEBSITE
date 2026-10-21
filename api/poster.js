@@ -110,7 +110,8 @@ module.exports = async (req, res) => {
   // The two switches the daily poster reads. They existed only as KV keys —
   // the owner was told "set dp:doctor" with no way to set it — so they are
   // here, readable by anybody who makes posters and changeable by the owner.
-  //   dp:doctor  which doctor sits at the foot (unset = take turns, "off" = none)
+  //   dp:doctor  which doctor sits at the foot (unset = the usual one for that
+  //              kind of poster). A doctor is compulsory; there is no "off".
   //   acad:dp    the academy campaign ("1" on, "0" off, unset = on while seats remain)
   if (a === "settings") {
     const canChange = allow("settings.manage");
@@ -119,7 +120,8 @@ module.exports = async (req, res) => {
       const changes = [];
       if (b.doctor !== undefined) {
         const d = String(b.doctor || "auto").toLowerCase();
-        if (d !== "auto" && d !== "off" && !daily.DOCTORS[d]) return json(res, 400, { error: "Aa doctor ledu" });
+        // "off" was removed on 20 Oct 2026: a doctor is compulsory on every poster.
+        if (d !== "auto" && !daily.DOCTORS[d]) return json(res, 400, { error: d === "off" ? "Poster meeda doctor tappanisari — teeyalemu" : "Aa doctor ledu" });
         if (d === "auto") await guard.kvCommand(cfg, ["DEL", "dp:doctor"]).catch(() => {});
         else await guard.kvWrite(cfg, ["SET", "dp:doctor", d], "poster doctor");
         changes.push("poster doctor → " + d);

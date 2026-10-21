@@ -3609,7 +3609,6 @@
       var paint = function (j) {
         if (doc.options.length === 1) {
           (j.doctors || []).forEach(function (d) { var o = document.createElement("option"); o.value = d.key; o.textContent = d.name; doc.appendChild(o); });
-          var off = document.createElement("option"); off.value = "off"; off.textContent = "Doctor vaddu"; doc.appendChild(off);
         }
         doc.value = j.doctor; acad.value = j.academy;
         doc.disabled = acad.disabled = !j.canChange;

@@ -171,8 +171,11 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   is([...seen], ["nikhitha"], "every clinic poster shows the daily consultant, whatever day it is");
   h.run(["SET", "dp:doctor", "sai"]);
   is((await daily.pickDoctor({ kind: "pg" }, daily.ACADEMY_TOPICS[0])).key, "sai", "the owner can pin one");
+  // "off" was a choice until 20 Oct 2026, when the owner made a doctor
+  // compulsory on every poster. An unknown pin now falls back to the usual
+  // doctor rather than silently removing the face.
   h.run(["SET", "dp:doctor", "off"]);
-  is(await daily.pickDoctor({ kind: "pg" }, clinic), null, "or take the doctor off");
+  is((await daily.pickDoctor({ kind: "pg" }, clinic)).key, "nikhitha", "and cannot take the doctor off any more");
   h.run(["DEL", "dp:doctor"]);
   at(DURING);
 

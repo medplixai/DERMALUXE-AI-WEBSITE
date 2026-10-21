@@ -53,17 +53,16 @@ module.exports = async (req, res) => {
         : `✅ *Scheduled ${it.vidId ? "reel" : "post"} live!* (${admin.fmtIst(it.due)})${out.fb ? " + 📘 FB page" : ""}${out.link ? "\n" + out.link : ""}`;
       const targets = it.quiet ? [] : (Array.isArray(it.notify) && it.notify.length ? it.notify : [it.by]);
       for (const ph of Array.from(new Set(targets))) await notifyAdmin(ph, liveMsg);
-      // The day's own poster gets money behind it: click-to-WhatsApp, Eluru
-      // and around, for as many days as the owner set. Their post, their
-      // budget — a post somebody published by hand is left alone.
-      if (it.auto && !it.story) {
-        try {
-          boosted = await require("./_boost.js").run(cfg, { id: out.id, imgId: it.imgId, caption: it.caption, topic: it.topic || "", link: out.link || "" });
-          console.log(`cron-post: today's poster is live (${it.topic || "?"}) — boost: ${boosted.boosted ? "created" : boosted.why || "no"}`);
-        } catch (e) { console.error("cron: boost", e && e.message); }
-      } else if (out.ok) {
-        console.log(`cron-post: published a ${it.story ? "story" : "hand-made post"} — no boost by design`);
-      }
+      // No automatic boost. Until 20 Oct 2026 the day's poster was handed
+      // straight to _boost.js and became a paid, geo-targeted
+      // click-to-WhatsApp advertisement. The owner then asked for a doctor's
+      // photograph on every poster, and NMC 9.2 bars an RMP's photograph where
+      // the use is "self-advertisement, solicitation or promotional publicity".
+      // Rather than drop the photograph, the owner chose to close the paid
+      // route: a poster is now an ordinary post, and money goes behind one only
+      // when a person picks it (Ads screen -> promote, or a planned campaign,
+      // which Meta still creates PAUSED).
+      if (out.ok) console.log(`cron-post: published a ${it.story ? "story" : it.auto ? "daily poster" : "hand-made post"} — no boost, by design`);
     } else if (out.transient && (it.tries || 0) < 3) {
       it.tries = (it.tries || 0) + 1;
       if (out.creationId) it.creationId = out.creationId; // resume the same IG container next run

@@ -28,8 +28,17 @@ stub("_weekly.js", { buildWeekly: async () => ({ body: "📈 Week", oneLine: "wk
 global.fetch = async () => ({ ok: true, json: async () => 0 });
 
 // Eluru wall-clock → the real Date.now the jobs read.
+//
+// The day is pinned five days before the academy batch opens, not to the real
+// today. The academy ladder stops itself once the batch has started
+// (_acadfu.js: "batch started"), so a test that ran on the real calendar
+// passed until 20 Oct 2026 and failed every day after — telling us the date
+// had moved, not that anything was broken. Anchored to BATCH it stays true for
+// whatever batch is configured.
 const realNow = Date.now;
-const day0 = (() => { const d = new Date(realNow() + 19800000); d.setUTCHours(0, 0, 0, 0); return d.getTime() - 19800000; })();
+const docs = require(path.join(API, "_docs.js"));
+const istMidnight = (ms) => { const d = new Date(ms + 19800000); d.setUTCHours(0, 0, 0, 0); return d.getTime() - 19800000; };
+const day0 = istMidnight(docs.BATCH.startMs - 5 * 86400000);
 const at = (hh, mm) => { const t = day0 + (hh * 60 + (mm || 0)) * 60000; Date.now = () => t; return t; };
 const HOUR = 3600000;
 
@@ -86,6 +95,18 @@ process.env.LEAD_NOTIFY_PHONES = "9989325777";
   is(to("9876500714").length, 1, "the academy enquiry gets the academy ladder's message instead");
   is(/Batch/.test(said("9876500714")), true, "which at three days names the batch and the seats: " + said("9876500714").slice(0, 70));
   is(f2.body.day3, 1, "and is still not counted as a day-3 consultation template");
+
+  // Once the batch has opened there is nothing left to reserve, so the ladder
+  // stops. This is the state the clinic is actually in from 20 Oct 2026, and
+  // nothing covered it — the ladder going quiet looked the same as the ladder
+  // being broken.
+  console.log("\n  — the same enquiry, once the batch has opened —");
+  h.sent.length = 0;
+  Date.now = () => docs.BATCH.startMs + 11 * HOUR;   // 11 AM IST, well inside calling hours
+  const f3 = await run(followup);
+  is(to("9876500714").length, 0, "no academy message goes out after the batch has started");
+  is(f3.body.acad && f3.body.acad.skipped, "batch started", "and the job says why, rather than going quiet");
+  Date.now = () => now;
 
   console.log("\n  — the day before an appointment (6:15 PM) —");
   h.sent.length = 0;
