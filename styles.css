@@ -1070,6 +1070,42 @@ h3 { font-size: 1.4rem; }
 
 @media (max-width: 860px) {
   .mbar { display: grid; }
+  /* Below 860px the bar above is pinned to the bottom of every screen with
+     CALL · WHATSAPP · BOOK on it. The hero then offered Book and WhatsApp
+     again as two more full-width buttons, so on a phone the same two actions
+     appeared twice within one screen and nothing led. The hero keeps the one
+     act and the quiet way to browse; the bar keeps the rest. */
+  .hero__cta .btn--wa { display: none; }
+
+  /* Most visitors are on a phone, and the bottom-right corner had four things
+     piled into it: the WhatsApp bubble, its hint, the AI chat button and the
+     back-to-top arrow — the last two overlapping almost exactly, and both of
+     them behind the cookie bar on a first visit. Tapping the arrow's own
+     centre hit the cookie bar's text; after dismissing that it hit the AI
+     button, which sits a z-index above. The arrow was unreachable on a phone,
+     so it was not a button, it was clutter.
+
+     The bar across the bottom already offers Call, WhatsApp and Book on every
+     screen. So on phones the WhatsApp bubble and its hint go — the bar says
+     the same thing and never moves — and the arrow goes with them. What is
+     left floating is the AI chat button, which nothing else offers. */
+  .fab, .fab-hint, .totop { display: none !important; }
+
+  /* .btn is white-space: nowrap, which is right on a wide screen and wrong on
+     a phone: the academy's "WhatsApp +91 99591 34666 · ACADEMY" button came
+     out 499px wide on a 390px screen and hung 55px off each side. On a phone a
+     button wraps and stays inside the gutter rather than growing past it. */
+  .btn { white-space: normal; max-width: 100%; text-align: center; }
+
+  /* Two buttons side by side at 390px wrap to two and three lines and end up
+     different heights, which reads as a mistake rather than a choice. Stacked
+     full width they are one clear act and one quiet alternative, and both are
+     an easy thumb-width. */
+  .hero__cta { flex-direction: column; align-items: stretch; gap: .7rem; }
+  .hero__cta .btn { width: 100%; }
+
+  /* A 20x24 close cross is below what a thumb can reliably hit. */
+  .dlchat__x, .fab-hint__x { min-width: 36px; min-height: 36px; }
   body { padding-bottom: 52px; }
   .cookie-bar { bottom: 64px; }
   .totop { bottom: 136px; right: 16px; } /* stacked above the floating WhatsApp button */
