@@ -19,7 +19,7 @@ const fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, "../..");
 const TE = /^"?Noto (Sans|Serif) Telugu"?$/;
 const GENERIC = /^(serif|sans-serif|system-ui)$/;
-let bad = 0, checked = 0;
+let bad = 0, stacks = 0, pages = 0;
 
 const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, "");   // a comment is not a declaration
 
@@ -29,7 +29,7 @@ function look(file, text) {
   for (const m of text.matchAll(/font-family\s*:\s*([^;}"']*(?:"[^"]*"[^;}]*)*)[;}]/g)) {
     const stack = m[1].split(",").map((s) => s.trim().replace(/^['"]|['"]$/g, "")).filter(Boolean);
     if (!stack.some((s) => TE.test(s) || TE.test(`"${s}"`))) continue;
-    checked++;
+    stacks++;
     const line = text.slice(0, m.index).split("\n").length;
     const te = stack.findIndex((s) => TE.test(s) || TE.test(`"${s}"`));
     if (te === 0) {
@@ -53,7 +53,7 @@ const css = strip(fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"));
 for (const [name, latin] of [["--font-sans-te", "Jost"], ["--font-serif-te", "Cormorant Garamond"]]) {
   const m = css.match(new RegExp("^\\s*" + name + "\\s*:([^;]+);", "m"));
   if (!m) { bad++; console.log(`  ✗  ${name} is not defined`); continue; }
-  checked++;
+  stacks++;
   const stack = m[1].split(",").map((s) => s.trim().replace(/^['"]|['"]$/g, ""));
   const te = stack.findIndex((s) => TE.test(s) || TE.test(`"${s}"`));
   const gen = stack.findIndex((s) => GENERIC.test(s));
@@ -67,6 +67,26 @@ look("styles.css", fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"));
 for (const f of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html")))
   look(f, fs.readFileSync(path.join(ROOT, f), "utf8"));
 
-console.log(bad ? `\n  ${bad} of ${checked} Telugu stacks pull the font's Latin letters down with it`
-                : `\n  ${checked} Telugu stacks, every one behind a Latin face`);
+// Every page that leans on styles.css has to ask Google for the same four
+// families, and ask for them as variable ranges. Fixed weight lists fetch one
+// static file per weight: academy.html asked for 0,400;0,500;0,600;0,700;1,400
+// and came down in 9 font files, 351 KB, where a treatment page on the same
+// stylesheet takes 4 files and 281 KB. careers.html had the other half of the
+// mistake — it never asked for Noto Sans Telugu at all, so its 39 Telugu
+// characters were drawn by whatever the phone had. A family a page does not
+// use costs nothing: a face is only fetched when a character needs it.
+const CANON = "https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300..700;1,300..700" +
+  "&family=Jost:wght@300..700&family=Noto+Serif+Telugu:wght@400..700" +
+  "&family=Noto+Sans+Telugu:wght@300..700&display=swap";
+for (const f of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html"))) {
+  const text = fs.readFileSync(path.join(ROOT, f), "utf8");
+  if (!text.includes('href="styles.css"')) continue;   // a standalone page carries its own faces
+  const m = text.match(/https:\/\/fonts\.googleapis\.com\/css2\?[^"]*/);
+  if (!m) { bad++; console.log(`  ✗  ${f} uses styles.css but asks for no web fonts`); continue; }
+  pages++;
+  if (m[0] !== CANON) { bad++; console.log(`  ✗  ${f} asks Google for a different set than every other page`); console.log(`         ${m[0].slice(0, 96)}`); }
+}
+
+console.log(bad ? `\n  ${bad} problem(s) in ${stacks} Telugu stacks and ${pages} font requests`
+                : `\n  ${stacks} Telugu stacks each behind a Latin face, ${pages} pages asking for the same four families`);
 process.exit(bad ? 1 : 0);
