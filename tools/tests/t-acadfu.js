@@ -111,7 +111,10 @@ const reset = () => { h.run(["DEL", "dl_leads"]); h.run(["DEL", "acad:fu:log"]);
   h.run(["SET", "acad:booked", "3"]);
   // Midday on the day after it starts — an hour it WOULD otherwise write in,
   // so this proves the batch check and not the clock.
-  const started = Date.parse("2026-10-21T12:00:00+05:30");
+  // The day after the batch opens, whatever batch is configured. Pinned to a
+  // literal date this passed until 20 Oct 2026 and then said "batch started"
+  // was broken, when all that had happened was the calendar moving.
+  const started = docs.BATCH.startMs + 36 * H;
   is((await fu.run(cfg, { now: started })).skipped, "batch started", "and once it has begun there is nothing to join");
 
   console.log("\n  — a cap, so it never reads as chasing —");

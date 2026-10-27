@@ -6,6 +6,7 @@
 // — which is exactly the morning the owner would be reading it.
 const path = require("path");
 const h = require("./harness.js");
+const docs = require(require("path").join(process.env.DL_API, "_docs.js"));
 const API = process.env.DL_API;
 let fails = 0;
 const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.stringify(want);
@@ -27,7 +28,7 @@ const book = (list, iso, extra) => h.run(["LPUSH", list, appt(iso, extra)]);
   console.log("  — what it starts as —");
   at("2026-09-24T09:00:00+05:30");
   const d = await goals.load(cfg);
-  is([d.seats, d.seatsBy, d.appts], [10, "2026-10-20", 0], "the batch's own ten seats by the day it starts, and no appointment goal until the owner sets one");
+  is([d.seats, d.seatsBy, d.appts], [docs.BATCH.seats, docs.BATCH.startISO, 0], "the batch's own ten seats by the day it starts, and no appointment goal until the owner sets one");
 
   console.log("  — the owner setting them —");
   is((await goals.save(cfg, { seats: 8, seatsBy: "2026-10-15", appts: 120 }, "Owner")).goals.appts, 120, "both are saved");

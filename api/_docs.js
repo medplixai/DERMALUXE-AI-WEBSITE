@@ -62,9 +62,9 @@ const COURSES = {
 // meant the WhatsApp agent quoting a patient a different date from the poster
 // they had just seen.
 const BATCH = {
-  no: 1, start: "20 October 2026", startISO: "2026-10-20",
+  no: 2, start: "10 November 2026", startISO: "2026-11-10",
   seats: 10, venue: "DermaLuxe Skin & Hair Clinics, Eluru",
-  offerEnd: "15 Oct 2026", offerEndLong: "15 October 2026", offerEndISO: "2026-10-15",
+  offerEnd: "10 Nov 2026", offerEndLong: "10 November 2026", offerEndISO: "2026-11-10",
 };
 // Last moment of the launch offer, 23:59:59 IST on offerEndISO.
 BATCH.offerEndMs = Date.parse(BATCH.offerEndISO + "T23:59:59+05:30");

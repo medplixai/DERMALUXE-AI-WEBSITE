@@ -22,7 +22,13 @@ const restore = () => { Date.now = REAL_NOW; };
 // offer was still running, and said nothing.
 const dayAt = (iso, plusDays) => new Date(Date.parse(iso + "T10:00:00+05:30") + plusDays * 86400000).toISOString();
 const DURING = dayAt(docs.BATCH.offerEndISO, -12);    // offer open, batch ahead, 12 days of it left
-const AFTER_OFFER = dayAt(docs.BATCH.offerEndISO, 2); // offer closed, batch still ahead
+// The owner set the launch offer to run to the day the batch opens (10 Nov
+// 2026), so "the offer has closed but the batch has not started" is a state
+// that can no longer happen. When a future batch does leave a gap, this picks
+// a day inside it; when it does not, it stays null and the block below says so
+// rather than testing a window that is not there.
+const GAP_DAYS = Math.round((docs.BATCH.startMs - docs.BATCH.offerEndMs) / 86400000);
+const AFTER_OFFER = GAP_DAYS >= 2 ? dayAt(docs.BATCH.offerEndISO, 1) : null;
 const AFTER_BATCH = dayAt(docs.BATCH.startISO, 12);   // batch has started
 
 const booked = (n) => h.run(["SET", "acad:booked", String(n)]);
@@ -33,8 +39,9 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   // The three moments above only mean what they are named if the offer still
   // ends before the batch starts. Move the dates close enough together and
   // they stop testing what they say — so that is checked first, out loud.
-  is(Date.parse(AFTER_OFFER) > docs.BATCH.offerEndMs && Date.parse(AFTER_OFFER) < docs.BATCH.startMs, true,
-    "there is room between the offer closing and the batch starting to test the gap");
+  is(AFTER_OFFER === null || (Date.parse(AFTER_OFFER) > docs.BATCH.offerEndMs && Date.parse(AFTER_OFFER) < docs.BATCH.startMs), true,
+    AFTER_OFFER ? "there is room between the offer closing and the batch starting to test the gap"
+                : "the offer runs to the day the batch opens, so there is no gap to test");
   is(Date.parse(DURING) < docs.BATCH.offerEndMs, true, "and the 'offer open' moment really is inside it");
   is(daily.ACADEMY_TOPICS.length, 5, "five posters, one per reason somebody does not sign up");
   is(new Set(keys).size, 5, "all with their own key");
@@ -75,24 +82,32 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   is(daily.academySub(base, { left: 2, offerDays: 12, batchDays: 32 }),
     "Only 2 seats left · Launch price ends in 12 days", "nearly gone, and closing: both, seats first");
   is(daily.academySub(base, { left: 9, offerDays: 12, batchDays: 32 }),
-    "Launch price ends in 12 days · Batch 1 — 20 October 2026", "nine left is not scarcity, so it does not pretend");
+    `Launch price ends in 12 days · Batch ${docs.BATCH.no} — ${docs.BATCH.start}`, "nine left is not scarcity, so it does not pretend");
   is(daily.academySub(base, { left: 2, offerDays: -3, batchDays: 15 }),
     "Only 2 seats left · Starts in 15 days", "once the price has closed it stops promising it");
   is(daily.academySub(base, { left: 9, offerDays: -3, batchDays: 15 }),
-    "Starts in 15 days · Batch 1 — 20 October 2026", "and falls back to the date");
+    `Starts in 15 days · Batch ${docs.BATCH.no} — ${docs.BATCH.start}`, "and falls back to the date");
   // The last day of an offer is the day it matters most, and "in 0 days" or
   // "in 1 day" on the morning it closes is the classic countdown bug.
   is(daily.academySub(base, { left: 9, offerDays: 1, batchDays: 33 }),
-    "Launch price ends tomorrow · Batch 1 — 20 October 2026", "the day before reads as tomorrow");
+    `Launch price ends tomorrow · Batch ${docs.BATCH.no} — ${docs.BATCH.start}`, "the day before reads as tomorrow");
   is(daily.academySub(base, { left: 9, offerDays: 0, batchDays: 32 }),
-    "Launch price ends today · Batch 1 — 20 October 2026", "and the last day reads as today, not as over");
+    `Launch price ends today · Batch ${docs.BATCH.no} — ${docs.BATCH.start}`, "and the last day reads as today, not as over");
   is(daily.academySub(base, { left: 9, offerDays: -1, batchDays: 1 }),
-    "Starts tomorrow · Batch 1 — 20 October 2026", "same for the batch itself");
+    `Starts tomorrow · Batch ${docs.BATCH.no} — ${docs.BATCH.start}`, "same for the batch itself");
 
   console.log("\n  — a poster built after the offer closes —");
-  at(AFTER_OFFER); booked(3);
-  const t2 = await daily.academyTopic({ kind: "pg" });
-  is(/Launch price/.test(t2.sub), false, "says nothing about a launch price that has expired");
+  if (AFTER_OFFER) {
+    at(AFTER_OFFER); booked(3);
+    const t2 = await daily.academyTopic({ kind: "pg" });
+    is(/Launch price/.test(t2.sub), false, "says nothing about a launch price that has expired");
+  } else {
+    // No gap in this batch: the day the offer ends is the day the batch opens,
+    // so there is no poster to build. The line itself is still covered — the
+    // offerDays: -3 cases above are exactly "the price has closed".
+    at(dayAt(docs.BATCH.startISO, 1)); booked(3);
+    is(await daily.academyTopic({ kind: "pg" }), null, "once the batch has opened there is no academy poster at all");
+  }
 
   console.log("\n  — not the same one twice —");
   at(DURING);
