@@ -23,6 +23,14 @@ const imageOf = (href) => {
   return m ? { src: m[1], alt: m[2] } : null;
 };
 
+// A 46px square does not need a 1200x800 photograph. Pointing the hub at the
+// full files made it a 5.4 MB page — the same mistake as serving a 1050px
+// portrait to a 92px avatar, made again one screen later.
+const thumb = (src) => {
+  const t = src.replace("assets/tx/", "assets/tx/thumb/");
+  return fs.existsSync(path.join(ROOT, t)) ? t : src;
+};
+
 function main() {
   const f = path.join(ROOT, "treatments.html");
   let s = fs.readFileSync(f, "utf8");
@@ -36,7 +44,7 @@ function main() {
       if (!img) { bare++; return `<a class="hubc" href="${href}"><span class="hubc__t">${text}</span></a>`; }
       made++;
       return `<a class="hubc" href="${href}">` +
-        `<img class="hubc__img" src="${img.src}" alt="${img.alt.replace(/"/g, "&quot;")}" ` +
+        `<img class="hubc__img" src="${thumb(img.src)}" alt="${img.alt.replace(/"/g, "&quot;")}" ` +
         `width="1200" height="800" loading="lazy" decoding="async" />` +
         `<span class="hubc__t">${text}</span></a>`;
     });
