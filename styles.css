@@ -56,6 +56,17 @@ img { max-width: 100%; display: block; }
 a { color: inherit; text-decoration: none; }
 ul { list-style: none; }
 
+/* The browser hides a `hidden` element with its own [hidden] { display: none },
+   and any rule written here beats it — so a component whose class sets a
+   display kept its box while the attribute said it was closed. Two were doing
+   that: the AI chat panel, display:flex, which left a 351x431 sheet pinned
+   over the middle of every phone screen at opacity 0 and z-index 93, still
+   taking every tap; and the reviews score pill, display:inline-flex, which
+   showed before any review had loaded. Proved on the live site with a real
+   touch: tapping the middle of "Book a Consultation" at 195,623 on a 390px
+   phone did nothing — the tap went to the closed panel's WhatsApp strip. */
+[hidden] { display: none !important; }
+
 .container { width: min(var(--maxw), 92%); margin-inline: auto; }
 
 /* Decorative ambient glow */
@@ -1012,6 +1023,18 @@ h3 { font-size: 1.4rem; }
 .cookie-bar__text a { color: var(--gold-2); text-decoration: underline; text-underline-offset: 2px; }
 .cookie-bar__text strong { color: var(--text); font-weight: 500; }
 .cookie-bar__actions { display: flex; gap: .7rem; flex-shrink: 0; }
+
+/* While the bar is up it takes 180px of a phone screen, pinned at z-index 120,
+   and two things were being swallowed by it. The foot of the page: on a first
+   visit, a visitor who scrolled to the bottom read the last lines through the
+   bar. And any floating control that lands inside it: measured on a phone, the
+   bar covers 16,600 to 375,780 and the AI chat button sits at 326,662 — right
+   inside it, 28 z-levels below — so until the bar was dismissed the chat
+   button took no taps at all. cookies.js measures the bar and publishes
+   --consent-top, the distance from the bottom of the screen to its top; these
+   two rules are the only things that spend it. */
+:root.dl-consent body { padding-bottom: calc(var(--consent-top, 0px) + 14px); }
+:root.dl-consent-lift .dlchat-btn { bottom: calc(var(--consent-top, 0px) + 12px); }
 .cookie-btn {
   font-family: var(--font-sans); font-size: .76rem; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 500;
   padding: .7rem 1.5rem; border-radius: 100px; cursor: pointer; border: 1px solid transparent; transition: all .35s var(--ease);

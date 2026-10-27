@@ -35,7 +35,20 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       await pg.evaluate(() => { document.querySelectorAll(".reveal").forEach((e) => e.classList.add("is-visible")); });
       const r = await pg.evaluate((MIN_TAP, GUTTER) => {
         const vw = document.documentElement.clientWidth;
-        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [] };
+        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [] };
+
+        // An element closed with the `hidden` attribute whose class still sets
+        // a display keeps its whole box: invisible, and still taking every tap
+        // that lands on it. The AI chat panel did this for months — .dlchat
+        // sets display:flex, which beats the browser's own [hidden] rule, so a
+        // closed panel was a 351x431 sheet pinned over the middle of every
+        // phone screen. A real touch on "Book a Consultation" at 195,623 went
+        // to the panel's WhatsApp strip and the page did not move.
+        for (const e of document.querySelectorAll("[hidden]")) {
+          const c = getComputedStyle(e), b = e.getBoundingClientRect();
+          if (c.display === "none" || b.width < 8 || b.height < 8) continue;
+          out.ghost.push(`${(e.id || e.className || e.tagName).toString().split(" ")[0]} ${Math.round(b.width)}x${Math.round(b.height)} still laid out as ${c.display}`);
+        }
         const name = (e) => (e.id || (e.className && e.className.toString()) || e.tagName).split(" ")[0];
 
         // A closed off-canvas panel parks its contents past the right edge on
@@ -160,6 +173,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       if (r.ragged && r.ragged.length) problems.push(`sections start at different left edges — ${r.ragged.join("; ")}`);
       if (r.ragbtn && r.ragbtn.length) problems.push(`stacked buttons are different widths — ${[...new Set(r.ragbtn)].join(", ")}`);
       if (r.thin && r.thin.length) problems.push(`grid columns too narrow for their text — ${[...new Set(r.thin)].join(", ")}`);
+      if (r.ghost && r.ghost.length) problems.push(`closed but still taking taps — ${[...new Set(r.ghost)].join(", ")}`);
       if (problems.length) { bad++; console.log(`  ✗  ${f}: ${problems.join(" · ")}`); }
     } catch (e) {
       bad++; console.log(`  ✗  ${f}: ${e.message.slice(0, 70)}`);
