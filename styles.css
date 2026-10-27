@@ -278,6 +278,8 @@ h3 { font-size: 1.4rem; }
 .highlight__sub strong { color: var(--gold-2); font-weight: 600; }
 
 /* ---------- Hero ---------- */
+.nav__staff { display: none; }
+
 .hero { position: relative; min-height: calc(100vh - 200px); display: flex; align-items: center; overflow: hidden; padding: 4rem 0 5rem; }
 .hero__bg {
   position: absolute; inset: 0; z-index: 0;
@@ -1240,6 +1242,10 @@ h3 { font-size: 1.4rem; }
 
 @media (max-width: 860px) {
   .topbar__hide { display: none; }
+  /* The staff link lives in the bar above on a desktop; below 860 that bar has
+     no room — its two sides already touch at 390px — so it moves into the
+     drawer instead. */
+  .nav__staff { display: block; }
   .nav__inner, .nav.scrolled .nav__inner { height: 96px; }
   .nav__brand img, .nav.scrolled .nav__brand img { height: 74px; }
   .about__grid, .contact__grid, .ht__intro { grid-template-columns: 1fr; }
