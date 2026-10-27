@@ -106,6 +106,27 @@ const RULES = [
     // hair loss "loses a client forever". That is advice about how to behave,
     // not a promise about a treatment.
     allow: /loses a client forever|colleagues/i },
+  { clause: "8.1(vi)", what: "growth or results promised for life",
+    // "Permanent \u00b7 Lifelong Growth" sat on the hair transplant badges
+    // through the whole of the first sweep, because the rule above only knows
+    // undetectable / flawless / forever. The ticklist beside it had it right —
+    // the transplanted follicles are permanent, the hair you still have can go
+    // on thinning — and the badge alone said more than that.
+    //
+    // Narrow on purpose. "Permanent" is a fair word in most of its uses here:
+    // the FAQs that answer "can this be cured permanently?" with "no", and
+    // "regrow permanently from the third month", are honest and must pass.
+    // What fails is the bare noun phrase that promises the outcome.
+    re: /\b(life-?long)\s+(growth|results?|solution)|\bpermanent\s+(results?|solution|cure)\b|\u0c1c\u0c40\u0c35\u0c3f\u0c24\u0c15\u0c3e\u0c32\s*\u0c2a\u0c46\u0c30\u0c41\u0c17\u0c41\u0c26\u0c32|\u0c36\u0c3e\u0c36\u0c4d\u0c35\u0c24\s*\u0c2b\u0c32\u0c3f\u0c24/gi,
+    // Telugu matters as much as English here: three lines said శాశ్వత ఫలితాల —
+    // permanent results — under an English line that only said "lasting". On a
+    // bilingual page the stronger of the two is the claim being made, and the
+    // local patient reads the Telugu one.
+    // A line that FORBIDS the phrase contains it. The agent's briefing says
+    // 'no "guaranteed"/"permanent cure"' — the word "no" is four tokens away
+    // from "permanent", so matching "no permanent" missed it. These allow a
+    // prohibition near the phrase, and nothing else.
+    allow: /\bno\b[^.]{0,45}permanent|NEVER[^.]{0,80}permanent|not (a )?permanent|isn.t permanent|\u0c36\u0c3e\u0c36\u0c4d\u0c35\u0c24 \u0c15\u0c4d\u0c2f\u0c42\u0c30\u0c4d \u0c32\u0c47\u0c26\u0c41|shall not|8\.1\(vi\)/i },
   { clause: "8.1(vi)", what: "absolutes that conceal risk — no downtime / no risk / no side effects",
     re: /\bno (downtime|risk|redness|peeling|side.?effects?|scars)\b|రిస్క్\s*లేదు|డౌన్‌టైమ్\s*లేదు|ఎరుపు\s*లేదు/gi,
     // "No linear scar" is the one absolute that is simply true of FUE, and a
