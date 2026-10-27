@@ -35,7 +35,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       await pg.evaluate(() => { document.querySelectorAll(".reveal").forEach((e) => e.classList.add("is-visible")); });
       const r = await pg.evaluate((MIN_TAP, GUTTER) => {
         const vw = document.documentElement.clientWidth;
-        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [] };
+        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [] };
         const name = (e) => (e.id || (e.className && e.className.toString()) || e.tagName).split(" ")[0];
 
         // A closed off-canvas panel parks its contents past the right edge on
@@ -79,6 +79,64 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
             if (!inProse) out.tiny.push(name(e) + " " + Math.round(b.width) + "x" + Math.round(b.height));
           }
         }
+        // Every section starts on the same left edge and leaves the same gap on
+        // the right. A centred section may be narrower, but it may not start
+        // somewhere of its own.
+        const edges = {};
+        for (const sec of document.querySelectorAll("section, footer")) {
+          const c = sec.querySelector(".container");
+          if (!c) continue;
+          const b = c.getBoundingClientRect();
+          if (b.width < 40) continue;
+          const id = sec.id || (sec.className || sec.tagName).toString().split(" ")[0];
+          (edges[Math.round(b.left)] = edges[Math.round(b.left)] || []).push(id);
+        }
+        const ek = Object.keys(edges);
+        if (ek.length > 1) {
+          const main = ek.sort((a, b) => edges[b].length - edges[a].length)[0];
+          out.ragged = ek.filter((k) => k !== main).map((k) => `${edges[k].join("/")} at ${k} not ${main}`);
+        }
+
+        // Buttons that stack must stack to one width — 253, 265 and 359 down
+        // the middle of a phone is what "not made for this" looks like.
+        const seenGroup = new Set();
+        for (const btn of document.querySelectorAll("a.btn, button.btn")) {
+          const par = btn.parentElement;
+          if (!par || seenGroup.has(par)) continue;
+          seenGroup.add(par);
+          const sibs = [...par.children].filter((e) => e.classList && e.classList.contains("btn") && e.offsetParent);
+          if (sibs.length < 2) continue;
+          const boxes = sibs.map((e) => e.getBoundingClientRect());
+          const stacked = new Set(boxes.map((b) => Math.round(b.top))).size === sibs.length;
+          const widths = [...new Set(boxes.map((b) => Math.round(b.width)))];
+          if (stacked && widths.length > 1)
+            out.ragbtn.push(`${(par.className || par.tagName).toString().split(" ")[0]} [${widths.join(", ")}]`);
+        }
+
+        // A grid column under 150px on a phone wraps prose into three-word
+        // lines. Four hair-transplant cards two-up gave each 170px and broke
+        // their descriptions into six lines.
+        for (const g of document.querySelectorAll("div, ul, ol")) {
+          const c = getComputedStyle(g);
+          if (c.display !== "grid") continue;
+          const cols = c.gridTemplateColumns.split(" ").filter(Boolean);
+          if (cols.length < 2) continue;
+          // Not width alone, and not the grid's text — how many lines that one
+          // column forces, measured from the two real cases:
+          //   ht__techs    170px holding 259 chars -> ~12 lines. Unreadable.
+          //   process__line 167px holding 120 chars -> ~6 lines. Fine.
+          // Nearly the same width, opposite verdicts, so width alone cannot
+          // tell them apart. At a 16px body roughly w/8 characters fit a line.
+          // The first threshold tried here was "narrower than 150px", which
+          // the 170px case walks straight past — a check that could not fail.
+          const w = parseFloat(cols[0]);
+          const first = g.firstElementChild;
+          const chars = first ? first.textContent.trim().length : 0;
+          const lines = w ? (chars * 8) / w : 0;
+          if (lines > 8)
+            out.thin.push(`${(g.className || "grid").toString().split(" ")[0]} ${cols.length}×${Math.round(w)}px, about ${Math.round(lines)} lines a column`);
+        }
+
         // two fixed controls in the same place: whichever is on top wins every tap
         const fx = [...document.querySelectorAll("body *")].filter((e) => {
           const c = getComputedStyle(e), b = e.getBoundingClientRect();
@@ -99,6 +157,9 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       if (r.wide.length) problems.push(`${r.wide.length} off the edge (${r.wide.slice(0, 2).join(", ")})`);
       if (r.tiny.length) problems.push(`${r.tiny.length} too small to tap (${r.tiny.slice(0, 2).join(", ")})`);
       if (r.stacked.length) problems.push(`stacked: ${[...new Set(r.stacked)].join(", ")}`);
+      if (r.ragged && r.ragged.length) problems.push(`sections start at different left edges — ${r.ragged.join("; ")}`);
+      if (r.ragbtn && r.ragbtn.length) problems.push(`stacked buttons are different widths — ${[...new Set(r.ragbtn)].join(", ")}`);
+      if (r.thin && r.thin.length) problems.push(`grid columns too narrow for their text — ${[...new Set(r.thin)].join(", ")}`);
       if (problems.length) { bad++; console.log(`  ✗  ${f}: ${problems.join(" · ")}`); }
     } catch (e) {
       bad++; console.log(`  ✗  ${f}: ${e.message.slice(0, 70)}`);
