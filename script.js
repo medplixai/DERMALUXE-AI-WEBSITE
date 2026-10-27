@@ -79,23 +79,12 @@
     sections.forEach((s) => spy.observe(s));
   }
 
-  /* ---- Service filter tabs ---- */
-  const svcTabs = document.getElementById("svcTabs");
-  const svcGrid = document.getElementById("svcGrid");
-  if (svcTabs && svcGrid) {
-    const cards = [...svcGrid.querySelectorAll(".svc")];
-    svcTabs.addEventListener("click", (e) => {
-      const tab = e.target.closest(".svc-tab");
-      if (!tab) return;
-      svcTabs.querySelectorAll(".svc-tab").forEach((t) => t.classList.remove("is-active"));
-      tab.classList.add("is-active");
-      const filter = tab.dataset.filter;
-      cards.forEach((card) => {
-        const show = filter === "all" || card.dataset.cat === filter;
-        card.classList.toggle("is-hidden", !show);
-      });
-    });
-  }
+  /* ---- Service filter tabs: removed 27 Oct 2026 ----
+     The home page used to carry all forty-three treatments behind filter
+     tabs. It now shows eight and links to treatments.html for the rest, so
+     there is nothing left to filter. The handler is gone rather than left
+     guarded — a listener waiting for an element no page builds is a thing the
+     next reader has to prove is dead. */
 
   /* ---- Year ---- */
   const y = document.getElementById("year");

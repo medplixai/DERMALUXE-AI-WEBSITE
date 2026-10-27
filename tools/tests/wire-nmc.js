@@ -44,7 +44,9 @@ const files = [];
     // Not only .html and .js. "Gold Medalist" sat in llms.txt for a day
     // because this line used to read /\.(html|js)$/ — a published file the
     // audit could not see is a published file nobody is checking.
-    else if (/\.(html|js|txt|json|md|xml|css)$/.test(e.name) && !SKIP_FILE.test(e.name)) files.push(p);
+    // .webmanifest belongs here: without it the PWA icons read as unreferenced
+    // and the orphan check below wanted three of them deleted.
+    else if (/\.(html|js|txt|json|md|xml|css|webmanifest)$/.test(e.name) && !SKIP_FILE.test(e.name)) files.push(p);
   }
 })(ROOT);
 const rel = (p) => path.relative(ROOT, p);
@@ -270,11 +272,14 @@ for (const f of files) {
   const t = fs.readFileSync(f, "utf8");
   for (const m of t.matchAll(/[\w\-./]+\.(?:webp|jpg|jpeg|png)/g)) imgRefs.add(path.basename(m[0]));
 }
-const orphanImgs = ["assets", "assets/academy"]
-  .filter((d) => fs.existsSync(path.join(ROOT, d)))
-  .flatMap((d) => fs.readdirSync(path.join(ROOT, d))
-    .filter((f) => /\.(webp|jpg|jpeg|png)$/i.test(f) && !imgRefs.has(f))
-    .map((f) => d + "/" + f))
+// Named folders were a blind spot: assets/treatments held eight pictures with
+// claim text baked into them, and when the home page stopped referencing them
+// on 27 Oct 2026 this check still said nothing, because it never looked in
+// that folder. It walks the whole tree now.
+const walk = (d) => fs.readdirSync(path.join(ROOT, d), { withFileTypes: true })
+  .flatMap((e) => (e.isDirectory() ? walk(d + "/" + e.name) : [d + "/" + e.name]));
+const orphanImgs = (fs.existsSync(path.join(ROOT, "assets")) ? walk("assets") : [])
+  .filter((f) => /\.(webp|jpg|jpeg|png)$/i.test(f) && !imgRefs.has(path.basename(f)))
   // Reviewed and kept on purpose. Each was opened and looked at on 10 Oct 2026;
   // a new orphan is NOT covered by this list and will be reported.
   //   og-image.jpg            social card, fetched by platforms at an absolute URL
@@ -284,8 +289,24 @@ const orphanImgs = ["assets", "assets/academy"]
   //                           patient, not a result, not in use.
   //   academy/batch1-*        the Batch 1 posters, generated here and published to
   //                           Instagram on purpose; no page links them.
+  //   academy/{certificate,chemical-peel,dr-launch,laser-hair-removal,prp-gfc}
+  //                           looked at on 27 Oct 2026: generated academy scenes —
+  //                           students with certificates, a trainer working, the
+  //                           launch, a laser on an arm, a syringe on a trolley.
+  //                           No patient, no result, no claim text. Made for
+  //                           Instagram; no page links them.
+  //   founders photos/*.png   the originals beside the .webp the pages use
+  //   apple-touch-icon-180    iOS home-screen icon; the pages link
+  //                           assets/apple-touch-icon.png, so this one is spare
   .filter((f) => !/og-image\.jpg$|aesthetics\.jpg$|hero-lady-backup\.jpg$|academy\/batch1-/.test(f))
-  .filter((f) => !fs.existsSync(path.join(ROOT, f.replace(/\.jpg$/, ".webp"))));
+  .filter((f) => !/academy\/(certificate|chemical-peel|dr-launch|laser-hair-removal|prp-gfc)\.webp$/.test(f))
+  .filter((f) => !/founders photos\/.*\.png$|apple-touch-icon-180\.png$/.test(f))
+  // Only a .jpg may be excused for having a .webp beside it. Written without
+  // the extension test this dropped EVERY .webp — replace() is a no-op on one,
+  // so the file it then looks for is itself, which always exists. The check
+  // has therefore never once reported a .webp orphan, and nearly every image
+  // on this site is a .webp.
+  .filter((f) => !/\.jpg$/i.test(f) || !fs.existsSync(path.join(ROOT, f.replace(/\.jpg$/i, ".webp"))));
 ok(orphanImgs.length === 0, orphanImgs.length
   ? `8.1(v) \u00b7 published but referenced by no page \u2014 look at each before keeping it: ${orphanImgs.join(", ")}`
   : "8.1(v) \u00b7 every published image is referenced by a page");

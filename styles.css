@@ -109,8 +109,6 @@ h3 { font-size: 1.4rem; }
 .contact__lead-te { display: block; margin-top: .8rem; font-size: .96rem; line-height: 1.7; color: var(--gold-3); }
 .head-te { color: var(--gold-2); font-weight: 500; font-size: clamp(1.1rem, 2.4vw, 1.55rem); line-height: 1.4; margin-top: .55rem; }
 .highlight__te { color: var(--gold-2); font-weight: 500; font-size: clamp(1.15rem, 2.6vw, 1.8rem); line-height: 1.35; margin-top: .8rem; }
-.svc-tab .te { display: block; font-size: .62rem; letter-spacing: .3px; text-transform: none; margin-top: 3px; opacity: .9; }
-.svc-tab.is-active .te { opacity: .85; }
 .label-te { font-family: "Noto Sans Telugu", var(--font-sans); font-weight: 400; font-size: .72rem; letter-spacing: 0; text-transform: none; color: var(--gold-3); }
 .footer__col h4 .te { font-family: "Noto Sans Telugu", var(--font-sans); font-weight: 400; font-size: .72rem; letter-spacing: .5px; text-transform: none; color: var(--gold-4); }
 
@@ -473,32 +471,9 @@ h3 { font-size: 1.4rem; }
 }
 
 /* ---------- Signature treatments gallery ---------- */
-.feat-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.1rem; margin-bottom: 2.8rem; }
-.featc {
-  border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line-soft);
-  background: var(--ink-2); transition: transform .45s var(--ease), border-color .45s var(--ease), box-shadow .45s var(--ease);
-}
-.featc:hover { transform: translateY(-6px); border-color: var(--line); box-shadow: 0 28px 56px -28px rgba(0,0,0,.9); }
-.featc__img { aspect-ratio: 3/2; background: #f4f1ec center / cover no-repeat; transition: transform .6s var(--ease); }
-.featc:hover .featc__img { transform: scale(1.05); }
-.featc__cap {
-  padding: .85rem 1rem; text-align: center; font-family: var(--font-serif); font-size: 1.1rem;
-  color: var(--gold-1); border-top: 1px solid var(--line); background: linear-gradient(180deg, var(--panel), var(--ink-2));
-}
 
-.svc-divider { display: flex; align-items: center; gap: 1.2rem; margin: 0 auto 2rem; max-width: 560px; }
-.svc-divider::before, .svc-divider::after { content: ""; height: 1px; flex: 1; background: linear-gradient(90deg, transparent, var(--gold-4), transparent); opacity: .5; }
-.svc-divider span { font-size: .74rem; letter-spacing: 2.5px; text-transform: uppercase; color: var(--gold-3); white-space: nowrap; }
 
 /* ---------- Service tabs + menu ---------- */
-.svc-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: .6rem; margin-bottom: 2.5rem; }
-.svc-tab {
-  font-family: var(--font-sans); font-size: .8rem; letter-spacing: 1.2px; text-transform: uppercase; font-weight: 500;
-  color: var(--muted); background: transparent; border: 1px solid var(--line-soft); border-radius: 100px;
-  padding: .6rem 1.4rem; cursor: pointer; transition: all .35s var(--ease);
-}
-.svc-tab:hover { color: var(--gold-1); border-color: var(--line); }
-.svc-tab.is-active { color: #2a1d07; background: var(--gold-grad); border-color: transparent; box-shadow: 0 8px 22px -10px rgba(201,162,92,.6); }
 
 .svc-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1.1rem; }
 .svc {
@@ -523,6 +498,58 @@ h3 { font-size: 1.4rem; }
   max-width: none;
   border-radius: 9px; border: 1px solid var(--line-soft);
 }
+/* The full menu on treatments.html. Quieter than a home-page card — this is a
+   page you scan, not one you are being shown — so the picture is small, the
+   type is one line, and nothing has a gold rail competing with its neighbour. */
+.hub-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: .7rem; margin: 1.2rem 0 2.8rem;
+}
+.hubc {
+  display: flex; align-items: center; gap: .85rem; padding: .7rem .9rem;
+  background: linear-gradient(165deg, var(--panel), var(--ink-2));
+  border: 1px solid var(--line-soft); border-radius: var(--radius-sm);
+  color: var(--text); text-decoration: none;
+  transition: border-color .35s var(--ease), transform .35s var(--ease);
+}
+.hubc:hover { border-color: var(--gold-4); transform: translateY(-2px); }
+.hubc__img {
+  flex: none; width: 46px; height: 46px; max-width: none; object-fit: cover;
+  border-radius: 8px; border: 1px solid var(--line-soft);
+}
+.hubc__t { font-size: .92rem; line-height: 1.35; }
+/* A service with no page of its own: the same card, without the hover lift,
+   because nothing happens when you press it. */
+.hubc--plain { cursor: default; }
+.hubc--plain:hover { border-color: var(--line-soft); transform: none; }
+.hubc__t .te { display: block; font-size: .78rem; color: var(--gold-3); margin-top: .1rem; }
+.hub-also-note {
+  max-width: 620px; margin: -.4rem 0 1rem; font-size: .82rem;
+  line-height: 1.6; color: var(--muted);
+}
+.hub-also-note .te { display: block; margin-top: .25rem; }
+
+.hub-ai-note {
+  max-width: 640px; margin: 0 auto 2rem; text-align: center;
+  font-size: .74rem; line-height: 1.65; color: var(--muted-2);
+}
+.hub-ai-note .te { display: block; margin-top: .2rem; }
+
+/* One link out to the full menu, where the other thirty-three treatments
+   live. It is a line of type, not a button: the page's one filled button is
+   the consultation, and a second gold pill beside it would make neither read
+   as the thing to do. */
+.svc-more { text-align: center; margin-top: 3rem; }
+.svc-more__link {
+  display: inline-block; padding: .55rem .2rem; color: var(--gold-2);
+  font-size: .95rem; letter-spacing: .04em; text-decoration: none;
+  border-bottom: 1px solid color-mix(in srgb, var(--gold-3) 40%, transparent);
+  transition: border-color .35s var(--ease), color .35s var(--ease);
+}
+.svc-more__link::after { content: " \2192"; }
+.svc-more__link:hover { color: var(--gold-1); border-bottom-color: var(--gold-2); }
+.svc-more__link .te { display: block; font-size: .8rem; color: var(--muted); letter-spacing: 0; margin-top: .15rem; }
+
 .svc-ai-note {
   max-width: 640px; margin: -1.6rem auto 2.4rem; text-align: center;
   font-size: .74rem; line-height: 1.65; color: var(--muted-2);
@@ -544,7 +571,6 @@ h3 { font-size: 1.4rem; }
 .ticklist .tsub { font-size: .84rem; margin-top: .1rem; }
 .svc p { font-size: .9rem; color: var(--muted); margin-bottom: .9rem; }
 .svc__tag { font-size: .62rem; letter-spacing: 1.4px; text-transform: uppercase; color: var(--gold-3); border: 1px solid var(--line); border-radius: 100px; padding: .22rem .65rem; }
-.svc.is-hidden { display: none; }
 
 /* ---------- Why ---------- */
 .why { background: linear-gradient(180deg, var(--ink-2), var(--ink)); border-block: 1px solid var(--line-soft); }
@@ -1158,7 +1184,7 @@ h3 { font-size: 1.4rem; }
   .hero { --hero-photo-h: min(56vh, 520px); min-height: 0; align-items: flex-start; padding-top: 0; }
   .hero__photo {
     inset: 0 0 auto 0; width: 100%; height: var(--hero-photo-h); opacity: 1;
-    background: url("assets/dr-nikhitha.webp") center 12% / cover no-repeat;
+    background: url("assets/dr-nikhitha-780.webp") center 12% / cover no-repeat;
     -webkit-mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
   }
