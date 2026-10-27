@@ -305,7 +305,24 @@ h3 { font-size: 1.4rem; }
   content: ""; position: absolute; inset: 0;
   background: linear-gradient(180deg, rgba(10,10,12,.35), rgba(10,10,12,.15) 40%, rgba(10,10,12,.85));
 }
-.hero__inner { position: relative; z-index: 1; max-width: 860px; }
+/* .hero is a flex row, so its .container became a flex item and shrank to its
+   contents — 860px, the max-width of .hero__inner below — and then
+   margin-inline:auto centred that 860 in the viewport. Every other section's
+   container is 1200 and centred too, so the hero's left edge sat
+   (1200-860)/2 = 170px to the right of the logo above it and of every section
+   below it, at every width. Giving the flex item the container's real width
+   puts all of them on one line; .hero__inner keeps 860 for the reading
+   measure, now measured from that shared edge. */
+/* The hero's block is ONE element carrying both .container and .hero__inner.
+   .container asks for 1200; max-width:860 overruled it, and .container's
+   margin-inline:auto then centred that 860 in the viewport — so the hero's
+   left edge sat (1200-860)/2 = 170px right of the logo above it and of every
+   section below it, at every width.
+   The block now takes the container's width like every other section, and the
+   860 measure moves onto its children, which is what it was really for: it
+   keeps the text clear of the photograph on the right. */
+.hero > .container.hero__inner { position: relative; z-index: 1; max-width: none; width: min(var(--maxw), 92%); flex: 0 0 auto; }
+.hero__inner > * { max-width: 860px; }
 .hero__title { font-size: clamp(2.8rem, 7vw, 5.4rem); margin-bottom: 1.6rem; }
 .hero__sub { font-size: 1.15rem; color: var(--muted); max-width: 56ch; margin-bottom: 2.4rem; }
 .hero__cta { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 3.5rem; }

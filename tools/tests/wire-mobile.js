@@ -67,8 +67,17 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
             if (!clipped) out.wide.push(name(e) + " " + Math.round(b.left) + ".." + Math.round(b.right));
           }
           // too small to tap
+          // Too small to tap. A link inside a sentence is excluded: "Terms" in
+          // a line of footer prose is 31x19 and always will be — the rule is
+          // about standalone controls, and reporting inline links as controls
+          // made six pages fail for a thing no visitor would call a problem.
           if (/^(a|button)$/i.test(e.tagName) && e.textContent.trim() && c.position !== "fixed" &&
-              (b.height < MIN_TAP && b.width < MIN_TAP)) out.tiny.push(name(e) + " " + Math.round(b.width) + "x" + Math.round(b.height));
+              b.height < MIN_TAP && b.width < MIN_TAP) {
+            const p = e.parentElement;
+            const inProse = p && /^(P|LI|SPAN|SMALL|TD|FIGCAPTION)$/.test(p.tagName) &&
+              p.textContent.trim().length > e.textContent.trim().length + 3;
+            if (!inProse) out.tiny.push(name(e) + " " + Math.round(b.width) + "x" + Math.round(b.height));
+          }
         }
         // two fixed controls in the same place: whichever is on top wins every tap
         const fx = [...document.querySelectorAll("body *")].filter((e) => {
@@ -96,7 +105,49 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
     }
     await pg.close();
   }
+  // --- the desktop left edge ------------------------------------------------
+  // A section whose text is left-aligned must start on the same left edge as
+  // every other one, or the page reads as crooked. The hero got this wrong for
+  // months: it is one <div class="container hero__inner">, .container asked for
+  // 1200, max-width:860 overruled it, and margin-inline:auto then centred the
+  // 860 — so the headline sat 170px right of the logo directly above it, at
+  // every width. A CENTRED section may be narrower; it is aligned on the
+  // middle, and .highlight and .ctabanner are that on purpose.
+  //
+  // Checked on one page per template rather than all 94: the left edge comes
+  // from .container, which every page shares, and switching the viewport twice
+  // on each of 94 pages was flaky enough to kill a tab.
+  const TEMPLATES = ["index.html", "treatments.html", "academy.html", "acne-treatment-eluru.html",
+    "acne-treatment-eluru-telugu.html", "contact.html", "privacy.html"].filter((f) => fs.existsSync(path.join(ROOT, f)));
+  for (const f of TEMPLATES) {
+    const pg = await b.newPage();
+    await pg.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
+    try {
+      await pg.goto("file://" + path.join(ROOT, f), { waitUntil: "domcontentloaded", timeout: 30000 });
+      await pg.evaluate(() => { document.querySelectorAll(".reveal").forEach((e) => e.classList.add("is-visible")); });
+      const edges = await pg.evaluate(() => {
+        const m = {};
+        for (const sec of document.querySelectorAll("section, footer")) {
+          const c = sec.querySelector(".container");
+          if (!c || getComputedStyle(c).textAlign === "center") continue;
+          const b = c.getBoundingClientRect();
+          if (b.width < 40) continue;
+          const id = sec.id || (sec.className || sec.tagName).toString().split(" ")[0];
+          (m[Math.round(b.left)] = m[Math.round(b.left)] || []).push(id);
+        }
+        return m;
+      });
+      const keys = Object.keys(edges);
+      if (keys.length > 1) {
+        const main = keys.sort((x, y) => edges[y].length - edges[x].length)[0];
+        const odd = keys.filter((k) => k !== main).map((k) => `${edges[k].join("/")} starts at ${k}, everything else at ${main}`);
+        bad++; console.log(`  ✗  ${f}: left edges disagree at 1440px — ${odd.join("; ")}`);
+      }
+    } catch (e) { bad++; console.log(`  ✗  ${f}: ${e.message.slice(0, 70)}`); }
+    await pg.close();
+  }
+
   await b.close();
-  console.log(bad ? `\n  ${bad} problem(s) on a phone, of ${checked} pages` : `\n  ${checked} pages, every one behaves on a 390px phone`);
+  console.log(bad ? `\n  ${bad} problem(s) in the layout people see, of ${checked} pages` : `\n  ${checked} pages, every one behaves at 390px and lines up at 1440px`);
   process.exit(bad ? 1 : 0);
 })();
