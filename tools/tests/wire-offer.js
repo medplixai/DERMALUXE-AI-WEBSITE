@@ -71,6 +71,38 @@ for (const f of pages) {
 }
 ok(strayIso.length === 0, strayIso.length ? `a page promises Google a different date — ${strayIso.join(" · ")}` : `every priceValidUntil on all ${pages.length} pages says ${B.offerEndISO}`);
 
+// The BATCH START date, the same way. This check only watched the offer, which
+// is why it caught "till 15 Nov 1026" on 27 Oct 2026 and said nothing about
+// "Batch 20 Nov 2026" three lines below it — both produced by the same careless
+// pass. Two separate dates, both written by hand on this page, both worth the
+// same guard.
+//
+// Both of those were self-inflicted in a way worth naming: a run of string
+// replacements where a later rule matched text an earlier rule had just
+// written. "Oct 20" -> "Nov 10" fired inside "Oct 2026"; then "Batch 1" ->
+// "Batch 2" fired inside the "Batch 10 Nov" the previous rule had produced.
+// Nothing about a replacement list says the rules are independent — they are
+// not — so the dates are checked against _docs.js rather than trusted.
+const bShortNoYear = /^\d{1,2} [A-Z][a-z]{2}$/.test(B.start) ? B.start : B.start.replace(/\s+\d{4}$/, "");
+const bShort = B.start.replace(/^(\d{1,2}) ([A-Z][a-z]{2})[a-z]*( \d{4})?$/, "$1 $2$3");
+const B_ALLOWED = new Set([B.start, B.startISO, bShortNoYear, bShort, bShort.replace(/\s+\d{4}$/, "")]);
+const BATCH_EN = /(?:[Bb]atch|starts on|startDate"\s*:\s*")\s*(\d{1,2} [A-Z][a-z]+(?: \d{4})?|\d{4}-\d{2}-\d{2})/g;
+const bFound = [...html.matchAll(BATCH_EN)].map((m) => m[1]);
+ok(bFound.length > 0, `the page names the batch date ${bFound.length} time(s) in English`);
+const bWrong = [...new Set(bFound.filter((d) => !B_ALLOWED.has(d)))];
+ok(bWrong.length === 0, bWrong.length ? `batch date disagrees with _docs.js: ${bWrong.join(" \u00b7 ")}` : "every one of them is BATCH.start");
+
+const [by, bm, bd] = B.startISO.split("-");
+const bTe = `${Number(bd)} ${TE_MONTHS[bm]}`;
+const BATCH_TE = new RegExp("\u0c2c\u0c4d\u0c2f\u0c3e\u0c1a\u0c4d\\s+(\\d{1,2})\\s*(" + Object.values(TE_MONTHS).join("|") + ")", "g");
+const bTeFound = [...html.matchAll(BATCH_TE)].map((m) => `${Number(m[1])} ${m[2]}`);
+const bTeWrong = [...new Set(bTeFound.filter((d) => d !== bTe))];
+ok(bTeWrong.length === 0, bTeWrong.length ? `Telugu names the batch as: ${bTeWrong.join(" \u00b7 ")} (should be ${bTe})` : `and ${bTeFound.length} time(s) in Telugu, all ${bTe}`);
+
+const startIso = [...html.matchAll(/startDate"\s*:\s*"([^"]+)"/g)].map((m) => m[1]);
+ok(startIso.length === 0 || startIso.every((d) => d === B.startISO),
+  startIso.length ? `startDate: ${[...new Set(startIso)].join(", ")}` : "no startDate found");
+
 // The API side must never type the date out; it has _docs.js for that.
 const skip = new Set(["_docs.js"]);
 const typed = [];
