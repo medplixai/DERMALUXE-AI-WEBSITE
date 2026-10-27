@@ -395,10 +395,18 @@ h3 { font-size: 1.4rem; }
 .ht { background: linear-gradient(180deg, var(--ink-2), var(--ink)); border-block: 1px solid var(--line-soft); }
 .ht__intro { display: grid; grid-template-columns: 1fr 1.1fr; gap: clamp(2.5rem, 5vw, 4.5rem); align-items: center; margin-bottom: clamp(2.5rem, 5vw, 4rem); }
 .ht__visual { position: relative; }
+/* OWNER'S DECISION, 27 Oct 2026: the before/after photograph goes back here.
+   It was removed on 10 Oct for NMC 8.1(v) — a before/after image "shall not"
+   be displayed — and 6.2, which says a patient's consent would not cure that.
+   The clinic was told the clause, that 10.1(v) allows removal from the register
+   for one to three years, and that the exposure is on the three doctors named
+   on every page. The owner asked for it twice and this is their call to make.
+   wire-nmc still reports it, as a stated exception rather than a clean bill. */
 .ht__visual-img {
   aspect-ratio: 4/5; border-radius: var(--radius); border: 1px solid var(--line); position: relative; overflow: hidden;
   background:
     linear-gradient(180deg, rgba(10,10,12,0), rgba(10,10,12,.25)),
+    url("assets/ht-before-after.webp") center top / cover no-repeat,
     linear-gradient(160deg, #1c1b1f, #121115);
 }
 /* The card used to show a hair-transplant before/after photograph. NMC 8.1(v)

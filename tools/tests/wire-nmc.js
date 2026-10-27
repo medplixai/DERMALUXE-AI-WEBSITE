@@ -160,7 +160,12 @@ const RULES = [
     re: /before[\s-]?(and[\s-]?)?after|before\/after/gi,
     // Planning a procedure with the surgeon, a rule forbidding the claim, and
     // the clinical photo timeline in the staff tools are all lawful uses.
-    allow: /planning with the surgeon|ముందు-తర్వాత ప్లానింగ్|NEVER|forbids|8\.1\(v\)|used to|pampakoodadhu|before\/after claim/i },
+    // allow is tested line by line. The two lines excused here are the one
+    // decided file by its exact name — ht-before-after — and the comment that
+    // records who asked for it. Narrow on purpose: a second before/after, under
+    // any other name, still fails, and the asset check below lists this one on
+    // every run so it is never mistaken for a clean site.
+    allow: /planning with the surgeon|ముందు-తర్వాత ప్లానింగ్|NEVER|forbids|8\.1\(v\)|used to|pampakoodadhu|before\/after claim|ht-before-after|owner asked for the before\/after/i },
 ];
 
 console.log("WHAT THE CLINIC IS ALLOWED TO SAY\n");
@@ -258,8 +263,18 @@ ok(!/sendWaImageLink\(ph, BASE\(\) \+ DOCTOR\.img/.test(read("api/_trust.js")),
 const assetDirs = ["assets", "assets/academy"];
 const badAssets = assetDirs.filter((d) => fs.existsSync(path.join(ROOT, d)))
   .flatMap((d) => fs.readdirSync(path.join(ROOT, d)).filter((f) => /before.?after|b4.?after/i.test(f)).map((f) => d + "/" + f));
-ok(badAssets.length === 0, badAssets.length
-  ? `8.1(v) \u00b7 before/after image files are still served: ${badAssets.join(", ")}`
+// The clinic publishes one before/after photograph by the owner's decision of
+// 27 Oct 2026. They were told 8.1(v) says it "shall not" be displayed, that 6.2
+// means a patient's consent would not cure it, and that 10.1(v) allows removal
+// from the register for one to three years — and asked for it twice. It is
+// their clinic and their call, so this check states it on every run instead of
+// pretending the site is clean, and fails the moment a SECOND one appears.
+const DECIDED = ["assets/ht-before-after.jpg", "assets/ht-before-after.webp"];
+const decided = badAssets.filter((f) => DECIDED.includes(f));
+const unexpected = badAssets.filter((f) => !DECIDED.includes(f));
+if (decided.length) console.log("  !   8.1(v) \u00b7 a before/after photograph IS published, by the owner's decision of 27 Oct 2026: " + decided.join(", "));
+ok(unexpected.length === 0, unexpected.length
+  ? `8.1(v) \u00b7 a before/after image nobody decided on is being served: ${unexpected.join(", ")}`
   : "8.1(v) \u00b7 no before/after image is published in assets");
 
 // An image no page references is still served at its public URL. All three
@@ -411,5 +426,10 @@ ok(/docs\.regLine\(doc\.reg\)/.test(daily), "3.2 Expl. IV · the poster's doctor
 ok(/docs\.regLine\("nikhitha"\)/.test(read("api/_trust.js")), "3.2 Expl. III · the WhatsApp doctor card carries it");
 
 console.log("");
-console.log(bad ? `${bad} problem(s) — a patient can still read these` : "nothing a patient should not read");
+// The runner prints only this last line, so it has to carry the exception.
+// "nothing a patient should not read" over a published before/after would be
+// the audit telling a comfortable lie once a week.
+console.log(bad ? `${bad} problem(s) — a patient can still read these`
+  : decided.length ? `clean except the before/after photograph the owner decided to publish (8.1(v), 27 Oct 2026)`
+  : "nothing a patient should not read");
 process.exit(bad ? 1 : 0);
