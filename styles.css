@@ -1106,16 +1106,16 @@ h3 { font-size: 1.4rem; }
    pale gold on its own gold ground, which is the same colour twice, and
    underlined besides. The only page it showed on was the one nobody looks at
    until something has already gone wrong. */
-/* The careers page is 430 words and, until now, nothing to look at. The
-   picture sits between the opening paragraph and the list of roles, where a
-   reader pauses anyway. It is capped so it never takes more than a screen,
+/* The careers page was 430 words and the portal page 248, both with nothing
+   to look at but the logo. On each the picture sits after the opening
+   paragraph and before the list, where a reader pauses anyway. It is capped so it never takes more than a screen,
    and the cap is 520px because three people need more room than one coat. */
-.careers-fig { margin: 2rem 0 2.4rem; }
-.careers-fig img { width: 100%; max-width: 520px; height: auto; display: block; margin-inline: auto;
+.page-fig { margin: 2rem 0 2.4rem; }
+.page-fig img { width: 100%; max-width: 520px; height: auto; display: block; margin-inline: auto;
   border-radius: var(--radius); border: 1px solid var(--line); }
-.careers-fig figcaption { max-width: 520px; margin: .7rem auto 0; text-align: center;
+.page-fig figcaption { max-width: 520px; margin: .7rem auto 0; text-align: center;
   font-size: .75rem; line-height: 1.5; color: var(--muted-2); }
-.careers-fig figcaption .te { display: block; margin-top: .2rem; }
+.page-fig figcaption .te { display: block; margin-top: .2rem; }
 
 .legal a:not(.btn) { color: var(--gold-2); text-decoration: underline; text-underline-offset: 2px; }
 .legal strong { color: var(--text); font-weight: 500; }
