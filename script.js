@@ -39,14 +39,37 @@
     toggle.setAttribute("aria-expanded", "false");
     document.body.style.overflow = "";
   };
+  /* On Android the back gesture is the universal "close this thing". Opening
+     the menu added no history step, so back left the page being read — and
+     left the site altogether for somebody who arrived from a search. One
+     entry is pushed when it opens and consumed when it closes, so back closes
+     the menu and a second back does what it always did. */
+  let menuPushed = false;
+  const openMenu = () => {
+    links.classList.add("open");
+    toggle.classList.add("open");
+    toggle.setAttribute("aria-expanded", "true");
+    document.body.style.overflow = "hidden";
+    if (!menuPushed) { menuPushed = true; try { history.pushState({ dlMenu: 1 }, ""); } catch (e) { menuPushed = false; } }
+  };
+  const dismissMenu = () => {
+    const wasPushed = menuPushed;
+    menuPushed = false;
+    closeMenu();
+    if (wasPushed) { try { history.back(); } catch (e) {} }
+  };
   toggle.addEventListener("click", () => {
-    const open = links.classList.toggle("open");
-    toggle.classList.toggle("open", open);
-    toggle.setAttribute("aria-expanded", String(open));
-    document.body.style.overflow = open ? "hidden" : "";
+    links.classList.contains("open") ? dismissMenu() : openMenu();
   });
-  links.querySelectorAll("a").forEach((a) => a.addEventListener("click", closeMenu));
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeMenu(); });
+  links.querySelectorAll("a").forEach((a) => a.addEventListener("click", () => {
+    // the link navigates or jumps; drop our history step without going back
+    menuPushed = false;
+    closeMenu();
+  }));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && links.classList.contains("open")) dismissMenu(); });
+  window.addEventListener("popstate", () => {
+    if (links.classList.contains("open")) { menuPushed = false; closeMenu(); }
+  });
 
   /* ---- Scroll reveal ---- */
   const reveals = document.querySelectorAll(".reveal");

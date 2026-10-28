@@ -105,11 +105,24 @@
     chips = document.getElementById("dlChatChips");
     badge = document.getElementById("dlChatBadge");
 
-    btn.addEventListener("click", function () { panel.hidden ? open() : close(); });
+    /* Same as the menu: on Android, back means "close this". The panel has a
+       working X, so this was recoverable — but back still threw the reader
+       off the page they were on. */
+    var pushed = false;
+    var openPanel = function () {
+      open();
+      if (!pushed) { pushed = true; try { history.pushState({ dlChat: 1 }, ""); } catch (e) { pushed = false; } }
+    };
+    var closePanel = function () {
+      var was = pushed; pushed = false; close();
+      if (was) { try { history.back(); } catch (e) {} }
+    };
+    btn.addEventListener("click", function () { panel.hidden ? openPanel() : closePanel(); });
+    window.addEventListener("popstate", function () { if (!panel.hidden) { pushed = false; close(); } });
     var x = document.getElementById("dlChatClose");
-    if (x) x.addEventListener("click", close);
+    if (x) x.addEventListener("click", closePanel);
     form.addEventListener("submit", function (e) { e.preventDefault(); send(input.value.trim()); });
-    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) close(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) closePanel(); });
 
     // While somebody is typing in a form, the bubble is in the way and not
     // wanted. It is fixed 64px off the bottom, and on a phone the keyboard
