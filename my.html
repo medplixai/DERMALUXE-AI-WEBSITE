@@ -23,7 +23,10 @@
   h2 small{font-weight:400;color:var(--muted);font-size:.78rem}
   .meta{color:var(--muted);font-size:.84rem;line-height:1.5}
   input,textarea,select{width:100%;border:1px solid var(--line);border-radius:12px;padding:12px;font:inherit;font-size:1rem;margin-top:8px;background:#fff;color:var(--ink)}
-  .btn{display:inline-block;text-align:center;text-decoration:none;border:0;border-radius:12px;padding:12px 16px;font:inherit;font-weight:600;font-size:.92rem;cursor:pointer}
+  /* 12px of padding either side of a .92rem line came to 41px, and a finger
+     covers about 44. This is the button a patient presses to see their own
+     appointments and bills. */
+  .btn{display:inline-block;text-align:center;text-decoration:none;border:0;border-radius:12px;padding:14px 16px;font:inherit;font-weight:600;font-size:.92rem;cursor:pointer}
   .btn.gold{background:var(--gold);color:#fff}.btn.gold:active{background:var(--gold2)}
   .btn.line{background:#fff;color:var(--ink);border:1px solid var(--line)}
   .btn.sm{padding:8px 12px;font-size:.82rem;border-radius:10px}
@@ -39,7 +42,10 @@
   .msg{margin-top:10px;font-size:.88rem}.msg.ok{color:var(--ok)}.msg.err{color:#b91c1c}
   .hide{display:none!important}
   .foot{text-align:center;color:var(--muted);font-size:.76rem;margin-top:16px;line-height:1.7}
-  .foot a{color:var(--gold)}
+  /* The clinic's two numbers sit at the foot of every screen here, and they
+     were as tall as their own text — 15px. The room is in the line's own
+     leading, so padding takes it and a margin gives it back. */
+  .foot a{color:var(--gold);display:inline-block;padding:.45rem 0;margin:-.45rem 0}
   :focus-visible{outline:2px solid var(--gold);outline-offset:2px}
   .code{letter-spacing:.4em;text-align:center;font-size:1.3rem}
 </style>

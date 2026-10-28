@@ -41,10 +41,12 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
         // elements visible either way. It is corrected so the next person does
         // not read it as the thing that makes the page visible.
         document.querySelectorAll(".reveal").forEach((e) => e.classList.add("in"));
+        // the academy's join form is behind a .hide until its link checks out
+        document.querySelectorAll(".hide").forEach((e) => e.classList.remove("hide"));
       });
       const r = await pg.evaluate((MIN_TAP, GUTTER) => {
         const vw = document.documentElement.clientWidth;
-        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [], micro: [] };
+        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [], micro: [], unnamed: [] };
 
         // An element closed with the `hidden` attribute whose class still sets
         // a display keeps its whole box: invisible, and still taking every tap
@@ -176,6 +178,20 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
         // a desktop or on Android, so only a rule can hold it: the booking
         // form sat at .98rem — 15.68px, a third of a pixel under — and threw
         // the page out of shape on every tap for as long as it has existed.
+        // A <label> sitting beside a field is read by a person looking at the
+        // screen and by nothing else. The academy's join form had its words in
+        // the right place for all nineteen — "Full name · పూర్తి పేరు" directly
+        // above the box — and not one of them tied to the field, so anything
+        // reading the page aloud announced an empty edit box nineteen times.
+        // `for` and `id`, or a wrapping label, or aria-label: any of the three.
+        for (const e of document.querySelectorAll("input, select, textarea")) {
+          if (/^(hidden|submit|button|image)$/.test(e.type || "")) continue;
+          if ((e.labels && e.labels.length) || e.getAttribute("aria-label") ||
+              e.getAttribute("aria-labelledby") || e.getAttribute("title") || e.placeholder) continue;
+          const near = e.parentElement && e.parentElement.querySelector("label");
+          out.unnamed.push(name(e) + (near ? ' has "' + near.textContent.trim().replace(/\s+/g, " ").slice(0, 22) + '" beside it, untied' : " has nothing naming it"));
+        }
+
         for (const e of document.querySelectorAll("input, select, textarea")) {
           const c = getComputedStyle(e);
           if (c.display === "none" || c.visibility === "hidden") continue;
@@ -256,6 +272,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       if (r.wrapbar && r.wrapbar.length) problems.push(`the bar at the bottom wrapped — ${[...new Set(r.wrapbar)].join("; ")}`);
       if (r.shortrow && r.shortrow.length) problems.push(`a column of links too short to aim at — ${[...new Set(r.shortrow)].join(", ")}`);
       if (r.micro && r.micro.length) problems.push(`text under 12px — ${[...new Set(r.micro)].slice(0, 4).join(", ")}`);
+      if (r.unnamed && r.unnamed.length) problems.push(`fields nothing would announce — ${[...new Set(r.unnamed)].slice(0, 3).join("; ")}`);
       if (problems.length) { bad++; console.log(`  ✗  ${f}: ${problems.join(" · ")}`); }
     } catch (e) {
       bad++; console.log(`  ✗  ${f}: ${e.message.slice(0, 70)}`);
@@ -290,6 +307,8 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
         // elements visible either way. It is corrected so the next person does
         // not read it as the thing that makes the page visible.
         document.querySelectorAll(".reveal").forEach((e) => e.classList.add("in"));
+        // the academy's join form is behind a .hide until its link checks out
+        document.querySelectorAll(".hide").forEach((e) => e.classList.remove("hide"));
       });
       const edges = await pg.evaluate(() => {
         const m = {};
