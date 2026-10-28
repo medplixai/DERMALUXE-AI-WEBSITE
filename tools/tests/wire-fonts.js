@@ -50,11 +50,25 @@ function look(file, text) {
 // The two shared stacks are custom properties, not font-family declarations,
 // so look() never sees them — and they are the ones everything else leans on.
 const css = strip(fs.readFileSync(path.join(ROOT, "styles.css"), "utf8"));
-for (const [name, latin] of [["--font-sans-te", "Jost"], ["--font-serif-te", "Cormorant Garamond"]]) {
+const decl = (name) => {
   const m = css.match(new RegExp("^\\s*" + name + "\\s*:([^;]+);", "m"));
-  if (!m) { bad++; console.log(`  ✗  ${name} is not defined`); continue; }
+  if (!m) return null;
+  // --font-sans-te is an alias for --font-sans; follow it once to the real list
+  const alias = m[1].trim().match(/^var\(\s*(--[\w-]+)\s*\)$/);
+  return alias ? decl(alias[1]) : m[1];
+};
+/* --font-sans and --font-serif were added here on 28 October 2026. They had
+   named no Telugu face, and a one-class rule like .te-serif loses to any rule
+   written as "X p", so 158 runs of Telugu across 46 pages were resolving to
+   whichever Telugu font the reader's phone owned. wire-tefont catches that by
+   asking the browser; this catches it in the stylesheet, in a tenth of a
+   second, which is where it is cheapest to catch. */
+for (const [name, latin] of [["--font-sans", "Jost"], ["--font-serif", "Cormorant Garamond"],
+                             ["--font-sans-te", "Jost"], ["--font-serif-te", "Cormorant Garamond"]]) {
+  const d = decl(name);
+  if (!d) { bad++; console.log(`  ✗  ${name} is not defined`); continue; }
   stacks++;
-  const stack = m[1].split(",").map((s) => s.trim().replace(/^['"]|['"]$/g, ""));
+  const stack = d.split(",").map((s) => s.trim().replace(/^['"]|['"]$/g, ""));
   const te = stack.findIndex((s) => TE.test(s) || TE.test(`"${s}"`));
   const gen = stack.findIndex((s) => GENERIC.test(s));
   if (te < 0) { bad++; console.log(`  ✗  ${name} names no Telugu face — Telugu falls back to the system font`); }

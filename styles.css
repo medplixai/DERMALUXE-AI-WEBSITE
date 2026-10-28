@@ -35,8 +35,19 @@
   --maxw: 1200px;
   --ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  --font-serif: "Cormorant Garamond", Georgia, serif;
-  --font-sans: "Jost", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* The Telugu face belongs in the base stacks as well, not only in the two
+     -te variants below. A class like .te-serif carries one point of
+     specificity, so any rule written as ".highlight p" outranked it, and the
+     Telugu headline on the home page fell through to whatever Telugu font the
+     reader's phone happened to own -- Kohinoor on an iPhone, a sans on
+     Android, sitting beside an English sibling set in Cormorant -- while the
+     Noto Serif Telugu the page had already paid to download went unused. That
+     was 158 runs of Telugu across 46 pages, not one headline. Named second,
+     behind the Latin face, it costs the Latin nothing, which is the same rule
+     the -te stacks below already follow. wire-tefont checks the result rather
+     than the spelling. */
+  --font-serif: "Cormorant Garamond", "Noto Serif Telugu", Georgia, serif;
+  --font-sans: "Jost", "Noto Sans Telugu", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* A Telugu line on this site is rarely all Telugu: "బ్యాచ్ 10 Nov",
      "AI చర్మ & జుట్టు విశ్లేషణ", prices, dates. With a Telugu face named
@@ -48,9 +59,15 @@
      Telugu character still falls through to Noto) and the Latin inside a
      Telugu line now matches the Latin everywhere else on the page. The
      generic sans-serif/serif stays last, after Noto, or it would answer for
-     the Telugu before Noto ever got the chance. */
-  --font-sans-te: "Jost", "Noto Sans Telugu", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  --font-serif-te: "Cormorant Garamond", "Noto Serif Telugu", Georgia, serif;
+     the Telugu before Noto ever got the chance.
+
+     Now that the base stacks above carry the Telugu face, these two hold
+     exactly the same list, so they point at it rather than repeating it --
+     two copies of one stack is the kind of pair where somebody fixes one and
+     leaves the other. The names stay because .te-sans and .te-serif read
+     better at the call site than the plain ones. */
+  --font-sans-te: var(--font-sans);
+  --font-serif-te: var(--font-serif);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
