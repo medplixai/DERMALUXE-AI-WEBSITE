@@ -1496,6 +1496,14 @@ h3 { font-size: 1.4rem; }
 .dlchat__wa:hover { background: rgba(37,211,102,.12); color: var(--gold-1); }
 
 /* ---------- Telugu-language pages ---------- */
+/* The link that swaps a treatment page between English and Telugu. It was a
+   bare <a> alone in a <p> with the gold written into a style attribute on all
+   84 pages: 23px tall, which is half of what a thumb covers, and a colour no
+   stylesheet could have reached. On a bilingual site this is the control a
+   Telugu reader needs first. */
+.lang-swap { margin: .2rem 0 1rem; }
+.lang-swap a { display: inline-block; padding: .5rem 0; color: var(--gold-2); }
+
 .lang-te, .lang-te p, .lang-te li, .lang-te summary, .lang-te .btn, .lang-te .lead, .lang-te .seo-strip { font-family: var(--font-sans-te); }
 .lang-te h1, .lang-te h2, .lang-te h3 { font-family: var(--font-serif-te); line-height: 1.25; letter-spacing: 0; }
 .lang-te h1 { font-size: clamp(2rem, 5.2vw, 3.4rem); }
