@@ -35,7 +35,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       await pg.evaluate(() => { document.querySelectorAll(".reveal").forEach((e) => e.classList.add("is-visible")); });
       const r = await pg.evaluate((MIN_TAP, GUTTER) => {
         const vw = document.documentElement.clientWidth;
-        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [] };
+        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [], micro: [] };
 
         // An element closed with the `hidden` attribute whose class still sets
         // a display keeps its whole box: invisible, and still taking every tap
@@ -193,6 +193,22 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
           }
         }
 
+        // Twelve pixels is the smallest size worth calling text on a phone. The
+        // AI chips sat at .58rem — 9.28px — and the Skin/Hair pills at .62rem,
+        // which on a 390px screen is a shape where a word should be. Sizes are
+        // set in rem, so this catches a new rule written below the floor
+        // wherever it lives, stylesheet or page.
+        for (const e of document.querySelectorAll("body *")) {
+          if (e.children.length) continue;
+          const t = e.textContent.trim();
+          if (t.length < 2) continue;
+          const c = getComputedStyle(e);
+          if (c.display === "none" || c.visibility === "hidden") continue;
+          if (e.closest("svg")) continue;            // px inside an svg is viewBox units, not screen pixels
+          const f = parseFloat(c.fontSize);
+          if (f && f < 12) out.micro.push(name(e) + " " + f.toFixed(2) + 'px "' + t.slice(0, 20) + '"');
+        }
+
         // A thumb covers about 44px. A column of links each as tall as its own
         // text gives it 24, and the one below is four pixels away: the footer
         // stacked seventeen of those on a phone. Width is not the problem —
@@ -230,6 +246,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       if (r.zoom && r.zoom.length) problems.push(`fields under 16px, which zoom an iPhone — ${[...new Set(r.zoom)].join(", ")}`);
       if (r.wrapbar && r.wrapbar.length) problems.push(`the bar at the bottom wrapped — ${[...new Set(r.wrapbar)].join("; ")}`);
       if (r.shortrow && r.shortrow.length) problems.push(`a column of links too short to aim at — ${[...new Set(r.shortrow)].join(", ")}`);
+      if (r.micro && r.micro.length) problems.push(`text under 12px — ${[...new Set(r.micro)].slice(0, 4).join(", ")}`);
       if (problems.length) { bad++; console.log(`  ✗  ${f}: ${problems.join(" · ")}`); }
     } catch (e) {
       bad++; console.log(`  ✗  ${f}: ${e.message.slice(0, 70)}`);
