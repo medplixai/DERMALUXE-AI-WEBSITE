@@ -1110,6 +1110,20 @@ h3 { font-size: 1.4rem; }
    to look at but the logo. On each the picture sits after the opening
    paragraph and before the list, where a reader pauses anyway. It is capped so it never takes more than a screen,
    and the cap is 520px because three people need more room than one coat. */
+/* On privacy, terms, cookies, careers, portal and academy the words Privacy,
+   Terms, Cookies and Home sit in the copyright line looking exactly like it —
+   same colour, same weight, no underline. A reader who is scanning for the
+   cookie policy has nothing to aim at. The gold alone is not enough: it is
+   4.8:1 against the ground, which is readable, but colour on its own is not
+   a signal somebody who cannot see colour can use. */
+/* The three links inside the contact cards — "Get Directions →", the phone
+   number and the email — were each as tall as their own line of type: 22 to
+   24px, where a finger covers about 44. Each sits alone at the end of its
+   card with space under it, so the padding costs no layout. */
+.contact__map, .contact__list li a { display: inline-block; padding: .5rem 0; }
+
+.seo-foot p a, .footer__bar p a, .legal__footer p a { color: var(--gold-2); text-decoration: underline; text-underline-offset: 3px; }
+
 .page-fig { margin: 2rem 0 2.4rem; }
 .page-fig img { width: 100%; max-width: 520px; height: auto; display: block; margin-inline: auto;
   border-radius: var(--radius); border: 1px solid var(--line); }

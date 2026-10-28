@@ -110,7 +110,11 @@
     .ac-nav .container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 84px; }
     .ac-nav img { height: 58px; width: auto; }
     .ac-nav__links { display: flex; align-items: center; gap: 1.6rem; font-size: .9rem; letter-spacing: .4px; }
-    .ac-nav__links a { color: var(--muted); transition: color .3s; }
+    /* 24px is the height of the words and nothing else. The bar is 64px, so
+       the room is already there — these only show sideways on a phone and on
+       a desktop, and on a phone held sideways they are the only way down a
+       page this long. */
+    .ac-nav__links a { color: var(--muted); transition: color .3s; display: inline-block; padding: .55rem 0; }
     .ac-nav__links a:hover { color: var(--gold-1); }
     .ac-nav__links .btn { padding: .65rem 1.2rem; font-size: .82rem; color: #2a1d07; }
     @media (max-width: 760px) {
@@ -123,8 +127,7 @@
          13px down behind the bar. The room a thumb needs is already there
          as leading around the line, so the margin gives it back: the link
          is 35px to aim at and the strip is the height it always was. */
-      .ac-ticker a { display: inline-block; padding: .4rem 0; margin: -.4rem 0; }
-      .ac-course__foot a { display: inline-block; padding: .45rem 0; }
+
       /* "Enquire on WhatsApp" is 1.6px of tracking per letter from .btn. At
          390px that is what pushes it onto a second line and makes the header
          66px instead of 44px — 22px of a phone screen spent on air between
@@ -135,7 +138,10 @@
     .ac-ticker { background: linear-gradient(90deg, rgba(201,162,92,.16), rgba(201,162,92,.06)); border-bottom: 1px solid var(--line); font-size: .84rem; letter-spacing: .6px; }
     .ac-ticker .container { display: flex; flex-wrap: wrap; gap: .4rem 1.6rem; align-items: center; justify-content: center; padding: .6rem 0; text-align: center; }
     .ac-ticker strong { color: var(--gold-1); font-weight: 600; }
-    .ac-ticker a { color: var(--gold-2); text-decoration: underline; text-underline-offset: 3px; }
+    /* These two were padded inside the 760px query, so a phone held sideways
+       — 844 wide — got them back at the height of their own text. A thumb is
+       the same size whichever way the phone is turned. */
+    .ac-ticker a { color: var(--gold-2); text-decoration: underline; text-underline-offset: 3px; display: inline-block; padding: .4rem 0; margin: -.4rem 0; }
 
     .ac-hero { position: relative; overflow: hidden; padding: clamp(3.5rem, 8vw, 6.5rem) 0 clamp(3rem, 6vw, 5rem); }
     .ac-hero__grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: clamp(2rem, 5vw, 4.5rem); align-items: center; }
@@ -180,7 +186,7 @@
     .ac-course li { position: relative; padding-left: 1.4rem; }
     .ac-course li::before { content: "✦"; position: absolute; left: 0; top: .15rem; color: var(--gold-3); font-size: .75rem; }
     .ac-course__foot { margin-top: auto; padding-top: .8rem; border-top: 1px solid var(--line-soft); display: flex; justify-content: space-between; align-items: center; gap: .6rem; font-size: .85rem; color: var(--muted); }
-    .ac-course__foot a { color: var(--gold-2); font-weight: 500; white-space: nowrap; }
+    .ac-course__foot a { color: var(--gold-2); font-weight: 500; white-space: nowrap; display: inline-block; padding: .45rem 0; }
 
     .ac-modules { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 1.2rem; }
     .ac-module { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; transition: transform .4s var(--ease), border-color .4s; }
@@ -259,7 +265,10 @@
     .ac-contact__box { border: 1px solid var(--line); border-radius: var(--radius); padding: 1.6rem; background: var(--panel); }
     .ac-contact__box h3 { font-size: 1.5rem; margin-bottom: .6rem; }
     .ac-contact__box p { color: var(--muted); margin-bottom: .6rem; }
-    .ac-contact__box a { color: var(--gold-2); }
+    /* "Open in Google Maps →" stands alone at the end of the address box and
+       was the height of its own line. The home page's "Get Directions →" is
+       the same link in the same place, and has the same room under it. */
+    .ac-contact__box a { color: var(--gold-2); display: inline-block; padding: .5rem 0; }
     .ac-contact iframe { width: 100%; height: 100%; min-height: 280px; border: 0; border-radius: var(--radius); filter: grayscale(.2) contrast(1.05); }
     @media (max-width: 760px) { .ac-contact { grid-template-columns: 1fr; } }
 
