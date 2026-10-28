@@ -1578,10 +1578,16 @@ h3 { font-size: 1.4rem; }
    words too narrow to read. */
 .post-card { border: 1px solid var(--line-soft); border-radius: 16px; padding: 1.4rem 1.6rem; background: linear-gradient(165deg, var(--panel), var(--ink-2));
   display: grid; grid-template-columns: 128px 1fr; grid-template-rows: auto; gap: 1.2rem; align-items: start; }
-.post-card__img { grid-row: 1 / span 4; width: 128px; height: 128px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+/* The picture is one file at two shapes — a square beside the words on a wide
+   screen, a 2:1 band above them on a phone — so object-fit does the cropping
+   and aspect-ratio reserves the right space before the file lands. It was
+   128x128 with width and height to match, which on a phone meant the browser
+   held a square and then had to make room for a band: 0.137 of layout shift,
+   where Google asks for under 0.1. */
+.post-card__img { grid-row: 1 / span 4; width: 128px; height: auto; aspect-ratio: 1; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
 @media (max-width: 640px) {
   .post-card { grid-template-columns: 1fr; gap: .8rem; }
-  .post-card__img { grid-row: auto; width: 100%; height: 150px; }
+  .post-card__img { grid-row: auto; width: 100%; height: auto; aspect-ratio: 2 / 1; }
 }
 .post-card h2 { font-size: 1.45rem; margin: .3rem 0 .6rem; }
 .post-card h2 a { color: var(--text); }
