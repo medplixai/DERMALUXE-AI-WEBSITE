@@ -1100,7 +1100,13 @@ h3 { font-size: 1.4rem; }
 .legal ul { margin: 0 0 1.2rem; padding-left: 0; display: grid; gap: .5rem; }
 .legal ul li { position: relative; padding-left: 1.6rem; }
 .legal ul li::before { content: "✦"; position: absolute; left: 0; color: var(--gold-3); font-size: .8rem; top: .35rem; }
-.legal a { color: var(--gold-2); text-decoration: underline; text-underline-offset: 2px; }
+/* A legal page's prose links should be gold and underlined — that is how a
+   reader finds them in a wall of text. A button is not prose, and this rule
+   beat .btn--gold on specificity: the 404 page's "Back to Home" came out in
+   pale gold on its own gold ground, which is the same colour twice, and
+   underlined besides. The only page it showed on was the one nobody looks at
+   until something has already gone wrong. */
+.legal a:not(.btn) { color: var(--gold-2); text-decoration: underline; text-underline-offset: 2px; }
 .legal strong { color: var(--text); font-weight: 500; }
 .legal__box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.4rem 1.6rem; margin: 1.5rem 0; }
 .legal__footer { border-top: 1px solid var(--line-soft); padding: 2rem 0; text-align: center; }

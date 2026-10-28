@@ -9,8 +9,15 @@
 // This reads the colour the browser resolves, not the one the stylesheet
 // asks for, and it looks for the ground behind the text rather than assuming
 // it: a transparent box is see-through, so the walk goes up until it finds
-// something opaque. Text over a picture or a gradient is skipped — there is
-// no single colour behind it to measure against.
+// something opaque.
+//
+// A gradient used to be skipped here, and that is where the next one hid: the
+// 404 page's "Back to Home" sat inside .legal, whose `a` rule beats
+// .btn--gold on specificity, so the label came out in pale gold on the
+// button's own gold — the same colour twice, at 1.01:1. On the one page
+// nobody looks at until something has already gone wrong. A gradient is not
+// one colour but it is a known set of them, so now every stop is measured and
+// the worst one answers. Only a photograph is still skipped.
 const fs = require("fs"), path = require("path");
 const ROOT = path.resolve(__dirname, "../..");
 const CHROME = "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome";
@@ -32,10 +39,27 @@ const SKIP = /^(staff|staff-app|leads|marketing|my|pay|offline|google[0-9a-f]+)\
       return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(bl);
     };
     const parse = (s) => { const m = (s || "").match(/[\d.]+/g); return m ? m.map(Number) : null; };
+    // A gradient is not one colour, but it is a known set of them, and text
+    // has to be readable against all of them. Pull the stops out and hand back
+    // the one that will read worst. A photograph still cannot be measured.
+    const stops = (img) => {
+      if (!/gradient\(/.test(img)) return null;
+      const found = [...img.matchAll(/rgba?\(([^)]+)\)/g)].map((m) => m[1].split(",").map(Number));
+      return found.length ? found.filter((c) => c[3] === undefined || c[3] > 0.92) : null;
+    };
     const behind = (e) => {
       for (let q = e; q && q !== document.documentElement; q = q.parentElement) {
         const c = getComputedStyle(q), p = parse(c.backgroundColor);
-        if (c.backgroundImage !== "none") return null;          // a picture or a gradient — no one colour to measure
+        // A background clipped to the text is the text's own ink, not a ground:
+        // .badge__num paints the gold gradient through the letters of "10" and
+        // "USFDA". Reading it as what is behind them said white on gold, 1.02:1,
+        // for letters a reader sees as gold on black. Keep walking up.
+        if (c.webkitBackgroundClip === "text" || c.backgroundClip === "text") continue;
+        if (c.backgroundImage !== "none") {
+          const g = stops(c.backgroundImage);
+          if (g && g.length) return g;                           // every stop, to be checked against
+          return null;                                           // a photograph — no colour to measure
+        }
         if (p && (p[3] === undefined || p[3] > 0.92)) return p;
       }
       return [10, 10, 12];
@@ -49,15 +73,25 @@ const SKIP = /^(staff|staff-app|leads|marketing|my|pay|offline|google[0-9a-f]+)\
       if (e.closest("[hidden]") || e.closest("svg")) continue;
       const bb = e.getBoundingClientRect();
       if (bb.width < 8 || bb.height < 6) continue;
+      // text whose fill is transparent is painted by its own clipped gradient,
+      // and what colour that comes out is a question about the gradient, not
+      // about c.color, which is still whatever it inherited
+      if (c.webkitTextFillColor === "rgba(0, 0, 0, 0)" || c.webkitBackgroundClip === "text" || c.backgroundClip === "text") continue;
       const fg = parse(c.color); if (!fg || (fg[3] !== undefined && fg[3] < 0.9)) continue;
       const bg = behind(e); if (!bg) continue;
-      const l1 = lum(fg[0], fg[1], fg[2]), l2 = lum(bg[0], bg[1], bg[2]);
-      const ratio = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+      const grounds = Array.isArray(bg[0]) ? bg : [bg];
+      const l1 = lum(fg[0], fg[1], fg[2]);
+      let ratio = Infinity, worst = grounds[0];
+      for (const g of grounds) {
+        const l2 = lum(g[0], g[1], g[2]);
+        const r = (Math.max(l1, l2) + 0.05) / (Math.min(l1, l2) + 0.05);
+        if (r < ratio) { ratio = r; worst = g; }
+      }
       const px = parseFloat(c.fontSize), bold = +c.fontWeight >= 700;
       const need = (px >= 24 || (bold && px >= 18.66)) ? 3 : 4.5;   // the guideline's allowance for large text
       if (ratio < need)
         out.push(nm(e) + " " + ratio.toFixed(2) + ":1 where " + need + " is asked, " + Math.round(px) +
-                 "px rgb(" + fg.slice(0, 3).join(",") + ") on rgb(" + bg.slice(0, 3).join(",") + ")");
+                 "px rgb(" + fg.slice(0, 3).join(",") + ") on rgb(" + worst.slice(0, 3).join(",") + ")");
     }
     return [...new Set(out)];
   };
