@@ -22,7 +22,10 @@ let bad = 0;
 const say = (ok, msg) => { if (!ok) bad++; console.log(`  ${ok ? "ok" : "✗ "} ${msg}`); };
 
 const cards = html.split(/<article class="svc/).slice(1).map(c => ({
-  title: ((c.match(/<h4[^>]*>(.*?)<\/h4>/) || [])[1] || "?").trim(),
+  // The cards were h4 under an h2, which is a level skipped — a screen
+  // reader announces a gap in the outline. They are h3 now; read whichever
+  // is there so this does not go quiet the next time the level moves.
+  title: ((c.match(/<h([2-5])[^>]*>([\s\S]*?)<\/h\1>/) || [])[2] || "?").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim(),
   src:   (c.match(/class="svc__img" src="([^"]+)"/) || [])[1] || null,
   alt:   (c.match(/class="svc__img"[^>]*alt="([^"]*)"/) || [])[1] || "",
 }));
