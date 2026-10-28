@@ -312,7 +312,7 @@
             <h3>Your Details &amp; Consent <span class="te">· <span lang="te">మీ వివరాలు &amp; సమ్మతి</span></span></h3>
             <div class="field"><input type="text" id="aiName" placeholder=" " /><label for="aiName">Full Name · <span lang="te">పేరు</span></label></div>
             <div class="field-row">
-              <div class="field"><input type="tel" id="aiPhone" maxlength="10" placeholder=" " /><label for="aiPhone">Mobile · <span lang="te">మొబైల్ నంబర్</span></label></div>
+              <div class="field"><input type="tel" id="aiPhone" inputmode="tel" autocomplete="tel" maxlength="18" placeholder=" " /><label for="aiPhone">Mobile · <span lang="te">మొబైల్ నంబర్</span></label></div>
               <div class="field"><input type="number" id="aiAge" min="1" max="120" placeholder=" " /><label for="aiAge">Age · <span lang="te">వయస్సు</span></label></div>
             </div>
             <div class="field-row">
@@ -509,7 +509,7 @@
             <h3>Book a Teleconsultation <span class="te" style="font-family:var(--font-serif-te);font-size:.95rem;color:var(--gold-3);">· <span lang="te">టెలీకన్సల్టేషన్ బుక్ చేయండి</span></span></h3>
             <div class="field"><input type="text" id="teleName" placeholder=" " /><label for="teleName">Full Name · <span lang="te">పేరు</span></label></div>
             <div class="field-row">
-              <div class="field"><input type="tel" id="telePhone" maxlength="10" placeholder=" " /><label for="telePhone">Mobile · <span lang="te">మొబైల్</span></label></div>
+              <div class="field"><input type="tel" id="telePhone" inputmode="tel" autocomplete="tel" maxlength="18" placeholder=" " /><label for="telePhone">Mobile · <span lang="te">మొబైల్</span></label></div>
               <div class="field">
                 <select id="teleMode" required>
                   <option value="" disabled selected hidden></option>
@@ -993,7 +993,7 @@
           </div>
           <div class="field-row">
             <div class="field">
-              <input type="tel" id="phone" name="phone" required placeholder=" " />
+              <input type="tel" id="phone" name="phone" inputmode="tel" autocomplete="tel" maxlength="18" required placeholder=" " />
               <label for="phone">Phone · <span lang="te">ఫోన్ నంబర్</span></label>
             </div>
             <div class="field">

@@ -110,5 +110,27 @@
     if (x) x.addEventListener("click", close);
     form.addEventListener("submit", function (e) { e.preventDefault(); send(input.value.trim()); });
     document.addEventListener("keydown", function (e) { if (e.key === "Escape" && !panel.hidden) close(); });
+
+    // While somebody is typing in a form, the bubble is in the way and not
+    // wanted. It is fixed 64px off the bottom, and on a phone the keyboard
+    // takes the bottom half of the screen and pushes the field being filled
+    // up towards it — so the corner of whichever field you are in can belong
+    // to the bubble rather than the field. Tapping at the end of a half-typed
+    // number to fix a digit is exactly how people correct one. It comes back
+    // the moment the field is left.
+    var hideWhileTyping = function (on) {
+      if (panel && !panel.hidden) return;          // the panel is open; leave it be
+      btn.style.opacity = on ? "0" : "";
+      btn.style.pointerEvents = on ? "none" : "";
+      btn.setAttribute("aria-hidden", on ? "true" : "false");
+      if (on) btn.setAttribute("tabindex", "-1"); else btn.removeAttribute("tabindex");
+    };
+    var isField = function (t) {
+      return t && /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName) && !t.closest(".dlchat");
+    };
+    document.addEventListener("focusin", function (e) { if (isField(e.target)) hideWhileTyping(true); });
+    document.addEventListener("focusout", function (e) { if (isField(e.target)) setTimeout(function () {
+      if (!isField(document.activeElement)) hideWhileTyping(false);
+    }, 60); });
   });
 })();
