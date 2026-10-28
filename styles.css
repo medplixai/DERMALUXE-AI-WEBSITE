@@ -1341,6 +1341,14 @@ h3 { font-size: 1.4rem; }
      38px band and leaves the column exactly as long as it was. */
   .footer__col a { padding: .42rem 0; margin-bottom: 0; }
   .footer__col p { margin-bottom: .55rem; }
+  /* The legal row under it is the same shape in miniature: six links 21px
+     tall. They wrap across two rows on a phone, so the padding has to come
+     off the row's own gap or the block grows. */
+  .footer__legal { gap: .5rem 1.4rem; }
+  .footer__legal a { padding: .45rem 0; }
+  /* "See all reviews on Google" is the only control in its band and 24px
+     tall; nothing is near it, so the padding costs nothing. */
+  #reviewsAll { padding: .5rem 0; }
   .field-row { grid-template-columns: 1fr; }
   .hero__cta .btn { flex: 1; }
   .hero__badges { gap: 1.4rem 2rem; }

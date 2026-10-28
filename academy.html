@@ -115,6 +115,12 @@
     .ac-nav__links .btn { padding: .65rem 1.2rem; font-size: .82rem; color: #2a1d07; }
     @media (max-width: 760px) {
       .ac-nav__links a:not(.btn) { display: none; }
+      /* Two links on this page sit at the end of a conversion and were as
+         tall as their own text: "Reserve your seat on WhatsApp" in the strip
+         at the top, 334x19, and "Enquire" at the foot of each course card,
+         121x22. Both stand alone, so the room below them is free. */
+      .ac-ticker a { display: inline-block; padding: .4rem 0; }
+      .ac-course__foot a { display: inline-block; padding: .45rem 0; }
       /* "Enquire on WhatsApp" is 1.6px of tracking per letter from .btn. At
          390px that is what pushes it onto a second line and makes the header
          66px instead of 44px — 22px of a phone screen spent on air between
