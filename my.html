@@ -52,7 +52,10 @@
 </head>
 <body>
 <main>
-  <div class="brand"><div><img src="assets/app/icon-192.png" alt="" /><div><b>My DermaLuxe</b><small>Mee appointments, bills, sittings</small></div></div>
+  <!-- A patient opens this from a WhatsApp message. Until now there was no
+       link anywhere on the page back into the clinic site — not even the
+       mark at the top, which is the thing everybody taps. -->
+  <div class="brand"><a href="index.html" aria-label="DermaLuxe home" style="display:flex;align-items:center;gap:10px;color:inherit"><img src="assets/app/icon-192.png" alt="" /><div><b>My DermaLuxe</b><small>Mee appointments, bills, sittings</small></div></a>
     <button class="btn line sm hide" id="out" type="button">Logout</button></div>
 
   <section id="login" class="card hide">
