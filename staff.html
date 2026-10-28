@@ -209,6 +209,15 @@
       .tabs{display:none}
       main.wrap{padding-bottom:calc(var(--navh) + 18px)}
       .top .wrap{padding-top:env(safe-area-inset-top)}
+      /* These two banners sit 10px from the edge, which on a phone is on top
+         of the two bars that are already there. The install one covered 50 of
+         the bottom nav's 60px: a real tap on Leads, Inbox or Appts did
+         nothing, Patients pressed Install and More pressed Vaddu, and with no
+         auto-hide the dashboard was stuck on whichever tab it opened on —
+         with 11 of the 15 screens living behind More. The update one covered
+         the header the same way. They clear the bars now. */
+      #installBar{bottom:calc(var(--navh) + 10px + env(safe-area-inset-bottom))}
+      #updateBar{top:calc(60px + 10px + env(safe-area-inset-top))}
     }
     .netbar{font-size:.78rem;color:var(--muted2);text-align:center;padding:0;min-height:0;transition:min-height .15s}
     .netbar:not(:empty){padding:7px 10px;margin-bottom:10px;border-radius:10px;border:1px solid var(--line);background:var(--panel)}

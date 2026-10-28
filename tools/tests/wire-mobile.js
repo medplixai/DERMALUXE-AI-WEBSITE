@@ -46,7 +46,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       });
       const r = await pg.evaluate((MIN_TAP, GUTTER) => {
         const vw = document.documentElement.clientWidth;
-        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [], micro: [], unnamed: [] };
+        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [], micro: [], unnamed: [], parked: [], buried: [] };
 
         // An element closed with the `hidden` attribute whose class still sets
         // a display keeps its whole box: invisible, and still taking every tap
@@ -234,6 +234,57 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
           if (f && f < 12) out.micro.push(name(e) + " " + f.toFixed(2) + 'px "' + t.slice(0, 20) + '"');
         }
 
+        // A panel hidden by being pushed off the side is still there: still
+        // visible to the browser, still in the tab order, still taking taps.
+        // The nav drawer was translateX(100%) and nothing else, so Tab seven
+        // times on the home page put focus on "Home" inside it, the browser
+        // scrolled that into view, and the whole page sat 261px sideways —
+        // permanently, through scrolling down and back. visibility:hidden or
+        // the inert attribute is what takes it out of both.
+        for (const e of document.querySelectorAll("body *")) {
+          const c = getComputedStyle(e);
+          if (c.display === "none" || c.visibility === "hidden") continue;
+          if (e.hasAttribute("inert") || e.closest("[inert]")) continue;
+          const b = e.getBoundingClientRect();
+          if (b.width < 40 || b.height < 40) continue;
+          const off = b.left >= vw - 1 || b.right <= 1;        // parked past an edge
+          if (!off) continue;
+          const reachable = [...e.querySelectorAll("a[href],button,input,select,textarea")]
+            .filter((k) => k.tabIndex >= 0 && getComputedStyle(k).visibility !== "hidden");
+          if (reachable.length)
+            out.parked.push(name(e) + " is off the edge at " + Math.round(b.left) + " with " + reachable.length + " things still in the tab order");
+        }
+
+        // And the button that opens such a panel has to still be reachable
+        // once it has. The drawer is z-index 99 and the hamburger was static,
+        // so the panel painted over the X it had just animated into: nine real
+        // taps in a row left the menu open, and the only way out was to pick a
+        // link or leave the site.
+        for (const t of document.querySelectorAll("[aria-expanded]")) {
+          const tc = getComputedStyle(t);
+          if (tc.display === "none" || tc.visibility === "hidden") continue;
+          const tb = t.getBoundingClientRect();
+          if (tb.width < 8 || tb.height < 8) continue;
+          const ctrl = t.getAttribute("aria-controls");
+          const panel = ctrl ? document.getElementById(ctrl) : document.querySelector(".nav__links, [class*='drawer'], [class*='menu']");
+          if (!panel) continue;
+          // The drawer slides in over .45s. Adding the class and measuring in
+          // the same tick finds it still parked off the edge, which is how the
+          // first version of this check passed while the bug was in: turn the
+          // transition off so the open position is the one measured.
+          const had = panel.className, hadT = panel.style.transition;
+          panel.style.transition = "none";
+          panel.classList.add("open");
+          void panel.offsetWidth;
+          const got = document.elementFromPoint(tb.left + tb.width / 2, tb.top + tb.height / 2);
+          const ok = got && (got === t || t.contains(got) || got.contains(t));
+          panel.className = had;
+          panel.style.transition = hadT;
+          void panel.offsetWidth;
+          if (!ok)
+            out.buried.push(name(t) + " is covered by " + name(panel) + " once it is open — a press there reaches " + (got ? name(got) : "nothing"));
+        }
+
         // A thumb covers about 44px. A column of links each as tall as its own
         // text gives it 24, and the one below is four pixels away: the footer
         // stacked seventeen of those on a phone. Width is not the problem —
@@ -273,6 +324,8 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       if (r.shortrow && r.shortrow.length) problems.push(`a column of links too short to aim at — ${[...new Set(r.shortrow)].join(", ")}`);
       if (r.micro && r.micro.length) problems.push(`text under 12px — ${[...new Set(r.micro)].slice(0, 4).join(", ")}`);
       if (r.unnamed && r.unnamed.length) problems.push(`fields nothing would announce — ${[...new Set(r.unnamed)].slice(0, 3).join("; ")}`);
+      if (r.parked && r.parked.length) problems.push(`hidden by being pushed off the side, but still reachable — ${[...new Set(r.parked)].join("; ")}`);
+      if (r.buried && r.buried.length) problems.push(`the control that opens it cannot close it — ${[...new Set(r.buried)].join("; ")}`);
       if (problems.length) { bad++; console.log(`  ✗  ${f}: ${problems.join(" · ")}`); }
     } catch (e) {
       bad++; console.log(`  ✗  ${f}: ${e.message.slice(0, 70)}`);

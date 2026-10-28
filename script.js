@@ -2,6 +2,19 @@
 (function () {
   "use strict";
 
+  /* One idea of what a mobile number is, for every form on this page. There
+     used to be two: the teleconsultation form stripped the punctuation and
+     asked for ten digits starting 6-9, and the booking form — the one that
+     makes the clinic ring somebody back — accepted a plus or a digit followed
+     by six or more of digit, space, hyphen or bracket. That let "9949134",
+     "1234567" and seven zeros through to a green thank-you and a WhatsApp
+     draft carrying the broken number, with nothing on either screen saying
+     so. Keep them reading from the same line. */
+  function mobile(raw) {
+    var d = String(raw || "").replace(/\D/g, "").replace(/^(?:0*91|0+)(?=[6-9]\d{9}$)/, "");
+    return /^[6-9]\d{9}$/.test(d) ? d : "";
+  }
+
   /* ---- Sticky nav shadow ---- */
   const nav = document.getElementById("nav");
   const onScroll = () => nav.classList.toggle("scrolled", window.scrollY > 20);
@@ -114,19 +127,29 @@
     form.addEventListener("submit", (e) => {
       e.preventDefault();
       const name = form.name.value.trim();
-      const phone = form.phone.value.trim();
+      // The same page already knows what an Indian mobile number is — the
+      // teleconsultation form twenty inches down strips the punctuation and
+      // asks for ten digits starting 6-9. This form asked for "a + or a digit
+      // and then six or more of digit, space, hyphen or bracket", which
+      // accepts "9949134", "1234567", seven zeros, and 25 digits, because the
+      // field has no maxlength either. A patient who drops three digits got
+      // the green thank-you and a WhatsApp draft carrying the broken number,
+      // and the clinic got an enquiry it cannot ring, with nothing on either
+      // screen saying so. One rule, the stricter one, on both forms.
+      const typed = form.phone.value.trim();
+      const phone = mobile(typed);
       const email = form.email.value.trim();
       const service = form.service.value;
       const message = form.message.value.trim();
       note.className = "form__note";
 
-      if (!name || !phone || !service) {
+      if (!name || !typed || !service) {
         note.textContent = "Please fill in your name, phone number and treatment. · పేరు, ఫోన్ నంబర్, చికిత్స నింపండి.";
         note.classList.add("err");
         return;
       }
-      if (!/^[+\d][\d\s\-()]{6,}$/.test(phone)) {
-        note.textContent = "Please enter a valid phone number. · సరైన ఫోన్ నంబర్ ఇవ్వండి.";
+      if (!phone) {
+        note.textContent = "Enter a valid 10-digit mobile number. · సరైన మొబైల్ నంబర్ ఇవ్వండి.";
         note.classList.add("err");
         return;
       }
@@ -182,19 +205,20 @@
     teleForm.addEventListener("submit", (e) => {
       e.preventDefault();
       const name = document.getElementById("teleName").value.trim();
-      const phone = document.getElementById("telePhone").value.replace(/\D/g, "");
+      const typedTele = document.getElementById("telePhone").value.trim();
+      const phone = mobile(typedTele);
       const mode = document.getElementById("teleMode").value;
       const date = document.getElementById("teleDate").value;
       const slot = document.getElementById("teleSlot").value;
       const concern = document.getElementById("teleConcern").value;
       teleNote.className = "form__note";
 
-      if (!name || !phone || !mode || !slot || !concern) {
+      if (!name || !typedTele || !mode || !slot || !concern) {
         teleNote.textContent = "Please fill all details. · అన్ని వివరాలు నింపండి.";
         teleNote.classList.add("err");
         return;
       }
-      if (!/^[6-9]\d{9}$/.test(phone)) {
+      if (!phone) {
         teleNote.textContent = "Enter a valid 10-digit mobile number. · సరైన మొబైల్ నంబర్ ఇవ్వండి.";
         teleNote.classList.add("err");
         return;

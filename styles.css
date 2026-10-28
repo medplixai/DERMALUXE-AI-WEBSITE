@@ -1281,14 +1281,37 @@ h3 { font-size: 1.4rem; }
 }
 
 @media (max-width: 1240px) {   /* was 1180: 1181–1240 cannot fit the full bar, see .nav__brand above */
-  .nav__toggle { display: flex; }
+  /* The drawer is z-index 99 and the button that opens it was static, so the
+     panel painted on top of the X it had just animated into. Nine real taps
+     on the hamburger with the menu open left it open every time — the only
+     way out was to pick a link or press Android back, which leaves the site
+     if you arrived from a search. .nav is the stacking context (sticky,
+     z-index 100, and backdrop-filter makes one anyway), so 101 here is above
+     the drawer and still inside the bar. */
+  .nav__toggle { display: flex; position: relative; z-index: 101; }
+
+  /* Closed, this was hidden by being pushed sideways and nothing else: still
+     visible to the browser, still in the tab order, still taking taps. Press
+     Tab seven times on the home page and focus landed on "Home" inside it, so
+     the browser scrolled it into view — which, for a panel parked off the
+     right edge, means shoving the whole page 261px sideways. It stayed shoved
+     through scrolling down and back, and the menu then opened almost entirely
+     off the left edge. visibility takes it out of the tab order and out of
+     hit testing when it is closed; the delay holds it visible for the length
+     of the slide so the animation still plays on the way out. */
   .nav__links {
     position: fixed; inset: 0 0 0 auto; width: min(82%, 340px); height: 100vh;
     flex-direction: column; align-items: flex-start; justify-content: center; gap: 1.6rem;
     background: var(--ink); border-left: 1px solid var(--line); padding: 2.5rem;
-    transform: translateX(100%); transition: transform .45s var(--ease); z-index: 99;
+    transform: translateX(100%); z-index: 99;
+    visibility: hidden;
+    transition: transform .45s var(--ease), visibility 0s linear .45s;
   }
-  .nav__links.open { transform: translateX(0); box-shadow: -20px 0 60px -20px rgba(0,0,0,.9); }
+  .nav__links.open {
+    transform: translateX(0); box-shadow: -20px 0 60px -20px rgba(0,0,0,.9);
+    visibility: visible;
+    transition: transform .45s var(--ease), visibility 0s linear 0s;
+  }
   .nav__links a:not(.btn) { font-size: 1rem; white-space: normal; }
   .nav__cta { margin-top: .6rem; padding: 1rem 2rem; }
 }
