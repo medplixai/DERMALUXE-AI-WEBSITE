@@ -46,7 +46,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       });
       const r = await pg.evaluate((MIN_TAP, GUTTER) => {
         const vw = document.documentElement.clientWidth;
-        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [], micro: [], unnamed: [], parked: [], buried: [] };
+        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [], micro: [], unnamed: [], parked: [], buried: [], script: [] };
 
         // An element closed with the `hidden` attribute whose class still sets
         // a display keeps its whole box: invisible, and still taking every tap
@@ -234,6 +234,46 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
           if (f && f < 12) out.micro.push(name(e) + " " + f.toFixed(2) + 'px "' + t.slice(0, 20) + '"');
         }
 
+        // What a screen reader is told to read the words in. A page says
+        // lang="en" at the top and then carries Telugu all down it; anything
+        // reading aloud applies English phoneme rules to Telugu glyphs and
+        // produces noise, or skips the run. The treatments hub was the worst
+        // of it — 36 of its links had names with no Latin letter at all, and
+        // they are the only route into the site's whole Telugu half. A run
+        // that is all one script has to say which.
+        {
+          const TE = /[\u0C00-\u0C7F]/;
+          // Any Telugu at all has to be announced as Telugu. The other way
+          // round is looser on purpose: "PRP", "GFC", "PICO", "LLLT" and
+          // "MD (DVL)" sit inside genuinely Telugu sentences on the academy
+          // and treatment pages, and a Telugu voice saying an acronym is
+          // right. Three words or more is a sentence, and a sentence in the
+          // wrong voice is the thing worth catching.
+          const LAT = /(?:[A-Za-z]{3,}[^A-Za-z]+){2,}[A-Za-z]{3,}/;
+          const langOf = (n) => {
+            for (let e = n.parentElement; e; e = e.parentElement) {
+              const l = e.getAttribute && e.getAttribute("lang");
+              if (l) return l;
+            }
+            return document.documentElement.lang || "";
+          };
+          const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+          let n;
+          while ((n = w.nextNode())) {
+            if (n.parentElement && n.parentElement.closest("script,style")) continue;
+            const t = n.nodeValue;
+            const te = TE.test(t), anyLat = /[A-Za-z]{2,}/.test(t), lat = LAT.test(t);
+            // A run carrying both scripts cannot be given one language, and in
+            // an <option> it cannot be split either — "Video Call (వీడియో)" is
+            // as good as it gets. Only judge runs that are all one script.
+            if (te && anyLat) continue;
+            if (!te && !lat) continue;
+            const l = langOf(n), saysTe = /^te/i.test(l);
+            if (te && !saysTe) out.script.push('Telugu announced as "' + (l || "nothing") + '": ' + JSON.stringify(t.trim().slice(0, 24)));
+            else if (lat && saysTe) out.script.push('English announced as Telugu: ' + JSON.stringify(t.trim().slice(0, 24)));
+          }
+        }
+
         // A panel hidden by being pushed off the side is still there: still
         // visible to the browser, still in the tab order, still taking taps.
         // The nav drawer was translateX(100%) and nothing else, so Tab seven
@@ -326,6 +366,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       if (r.unnamed && r.unnamed.length) problems.push(`fields nothing would announce — ${[...new Set(r.unnamed)].slice(0, 3).join("; ")}`);
       if (r.parked && r.parked.length) problems.push(`hidden by being pushed off the side, but still reachable — ${[...new Set(r.parked)].join("; ")}`);
       if (r.buried && r.buried.length) problems.push(`the control that opens it cannot close it — ${[...new Set(r.buried)].join("; ")}`);
+      if (r.script && r.script.length) problems.push(`${r.script.length} run(s) a reader would be given in the wrong language — ${[...new Set(r.script)].slice(0, 2).join("; ")}`);
       if (problems.length) { bad++; console.log(`  ✗  ${f}: ${problems.join(" · ")}`); }
     } catch (e) {
       bad++; console.log(`  ✗  ${f}: ${e.message.slice(0, 70)}`);

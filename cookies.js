@@ -43,6 +43,11 @@
     bar.className = "cookie-bar";
     bar.setAttribute("role", "dialog");
     bar.setAttribute("aria-label", "Cookie consent");
+    // This bar is English wherever it appears, including on the 42 pages that
+    // declare themselves Telugu. Without this it inherits lang="te" from the
+    // document and anything reading the page aloud gives "We use cookies to
+    // enhance your browsing experience" to a Telugu voice.
+    bar.setAttribute("lang", "en");
     bar.innerHTML =
       '<p class="cookie-bar__text">We use cookies to enhance your browsing experience, analyse site traffic and assist our marketing. ' +
       'By clicking <strong>Accept</strong>, you consent to our use of cookies. ' +
