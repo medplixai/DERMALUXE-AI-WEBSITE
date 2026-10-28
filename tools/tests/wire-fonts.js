@@ -87,6 +87,26 @@ for (const f of fs.readdirSync(ROOT).filter((f) => f.endsWith(".html"))) {
   if (m[0] !== CANON) { bad++; console.log(`  ✗  ${f} asks Google for a different set than every other page`); console.log(`         ${m[0].slice(0, 96)}`); }
 }
 
-console.log(bad ? `\n  ${bad} problem(s) in ${stacks} Telugu stacks and ${pages} font requests`
-                : `\n  ${stacks} Telugu stacks each behind a Latin face, ${pages} pages asking for the same four families`);
+// Twelve pixels is the floor. wire-mobile holds it in the browser, but it
+// cannot open the pages behind a login — staff, leads, marketing, the portal
+// — and those are exactly where the smallest type was: thirty-eight rules in
+// the staff dashboard alone, down to .6rem. A size written in the source is
+// something a reader can check without a session, so check it here.
+let sizes = 0;   // the file already has a strip() for comments
+for (const f of fs.readdirSync(ROOT).filter((f) => /\.(html|css)$/.test(f))) {
+  const text = strip(fs.readFileSync(path.join(ROOT, f), "utf8"));
+  for (const m of text.matchAll(/font-size:\s*(\.\d+|0?\.\d+)rem/g)) {
+    sizes++;
+    const px = parseFloat(m[1]) * 16;
+    if (px < 12) { bad++; console.log(`  ✗  ${f} sets text at ${m[1]}rem — ${px.toFixed(2)}px, under the 12px floor`); }
+  }
+  for (const m of text.matchAll(/font-size:\s*(\d+)px/g)) {
+    if (/<svg[\s\S]*$/.test(text.slice(0, m.index)) && !/<\/svg>[\s\S]*$/.test(text.slice(0, m.index))) continue;
+    sizes++;
+    if (+m[1] < 12) { bad++; console.log(`  ✗  ${f} sets text at ${m[1]}px, under the 12px floor`); }
+  }
+}
+
+console.log(bad ? `\n  ${bad} problem(s) in ${stacks} Telugu stacks, ${pages} font requests and ${sizes} sizes`
+                : `\n  ${stacks} Telugu stacks each behind a Latin face, ${pages} pages asking for the same four families, ${sizes} sizes all at 12px or more`);
 process.exit(bad ? 1 : 0);
