@@ -44,7 +44,22 @@ const RULES_ABOUT = "Editorial beauty photography for a premium skin clinic's br
 // would be a member of staff this clinic does not have, which is the one thing
 // a careers page must not invent. So: the work, not the worker — the coat on
 // its hook, the light in a corridor, the instruments laid out. Nobody in frame.
+const RULES_PEOPLE = "Editorial photography for a medical clinic's careers page, the register of a good recruitment campaign. Indian / South Asian people. Warm near-black background, one soft directional light, champagne-gold rim light, deep shadow, shallow depth of field, quiet and expensive. Real skin with its own texture, not airbrushed. NO patient, nobody being examined or treated, no treatment couch, no instruments, no lasers, no machines, no syringes. NO text anywhere: no letters, no numbers, no name badges, no embroidered names, no lanyards, no logos, no signage, no watermark. Nothing that reads as a before, an after or a result. Photographic, not an illustration or a render. ONE single photograph filling the whole frame: no collage, no grid, no split frame, no borders, no white margins, no colour chart. Vertical 4:5.";
+
 const RULES_CAREERS = "Editorial still life for a medical clinic's careers page. Warm near-black background, one soft directional light, champagne-gold highlights, deep shadow, shallow depth of field, quiet and expensive. Absolutely NO people: no face, no hands, no body, no silhouette, no reflection of a person. NO text, no letters, no numbers, no logos, no signage, no name badges, no watermark. Nothing that reads as a patient, a treatment or a result. Photographic, not an illustration or a render. ONE single photograph filling the whole frame: no collage, no grid, no split frame, no second picture, no borders, no white margins, no colour chart, no film strip. Vertical 4:5.";
+
+// The owner asked for doctors and staff, to match what the page is offering.
+// Stock photographs of models in white coats are what every careers page in
+// the world runs, and nobody reads them as a staff list — but only because
+// nothing claims they are one. So: no name badges, no written credentials, no
+// clinic name on a wall, nobody being treated, and a line under the picture
+// saying where it came from. That line is what keeps it a mood photograph
+// instead of a claim about who works here.
+const PEOPLE = [
+  ["p1", "Three Indian medical professionals standing together in a dark studio, facing the camera, relaxed and confident: a woman of about thirty-five in a crisp white coat over dark clothes in the centre, a younger woman in clean scrubs to her left, a man of about forty in a white coat to her right. Waist up. Warm gold rim light from the left, near-black background, deep shadow. Blank coats, no badges, no embroidery, no lanyards."],
+  ["p2", "Two Indian clinicians in white coats standing at a dark counter, half turned towards each other mid-conversation, one holding a plain closed folder. Shoulders and heads, warm gold light from one side, everything behind them falling to black. No patient, nothing on the counter, no writing anywhere."],
+  ["p3", "Portrait of an Indian woman doctor of about thirty-five in a crisp white coat, arms folded, looking straight at the camera, calm and assured. Head and shoulders, warm gold rim light down one side, near-black background. Plain coat, nothing written on it, no stethoscope, no badge."],
+];
 
 const CAREERS = [
   ["c1", "A crisp white cotton jacket on a wooden hanger against a near-black wall, warm gold light grazing one shoulder, the weave of the cloth and one pressed fold sharp. Empty, nobody wearing it, nothing written on it."],
@@ -87,8 +102,10 @@ async function draw(subject, key, rules) {
   const key = process.env.GEMINI_API_KEY;
   if (!key) { console.error("No GEMINI_API_KEY — put one in .env and run again."); process.exit(1); }
   const only = (process.argv.find((a) => a.startsWith("--one=")) || "").split("=")[1];
-  const set = process.argv.includes("--careers") ? CAREERS : IDEAS;
-  const rules = process.argv.includes("--careers") ? RULES_CAREERS : RULES_ABOUT;
+  const set = process.argv.includes("--people") ? PEOPLE
+            : process.argv.includes("--careers") ? CAREERS : IDEAS;
+  const rules = process.argv.includes("--people") ? RULES_PEOPLE
+              : process.argv.includes("--careers") ? RULES_CAREERS : RULES_ABOUT;
   for (const [n, idea] of set) {
     if (only && only !== n) continue;
     process.stdout.write("  " + n + " … ");

@@ -1108,11 +1108,12 @@ h3 { font-size: 1.4rem; }
    until something has already gone wrong. */
 /* The careers page is 430 words and, until now, nothing to look at. The
    picture sits between the opening paragraph and the list of roles, where a
-   reader pauses anyway. It is capped so it never takes more than a screen. */
+   reader pauses anyway. It is capped so it never takes more than a screen,
+   and the cap is 520px because three people need more room than one coat. */
 .careers-fig { margin: 2rem 0 2.4rem; }
-.careers-fig img { width: 100%; max-width: 420px; height: auto; display: block; margin-inline: auto;
+.careers-fig img { width: 100%; max-width: 520px; height: auto; display: block; margin-inline: auto;
   border-radius: var(--radius); border: 1px solid var(--line); }
-.careers-fig figcaption { max-width: 420px; margin: .7rem auto 0; text-align: center;
+.careers-fig figcaption { max-width: 520px; margin: .7rem auto 0; text-align: center;
   font-size: .75rem; line-height: 1.5; color: var(--muted-2); }
 .careers-fig figcaption .te { display: block; margin-top: .2rem; }
 
