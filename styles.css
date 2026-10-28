@@ -21,7 +21,14 @@
 
   --text: #ece9e3;
   --muted: #a39e95;
-  --muted-2: #7c776e;
+  /* The faintest text on the site, and it was faint enough to fail the
+     readability guideline against every ground it sits on: 4.45:1 on --black
+     down to 3.81:1 on --panel-2, where 4.5:1 is asked for text this size. It
+     carries the registration numbers, the dates, the Telugu captions under
+     the treatment pictures — 84 pages' worth. Same hue, lifted thirteen
+     steps, which clears 4.5 everywhere (4.51 on the lightest panel, 5.26 on
+     black) and is all but indistinguishable beside the old one. */
+  --muted-2: #898379;
 
   --radius: 18px;
   --radius-sm: 12px;
