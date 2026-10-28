@@ -774,7 +774,14 @@ h3 { font-size: 1.4rem; }
 .field input, .field select, .field textarea {
   width: 100%; background: rgba(255,255,255,.03); border: 1px solid var(--line-soft);
   border-radius: var(--radius-sm); padding: 1.05rem 1rem .55rem; color: var(--text);
-  font-family: var(--font-sans); font-size: .98rem; font-weight: 300; transition: border-color .3s, background .3s;
+  font-family: var(--font-sans);
+  /* Safari on iPhone zooms the whole page the moment a finger lands in a
+     field whose text is under 16px, and leaves it zoomed. .98rem is
+     15.68px — under the line by a third of a pixel — so every tap on the
+     booking form threw the page out of shape and the patient had to
+     pinch back. 1rem is 16px and the only thing that changes on screen
+     is a third of a pixel of text. */
+  font-size: 1rem; font-weight: 300; transition: border-color .3s, background .3s;
   appearance: none;
 }
 .field textarea { padding-top: 1.2rem; resize: vertical; min-height: 90px; }
@@ -1278,6 +1285,18 @@ h3 { font-size: 1.4rem; }
 }
 
 @media (max-width: 860px) {
+  /* A finger covers about 44px. Measured on a 390px phone, the bar above was
+     handing it 21px: "+91 99491 34666" — the one tap a clinic site exists for
+     — was a 123x21 box, "Patient Portal" 92x21, and the three social circles
+     26px across with 6px between them. The bar is already 42px tall, so the
+     room is there; the links just were not using it. Stretching them to the
+     bar's full height changes nothing a visitor can see and doubles what a
+     thumb can hit. */
+  .topbar__inner { align-items: stretch; }
+  .topbar__left, .topbar__right, .topbar__social { align-items: stretch; }
+  .topbar__item { align-items: center; }
+  .topbar__social a { height: auto; min-height: 26px; align-self: center; padding: 8px 0; box-sizing: content-box; }
+
   .topbar__hide { display: none; }
   /* The staff link lives in the bar above on a desktop; below 860 that bar has
      no room — its two sides already touch at 390px — so it moves into the
@@ -1315,6 +1334,13 @@ h3 { font-size: 1.4rem; }
   .tech__grid, .ht__techs { grid-template-columns: 1fr; }
   .ht__features { grid-template-columns: repeat(2, 1fr); gap: 1.4rem; }
   .footer__grid { grid-template-columns: 1fr; gap: 2rem; }
+  /* Stacked into one column the footer becomes seventeen links in a row,
+     each a 24px line with 11px of gap: aim at one and the next is four
+     pixels away. The link is only as tall as its text because nothing
+     gives it any. Spending the gap as padding instead makes each one a
+     38px band and leaves the column exactly as long as it was. */
+  .footer__col a { padding: .42rem 0; margin-bottom: 0; }
+  .footer__col p { margin-bottom: .55rem; }
   .field-row { grid-template-columns: 1fr; }
   .hero__cta .btn { flex: 1; }
   .hero__badges { gap: 1.4rem 2rem; }
@@ -1400,7 +1426,11 @@ h3 { font-size: 1.4rem; }
 .dlchat__form { display: flex; gap: .5rem; padding: .75rem; border-top: 1px solid var(--line-soft); background: rgba(0,0,0,.25); }
 .dlchat__form input {
   flex: 1; background: rgba(255,255,255,.05); border: 1px solid var(--line-soft); border-radius: 999px;
-  padding: .6rem .9rem; color: var(--text); font-family: inherit; font-size: .88rem;
+  padding: .6rem .9rem; color: var(--text); font-family: inherit;
+  /* 16px for the same reason as the booking form: anything smaller and
+     an iPhone zooms the page the moment the keyboard opens, which on a
+     panel pinned to the bottom of the screen moves the panel too. */
+  font-size: 1rem;
 }
 .dlchat__form input:focus { outline: none; border-color: var(--gold-3); }
 .dlchat__form button {

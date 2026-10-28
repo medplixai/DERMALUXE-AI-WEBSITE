@@ -35,7 +35,7 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       await pg.evaluate(() => { document.querySelectorAll(".reveal").forEach((e) => e.classList.add("is-visible")); });
       const r = await pg.evaluate((MIN_TAP, GUTTER) => {
         const vw = document.documentElement.clientWidth;
-        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [] };
+        const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [] };
 
         // An element closed with the `hidden` attribute whose class still sets
         // a display keeps its whole box: invisible, and still taking every tap
@@ -161,6 +161,59 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
           const oy = Math.min(a.bottom, d.bottom) - Math.max(a.top, d.top);
           if (ox > 8 && oy > 8) out.stacked.push(name(fx[i]) + " over " + name(fx[j]));
         }
+
+        // Safari on iPhone zooms the page in, and leaves it zoomed, the moment
+        // a finger lands in a field whose text is under 16px. Nothing shows on
+        // a desktop or on Android, so only a rule can hold it: the booking
+        // form sat at .98rem — 15.68px, a third of a pixel under — and threw
+        // the page out of shape on every tap for as long as it has existed.
+        for (const e of document.querySelectorAll("input, select, textarea")) {
+          const c = getComputedStyle(e);
+          if (c.display === "none" || c.visibility === "hidden") continue;
+          if (/^(hidden|checkbox|radio|submit|button|range|color|file)$/.test(e.type || "")) continue;
+          const f = parseFloat(c.fontSize);
+          if (f && f < 16) out.zoom.push(name(e) + " " + f.toFixed(2) + "px");
+        }
+
+        // A bar pinned to the bottom of the screen is sized by whatever is in
+        // it. When its label runs one pixel past the width it is given, the
+        // label wraps, the bar grows, and it eats further into the page above
+        // — which is how the academy bar came to slice through the headline a
+        // visitor lands on. A bottom bar holds one line.
+        for (const e of document.querySelectorAll("body *")) {
+          const c = getComputedStyle(e);
+          if (c.position !== "fixed" || c.display === "none" || +c.opacity === 0) continue;
+          const b = e.getBoundingClientRect();
+          if (b.width < vw * 0.7 || b.bottom < window.innerHeight - 4 || b.height < 8) continue;
+          for (const a of e.querySelectorAll("a, button")) {
+            if (!a.textContent.trim() || a.children.length) continue;
+            const r = document.createRange(); r.selectNodeContents(a);
+            const n = r.getClientRects().length;
+            if (n > 1) out.wrapbar.push(name(e) + " — " + name(a) + ' "' + a.textContent.trim().slice(0, 26) + '" wraps onto ' + n + " lines, bar " + Math.round(b.height) + "px tall");
+          }
+        }
+
+        // A thumb covers about 44px. A column of links each as tall as its own
+        // text gives it 24, and the one below is four pixels away: the footer
+        // stacked seventeen of those on a phone. Width is not the problem —
+        // these run the full screen — so the rule is about height, and only
+        // where several sit one under another with nothing else between.
+        {
+          const col = new Map();
+          for (const a of document.querySelectorAll("a[href]")) {
+            const c = getComputedStyle(a);
+            if (c.display === "none" || c.visibility === "hidden" || +c.opacity === 0 || c.position === "fixed") continue;
+            const b = a.getBoundingClientRect();
+            if (b.width < vw * 0.4 || b.height < 1 || b.height >= 30) continue;
+            const p = a.parentElement; if (!p) continue;
+            if (/^(P|LI|SPAN|SMALL|TD|FIGCAPTION)$/.test(p.tagName) && p.textContent.trim().length > a.textContent.trim().length + 3) continue;
+            if (!col.has(p)) col.set(p, []);
+            col.get(p).push(Math.round(b.height));
+          }
+          for (const [p, hs] of col) if (hs.length >= 3)
+            out.shortrow.push(name(p) + " stacks " + hs.length + " links " + Math.min(...hs) + "px tall");
+        }
+
         return out;
       }, MIN_TAP, GUTTER);
 
@@ -174,6 +227,9 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
       if (r.ragbtn && r.ragbtn.length) problems.push(`stacked buttons are different widths — ${[...new Set(r.ragbtn)].join(", ")}`);
       if (r.thin && r.thin.length) problems.push(`grid columns too narrow for their text — ${[...new Set(r.thin)].join(", ")}`);
       if (r.ghost && r.ghost.length) problems.push(`closed but still taking taps — ${[...new Set(r.ghost)].join(", ")}`);
+      if (r.zoom && r.zoom.length) problems.push(`fields under 16px, which zoom an iPhone — ${[...new Set(r.zoom)].join(", ")}`);
+      if (r.wrapbar && r.wrapbar.length) problems.push(`the bar at the bottom wrapped — ${[...new Set(r.wrapbar)].join("; ")}`);
+      if (r.shortrow && r.shortrow.length) problems.push(`a column of links too short to aim at — ${[...new Set(r.shortrow)].join(", ")}`);
       if (problems.length) { bad++; console.log(`  ✗  ${f}: ${problems.join(" · ")}`); }
     } catch (e) {
       bad++; console.log(`  ✗  ${f}: ${e.message.slice(0, 70)}`);

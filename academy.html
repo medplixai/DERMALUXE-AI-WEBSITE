@@ -113,7 +113,14 @@
     .ac-nav__links a { color: var(--muted); transition: color .3s; }
     .ac-nav__links a:hover { color: var(--gold-1); }
     .ac-nav__links .btn { padding: .65rem 1.2rem; font-size: .82rem; color: #2a1d07; }
-    @media (max-width: 760px) { .ac-nav__links a:not(.btn) { display: none; } }
+    @media (max-width: 760px) {
+      .ac-nav__links a:not(.btn) { display: none; }
+      /* "Enquire on WhatsApp" is 1.6px of tracking per letter from .btn. At
+         390px that is what pushes it onto a second line and makes the header
+         66px instead of 44px — 22px of a phone screen spent on air between
+         letters. */
+      .ac-nav__links .btn { letter-spacing: .6px; }
+    }
 
     .ac-ticker { background: linear-gradient(90deg, rgba(201,162,92,.16), rgba(201,162,92,.06)); border-bottom: 1px solid var(--line); font-size: .84rem; letter-spacing: .6px; }
     .ac-ticker .container { display: flex; flex-wrap: wrap; gap: .4rem 1.6rem; align-items: center; justify-content: center; padding: .6rem 0; text-align: center; }
@@ -248,7 +255,18 @@
 
     .ac-sticky { position: fixed; left: 0; right: 0; bottom: 0; z-index: 90; display: none; padding: .6rem .8rem calc(.6rem + env(safe-area-inset-bottom)); background: rgba(10,10,12,.92); border-top: 1px solid var(--line); backdrop-filter: blur(10px); }
     .ac-sticky a { display: flex; align-items: center; justify-content: center; gap: .5rem; font-weight: 600; }
-    @media (max-width: 760px) { .ac-sticky { display: block; } body { padding-bottom: 72px; } }
+    @media (max-width: 760px) {
+      .ac-sticky { display: block; }
+      /* The bar's label is half Telugu, and .btn uppercases it. Upper case is
+         a Latin device — Telugu has no cases, so the transform widened
+         "WhatsApp...Nov" and left the Telugu untouched. That cost exactly one
+         pixel too many: the line needed 365px where the bar gives a button
+         364, so it wrapped, the bar grew from 76px to 98px, and the extra
+         22px cut further into the headline behind it. Sentence case is also
+         the right spelling of the brand. */
+      .ac-sticky .btn { text-transform: none; letter-spacing: .4px; }
+      body { padding-bottom: 76px; }
+    }
 
     .te-p { font-family: var(--font-sans-te); color: var(--gold-2); font-size: .95rem; line-height: 1.8; }
     .te-h { font-family: var(--font-sans-te); color: var(--gold-2); font-size: clamp(1.05rem, 2vw, 1.3rem); font-weight: 500; line-height: 1.6; margin-top: .6rem; }
