@@ -32,7 +32,16 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
     await pg.setViewport({ width: 390, height: 844, deviceScaleFactor: 1, isMobile: true, hasTouch: true });
     try {
       await pg.goto("file://" + path.join(ROOT, f), { waitUntil: "domcontentloaded", timeout: 30000 });
-      await pg.evaluate(() => { document.querySelectorAll(".reveal").forEach((e) => e.classList.add("is-visible")); });
+      await pg.evaluate(() => {
+        // The class that reveals one of these is "in" — script.js adds it and
+        // styles.css answers with .reveal.in { opacity: 1; transform: none }.
+        // This line asked for "is-visible", which nothing anywhere defines. It
+        // changes nothing measurable, because script.js has already added "in"
+        // by the time the page is handed over — counted on four pages, 975
+        // elements visible either way. It is corrected so the next person does
+        // not read it as the thing that makes the page visible.
+        document.querySelectorAll(".reveal").forEach((e) => e.classList.add("in"));
+      });
       const r = await pg.evaluate((MIN_TAP, GUTTER) => {
         const vw = document.documentElement.clientWidth;
         const out = { over: document.documentElement.scrollWidth > vw + 1, wide: [], tiny: [], stacked: [], ragged: [], ragbtn: [], thin: [], ghost: [], zoom: [], wrapbar: [], shortrow: [], micro: [] };
@@ -272,7 +281,16 @@ const GUTTER = 8;        // text this close to the edge reads as a mistake
     await pg.setViewport({ width: 1440, height: 900, deviceScaleFactor: 1 });
     try {
       await pg.goto("file://" + path.join(ROOT, f), { waitUntil: "domcontentloaded", timeout: 30000 });
-      await pg.evaluate(() => { document.querySelectorAll(".reveal").forEach((e) => e.classList.add("is-visible")); });
+      await pg.evaluate(() => {
+        // The class that reveals one of these is "in" — script.js adds it and
+        // styles.css answers with .reveal.in { opacity: 1; transform: none }.
+        // This line asked for "is-visible", which nothing anywhere defines. It
+        // changes nothing measurable, because script.js has already added "in"
+        // by the time the page is handed over — counted on four pages, 975
+        // elements visible either way. It is corrected so the next person does
+        // not read it as the thing that makes the page visible.
+        document.querySelectorAll(".reveal").forEach((e) => e.classList.add("in"));
+      });
       const edges = await pg.evaluate(() => {
         const m = {};
         for (const sec of document.querySelectorAll("section, footer")) {

@@ -850,7 +850,16 @@ h3 { font-size: 1.4rem; }
 @keyframes teleDot { 0% { box-shadow: 0 0 0 0 rgba(126,212,145,.5); } 100% { box-shadow: 0 0 0 10px rgba(126,212,145,0); } }
 .tele__fine { margin-top: .9rem; font-size: .78rem; color: var(--muted-2); text-align: center; }
 .field input[type="date"] { color-scheme: dark; padding-top: 1.05rem; }
-@media (max-width: 860px) { .tele__grid { grid-template-columns: 1fr; } }
+/* A 1fr track will not go narrower than its own content's minimum. On a phone
+   set to larger text, in the seconds before Noto Sans Telugu arrives and the
+   Telugu is still drawn in the fallback's wider metrics, that minimum is
+   394px: the teleconsultation block sat 16..410 on a 390px screen and the ends
+   of its lines were cut off by the body, which hides what runs past it. Once
+   the font lands the block is 16..374 and always was, so this is a fix for the
+   first few seconds on a slow line, not for a page anyone reported. minmax
+   gives the track permission to be narrower than its content, which is what
+   1fr is almost always meant to say, and it costs nothing. */
+@media (max-width: 860px) { .tele__grid { grid-template-columns: minmax(0, 1fr); } }
 
 /* ---------- AI Skin & Hair Analysis ---------- */
 .ai { background: linear-gradient(180deg, var(--ink), var(--ink-2)); border-block: 1px solid var(--line); position: relative; overflow: hidden; }
