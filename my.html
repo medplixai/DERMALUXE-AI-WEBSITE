@@ -29,11 +29,21 @@
   .btn{display:inline-block;text-align:center;text-decoration:none;border:0;border-radius:12px;padding:14px 16px;font:inherit;font-weight:600;font-size:.92rem;cursor:pointer}
   .btn.gold{background:var(--gold);color:#fff}.btn.gold:active{background:var(--gold2)}
   .btn.line{background:#fff;color:var(--ink);border:1px solid var(--line)}
-  .btn.sm{padding:8px 12px;font-size:.82rem;border-radius:10px}
+  /* These were 39px tall. A patient confirming an appointment on a phone is
+     aiming at something smaller than a fingertip, and the three of them sat
+     6px apart in one row with Cancel among them. */
+  .btn.sm{padding:8px 14px;min-height:44px;font-size:.82rem;border-radius:10px;display:inline-flex;align-items:center;justify-content:center}
   .btn.full{display:block;width:100%;margin-top:10px}
   .row{padding:10px 0;border-bottom:1px solid var(--line)}.row:last-child{border:0;padding-bottom:0}
   .row b{font-weight:600}
-  .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  /* row-gap is the wide one: on a 360px phone the three buttons do not fit
+     on one line, and Cancel drops to the next -- where a 10px gap would
+     have put it directly under the thumb that was reaching for Vastanu. */
+  .acts{display:flex;column-gap:10px;row-gap:20px;flex-wrap:wrap;margin-top:10px}
+  /* Cancel throws the appointment away and the other two keep it, so it does
+     not sit shoulder to shoulder with them: it takes the line to itself, at
+     the far end, away from the thumb that was going for Vastanu. */
+  .acts [data-rq="cancel"]{margin-left:auto}
   .due{background:var(--warnbg);border-color:#fed7aa}
   .due b{color:var(--warn);font-size:1.3rem}
   .chip{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:99px;background:var(--okbg);color:var(--ok);margin-left:6px}

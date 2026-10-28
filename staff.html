@@ -76,7 +76,7 @@
     .plan-h{font-size:.9rem;margin:14px 0 6px}
     .plan-row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-top:1px solid var(--line);flex-wrap:wrap}
     .plan-row b{font-weight:600}
-    .plan-row .acts{display:flex;gap:6px}
+    .plan-row .acts{display:flex;gap:8px}
     .dayStrip i em,.day i em{font-style:normal;color:var(--hot);margin-left:2px}
     .stat[data-act]{cursor:pointer}
     .stat[data-act]:hover{border-color:var(--primary)}
@@ -107,13 +107,13 @@
     .aitext{width:100%;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-size:.9rem;line-height:1.45;outline:none;resize:vertical}
     .aitext:focus{border-color:var(--g3)}
     .lead .prep{font-size:.84rem;color:var(--muted);background:var(--accent-bg);border-left:2px solid var(--g4);padding:6px 10px;border-radius:6px}
-    .acts{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+    .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
     .acts select{background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:7px 10px;font-size:.82rem}
     .acts select.s-new{color:#0369a1;background:#e0f2fe;border-color:#bae6fd}.acts select.s-contacted{color:#b45309;background:#fef3c7;border-color:#fde68a}.acts select.s-booked{color:#6d28d9;background:#ede9fe;border-color:#ddd6fe}.acts select.s-visited{color:#047857;background:#d1fae5;border-color:#a7f3d0}.acts select.s-closed{color:#52525b;background:#f4f4f5}
     .notes{display:grid;gap:6px}
     .note{font-size:.82rem;color:var(--muted);border-top:1px dashed var(--soft);padding-top:6px}
     .note b{color:var(--g3);font-weight:500}
-    .noteform{display:flex;gap:6px}
+    .noteform{display:flex;gap:8px}
     .noteform input{flex:1;background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:8px 12px;font-size:.86rem;outline:none}
     .empty{color:var(--muted2);text-align:center;padding:30px 10px;font-size:.9rem}
     /* academy */
@@ -130,21 +130,28 @@
     .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);background:#18181b;color:#fff;border:1px solid var(--line);border-radius:100px;padding:10px 16px;font-size:.88rem;z-index:50;opacity:0;transition:.25s;pointer-events:none}
     .toast.show{opacity:1}
     /* control panel */
-    .cpnav{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-    .cpnav button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:100px;padding:7px 14px;font-size:.85rem;cursor:pointer}
+    /* 6px between a dropdown, a text box and the button that commits them was
+       the tightest spacing on these screens -- three different things under
+       one thumb. */
+    .cpnav{display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap}
+    .cpnav button{background:var(--panel);border:1px solid var(--line);color:var(--muted);border-radius:100px;padding:7px 14px;min-height:40px;font-size:.85rem;cursor:pointer}
     .cpnav button.on{background:var(--primary);border-color:var(--primary);color:var(--primary-fg);font-weight:600}
     .person{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:8px}
     .person.off{opacity:.55}
     .person .top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
     .person h3{font-size:.98rem;font-weight:500}
-    .person .acts{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-    .sel{background:var(--ink2);border:1px solid var(--line);color:inherit;border-radius:100px;padding:6px 10px;font-size:.82rem}
+    .person .acts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .sel{background:var(--ink2);border:1px solid var(--line);color:inherit;border-radius:100px;padding:6px 12px;min-height:40px;font-size:.82rem}
     .powers{margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
     .pwgrp{margin-bottom:8px}
     .pwgrp-h{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--g3);margin-bottom:5px}
-    .pwrow{display:flex;flex-wrap:wrap;gap:6px}
-    .pw{display:inline-flex;align-items:center;gap:5px;background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:5px 10px;font-size:.78rem;cursor:pointer;color:var(--muted)}
-    .pw input{appearance:none;width:13px;height:13px;border-radius:4px;border:1px solid var(--g3);cursor:pointer}
+    /* 93 of these on one screen, so they stop at 36px rather than 40: the
+       taller floor used everywhere else would have added a screen and a half
+       of scrolling to the one page where you want to see the whole set at
+       once. The checkbox itself was 13px, too small to read at a glance. */
+    .pwrow{display:flex;flex-wrap:wrap;gap:8px}
+    .pw{display:inline-flex;align-items:center;gap:7px;background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:5px 12px;min-height:36px;font-size:.78rem;cursor:pointer;color:var(--muted)}
+    .pw input{appearance:none;flex:none;width:17px;height:17px;border-radius:4px;border:1px solid var(--g3);cursor:pointer}
     .pw input:checked{background:var(--g3)}
     .pw.role{opacity:.75}
     .pw.role input{border-color:var(--muted);background:var(--muted)}
@@ -280,7 +287,7 @@
     .seat .row1{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap}
     .seat h3{font-size:1rem;font-weight:500}
     .seat .meta{font-size:.8rem}
-    .seat .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+    .seat .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .chip{display:inline-block;font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;padding:3px 9px;
       border-radius:100px;border:1px solid var(--line);color:var(--muted)}
     .chip.hot{color:#c2410c;background:#ffedd5;border-color:transparent}
@@ -356,7 +363,7 @@
     /* buttons: shadcn — rounded rectangle, semibold, white outline or solid primary */
     .btn{border-radius:var(--rb);background:var(--panel);border:1px solid var(--line);color:var(--text);font-weight:600;letter-spacing:0;padding:10px 16px;box-shadow:0 1px 2px rgba(0,0,0,.04)}
     .btn:hover{background:var(--panel2)}
-    .btn--sm{padding:6px 12px;font-size:.8rem;min-height:34px}
+    .btn--sm{padding:6px 12px;font-size:.8rem;min-height:40px}
     .btn--gold{background:var(--primary);color:var(--primary-fg);border-color:var(--primary)}
     .btn--gold:hover{background:var(--primary);filter:brightness(.94)}
     .btn--wa{background:#ecfdf5;border-color:#a7f3d0;color:#047857}
@@ -532,7 +539,7 @@
     .inc-rates td:first-child,.inc-rates th:first-child{text-align:left}
     /* ---- appointments grid ---- */
     .seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
-    .seg button{border:0;background:var(--panel);padding:6px 12px;font:inherit;font-size:.82rem;cursor:pointer;color:var(--muted)}
+    .seg button{border:0;background:var(--panel);padding:6px 14px;min-height:40px;font:inherit;font-size:.82rem;cursor:pointer;color:var(--muted)}
     .seg button.on{background:var(--g1);color:#fff}
     .grid-wrap{overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--panel);max-height:calc(100dvh - 240px)}
     .gcal{display:grid;position:relative;min-width:100%}
@@ -641,9 +648,11 @@
     .ib-card{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--ink2);font-size:.8rem;color:var(--muted)}
     .ib-card b{font-weight:600;color:var(--text)}
     .ib-card .nxt{flex-basis:100%;margin:0}
-    .ib-find{flex:none;display:flex;gap:6px;padding:0 0 8px;flex-wrap:wrap}
-    .ib-find input{flex:1;min-width:130px}
-    .ib-find button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:4px 10px;font:inherit;font-size:.76rem;cursor:pointer;color:var(--muted);white-space:nowrap}
+    /* These were the smallest controls in the dashboard: 28px tall, 12.2px
+       type, 5px apart. Four filters and a search box that staff hit all day. */
+    .ib-find{flex:none;display:flex;gap:8px;padding:0 0 8px;flex-wrap:wrap}
+    .ib-find input{flex:1;min-width:130px;min-height:40px}
+    .ib-find button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:4px 14px;min-height:40px;font:inherit;font-size:.76rem;cursor:pointer;color:var(--muted);white-space:nowrap}
     .ib-find button.on{background:var(--g1);color:#fff;border-color:var(--g1)}
     .ib-gr{font-size:.75rem;font-weight:700;border-radius:5px;padding:1px 4px;margin-left:4px}
     .ib-gr.A{background:#fde8e8;color:#a61b1b} .ib-gr.B{background:#fff2d8;color:#8a5a00}

@@ -46,6 +46,13 @@
     .btn--gold{background:linear-gradient(135deg,#f6e6bd,#e3c074 40%,#c79a4e 75%,#a87f3c);color:#2a1d07;border:0;width:100%}
     .btn--sm{padding:9px 14px;font-size:.86rem}
     .err{color:var(--bad);font-size:.9rem;min-height:1.2em}
+    /* A message that names one field now sits under that field. It used to go
+       only to #err beside the Submit button, 1456px -- one and seven tenths of
+       a phone screen -- below the mobile-number box it was talking about, with
+       nothing focused and no scroll, so a student who typed nine digits saw a
+       red line at the bottom of the form and no clue which box was wrong. */
+    .err--field{min-height:0;margin-top:.4rem}
+    [aria-invalid="true"]{border-color:var(--bad)}
     .note{font-size:.82rem;color:var(--muted2)}
     .done{text-align:center;padding:40px 20px}
     .done h2{font-family:"Cormorant Garamond",serif;font-size:2rem;color:var(--g1)}
@@ -168,14 +175,35 @@
       }; img.src = rd.result; };
       rd.readAsDataURL(f);
     };
+    /* Put the message where the mistake is: under the field, with the field
+       focused and scrolled to. #err keeps the errors that belong to the whole
+       form -- what the server said -- and it sits beside Submit, which is
+       where the reader already is when those happen. */
+    function fieldFail(msg, el) {
+      el.setAttribute("aria-invalid", "true");
+      var near = el.parentNode.querySelector(".err--field");
+      if (!near) {
+        near = document.createElement("div");
+        near.className = "err err--field";
+        near.setAttribute("role", "alert");
+        el.parentNode.appendChild(near);
+      }
+      near.textContent = msg;
+      el.focus({ preventScroll: true });
+      el.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+    function clearFieldFails(f) {
+      [].forEach.call(f.querySelectorAll("[aria-invalid]"), function (el) { el.removeAttribute("aria-invalid"); });
+      [].forEach.call(f.querySelectorAll(".err--field"), function (el) { el.parentNode.removeChild(el); });
+    }
     $("#form").onsubmit = function (ev) {
-      ev.preventDefault(); $("#err").textContent = "";
+      ev.preventDefault(); $("#err").textContent = ""; clearFieldFails(ev.target);
       var f = ev.target, body = {};
       ["name","guardian","dob","gender","blood","phone","emergency","email","address","qualification","experience","background","idproof","duration"].forEach(function (k) { body[k] = (f[k] && f[k].value || "").trim(); });
       ["docPhoto","docId","docQual","docExp"].forEach(function (k) { body[k] = !!(f[k] && f[k].checked); });
       if (photo) body.photo = photo;
-      if (!/^[6-9]\d{9}$/.test(body.phone.replace(/\D/g, ""))) { $("#err").textContent = "Valid 10-digit mobile number ivvandi"; return; }
-      if (!$("#agree").checked) { $("#err").textContent = "Declaration accept cheyandi"; return; }
+      if (!/^[6-9]\d{9}$/.test(body.phone.replace(/\D/g, ""))) { fieldFail("Valid 10-digit mobile number ivvandi", f.phone); return; }
+      if (!$("#agree").checked) { fieldFail("Declaration accept cheyandi", $("#agree")); return; }
       $("#submitBtn").disabled = true; $("#submitBtn").textContent = "Submitting…";
       api("submit", body).then(function () { $("#app").classList.add("hide"); $("#done").classList.remove("hide"); window.scrollTo(0, 0); })
         .catch(function (e) { $("#err").textContent = e.message; $("#submitBtn").disabled = false; $("#submitBtn").textContent = "Submit & get my documents on WhatsApp"; });
