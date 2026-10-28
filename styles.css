@@ -843,6 +843,17 @@ h3 { font-size: 1.4rem; }
   transform: rotate(45deg); pointer-events: none;
 }
 .form__note { margin-top: 1rem; font-size: .9rem; min-height: 1.2em; text-align: center; }
+/* A message naming one field sits with that field. #teleNote was 399px below
+   the mobile-number box it was about, with the box off screen and nothing
+   focused, so the reader was told something was wrong and not where. */
+.field__err { margin-top: .4rem; font-size: .82rem; color: #e69a9a; }
+/* This one sits inside a label that ticks a consent box, and it was 20px
+   tall. A thumb aiming for it and missing by a few pixels agreed to the
+   privacy policy instead of reading it. The padding is cancelled by an equal
+   negative margin, so the line it sits in does not move. */
+.inline-link { display: inline-block; padding: .7rem 0; margin: -.7rem 0; }
+.field input[aria-invalid="true"], .field select[aria-invalid="true"],
+.field textarea[aria-invalid="true"] { border-color: #e69a9a; }
 .form__note.ok { color: #8fd6a0; }
 .form__note.err { color: #e69a9a; }
 

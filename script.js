@@ -194,14 +194,14 @@
       const message = form.message.value.trim();
       note.className = "form__note";
 
+      clearFieldFails(form);
       if (!name || !typed || !service) {
-        note.textContent = "Please fill in your name, phone number and treatment. · పేరు, ఫోన్ నంబర్, చికిత్స నింపండి.";
-        note.classList.add("err");
+        fieldFail(note, "Please fill this in. · ఇది నింపండి.",
+          firstEmpty([[form.name, name], [form.phone, typed], [form.service, service]]));
         return;
       }
       if (!phone) {
-        note.textContent = "Enter a valid 10-digit mobile number. · సరైన మొబైల్ నంబర్ ఇవ్వండి.";
-        note.classList.add("err");
+        fieldFail(note, "Enter a valid 10-digit mobile number. · సరైన మొబైల్ నంబర్ ఇవ్వండి.", form.phone);
         return;
       }
 
@@ -250,6 +250,33 @@
   }
 
   /* ---- Teleconsultation form → WhatsApp lead ---- */
+  /* Messages that name one field belong beside that field, with the field
+     focused and brought on screen. The note by the submit button keeps what
+     belongs to the whole form -- what the server said -- and the reader is
+     already down there when that happens. */
+  function fieldFail(note, msg, el) {
+    note.textContent = "";
+    note.className = "form__note";
+    const wrap = el.closest(".field") || el.parentNode;
+    let near = wrap.querySelector(".field__err");
+    if (!near) {
+      near = document.createElement("p");
+      near.className = "field__err";
+      near.setAttribute("role", "alert");
+      wrap.appendChild(near);
+    }
+    near.textContent = msg;
+    el.setAttribute("aria-invalid", "true");
+    el.focus({ preventScroll: true });
+    el.scrollIntoView({ block: "center", behavior: "smooth" });
+  }
+  function clearFieldFails(form) {
+    form.querySelectorAll("[aria-invalid]").forEach((e) => e.removeAttribute("aria-invalid"));
+    form.querySelectorAll(".field__err").forEach((e) => e.remove());
+  }
+  // the first of a set the reader has not filled in
+  const firstEmpty = (pairs) => (pairs.find(([, v]) => !v) || [])[0];
+
   const teleForm = document.getElementById("teleForm");
   const teleNote = document.getElementById("teleNote");
   if (teleForm) {
@@ -264,14 +291,20 @@
       const concern = document.getElementById("teleConcern").value;
       teleNote.className = "form__note";
 
+      clearFieldFails(teleForm);
       if (!name || !typedTele || !mode || !slot || !concern) {
-        teleNote.textContent = "Please fill all details. · అన్ని వివరాలు నింపండి.";
-        teleNote.classList.add("err");
+        fieldFail(teleNote, "Please fill this in. · ఇది నింపండి.",
+          firstEmpty([
+            [document.getElementById("teleName"), name],
+            [document.getElementById("telePhone"), typedTele],
+            [document.getElementById("teleMode"), mode],
+            [document.getElementById("teleSlot"), slot],
+            [document.getElementById("teleConcern"), concern],
+          ]));
         return;
       }
       if (!phone) {
-        teleNote.textContent = "Enter a valid 10-digit mobile number. · సరైన మొబైల్ నంబర్ ఇవ్వండి.";
-        teleNote.classList.add("err");
+        fieldFail(teleNote, "Enter a valid 10-digit mobile number. · సరైన మొబైల్ నంబర్ ఇవ్వండి.", document.getElementById("telePhone"));
         return;
       }
 
