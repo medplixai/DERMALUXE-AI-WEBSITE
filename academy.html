@@ -119,7 +119,11 @@
          tall as their own text: "Reserve your seat on WhatsApp" in the strip
          at the top, 334x19, and "Enquire" at the foot of each course card,
          121x22. Both stand alone, so the room below them is free. */
-      .ac-ticker a { display: inline-block; padding: .4rem 0; }
+      /* Padding alone made the strip taller and pushed the headline a further
+         13px down behind the bar. The room a thumb needs is already there
+         as leading around the line, so the margin gives it back: the link
+         is 35px to aim at and the strip is the height it always was. */
+      .ac-ticker a { display: inline-block; padding: .4rem 0; margin: -.4rem 0; }
       .ac-course__foot a { display: inline-block; padding: .45rem 0; }
       /* "Enquire on WhatsApp" is 1.6px of tracking per letter from .btn. At
          390px that is what pushes it onto a second line and makes the header
