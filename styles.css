@@ -389,7 +389,7 @@ h3 { font-size: 1.4rem; }
   aspect-ratio: 4/5; border-radius: var(--radius); border: 1px solid var(--line);
   background:
     linear-gradient(180deg, rgba(10,10,12,.05), rgba(10,10,12,.4)),
-    url("assets/about.webp") center / cover no-repeat,
+    var(--late-img, none) center / cover no-repeat,
     linear-gradient(160deg, #1c1b1f, #121115);
   position: relative; overflow: hidden;
 }
@@ -457,7 +457,7 @@ h3 { font-size: 1.4rem; }
   aspect-ratio: 4/5; border-radius: var(--radius); border: 1px solid var(--line); position: relative; overflow: hidden;
   background:
     linear-gradient(180deg, rgba(10,10,12,0), rgba(10,10,12,.25)),
-    url("assets/ht-before-after.webp") center top / cover no-repeat,
+    var(--late-img, none) center top / cover no-repeat,
     linear-gradient(160deg, #1c1b1f, #121115);
 }
 /* The card used to show a hair-transplant before/after photograph. NMC 8.1(v)
@@ -734,7 +734,21 @@ h3 { font-size: 1.4rem; }
   content: attr(data-initial); font-family: var(--font-serif); font-size: 1.9rem; font-weight: 700; letter-spacing: 1px;
   background: var(--gold-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
 }
-.founder__photo.has-photo, .doc__photo.has-photo { background-size: cover; background-position: center top; background-repeat: no-repeat; }
+/* The photograph arrives through --late-img, which script.js sets when the card
+   comes within a screen of the reader. These portraits sit 23 to 26 screens
+   down a 36-screen page, and as plain CSS backgrounds all six pictures on this
+   page were fetched before the reader had moved a finger -- 316 KB of them --
+   because a background is fetched as soon as its element exists, however far
+   down the page that element sits. The gradients stay underneath, so the circle
+   looks like an unphotographed doctor until the picture lands, and still does
+   if the script never runs at all. */
+.founder__photo.has-photo, .doc__photo.has-photo {
+  background-image:
+    var(--late-img, none),
+    radial-gradient(120% 120% at 30% 20%, rgba(201,162,92,.3), transparent 60%),
+    linear-gradient(160deg, #232228, #161519);
+  background-size: cover; background-position: center top; background-repeat: no-repeat;
+}
 .founder__photo.has-photo::before, .doc__photo.has-photo::before { content: none; }
 .founder__photo::after { content: ""; position: absolute; inset: -5px; border-radius: 20px; border: 1px solid var(--line); }
 .founder__body h3 { font-size: 1.5rem; margin-bottom: .15rem; }
@@ -1383,7 +1397,15 @@ h3 { font-size: 1.4rem; }
   .hero { --hero-photo-h: min(56vh, 520px); min-height: 0; align-items: flex-start; padding-top: 0; }
   .hero__photo {
     inset: 0 0 auto 0; width: 100%; height: var(--hero-photo-h); opacity: 1;
-    background: url("assets/dr-nikhitha-780.webp") center 12% / cover no-repeat;
+    /* Two files, and the screen picks one. The 780 is exactly 2x for a 390px
+       wide band; the 1050 is every pixel the original photograph has, which
+       works out at 2.69x, so a dense phone gets the sharpest version that
+       exists rather than the 780 stretched half again. A 2x phone never
+       downloads the extra 50 KB, and this is the first thing on the page. */
+    background: image-set(
+        url("assets/dr-nikhitha-780.webp") 2x,
+        url("assets/dr-nikhitha-1050.webp") 2.69x
+      ) center 12% / cover no-repeat;
     -webkit-mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
     mask-image: linear-gradient(180deg, #000 58%, transparent 100%);
   }

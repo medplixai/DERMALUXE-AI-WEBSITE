@@ -94,6 +94,34 @@
     reveals.forEach((el) => el.classList.add("in"));
   }
 
+  /* ---- Pictures that sit a long way down the page ---- */
+  /* A CSS background is fetched the moment its element exists, however far
+     down the page that element is. On the home page that meant 316 KB of
+     portraits and section art arriving before the reader had moved, on a page
+     36 screens tall. The url now waits in data-bg and is handed over a screen
+     before it is wanted. If this never runs the gradient underneath shows,
+     which is what these cards looked like before the photographs existed. */
+  const lateBgs = [...document.querySelectorAll("[data-bg]")];
+  const showBg = (el) => {
+    el.style.setProperty("--late-img", 'url("' + el.dataset.bg + '")');
+    el.removeAttribute("data-bg");
+  };
+  if ("IntersectionObserver" in window) {
+    const bgio = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (!entry.isIntersecting) return;
+          bgio.unobserve(entry.target);
+          showBg(entry.target);
+        });
+      },
+      { rootMargin: "500px 0px" }
+    );
+    lateBgs.forEach((el) => bgio.observe(el));
+  } else {
+    lateBgs.forEach(showBg);
+  }
+
   /* ---- Active nav link on scroll ---- */
   const sections = [...document.querySelectorAll("main section[id]")];
   const navAnchors = [...links.querySelectorAll('a[href^="#"]:not(.btn)')];
