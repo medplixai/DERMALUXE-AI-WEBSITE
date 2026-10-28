@@ -1106,6 +1106,16 @@ h3 { font-size: 1.4rem; }
    pale gold on its own gold ground, which is the same colour twice, and
    underlined besides. The only page it showed on was the one nobody looks at
    until something has already gone wrong. */
+/* The careers page is 430 words and, until now, nothing to look at. The
+   picture sits between the opening paragraph and the list of roles, where a
+   reader pauses anyway. It is capped so it never takes more than a screen. */
+.careers-fig { margin: 2rem 0 2.4rem; }
+.careers-fig img { width: 100%; max-width: 420px; height: auto; display: block; margin-inline: auto;
+  border-radius: var(--radius); border: 1px solid var(--line); }
+.careers-fig figcaption { max-width: 420px; margin: .7rem auto 0; text-align: center;
+  font-size: .75rem; line-height: 1.5; color: var(--muted-2); }
+.careers-fig figcaption .te { display: block; margin-top: .2rem; }
+
 .legal a:not(.btn) { color: var(--gold-2); text-decoration: underline; text-underline-offset: 2px; }
 .legal strong { color: var(--text); font-weight: 500; }
 .legal__box { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 1.4rem 1.6rem; margin: 1.5rem 0; }
@@ -1562,7 +1572,16 @@ h3 { font-size: 1.4rem; }
 .post-author span { color: var(--muted-2); font-size: .84rem; }
 .post-disclaimer { font-size: .82rem; color: var(--muted-2); }
 .post-list { display: grid; gap: 1.2rem; margin: 1rem 0 2rem; }
-.post-card { border: 1px solid var(--line-soft); border-radius: 16px; padding: 1.4rem 1.6rem; background: linear-gradient(165deg, var(--panel), var(--ink-2)); }
+/* The card is a row on a wide screen — picture beside the words — and stacks
+   on a phone, where a 128px square beside a three-line headline leaves the
+   words too narrow to read. */
+.post-card { border: 1px solid var(--line-soft); border-radius: 16px; padding: 1.4rem 1.6rem; background: linear-gradient(165deg, var(--panel), var(--ink-2));
+  display: grid; grid-template-columns: 128px 1fr; grid-template-rows: auto; gap: 1.2rem; align-items: start; }
+.post-card__img { grid-row: 1 / span 4; width: 128px; height: 128px; object-fit: cover; border-radius: 12px; border: 1px solid var(--line); }
+@media (max-width: 640px) {
+  .post-card { grid-template-columns: 1fr; gap: .8rem; }
+  .post-card__img { grid-row: auto; width: 100%; height: 150px; }
+}
 .post-card h2 { font-size: 1.45rem; margin: .3rem 0 .6rem; }
 .post-card h2 a { color: var(--text); }
 .post-card h2 a:hover { color: var(--gold-2); }
