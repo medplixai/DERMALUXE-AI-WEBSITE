@@ -108,7 +108,9 @@
     /* ---------- Academy page (scoped) ---------- */
     .ac-nav { position: sticky; top: 0; z-index: 100; background: rgba(10,10,12,.72); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-bottom: 1px solid var(--line); }
     .ac-nav .container { display: flex; align-items: center; justify-content: space-between; gap: 1rem; height: 84px; }
-    .ac-nav img { height: 58px; width: auto; }
+    /* gives way to the Join button on a narrow phone by shrinking, not by being squeezed */
+    .ac-nav .container > a:first-child { flex: 0 1 130px; min-width: 0; }
+    .ac-nav img { display: block; width: 130px; max-width: 100%; height: auto; }
     .ac-nav__links { display: flex; align-items: center; gap: 1.6rem; font-size: .9rem; letter-spacing: .4px; }
     /* 24px is the height of the words and nothing else. The bar is 64px, so
        the room is already there — these only show sideways on a phone and on
