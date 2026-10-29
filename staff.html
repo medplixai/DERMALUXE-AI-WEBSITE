@@ -25,7 +25,7 @@
        did not have to change: --ink is the page, --panel a card, --g1 strong
        text, --g2/--g3 the accent. To use Medicare's own teal instead, change
        --primary alone. */
-    :root{--primary:#9c7430;--primary-fg:#ffffff;--accent-bg:#f7f0e3;--accent-fg:#6e5220;
+    :root{--primary:#956f2e;--primary-fg:#ffffff;--accent-bg:#f7f0e3;--accent-fg:#6e5220;
       --ink:#f6f6f7;--ink2:#f1f1f3;--panel:#ffffff;--panel2:#f4f4f5;--line:#e5e5e7;--line2:#d4d4d8;--soft:#f4f4f5;
       --g1:#18181b;--g2:#8a6424;--g3:var(--primary);--g4:#7a5a22;--text:#18181b;--muted:#71717a;--muted2:#8e8e96;
       --hot:#ea580c;--warm:#d97706;--cold:#0284c7;--ok:#059669;--bad:#dc2626;--r:16px;--rb:10px;
@@ -69,8 +69,8 @@
     .plan-load b{color:var(--text);font-weight:700}
     .plan-load .bar{flex:1;min-width:90px;height:6px;border-radius:99px;background:var(--line);overflow:hidden}
     .plan-load .bar i{display:block;height:100%;background:var(--g1)}
-    .plan-free{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
-    .plan-free button{border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:5px 9px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
+    .plan-free{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+    .plan-free button{border:1px solid var(--line2);background:var(--panel);border-radius:8px;padding:5px 12px;min-height:40px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
     .plan-free button:hover:not(:disabled){border-color:var(--primary);color:var(--text)}
     .plan-free button:disabled{opacity:.55;cursor:default}
     .plan-h{font-size:.9rem;margin:14px 0 6px}
@@ -108,7 +108,7 @@
     .aitext:focus{border-color:var(--g3)}
     .lead .prep{font-size:.84rem;color:var(--muted);background:var(--accent-bg);border-left:2px solid var(--g4);padding:6px 10px;border-radius:6px}
     .acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-    .acts select{background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:7px 10px;font-size:.82rem}
+    .acts select{background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:7px 10px;min-height:40px;font-size:.82rem}
     .acts select.s-new{color:#0369a1;background:#e0f2fe;border-color:#bae6fd}.acts select.s-contacted{color:#b45309;background:#fef3c7;border-color:#fde68a}.acts select.s-booked{color:#6d28d9;background:#ede9fe;border-color:#ddd6fe}.acts select.s-visited{color:#047857;background:#d1fae5;border-color:#a7f3d0}.acts select.s-closed{color:#52525b;background:#f4f4f5}
     .notes{display:grid;gap:6px}
     .note{font-size:.82rem;color:var(--muted);border-top:1px dashed var(--soft);padding-top:6px}
@@ -232,7 +232,7 @@
     .netbar.sync{color:var(--g2);border-color:var(--line2)}
     .netbar.stale{color:var(--muted)}
     /* patient file */
-    .daystrip{display:flex;gap:6px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
+    .daystrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
     .daystrip button{flex:none;background:var(--panel);border:1px solid var(--line);color:var(--muted);
       border-radius:12px;padding:8px 12px;min-width:62px;text-align:center;cursor:pointer;font:inherit;font-size:.76rem}
     .daystrip button.on{background:var(--accent-bg);border-color:var(--primary);color:var(--accent-fg)}
@@ -336,6 +336,9 @@
     .pv-sk i{display:block;height:10px;border-radius:5px;margin:4px 0}
     .pv-wait{font-size:.8rem;color:var(--g2);margin-top:6px}
     @media (prefers-reduced-motion: reduce){.pv-sk .pv-th,.pv-sk i{animation:none}}
+    /* A phone browser zooms the whole page into any field set under 16px the
+       moment it is tapped, and leaves it zoomed. Every field, on any touch screen. */
+    @media (hover:none) and (pointer:coarse){input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px!important}}
     @media (max-width: 640px){ .pv-grid{grid-template-columns:1fr} .pv-th{width:96px} }
 
     /* ================= Medicare staff app look ================= */
@@ -424,7 +427,7 @@
     .cell{border:1px solid var(--line);border-radius:12px;padding:10px 12px;background:var(--panel)}
     .cell dt{font-size:.75rem;color:var(--muted)}
     .cell dd{font-size:1.2rem;font-weight:800;letter-spacing:-.02em;color:var(--g1);margin:2px 0 0}
-    .chips{display:flex;flex-wrap:wrap;gap:6px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px}
     /* A switch inside a filter row was being caught by ".filters input" and
        drawn as a 140px-wide text box. */
     .switch input,.filters .switch input{flex:none;min-width:0;width:38px;height:22px;padding:0;border:0;border-radius:100px;background:#d4d4d8;box-shadow:none}
@@ -536,6 +539,7 @@
     .pnl-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
     .inc-rates th{font-weight:500;color:var(--muted);font-size:.76rem;padding:4px 6px;text-align:center}
     .inc-rates td{padding:4px 6px;border-top:1px solid var(--line);text-align:center}
+    .inc-rates input{min-height:40px;padding:6px 8px;text-align:center}
     .inc-rates td:first-child,.inc-rates th:first-child{text-align:left}
     /* ---- appointments grid ---- */
     .seg{display:inline-flex;border:1px solid var(--line2);border-radius:10px;overflow:hidden}
@@ -603,8 +607,8 @@
     .meter{height:8px;border-radius:99px;background:var(--ink2);overflow:hidden;margin:8px 0 2px}
     .meter i{display:block;height:100%;border-radius:99px;background:linear-gradient(90deg,#f59e0b,#dc2626)}
     .why b{font-weight:500;color:var(--text)}
-    .segs{display:flex;gap:6px;flex-wrap:wrap;margin:0 0 10px}
-    .segs button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 11px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
+    .segs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 10px}
+    .segs button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 13px;min-height:40px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
     .segs button.on{background:var(--g1);color:#fff;border-color:var(--g1)}
     .segs button i{font-style:normal;margin-left:4px;opacity:.8}
     .rvcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
@@ -853,7 +857,7 @@
           <div class="seats" id="seats"></div>
           <div id="seatMoney" class="meta" style="margin-top:8px"></div>
           <p style="margin-top:10px">Launch offer: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Seat reserve ₹9,999.</p>
-          <p style="margin-top:8px"><button class="btn btn--sm" data-act="share-catalog">📤 Catalog share cheyandi</button>
+          <p class="acts" style="margin-top:8px"><button class="btn btn--sm" data-act="share-catalog">📤 Catalog share cheyandi</button>
             <button class="btn btn--sm" id="acadRefresh">↻ Refresh</button></p>
         </div>
         <div id="acadToday"></div>
@@ -877,7 +881,7 @@
       <section id="t-reviews" class="hide"><div class="list" id="revList"></div></section>
       <section id="t-office" class="hide">
         <div class="box"><h2>✦ AI Office</h2><p id="officeHi">Clinic data meeda emaina adagandi — leads, appointments, academy, today's post. <span class="te"><span lang="te">తెలుగులో కూడా అడగవచ్చు</span>.</span></p>
-          <div class="chips" id="officeChips" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div></div>
+          <div class="chips" id="officeChips" style="margin-top:10px"></div></div>
         <div id="officeChat" class="list" style="gap:10px"></div>
         <div class="box" style="position:sticky;bottom:8px;margin-top:8px">
           <div class="noteform"><input id="officeQ" placeholder="Ex: ee roju enni leads? evariki mundu call cheyyali?" maxlength="1200" /><button class="btn btn--gold btn--sm" id="officeSend">Ask</button></div>
@@ -3529,7 +3533,7 @@
     function renderToday() {
       var d = state.data, t = d.today, html = '';
       html += '<div class="box"><h2>Today\'s auto post</h2>' + (t ? '<p><b style="color:var(--g1);font-weight:500">' + esc(t.h1) + '</b><br /><span class="te">' + esc(t.te || "") + '</span><br /><span class="meta">' + (t.page ? 'Page: ' + esc(t.page) : '') + '</span></p>' : '<p>No post generated yet today (7:00 AM build → 8:30 AM publish).</p>') +
-        '<p style="margin-top:8px"><a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/dermaluxe.ai/">Instagram ↗</a> <a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61592844155911">Facebook ↗</a>' +
+        '<p class="acts" style="margin-top:8px"><a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/dermaluxe.ai/">Instagram ↗</a> <a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.facebook.com/profile.php?id=61592844155911">Facebook ↗</a>' +
         (state.allow("posts.toggle") ? ' <button class="btn btn--gold btn--sm" id="postNew">+ Kotha post</button>' : "") + '</p></div>';
       // Daily posters made here are saved as cards — the way the Medicare staff
       // app's daily content works — so one that is liked can be put out, and

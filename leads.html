@@ -14,7 +14,7 @@
     .ldash { width: min(1240px, 94%); margin: 0 auto; padding: 2.5rem 0 5rem; position: relative; z-index: 1; }
     .ldash__top { display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap; margin-bottom: 2rem; }
     .ldash__top img { height: 64px; width: auto; }
-    .ldash__key { display: flex; gap: .6rem; flex-wrap: wrap; }
+    .ldash__key { display: flex; gap: 10px; flex-wrap: wrap; }
     .ldash__key input { background: rgba(255,255,255,.04); border: 1px solid var(--line); border-radius: 100px;
       color: var(--text); padding: .65rem 1.2rem; font-family: var(--font-sans); font-size: .9rem; width: 220px; }
     .ldash__key input:focus { outline: none; border-color: var(--gold-3); }
@@ -36,14 +36,14 @@
     .lbar b { font-size: .75rem; color: var(--gold-2); font-weight: 500; line-height: 1; }
     .lbar span { font-size: .75rem; color: var(--muted-2); line-height: 1; white-space: nowrap; }
 
-    .lcontrols { display: flex; gap: .6rem; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
+    .lcontrols { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 1rem; }
     .lsearch { flex: 1 1 220px; max-width: 340px; background: rgba(255,255,255,.04); border: 1px solid var(--line);
       border-radius: 100px; color: var(--text); padding: .55rem 1.1rem; font-family: var(--font-sans); font-size: .88rem; }
     .lsearch:focus { outline: none; border-color: var(--gold-3); }
-    .lfilters { display: flex; gap: .5rem; flex-wrap: wrap; }
+    .lfilters { display: flex; gap: 8px; flex-wrap: wrap; }
     .lfilter { font-family: var(--font-sans); font-size: .75rem; letter-spacing: 1px; text-transform: uppercase;
       color: var(--muted); background: transparent; border: 1px solid var(--line-soft); border-radius: 100px;
-      padding: .45rem 1.1rem; cursor: pointer; }
+      padding: .45rem 1.1rem; min-height: 40px; cursor: pointer; }
     .lfilter.on { color: #2a1d07; background: var(--gold-grad); border-color: transparent; }
     .lrefresh { margin-left: auto; }
 
@@ -62,12 +62,15 @@
     .lwa { color: #7ed491 !important; text-decoration: none; white-space: nowrap; }
     .ltel { color: var(--gold-2) !important; text-decoration: none; }
     .ldel { background: none; border: 1px solid var(--line-soft); color: #b06a6a; border-radius: 6px;
-      cursor: pointer; font-size: .8rem; padding: .15rem .5rem; margin-left: .6rem; }
+      cursor: pointer; font-size: .8rem; padding: .4rem .75rem; min-height: 36px; margin-left: .6rem; }
     .ldel:hover { border-color: #b06a6a; }
 
     .lsel { font-family: var(--font-sans); font-size: .75rem; letter-spacing: .5px; border-radius: 100px;
-      padding: .3rem .7rem; cursor: pointer; background: rgba(255,255,255,.04); color: var(--text);
+      padding: .3rem .7rem; min-height: 36px; cursor: pointer; background: rgba(255,255,255,.04); color: var(--text);
       border: 1px solid var(--line); appearance: auto; }
+    /* A phone browser zooms the whole page into any field set under 16px the
+       moment it is tapped, and leaves it zoomed. Every field, on any touch screen. */
+    @media (hover:none) and (pointer:coarse){input:not([type=checkbox]):not([type=radio]):not([type=range]),select,textarea{font-size:16px!important}}
     .lsel:focus { outline: none; border-color: var(--gold-3); }
     .lsel option { background: #17171c; color: #eee; }
     .lsel--new { color: #e8c98a; border-color: rgba(232,201,138,.5); }
