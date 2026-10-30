@@ -3,6 +3,158 @@
    Luxury dark + gold design system
    ============================================================ */
 
+/* Stand-ins sized like the web fonts, so the page does not jump when they land.
+
+   The text is drawn first in the phone's own fonts and redrawn 0.6-2.2s later
+   when Jost, Cormorant and Noto Telugu arrive. Android's Noto Serif is 27%
+   wider than Cormorant at 600 and Georgia 13%, so a three-line heading became
+   two and everything under it moved up: 0.26 of layout shift on the blog
+   post, 0.57 on the Telugu online-consultation page, where Google asks for
+   under 0.1. Each face below is a font the phone already has (local(),
+   nothing is downloaded), scaled to set the same line lengths as the web font
+   it stands in for, and limited to characters that web font has -- so once
+   the web font is in, it draws every one of them exactly as before. Only the
+   first second or two looks different, and only in being the right size.
+   The word space is a face of its own, sized to the web font's exactly: on a
+   Telugu line every space is drawn by the Latin font, and Roboto's is 17%
+   narrower than Jost's. Which font stands in, and at what scale, was measured
+   on this site's own headings and paragraphs, one by one. */
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 100 449;
+  size-adjust: 117.0%; ascent-override: 91.4530%; descent-override: 32.0513%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+2215; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 100 449;
+  size-adjust: 93.4%; ascent-override: 114.5611%; descent-override: 40.1499%; line-gap-override: 0%;
+  unicode-range: U+0041-005A, U+00C0-00DE; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 100 449;
+  size-adjust: 90.5%; ascent-override: 118.2321%; descent-override: 41.4365%; line-gap-override: 0%;
+  unicode-range: U+0061-007A, U+00DF-00FF; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 100 449;
+  size-adjust: 97.0%; ascent-override: 110.3093%; descent-override: 38.6598%; line-gap-override: 0%;
+  unicode-range: U+0030-0039; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 100 449;
+  size-adjust: 120.9%; ascent-override: 88.5029%; descent-override: 31.0174%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 450 1000;
+  size-adjust: 110.0%; ascent-override: 97.2728%; descent-override: 34.0910%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+2215; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 450 1000;
+  size-adjust: 98.5%; ascent-override: 108.6295%; descent-override: 38.0711%; line-gap-override: 0%;
+  unicode-range: U+0041-005A, U+00C0-00DE; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 450 1000;
+  size-adjust: 97.0%; ascent-override: 110.3093%; descent-override: 38.6598%; line-gap-override: 0%;
+  unicode-range: U+0061-007A, U+00DF-00FF; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 450 1000;
+  size-adjust: 103.5%; ascent-override: 103.3817%; descent-override: 36.2319%; line-gap-override: 0%;
+  unicode-range: U+0030-0039; }
+@font-face { font-family: "Jost fallback Roboto"; src: local("Roboto"), local("Roboto-Regular"), local("Roboto Regular"); font-weight: 450 1000;
+  size-adjust: 120.9%; ascent-override: 88.5029%; descent-override: 31.0174%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Jost fallback Helvetica"; src: local("Helvetica Neue Light"), local("HelveticaNeue-Light"); font-weight: 100 449;
+  size-adjust: 98.4%; ascent-override: 108.7399%; descent-override: 38.1098%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+2215; }
+@font-face { font-family: "Jost fallback Helvetica"; src: local("Helvetica Neue Light"), local("HelveticaNeue-Light"); font-weight: 100 449;
+  size-adjust: 107.9%; ascent-override: 99.1659%; descent-override: 34.7545%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Jost fallback Helvetica"; src: local("Avenir Next Demi Bold"), local("AvenirNext-DemiBold"); font-weight: 450 1000;
+  size-adjust: 103.5%; ascent-override: 103.3817%; descent-override: 36.2319%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+2215; }
+@font-face { font-family: "Jost fallback Helvetica"; src: local("Avenir Next Demi Bold"), local("AvenirNext-DemiBold"); font-weight: 450 1000;
+  size-adjust: 94.5%; ascent-override: 113.2276%; descent-override: 39.6826%; line-gap-override: 0%;
+  unicode-range: U+0041-005A, U+00C0-00DE; }
+@font-face { font-family: "Jost fallback Helvetica"; src: local("Avenir Next Demi Bold"), local("AvenirNext-DemiBold"); font-weight: 450 1000;
+  size-adjust: 93.1%; ascent-override: 114.9302%; descent-override: 40.2793%; line-gap-override: 0%;
+  unicode-range: U+0061-007A, U+00DF-00FF; }
+@font-face { font-family: "Jost fallback Helvetica"; src: local("Avenir Next Demi Bold"), local("AvenirNext-DemiBold"); font-weight: 450 1000;
+  size-adjust: 95.5%; ascent-override: 112.0419%; descent-override: 39.2671%; line-gap-override: 0%;
+  unicode-range: U+0030-0039; }
+@font-face { font-family: "Jost fallback Helvetica"; src: local("Avenir Next Demi Bold"), local("AvenirNext-DemiBold"); font-weight: 450 1000;
+  size-adjust: 120.0%; ascent-override: 89.1667%; descent-override: 31.2500%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 100 449;
+  size-adjust: 100.2%; ascent-override: 106.7865%; descent-override: 37.4252%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+2215; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 100 449;
+  size-adjust: 87.3%; ascent-override: 122.5659%; descent-override: 42.9554%; line-gap-override: 0%;
+  unicode-range: U+0041-005A, U+00C0-00DE; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 100 449;
+  size-adjust: 91.2%; ascent-override: 117.3246%; descent-override: 41.1185%; line-gap-override: 0%;
+  unicode-range: U+0061-007A, U+00DF-00FF; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 100 449;
+  size-adjust: 97.4%; ascent-override: 109.8563%; descent-override: 38.5011%; line-gap-override: 0%;
+  unicode-range: U+0030-0039; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 100 449;
+  size-adjust: 108.0%; ascent-override: 99.0741%; descent-override: 34.7223%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 450 1000;
+  size-adjust: 101.5%; ascent-override: 105.4188%; descent-override: 36.9459%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00FF, U+0131, U+0152-0153, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2039-203A, U+2044, U+20AC, U+2122, U+2212, U+2215; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 450 1000;
+  size-adjust: 93.8%; ascent-override: 114.0725%; descent-override: 39.9787%; line-gap-override: 0%;
+  unicode-range: U+0041-005A, U+00C0-00DE; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 450 1000;
+  size-adjust: 98.8%; ascent-override: 108.2996%; descent-override: 37.9555%; line-gap-override: 0%;
+  unicode-range: U+0061-007A, U+00DF-00FF; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 450 1000;
+  size-adjust: 102.6%; ascent-override: 104.2885%; descent-override: 36.5498%; line-gap-override: 0%;
+  unicode-range: U+0030-0039; }
+@font-face { font-family: "Jost fallback Arial"; src: local("Arial"), local("ArialMT"); font-weight: 450 1000;
+  size-adjust: 108.0%; ascent-override: 99.0741%; descent-override: 34.7223%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif"), local("NotoSerif-Regular"), local("NotoSerif"); font-weight: 100 549;
+  size-adjust: 90.6%; ascent-override: 101.9868%; descent-override: 31.6778%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00B4, U+00B6-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2032-2033, U+2039-203A, U+2044, U+20AC, U+2122, U+2212; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif"), local("NotoSerif-Regular"), local("NotoSerif"); font-weight: 100 549;
+  size-adjust: 95.4%; ascent-override: 96.8554%; descent-override: 30.0839%; line-gap-override: 0%;
+  unicode-range: U+0041-005A, U+00C0-00DE; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif"), local("NotoSerif-Regular"), local("NotoSerif"); font-weight: 100 549;
+  size-adjust: 80.8%; ascent-override: 114.3565%; descent-override: 35.5199%; line-gap-override: 0%;
+  unicode-range: U+0061-007A, U+00DF-00FF; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif"), local("NotoSerif-Regular"), local("NotoSerif"); font-weight: 100 549;
+  size-adjust: 72.7%; ascent-override: 127.0977%; descent-override: 39.4774%; line-gap-override: 0%;
+  unicode-range: U+0030-0039; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif"), local("NotoSerif-Regular"), local("NotoSerif"); font-weight: 100 549;
+  size-adjust: 90.0%; ascent-override: 102.6667%; descent-override: 31.8889%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif Bold"), local("NotoSerif-Bold"), local("Noto Serif"), local("NotoSerif-Regular"); font-weight: 550 1000;
+  size-adjust: 82.4%; ascent-override: 112.1360%; descent-override: 34.8301%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00B4, U+00B6-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2032-2033, U+2039-203A, U+2044, U+20AC, U+2122, U+2212; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif Bold"), local("NotoSerif-Bold"), local("Noto Serif"), local("NotoSerif-Regular"); font-weight: 550 1000;
+  size-adjust: 90.6%; ascent-override: 101.9868%; descent-override: 31.6778%; line-gap-override: 0%;
+  unicode-range: U+0041-005A, U+00C0-00DE; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif Bold"), local("NotoSerif-Bold"), local("Noto Serif"), local("NotoSerif-Regular"); font-weight: 550 1000;
+  size-adjust: 75.5%; ascent-override: 122.3842%; descent-override: 38.0133%; line-gap-override: 0%;
+  unicode-range: U+0061-007A, U+00DF-00FF; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif Bold"), local("NotoSerif-Bold"), local("Noto Serif"), local("NotoSerif-Regular"); font-weight: 550 1000;
+  size-adjust: 72.0%; ascent-override: 128.3334%; descent-override: 39.8612%; line-gap-override: 0%;
+  unicode-range: U+0030-0039; }
+@font-face { font-family: "Cormorant fallback Noto"; src: local("Noto Serif Bold"), local("NotoSerif-Bold"), local("Noto Serif"), local("NotoSerif-Regular"); font-weight: 550 1000;
+  size-adjust: 90.0%; ascent-override: 102.6667%; descent-override: 31.8889%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Cormorant fallback Hoefler"; src: local("Hoefler Text"), local("HoeflerText-Regular"); font-weight: 100 549;
+  size-adjust: 92.5%; ascent-override: 99.8919%; descent-override: 31.0271%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00B4, U+00B6-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2032-2033, U+2039-203A, U+2044, U+20AC, U+2122, U+2212; }
+@font-face { font-family: "Cormorant fallback Hoefler"; src: local("Hoefler Text"), local("HoeflerText-Regular"); font-weight: 100 549;
+  size-adjust: 93.6%; ascent-override: 98.7180%; descent-override: 30.6624%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Cormorant fallback Hoefler"; src: local("Hoefler Text Black"), local("HoeflerText-Black"); font-weight: 550 1000;
+  size-adjust: 80.0%; ascent-override: 115.5000%; descent-override: 35.8750%; line-gap-override: 0%;
+  unicode-range: U+0021-007E, U+00A1-00B4, U+00B6-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2013-2014, U+2018-201A, U+201C-201E, U+2022, U+2026, U+2032-2033, U+2039-203A, U+2044, U+20AC, U+2122, U+2212; }
+@font-face { font-family: "Cormorant fallback Hoefler"; src: local("Hoefler Text Black"), local("HoeflerText-Black"); font-weight: 550 1000;
+  size-adjust: 114.1%; ascent-override: 80.9816%; descent-override: 25.1534%; line-gap-override: 0%;
+  unicode-range: U+0020, U+00A0; }
+@font-face { font-family: "Telugu sans fallback"; src: local("Kohinoor Telugu Light"), local("KohinoorTelugu-Light"); font-weight: 100 449;
+  size-adjust: 93.1%; ascent-override: 93.3405%; descent-override: 51.8797%; line-gap-override: 0%;
+  unicode-range: U+0951-0952, U+0964-0965, U+0C00-0C0C, U+0C0E-0C10, U+0C12-0C28, U+0C2A-0C39, U+0C3C-0C44, U+0C46-0C48, U+0C4A-0C4D, U+0C55-0C56, U+0C58-0C5A, U+0C5D, U+0C60-0C63, U+0C66-0C6F, U+0C77-0C7F, U+1CDA, U+1CF2, U+200C-200D, U+25CC; }
+@font-face { font-family: "Telugu sans fallback"; src: local("Kohinoor Telugu Medium"), local("KohinoorTelugu-Medium"); font-weight: 450 1000;
+  size-adjust: 94.0%; ascent-override: 92.4469%; descent-override: 51.3830%; line-gap-override: 0%;
+  unicode-range: U+0951-0952, U+0964-0965, U+0C00-0C0C, U+0C0E-0C10, U+0C12-0C28, U+0C2A-0C39, U+0C3C-0C44, U+0C46-0C48, U+0C4A-0C4D, U+0C55-0C56, U+0C58-0C5A, U+0C5D, U+0C60-0C63, U+0C66-0C6F, U+0C77-0C7F, U+1CDA, U+1CF2, U+200C-200D, U+25CC; }
+@font-face { font-family: "Telugu serif fallback"; src: local("Kohinoor Telugu Medium"), local("KohinoorTelugu-Medium"); font-weight: 100 549;
+  size-adjust: 88.3%; ascent-override: 98.4145%; descent-override: 54.6999%; line-gap-override: 0%;
+  unicode-range: U+0951-0952, U+0964-0965, U+0C00-0C0C, U+0C0E-0C10, U+0C12-0C28, U+0C2A-0C39, U+0C3C-0C44, U+0C46-0C48, U+0C4A-0C4D, U+0C55-0C56, U+0C58-0C5A, U+0C5D, U+0C60-0C63, U+0C66-0C6F, U+0C77-0C7F, U+1CDA, U+1CF2, U+200C-200D, U+25CC; }
+@font-face { font-family: "Telugu serif fallback"; src: local("Kohinoor Telugu Semibold"), local("KohinoorTelugu-Semibold"); font-weight: 550 1000;
+  size-adjust: 87.6%; ascent-override: 99.2010%; descent-override: 55.1370%; line-gap-override: 0%;
+  unicode-range: U+0951-0952, U+0964-0965, U+0C00-0C0C, U+0C0E-0C10, U+0C12-0C28, U+0C2A-0C39, U+0C3C-0C44, U+0C46-0C48, U+0C4A-0C4D, U+0C55-0C56, U+0C58-0C5A, U+0C5D, U+0C60-0C63, U+0C66-0C6F, U+0C77-0C7F, U+1CDA, U+1CF2, U+200C-200D, U+25CC; }
+
 :root {
   /* Palette */
   --black: #0a0a0c;
@@ -46,8 +198,10 @@
      behind the Latin face, it costs the Latin nothing, which is the same rule
      the -te stacks below already follow. wire-tefont checks the result rather
      than the spelling. */
-  --font-serif: "Cormorant Garamond", "Noto Serif Telugu", Georgia, serif;
-  --font-sans: "Jost", "Noto Sans Telugu", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-serif: "Cormorant Garamond", "Cormorant fallback Noto", "Cormorant fallback Hoefler",
+    "Noto Serif Telugu", "Telugu serif fallback", Georgia, serif;
+  --font-sans: "Jost", "Jost fallback Roboto", "Jost fallback Helvetica", "Jost fallback Arial",
+    "Noto Sans Telugu", "Telugu sans fallback", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 
   /* A Telugu line on this site is rarely all Telugu: "బ్యాచ్ 10 Nov",
      "AI చర్మ & జుట్టు విశ్లేషణ", prices, dates. With a Telugu face named
@@ -144,7 +298,7 @@ h3 { font-size: 1.4rem; }
   background: var(--gold-3); vertical-align: middle; margin-left: 12px; opacity: .6;
 }
 
-.lead { font-size: 1.08rem; color: var(--muted); max-width: 54ch; }
+.lead { font-size: 1.08rem; color: var(--muted); max-width: 31.32em; }   /* 54ch in Jost 300 ("0" = .58em), in em so a stand-in font cannot change it */
 
 /* ---------- Bilingual (Telugu) ---------- */
 .te { font-family: var(--font-sans-te); }
@@ -375,7 +529,7 @@ h3 { font-size: 1.4rem; }
 .hero > .container.hero__inner { position: relative; z-index: 1; max-width: none; width: min(var(--maxw), 92%); flex: 0 0 auto; }
 .hero__inner > * { max-width: 860px; }
 .hero__title { font-size: clamp(2.8rem, 7vw, 5.4rem); margin-bottom: 1.6rem; }
-.hero__sub { font-size: 1.15rem; color: var(--muted); max-width: 56ch; margin-bottom: 2.4rem; }
+.hero__sub { font-size: 1.15rem; color: var(--muted); max-width: 32.48em; margin-bottom: 2.4rem; }   /* 56ch in Jost 300 */
 .hero__cta { display: flex; flex-wrap: wrap; gap: 1rem; margin-bottom: 3.5rem; }
 
 .hero__badges { display: flex; flex-wrap: wrap; gap: clamp(1.5rem, 4vw, 3.2rem); }
@@ -704,7 +858,7 @@ h3 { font-size: 1.4rem; }
 .reviews__cta { text-align: center; margin-top: 2.4rem; display: flex; flex-direction: column; align-items: center; gap: 1rem; }
 .reviews__all { color: var(--gold-2); font-size: .9rem; letter-spacing: .3px; text-decoration: none; }
 .reviews__all:hover { color: var(--gold-1); }
-.reviews__note { font-size: .8rem; color: var(--muted-2); max-width: 46ch; }
+.reviews__note { font-size: .8rem; color: var(--muted-2); max-width: 26.68em; }   /* 46ch in Jost 300 */
 @media (max-width: 560px) {
   .reviews__score { flex-wrap: wrap; justify-content: center; }
   .review { padding: 1.3rem 1.2rem; }
@@ -863,7 +1017,7 @@ h3 { font-size: 1.4rem; }
 .footer { background: var(--black); border-top: 1px solid var(--line); padding-top: clamp(3rem, 6vw, 5rem); }
 .footer__grid { display: grid; grid-template-columns: 1.6fr 1fr 1fr 1.2fr; gap: 2.5rem; padding-bottom: 3rem; }
 .footer__brand img { height: 52px; margin-bottom: 1.2rem; }
-.footer__brand p { color: var(--muted); font-size: .92rem; max-width: 34ch; margin-bottom: 1.1rem; }
+.footer__brand p { color: var(--muted); font-size: .92rem; max-width: 19.72em; margin-bottom: 1.1rem; }   /* 34ch in Jost 300 */
 .footer__motto { font-family: var(--font-serif); font-style: italic; font-size: 1.25rem; letter-spacing: 1px; margin-bottom: 1.4rem !important; }
 .footer__social { display: flex; gap: .6rem; }
 .footer__social a { width: 38px; height: 38px; border-radius: 50%; border: 1px solid var(--line-soft); display: grid; place-items: center; transition: all .3s; }
@@ -1492,9 +1646,11 @@ h3 { font-size: 1.4rem; }
 
 /* ---------- SEO landing pages ---------- */
 .seo-hero { text-align: center; padding: clamp(3rem, 7vw, 5.5rem) 0 clamp(2rem, 4vw, 3rem); position: relative; z-index: 1; }
-.seo-hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); max-width: 20ch; margin: 0 auto .8rem; }
+/* 9.54em is 20ch in Cormorant (its "0" is .477em at every upright weight), written
+   in em so the box does not change width while a stand-in font is drawing it */
+.seo-hero h1 { font-size: clamp(2rem, 5vw, 3.4rem); max-width: 9.54em; margin: 0 auto .8rem; }
 .seo-hero .head-te { margin-bottom: 1rem; }
-.seo-hero .lead { margin: 0 auto 1.8rem; max-width: 62ch; }
+.seo-hero .lead { margin: 0 auto 1.8rem; max-width: 35.96em; }   /* 62ch in Jost 300 */
 .seo-cta { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
 .seo-body { width: min(860px, 92%); margin: 0 auto; padding-bottom: 3rem; position: relative; z-index: 1; }
 .seo-body h2 { font-size: clamp(1.5rem, 3vw, 2.1rem); margin: 2.4rem 0 .9rem; }
@@ -1649,7 +1805,7 @@ h3 { font-size: 1.4rem; }
 .lang-te .eyebrow { letter-spacing: .08em; }
 
 /* ---- Blog ---- */
-.post-hero h1 { max-width: 24ch; }
+.post-hero h1 { max-width: 11.448em; }   /* 24ch in Cormorant, see .seo-hero h1 */
 .post-meta { color: var(--muted-2); font-size: .88rem; letter-spacing: .02em; margin-top: .6rem; }
 .post-meta strong { color: var(--gold-2); font-weight: 500; }
 .post-body .lead { color: var(--text); font-size: 1.08rem; line-height: 1.8; margin-bottom: 1.6rem; }
