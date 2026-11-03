@@ -72,6 +72,8 @@ const appVersion = h.load("app-version"), config = h.load("config"), mk = h.load
   is(decodeURIComponent((await h.call(r, { tag: "story" })).headers.Location).includes("Glow before Diwali"), true, "and tells the agent which post they saw");
   const web = await h.call(r, { tag: "gbp" });
   is(web.headers.Location, "https://www.dermaluxe.ai/?utm_source=gbp&utm_medium=smartlink&utm_campaign=gbp", "others land on the site with the channel marked");
+  is((await h.call(r, { tag: "rx" })).headers.Location, "https://www.dermaluxe.ai/?utm_source=rx&utm_medium=smartlink&utm_campaign=rx#ai-analysis", "the QR on the prescription pad opens the AI skin analysis");
+  is((await h.call(r, { tag: "RX" })).headers.Location.endsWith("#ai-analysis"), true, "even if a phone's camera reads it in capitals");
   is(h.run(["GET", `utm:insta:${new Date().toISOString().slice(0, 10)}`]), "1", "every click is counted");
   is((await h.call(r, { tag: "<script>alert(1)" })).headers.Location.includes("<"), false, "a tag cannot inject anything into the address");
 

@@ -54,7 +54,11 @@ module.exports = async (req, res) => {
     }
     res.setHeader("Location", "https://wa.me/919959134666?text=" + encodeURIComponent(text));
   } else {
-    res.setHeader("Location", `https://www.dermaluxe.ai/?utm_source=${tag}&utm_medium=smartlink&utm_campaign=${tag}`);
+    // Tags printed on paper the patient already holds (the QR on the clinic's
+    // prescription pad) open the AI skin analysis itself, not the top of the
+    // home page. Printed links live for years: never rename one of these.
+    const AI_TAGS = { rx: 1, ai: 1 };
+    res.setHeader("Location", `https://www.dermaluxe.ai/?utm_source=${tag}&utm_medium=smartlink&utm_campaign=${tag}` + (AI_TAGS[tag] ? "#ai-analysis" : ""));
   }
   return res.end();
 };

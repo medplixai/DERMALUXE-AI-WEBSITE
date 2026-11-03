@@ -11,3 +11,6 @@
 /material/
 /academy_ig3/
 /catalog/
+
+# Print artwork (prescription-pad QR etc.) — kept in the repo, never served.
+/print/
