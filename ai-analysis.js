@@ -76,6 +76,22 @@
     goStep(1);
   });
 
+  /* The QR on the prescription pad (/r/rx) lands with #ai-start. The patient
+     scanned it to do the analysis, and on a phone the Start button is a screen
+     and a half below the top of this section -- so open step 1 for them. The
+     page keeps settling for a second or two after load (pictures, fonts), so
+     put step 1 back in view once it has, unless they have already moved. */
+  if (location.hash === "#ai-start") {
+    flow.hidden = false;
+    goStep(1);
+    window.addEventListener("load", function () {
+      setTimeout(function () {
+        var top = flow.getBoundingClientRect().top;
+        if (top > 140 || top < -40) flow.scrollIntoView({ block: "start" });
+      }, 600);
+    });
+  }
+
   /* ---- step 1: details + consent ---- */
   $("aiContinue").addEventListener("click", function () {
     var name = $("aiName").value.trim();
