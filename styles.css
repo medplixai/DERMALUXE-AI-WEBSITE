@@ -578,6 +578,17 @@ h3 { font-size: 1.4rem; }
 .about__stat-num { font-family: var(--font-serif); font-size: 2.4rem; font-weight: 700; line-height: 1; }
 .about__stat-lbl { font-size: .8rem; color: var(--muted); line-height: 1.4; }
 
+/* ---------- Team ----------
+   The one real photograph of the people on the home page, so it gets the full
+   width: six people side by side do not survive a 4:5 crop. */
+.team__fig { max-width: 1100px; margin: 0 auto; }
+.team__fig img {
+  display: block; width: 100%; height: auto; aspect-ratio: 1600 / 1072;
+  border-radius: var(--radius); border: 1px solid var(--line); padding: 10px; background: var(--panel);
+  box-shadow: 0 30px 60px -30px rgba(0,0,0,.8);
+}
+.team__fig figcaption { margin-top: 1.1rem; text-align: center; color: var(--muted); font-size: .9rem; line-height: 1.5; }
+
 .ticklist { margin: 1.8rem 0 2.2rem; display: grid; gap: .9rem; }
 .ticklist li { position: relative; padding-left: 2rem; color: var(--text); font-size: 1rem; }
 .ticklist li::before {
