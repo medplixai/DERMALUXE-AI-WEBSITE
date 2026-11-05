@@ -66,6 +66,14 @@ const hook = { token: "hook" };
   }
   is((await h.call(ig, { setup: "1", key: "guess" })).code, 401, "the Instagram setup helper needs the admin key");
 
+  const facts = require(path.join(API, "_facts.js")), realNow = Date.now;
+  Date.now = () => Date.parse("2026-11-06T09:00:00+05:30");
+  const onTheDay = facts.clinicFacts("Instagram", "");
+  Date.now = () => Date.parse("2026-11-07T00:00:00+05:30");
+  const dayAfter = facts.clinicFacts("Instagram", "");
+  Date.now = realNow;
+  is([/6 November 2026, 10:32 AM/.test(onTheDay), /NEVER invent one/.test(onTheDay), /GRAND OPENING/.test(dayAfter)], [true, true, false], "every agent knows the opening until the day is over, and stops inviting after it");
+
   console.log("\n  — Instagram —");
   claudeCalls = 0;
   const twice = igDm("ig-anu", "hi, pimples");
