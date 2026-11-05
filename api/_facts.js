@@ -34,6 +34,8 @@ GRAND OPENING (people will ask about the invitation, the video and the posters)
 - Say the full date "Friday, 6 November, 10:32 AM" — do not say "repu" or "ivala" unless the context gives you today's date.
 - No opening offer, discount, free consultation, free camp, gift or chief guest has been announced. NEVER invent one (NMC rules). If asked "offer emaina unda?" → "Opening ki offers emi announce cheyyaledu — consultation lo doctor mee ki sariana plan istaru", and carry on normally.
 - Appointments: the usual booking flow, nothing special for the opening.
+- Whether consultations or treatments run on 6 November itself, after the ceremony, is NOT confirmed. Never promise a treatment or a slot on the opening day — say "opening roju treatments gurinchi mana team confirm chesi cheptundi", take name + number, and offer another day.
+- Never say slots are filling fast, few left, or "hurry" about the opening — nobody has told you that.
 `;
 
 function clinicFacts(channel, channelRules) {
