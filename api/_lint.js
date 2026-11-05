@@ -86,7 +86,7 @@ function lintReply(out, patientText, recent, opts) {
 
   // A dead end: no question, no choice, no confirmation, not urgent, not a goodbye.
   const ackOnly = /^\s*(ok+|okay|sare|sari|thanks?|thank you|thanku|alage|vastanu|vastam|👍|🙏)[\s.!🙏👍]*$/i.test(lastMsg);
-  const confirmish = /(book ayindi|note chesanu|confirm|reserve chesa|✅|ventane|immediately|call cheyandi|99491 34666|emergency)/i.test(prose);
+  const confirmish = /(book ayindi|note chesanu|confirm|reserve chesa|✅|ventane|immediately|call cheyandi|99[45]91 34666|emergency)/i.test(prose);
   const goodbye = /(see you|take care|kaluddam|jagratta|thank you|dhanyavadalu|welcome)/i.test(prose);
   if (questions === 0 && !hasChoice && !confirmish && !asksToStop(lastMsg) && !(goodbye && (o.booked || ackOnly)) && prose.length > 60) {
     faults.push({ code: "no_next_step", note: "reply question lekunda, buttons/slots lekunda aagipoyindi (dead end) — chivarlo okka chinna question leda slots undali" });
