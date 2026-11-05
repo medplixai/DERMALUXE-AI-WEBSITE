@@ -20,18 +20,26 @@ process.env.IG_AGENT_ENABLED = "1";
 process.env.ANTHROPIC_API_KEY = "test";
 process.env.LEAD_NOTIFY_PHONES = "9989325777";
 
-let claude = [], claudeCalls = 0;
-const dms = [], comments = [];
+let claude = [], claudeCalls = 0, claudeDown = false, privateRefused = false;
+const dms = [], comments = [], privates = [], publics = [];
 global.fetch = async (url, opt) => {
   const u = String(url);
   if (u.includes("api.anthropic.com")) {
     if (/You fix one WhatsApp reply/.test(String((opt && opt.body) || ""))) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.parse(opt.body).messages[0].content.split("\n")[1] || "ok" }] }) };   // the editor's rewrite is not a patient turn
     claudeCalls++;
+    if (claudeDown) return { ok: false, status: 529, json: async () => ({}), text: async () => "overloaded" };
     const next = claude.length ? claude.shift() : { reply: "Namaste 🙏", lead: null };
     return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify(next) }] }) };
   }
-  if (u.includes("/me/messages")) { const b = JSON.parse(opt.body); dms.push({ to: b.recipient.id, text: (b.message || {}).text || "" }); return { ok: true, json: async () => ({}) }; }
-  if (u.includes("/private_replies") || u.includes("/replies")) { comments.push(u); return { ok: true, json: async () => ({}) }; }
+  if (u.includes("/me/messages")) {
+    const b = JSON.parse(opt.body);
+    if (b.recipient.comment_id) {   // a private reply to a comment
+      if (privateRefused) return { ok: false, status: 400, json: async () => ({}), text: async () => "refused" };
+      privates.push({ to: b.recipient.comment_id, text: b.message.text }); return { ok: true, json: async () => ({}) };
+    }
+    dms.push({ to: b.recipient.id, text: (b.message || {}).text || "" }); return { ok: true, json: async () => ({}) };
+  }
+  if (u.includes("/private_replies") || u.includes("/replies")) { comments.push(u); publics.push({ on: u.split("/").slice(-2)[0], text: JSON.parse(opt.body).message }); return { ok: true, json: async () => ({}) }; }
   return { ok: true, status: 200, json: async () => ({}), text: async () => "" };
 };
 const n = require(path.join(API, "_notify.js"));
@@ -90,6 +98,36 @@ const hook = { token: "hook" };
   claudeCalls = 0;
   await h.call(ig, hook, cmt("c2", "ourpage"));
   is(claudeCalls, 0, "and our own replies are not answered");
+
+  const said = (id, from, text) => ({ id, text, from: { id: from, username: from } });
+  const batch = (...values) => ({ object: "instagram", entry: [{ id: "ourpage", changes: values.map((value) => ({ field: "comments", value })) }] });
+  claudeCalls = 0; privates.length = 0; publics.length = 0;
+  claude.push({ dm: "Hi 🙏 WhatsApp: 99591 34666", public_reply: "Details DM chesam 💬" }, { dm: null, public_reply: "Thank you 🙏" }, { dm: null, public_reply: "Thank you 🙏" });
+  await h.call(ig, hook, batch(said("c3", "fan3", "address ekkada?"), said("c4", "fan4", "All the best 👏"), said("c5", "fan5", "Super")));
+  is([claudeCalls, privates.length, publics.length], [3, 1, 3], "three comments in one delivery get three answers, not one");
+
+  privates.length = 0; publics.length = 0; privateRefused = true;
+  claude.push({ dm: "Hi 🙏 details ivi", public_reply: "Details DM chesam 💬" });
+  await h.call(ig, hook, batch(said("c6", "fan6", "price entha?")));
+  privateRefused = false;
+  is([privates.length, publics.map((p) => p.text)], [0, ["Thank you 🙏 Details kosam WhatsApp cheyandi: 99591 34666"]], "when Instagram refuses the private reply, the number goes in public, not \"DM chesam\"");
+
+  publics.length = 0;
+  claude.push({ dm: null, public_reply: "Laser ₹4,500 per session 😊" });
+  await h.call(ig, hook, batch(said("c7", "fan7", "laser cost?")));
+  is(publics.map((p) => p.text), ["Thank you 🙏 Details kosam WhatsApp cheyandi: 99591 34666"], "a public reply quoting a price never goes out");
+
+  publics.length = 0; claudeDown = true;
+  await h.call(ig, hook, batch(said("c8", "fan8", "appointment kavali"), said("c9", "fan9", "Congratulations 🎉")));
+  claudeDown = false;
+  is(publics.map((p) => p.on), ["c8"], "with the model down, a question still gets the WhatsApp number and praise gets nothing");
+
+  dms.length = 0;
+  claude.push({ reply: "Hi Ravi 🙏", lead: null }, { reply: "Hi Sita 🙏", lead: null });
+  await h.call(ig, hook, { object: "instagram", entry: [
+    { id: "ourpage", messaging: [{ sender: { id: "ig-b1" }, message: { mid: "ig.b1", text: "hello" } }] },
+    { id: "ourpage", messaging: [{ sender: { id: "ig-b2" }, message: { mid: "ig.b2", text: "hi" } }] }] });
+  is(["ig-b1", "ig-b2"].every((who) => dms.some((d) => d.to === who)), true, "two DMs in one delivery are both answered");
 
   console.log("\n  — Messenger —");
   claudeCalls = 0;

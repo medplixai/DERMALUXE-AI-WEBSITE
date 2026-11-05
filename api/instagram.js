@@ -311,6 +311,13 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
 
 // ── Comment → private DM + public acknowledgement ──────────────────────────
+// The public fallback, when the model is unavailable or a private reply is refused.
+const COMMENT_WA = "Thank you 🙏 Details kosam WhatsApp cheyandi: 99591 34666";
+const COMMENT_ASKS = /(\?|price|cost|rate|charge|fee|entha|enta|book|appoint|slot|timing|treatment|doctor|consult|address|location|ekkad|yekkad|number|contact|whatsapp|details|info|ధర|ఎంత|ఎక్కడ|అడ్రస|టైమ్)/i;
+// Faults a public comment reply may never carry; the rest of the DM lint (one
+// question, a next step) is about conversations, not one-line acknowledgements.
+const COMMENT_HARD = new Set(["price_quoted", "medicine", "diagnosis_guess", "reassurance", "internal_note"]);
+const unsafeComment = (s, said) => lint.lintReply({ reply: s }, said, [], {}).some((f) => COMMENT_HARD.has(f.code));
 async function sendPrivateReply(commentId, text, cred) {
   if (!cred || !cred.tok || !commentId || !text) return false;
   try {
@@ -392,13 +399,30 @@ async function handleComment(entry, v) {
   if (!cred || !cred.tok) { console.error("ig: comment handler has no send token"); return; }
 
   let out;
-  let voiceScript = "";
   try { out = await askClaudeComment(username, text); }
-  catch (e) { console.error("ig: comment ai error", e && e.message); return; }
+  catch (e) {
+    // The model busy or down: someone asking a question still hears where to
+    // ask it. Praise and spam get nothing, as they would anyway.
+    console.error("ig: comment ai error", e && e.message);
+    if (COMMENT_ASKS.test(text)) await sendCommentReply(commentId, COMMENT_WA, cred);
+    return;
+  }
+
+  // The same last check the DM agent's replies get. Comment replies skipped it
+  // until 5 November 2026, and a public reply is read by everyone, not one person.
+  if (out.dm) {
+    try { out.dm = (await lint.check(cfg, { reply: out.dm, lead: null }, text, [], { channel: "ig-comment" })).reply || out.dm; } catch (e) {}
+    if (unsafeComment(out.dm, text)) out.dm = null;
+  }
+  if (out.public_reply && unsafeComment(out.public_reply, text)) out.public_reply = COMMENT_WA;
 
   if (out.dm) {
     const ok = await sendPrivateReply(commentId, out.dm, cred);
+    // Instagram refuses a private reply now and then (the commenter's settings,
+    // or a comment older than seven days). "Details DM chesam" would then be
+    // untrue and the person heard nothing, so the number goes in public instead.
     if (ok && out.public_reply) await sendCommentReply(commentId, out.public_reply, cred);
+    else if (!ok) await sendCommentReply(commentId, COMMENT_WA, cred);
   } else if (out.public_reply) {
     await sendCommentReply(commentId, out.public_reply, cred);
   }
@@ -448,22 +472,36 @@ module.exports = async (req, res) => {
   const b = req.body || {};
   if (b.object !== "instagram") return res.status(200).json({ ok: true });
 
-  const entry = (b.entry && b.entry[0]) || {};
-
-  // Comment webhooks arrive via entry.changes (field "comments"), not messaging.
-  const change = (entry.changes && entry.changes[0]) || null;
-  if (change && change.field === "comments") {
-    await handleComment(entry, change.value || {});
-    return res.status(200).json({ ok: true });
+  // Meta batches: one POST can carry several entries, and each entry several
+  // comments or messages. Only the first of each was read until 5 November
+  // 2026, so on a busy evening every comment after the first in a batch went
+  // unanswered. Comments run side by side (each waits several seconds on the
+  // model, and the function has sixty); one person's messages stay in order.
+  const jobs = [], bySender = new Map();
+  for (const entry of Array.isArray(b.entry) ? b.entry : []) {
+    // Comment webhooks arrive via entry.changes (field "comments"), not messaging.
+    for (const change of Array.isArray(entry.changes) ? entry.changes : []) {
+      if (change && change.field === "comments") jobs.push(() => handleComment(entry, change.value || {}));
+    }
+    for (const m of Array.isArray(entry.messaging) ? entry.messaging : []) {
+      const who = String((m && m.sender && m.sender.id) || "");
+      if (!bySender.has(who)) bySender.set(who, []);
+      bySender.get(who).push(m || {});
+    }
   }
+  for (const list of bySender.values()) jobs.push(async () => { for (const m of list) await handleMessage(req, m); });
+  await Promise.all(jobs.map((job) => job().catch((e) => console.error("ig: event error", e && e.message))));
+  return res.status(200).json({ ok: true });
+};
 
-  const m = ((entry.messaging && entry.messaging[0]) || {});
+// One Instagram DM: Claude reply, lead capture, voice and location follow-ups.
+async function handleMessage(req, m) {
   const msg = m.message || null;
   // ignore reads/deliveries/reactions/postbacks-without-message and our own echoes
-  if (!msg || msg.is_echo) return res.status(200).json({ ok: true });
+  if (!msg || msg.is_echo) return;
 
   const igsid = String((m.sender && m.sender.id) || "");
-  if (!igsid) return res.status(200).json({ ok: true });
+  if (!igsid) return;
 
   const cfg = guard.kvConfig();
   const ptok = await resolveSend(cfg);
@@ -472,7 +510,7 @@ module.exports = async (req, res) => {
   if (cfg && msg.mid) {
     try {
       const first = await guard.kvCommand(cfg, ["SET", `ig:seen:${msg.mid}`, "1", "NX", "EX", "21600"]);
-      if (!first.result) return res.status(200).json({ ok: true });
+      if (!first.result) return;
     } catch (e) {}
   }
 
@@ -485,24 +523,24 @@ module.exports = async (req, res) => {
     if (a.type === "image" && !imageUrl) imageUrl = url;
     if (a.type === "audio" && !audioUrl) audioUrl = url;
   }
-  if (!text && !imageUrl && !audioUrl) return res.status(200).json({ ok: true });
+  if (!text && !imageUrl && !audioUrl) return;
 
   // Rate limits: per sender + global daily
   const perUser = await guard.rateLimit(cfg, `rl:ig:h:${igsid}`, 15, 3600);
   if (!perUser.allowed) {
     await sendDM(igsid, "Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.", false, ptok);
-    return res.status(200).json({ ok: true });
+    return;
   }
   const globalCap = await guard.rateLimit(cfg, `rl:ig:g:${guard.today()}`, 400, 90000);
   if (!globalCap.allowed) {
     await sendDM(igsid, FALLBACK_REPLY, false, ptok);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   if (process.env.IG_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY || !ptok) {
     if (ptok) await sendDM(igsid, FALLBACK_REPLY, false, ptok);
     else console.error("ig: no send token (set IG_LOGIN_TOKEN, or IG_SYSTEM_TOKEN + IG_PAGE_ID)");
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   const histKey = `ig:h:${igsid}`;
@@ -533,12 +571,12 @@ module.exports = async (req, res) => {
       const gCap = await guard.rateLimit(cfg, `rl:an:g:${guard.today()}`, 300, 90000);
       if (!imgL.allowed || !gCap.allowed) {
         await sendDM(igsid, "Photo analysis limit ayipoindi 🙏 — www.dermaluxe.ai lo FREE full AI analysis try cheyandi, leda mee concern text cheyandi.", false, ptok);
-        return res.status(200).json({ ok: true });
+        return;
       }
       const media = await fetchUrlMedia(imageUrl);
       if (!media || media.tooBig) {
         await sendDM(igsid, "Photo download avvaledu 🙏 — malli pampandi, leda text type cheyandi.", false, ptok);
-        return res.status(200).json({ ok: true });
+        return;
       }
       const mime = ["image/jpeg", "image/png", "image/webp", "image/gif"].indexOf(media.mime) !== -1 ? media.mime : "image/jpeg";
       out = await askClaude(hist, text, igName, extraCtx,
@@ -549,13 +587,13 @@ module.exports = async (req, res) => {
         const vcL = await guard.rateLimit(cfg, `rl:ig:vc:${igsid}`, 10, 86400);
         if (!vcL.allowed) {
           await sendDM(igsid, "Ee roju voice limit ayipoindi 🙏 — text type chesi pampandi.", false, ptok);
-          return res.status(200).json({ ok: true });
+          return;
         }
         const media = await fetchUrlMedia(audioUrl);
         const heard = media && !media.tooBig ? await transcribeVoice(media.base64, media.mime) : null;
         if (!heard) {
           await sendDM(igsid, "Voice note vinipinchaledu 🙏 — dayachesi type chesi pampandi.", false, ptok);
-          return res.status(200).json({ ok: true });
+          return;
         }
         text = String(heard).slice(0, 1000).trim();
       }
@@ -570,7 +608,7 @@ module.exports = async (req, res) => {
   } catch (e) {
     console.error("ig: ai error", e && e.message);
     await sendDM(igsid, FALLBACK_REPLY, false, ptok);
-    return res.status(200).json({ ok: true });
+    return;
   }
 
   try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName: igName, channel: "ig", analysis: !!imageUrl }); } catch (e) {}
@@ -599,5 +637,4 @@ module.exports = async (req, res) => {
   if (out.send_location === true || LOCATION_ASK.test(text)) {
     await sendDM(igsid, "📍 DermaLuxe by Medicare, Eluru — Google Maps: " + MAPS_LINK, false, ptok);
   }
-  return res.status(200).json({ ok: true });
-};
+}
