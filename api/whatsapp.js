@@ -1462,6 +1462,7 @@ module.exports = async (req, res) => {
       }
     } catch (e) { console.error("wa: urgent alert", e && e.message); }
   }
+  out.reply = facts.withAiLine(out.reply, firstTurn);
   if (cfg) {
     hist.push({ u: text, a: out.reply });
     await saveHistory(cfg, histKey, hist);

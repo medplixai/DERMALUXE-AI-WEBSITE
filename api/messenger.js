@@ -408,6 +408,7 @@ module.exports = async (req, res) => {
   if (out.lead && out.lead.name) {
     try { await storeLead(cfg, out.lead, psid, fbName, text); } catch (e) {}
   }
+  out.reply = facts.withAiLine(out.reply, firstTurn);
   if (cfg) {
     hist.push({ u: text, a: out.reply });
     try {

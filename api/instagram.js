@@ -633,6 +633,7 @@ async function handleMessage(req, m) {
   if (out.lead && out.lead.name) {
     try { await storeLead(cfg, out.lead, igsid, igName, text); } catch (e) {}
   }
+  out.reply = facts.withAiLine(out.reply, firstTurn);
   if (cfg) {
     hist.push({ u: text, a: out.reply });
     try {

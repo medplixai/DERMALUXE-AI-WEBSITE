@@ -73,6 +73,9 @@ const hook = { token: "hook" };
   const dayAfter = facts.clinicFacts("Instagram", "");
   Date.now = realNow;
   is([/6 November 2026, 10:32 AM/.test(onTheDay), /NEVER invent one/.test(onTheDay), /GRAND OPENING/.test(dayAfter)], [true, true, false], "every agent knows the opening until the day is over, and stops inviting after it");
+  const hi = "Namaste andi, mee concern cheppandi.";
+  is([facts.withAiLine(hi, true).endsWith(facts.AI_LINE), facts.withAiLine(hi, false), facts.withAiLine("Nenu clinic AI assistant ni andi.", true)],
+    [true, hi, "Nenu clinic AI assistant ni andi."], "the first reply of a chat always says an AI is answering, once, even when the model forgets");
 
   console.log("\n  — Instagram —");
   claudeCalls = 0;

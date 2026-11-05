@@ -168,6 +168,7 @@ module.exports = async (req, res) => {
   if (out.lead && out.lead.name && out.lead.phone) {
     try { captured = await storeLead(cfg, out.lead, sid, message); } catch (e) {}
   }
+  out.reply = facts.withAiLine(out.reply, !hist.length);
   if (cfg) {
     hist.push({ u: message, a: out.reply });
     try {

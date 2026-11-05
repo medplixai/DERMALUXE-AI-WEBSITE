@@ -205,4 +205,16 @@ const FALLBACK_REPLY =
   "🌐 www.dermaluxe.ai (free AI skin analysis)\n" +
   "మా team త్వరలో మీకు reply చేస్తుంది. Thank you!";
 
-module.exports = { clinicFacts, photoRules, FALLBACK_REPLY, salvageReply };
+// The one-time "this is an AI" line. The brief asks the model for it, and on
+// the evening of 5 November both new WhatsApp chats went out without it — a
+// rule the model may skip is not how a legal duty (NMC 7.2(c)) should be met.
+// So the code adds it to the first reply of every new conversation, unless
+// the reply already says it.
+const AI_LINE = "_Ee chat lo DermaLuxe AI help chestundi — staff tho matladali ante *staff* ani type cheyandi._";
+function withAiLine(reply, firstTurn) {
+  const r = String(reply || "");
+  if (!firstTurn || !r.trim() || /\bAI\b/.test(r)) return r;
+  return r.replace(/\s+$/, "") + "\n\n" + AI_LINE;
+}
+
+module.exports = { clinicFacts, photoRules, FALLBACK_REPLY, salvageReply, AI_LINE, withAiLine };
