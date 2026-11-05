@@ -413,7 +413,7 @@
       (rep.suggested_treatments && rep.suggested_treatments.length ? "<h3>Suggested Treatments at DermaLuxe</h3><div class='treats'>" + rep.suggested_treatments.map(function (t) { return "<span>" + esc(t) + "</span>"; }).join("") + "</div>" : "") +
       '<p class="disc">' + esc(rep.disclaimer || "This AI pre-assessment is for informational purposes only and is not a medical diagnosis.") + "</p>" +
       '<div class="ftr"><span>DermaLuxeAI Private Limited · Rama Mahal, Ramachandra Rao Peta, Kasturi Vari Street, Eluru – 534002</span>' +
-      "<span>+91 99491 34666 · www.dermaluxe.ai</span></div>" +
+      "<span>+91 99591 34666 · www.dermaluxe.ai</span></div>" +
       "</body></html>";
     return html;
   }

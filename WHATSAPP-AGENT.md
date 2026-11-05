@@ -38,7 +38,7 @@ After adding env vars: Deployments → **Redeploy** once.
 ## 3. Production — real clinic number
 
 WhatsApp Business API numbers **cannot simultaneously use the normal WhatsApp
-app**. Recommended: keep **+91 99491 34666** on the phone app as-is, and put
+app**. Recommended: keep **+91 99591 34666** on the phone app as-is, and put
 the agent on the second number **+91 99591 34666** (or a new number):
 
 1. Twilio Console → Messaging → **Senders → WhatsApp senders → New sender**.

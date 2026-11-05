@@ -1569,7 +1569,7 @@ h3 { font-size: 1.4rem; }
 
 @media (max-width: 860px) {
   /* A finger covers about 44px. Measured on a 390px phone, the bar above was
-     handing it 21px: "+91 99491 34666" — the one tap a clinic site exists for
+     handing it 21px: "+91 99591 34666" — the one tap a clinic site exists for
      — was a 123x21 box, "Patient Portal" 92x21, and the three social circles
      26px across with 6px between them. The bar is already 42px tall, so the
      room is there; the links just were not using it. Stretching them to the
