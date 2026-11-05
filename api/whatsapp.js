@@ -180,7 +180,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
     },
     body: JSON.stringify({
       model: (opts && opts.model) || process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 1000,
+      max_tokens: 2000,
       system: sysBlocks(CLINIC_FACTS, sysExtra),
       messages,
     }),
@@ -867,7 +867,7 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx, sysE
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 1000,
+      max_tokens: 2000,
       // PHOTO_RULES is constant too, so it joins the cached half; the owner's
       // rules stay after the breakpoint.
       system: sysBlocks(CLINIC_FACTS + "\n\n" + PHOTO_RULES, sysExtra),

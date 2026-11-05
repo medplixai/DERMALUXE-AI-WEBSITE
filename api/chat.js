@@ -137,7 +137,10 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         model: process.env.AI_MODEL || "claude-opus-5",
-        max_tokens: 1000,
+        // 1000 cut replies off mid-word on 5 November ("✨ *Laser"): a reply in
+        // Telugu script, the opening details and the qual block did not fit,
+        // the JSON broke, and salvageReply sent the half that had arrived.
+        max_tokens: 2000,
         system: sysBlocks(CLINIC_FACTS),
         messages,
       }),
@@ -145,6 +148,7 @@ module.exports = async (req, res) => {
     if (!resp.ok) throw new Error("claude HTTP " + resp.status);
     const data = await resp.json();
     const text = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
+    if (data.stop_reason === "max_tokens") console.error("chat: reply cut at max_tokens", (data.usage || {}).output_tokens);
     try {
       const m = text.match(/\{[\s\S]*\}/);
       const parsed = JSON.parse(m ? m[0] : text);

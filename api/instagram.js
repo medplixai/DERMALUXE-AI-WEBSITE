@@ -260,7 +260,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, imageBlock) {
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 1000,
+      max_tokens: 2000,
       system: sysBlocks(imageBlock ? CLINIC_FACTS + "\n\n" + PHOTO_RULES : CLINIC_FACTS),
       messages,
     }),
