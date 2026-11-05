@@ -137,6 +137,15 @@ const hook = { token: "hook" };
     { id: "ourpage", messaging: [{ sender: { id: "ig-b2" }, message: { mid: "ig.b2", text: "hi" } }] }] });
   is(["ig-b1", "ig-b2"].every((who) => dms.some((d) => d.to === who)), true, "two DMs in one delivery are both answered");
 
+  dms.length = 0; claudeCalls = 0;
+  const wordless = (who, extra) => ({ object: "instagram", entry: [{ id: "ourpage", messaging: [{ sender: { id: who }, message: Object.assign({ mid: "ig.w" + (++mid) }, extra) }] }] });
+  await h.call(ig, hook, wordless("ig-reel", { attachments: [{ type: "ig_reel", payload: { reel_video_id: "1" } }] }));
+  await h.call(ig, hook, wordless("ig-story", { attachments: [{ type: "story_mention", payload: { url: "https://cdn/x" } }] }));
+  is([claudeCalls, dms.some((d) => d.to === "ig-reel"), dms.some((d) => d.to === "ig-story")], [2, true, true], "a shared reel or a story mention with no words still gets a reply");
+  claudeCalls = 0;
+  await h.call(ig, hook, wordless("ig-del", { is_deleted: true }));
+  is(claudeCalls, 0, "a deleted message does not");
+
   console.log("\n  — Messenger —");
   claudeCalls = 0;
   const fbTwice = fbDm("fb-ravi", "hello");

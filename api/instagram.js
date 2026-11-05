@@ -308,6 +308,15 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
   try { await notify.waHandoff(cfg, lead, "Instagram"); } catch (e) { console.error("handoff", e && e.message); }
 }
 
+// What the model is told when a DM has an attachment but no words.
+function wordlessDm(type) {
+  const t = String(type || "");
+  if (t === "story_mention") return "[They mentioned DermaLuxe in their Instagram story — no text. Thank them warmly for sharing.]";
+  if (/share|reel|post/.test(t)) return "[They shared an Instagram post/reel with us — no text. Likely about our post; thank them and ask how we can help.]";
+  if (t === "video") return "[They sent a video — no text. We cannot watch videos here; ask them to type their question or send a clear photo.]";
+  return "[They sent a sticker or reaction — no text. Reply with one short warm line.]";
+}
+
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
 
 // ── Comment → private DM + public acknowledgement ──────────────────────────
@@ -523,6 +532,12 @@ async function handleMessage(req, m) {
     if (a.type === "image" && !imageUrl) imageUrl = url;
     if (a.type === "audio" && !audioUrl) audioUrl = url;
   }
+  // A shared reel or post, a story mention, a video or a heart, with no words.
+  // These were dropped without a reply; on 5 November two of them arrived the
+  // morning after the opening video went up. The model is told what came in
+  // and answers it like any other turn. A deleted message carries no
+  // attachment, so it still gets nothing.
+  if (!text && !imageUrl && !audioUrl && !msg.is_deleted && atts.length) text = wordlessDm(atts[0].type);
   if (!text && !imageUrl && !audioUrl) return;
 
   // Rate limits: per sender + global daily
