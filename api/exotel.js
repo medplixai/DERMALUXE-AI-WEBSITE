@@ -48,7 +48,7 @@ async function rescue(cfg, from, label, extra) {
   const team = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
     .split(",").map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10);
   for (const to of team) {
-    await notify.sendWa(to, `📞 *${label}* — ${from}\n${sent ? "Agent WhatsApp pampindi ✅" : "⚠️ WhatsApp veladu"} — meeru kuda call cheyandi 🙏`).catch(() => {});
+    await notify.teamSend(cfg, to, `📞 *${label}* — ${from}\n${sent ? "Agent WhatsApp pampindi ✅" : "⚠️ WhatsApp veladu"} — meeru kuda call cheyandi 🙏`).catch(() => {});
   }
   return { ok: true, sent };
 }

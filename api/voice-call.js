@@ -159,7 +159,7 @@ module.exports = async (req, res) => {
         const team = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
           .split(",").map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10);
         for (const to of team) {
-          await notify.sendWa(to, `📞 *Missed call* — ${from}\nAgent WhatsApp message pampindi. Meeru kuda call cheyandi 🙏`).catch(() => {});
+          await notify.teamSend(cfg, to, `📞 *Missed call* — ${from}\nAgent WhatsApp message pampindi. Meeru kuda call cheyandi 🙏`).catch(() => {});
         }
       }
     }
@@ -235,7 +235,7 @@ module.exports = async (req, res) => {
     const team = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
       .split(",").map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10);
     for (const to of team) {
-      await notify.sendWa(to, `🚨 *URGENT — phone call*\n📱 ${from}\n⚠️ ${String(out.urgent).slice(0, 200)}\n💬 "${said.slice(0, 160)}"\n\nVentane call cheyandi 🙏`).catch(() => {});
+      await notify.teamSend(cfg, to, `🚨 *URGENT — phone call*\n📱 ${from}\n⚠️ ${String(out.urgent).slice(0, 200)}\n💬 "${said.slice(0, 160)}"\n\nVentane call cheyandi 🙏`).catch(() => {});
     }
   }
   if (cfg) {

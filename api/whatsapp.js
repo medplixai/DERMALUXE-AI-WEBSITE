@@ -572,7 +572,7 @@ async function recordRating(cfg, phone, rating, askRaw, profileName) {
     });
   } catch (e) { console.error("push: rating", e && e.message); }
   for (const to of team) {
-    await notify.sendWa(to, `⚠️ *Low rating — ${rating}⭐*\n\n👤 ${name || "Patient"} (${phone})\n🩺 ${ask.concern || "-"}\n\nIvala call chesi issue teluskondi — service recovery 🙏`).catch(() => {});
+    await notify.teamSend(cfg, to, `⚠️ *Low rating — ${rating}⭐*\n\n👤 ${name || "Patient"} (${phone})\n🩺 ${ask.concern || "-"}\n\nIvala call chesi issue teluskondi — service recovery 🙏`).catch(() => {});
   }
   return `Sorry ${name} 🙏 mee experience meeru expect chesinatlu lekapoyinanduku. Mee feedback maaku chala important.\n\nMana team ivala meeku call chesi matladutharu. Emi problem ayindo ikkada kuda cheppochu — ventane fix chestam 💛`;
 }
@@ -593,7 +593,7 @@ async function cancelAppt(cfg, phone, name) {
   const team = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
     .split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
   for (const to of team) {
-    await notify.sendWa(to, `❌ *Appointment cancelled* — ${name || "patient"} (${phone})\nWas: ${apptFmtIst(hadAt)}\nCall chesi reason adigi, malli book cheyagalara 📞`).catch(() => {});
+    await notify.teamSend(cfg, to, `❌ *Appointment cancelled* — ${name || "patient"} (${phone})\nWas: ${apptFmtIst(hadAt)}\nCall chesi reason adigi, malli book cheyagalara 📞`).catch(() => {});
   }
 }
 
@@ -1122,6 +1122,7 @@ module.exports = async (req, res) => {
   };
 
   if (!digits || (!text && !imageId && !audioId && !videoId && !docId)) return respond(FALLBACK_REPLY);
+  if (isMeta) await notify.markWindow(cfg, digits); // team alerts check this before sending plain text
   if (patientChat()) {
     const shown = text || (imageId ? "[📷 photo]" : audioId ? "[🎤 voice note]" : videoId ? "[🎬 video]" : docId ? `[📄 ${docName || "document"}]` : "");
     await inbox.log(cfg, digits, { dir: "in", text: (imageId || videoId || docId) && text ? `[${imageId ? "📷" : videoId ? "🎬" : "📄"}] ${text}` : shown, name: profileName }).catch(() => {});
@@ -1199,7 +1200,7 @@ module.exports = async (req, res) => {
             .concat(guard.ownerPhones())
             .map((x) => x.replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10)));
         for (const to of team) {
-          await notify.sendWa(to, `*Referral*\n\n👤 ${profileName || "Patient"} (${digits})\n🔗 Code *${out.code}* — referrer: ${out.owner}\n\nEvaru cheppi vachcharo telusukovadaniki matrame — referral ki emi ivvakoodadhu (NMC 8.1(vii)).`).catch(() => {});
+          await notify.teamSend(cfg, to, `*Referral*\n\n👤 ${profileName || "Patient"} (${digits})\n🔗 Code *${out.code}* — referrer: ${out.owner}\n\nEvaru cheppi vachcharo telusukovadaniki matrame — referral ki emi ivvakoodadhu (NMC 8.1(vii)).`).catch(() => {});
         }
         await notify.sendWa(out.owner, `Mee referral code tho *${profileName || "oka friend"}* DermaLuxe ki vachcharu — dhanyavadalu 🙏`).catch(() => {});
         return respond(`*Code accept ayindi*\n\n✅ *${out.code}* — mee friend mimmalni pampincharu, dhanyavadalu 🙏\n\nMee concern cheppandi, appointment chuddam 😊`);
@@ -1458,7 +1459,7 @@ module.exports = async (req, res) => {
           });
         } catch (e) { console.error("push: urgent", e && e.message); }
         const body = `🚨 *URGENT — patient ki ventane call cheyandi!*\n\n👤 ${who}\n📱 ${digits}\n⚠️ ${String(out.urgent).slice(0, 200)}\n\n💬 "${String(text).slice(0, 160)}"\n\nAgent vaalliki clinic number ichhindi — kaani mana nunchi call vellite better 🙏`;
-        for (const to of team) await notify.sendWa(to, body).catch(() => {});
+        for (const to of team) await notify.teamSend(cfg, to, body).catch(() => {});
       }
     } catch (e) { console.error("wa: urgent alert", e && e.message); }
   }

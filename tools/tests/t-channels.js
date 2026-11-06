@@ -88,6 +88,25 @@ const hook = { token: "hook" };
   if (realKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = realKey;
   is([stopped.out.reply, shrunk.out.reply], [whole.reply, whole.reply], "an editor's rewrite that stopped half-way, or lost most of the reply, never replaces the whole reply");
 
+  // The real notify module, not the harness's stub: the window check is the point.
+  const np = require.resolve(path.join(API, "_notify.js")), stubNotify = require.cache[np];
+  delete require.cache[np];
+  const realNotify = require(np);
+  require.cache[np] = stubNotify;
+  const graph = [];
+  global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
+  process.env.WA_CLOUD_TOKEN = process.env.WA_CLOUD_TOKEN || "test";
+  const alert = "🚨 *New Lead!* (whatsapp)\n👤 Ravi\n📱 9876543210\n💬 Hair transplant\n\nAnni leads: dermaluxe.ai/leads.html\n_(Reply *ok* — next alerts kuda ravadaniki)_";
+  await realNotify.teamSend({}, "9949134666", alert);
+  const shut = graph.shift() || {};
+  await realNotify.markWindow({}, "9949134666");
+  await realNotify.teamSend({}, "9949134666", alert);
+  const open = graph.shift() || {};
+  global.fetch = stubFetch;
+  is([shut.type, shut.template && shut.template.name, JSON.stringify(shut).includes("\\n"), JSON.stringify(shut).includes("Ravi · 📱 9876543210")],
+    ["template", "daily_digest_ping", false, true], "a team member who hasn't written in 24 hours still gets the alert, on one line, through the template");
+  is([open.type || "text", open.text && open.text.body], ["text", alert], "once they have written, the full alert goes as plain text");
+
   console.log("\n  — Instagram —");
   claudeCalls = 0;
   const twice = igDm("ig-anu", "hi, pimples");

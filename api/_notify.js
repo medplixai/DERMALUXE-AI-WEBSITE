@@ -202,6 +202,55 @@ async function sendWaLocation(digits) {
   } catch (e) { return false; }
 }
 
+// Team alerts went as plain text only. Meta takes a plain text outside the
+// 24-hour window with a 200 and drops it later (131047 comes back on the
+// status webhook, so sendWa still says "sent"). On 6 November 9949134666 had
+// never written to the clinic number, and not one lead alert had reached it.
+//
+// Now an alert checks the window first: open → the full text; shut → the
+// daily_digest_ping UTILITY template carrying the same alert on one line,
+// which delivers anyway. Replying to it opens the window, and the next
+// alerts come in full.
+const WIN_SECS = 86100; // just under 24h
+
+// Every inbound WhatsApp message marks its sender's window. Owner commands
+// stay out of the staff inbox, so the inbox's own lastIn can't see them.
+async function markWindow(cfg, digits) {
+  const d = String(digits || "").replace(/\D/g, "").slice(-10);
+  if (!cfg || d.length !== 10) return;
+  await guard.kvCommand(cfg, ["SET", `win:${d}`, String(Date.now()), "EX", String(WIN_SECS)]).catch(() => {});
+}
+
+async function windowOpen(cfg, digits) {
+  if (!cfg) return false;
+  try {
+    const r = await guard.kvCommand(cfg, ["GET", `win:${digits}`]);
+    if (r && r.result && Date.now() - Number(r.result) < 23.5 * 3600000) return true;
+  } catch (e) {}
+  try {
+    const r = await guard.kvCommand(cfg, ["GET", `ib:t:${digits}`]);
+    const t = r && r.result ? JSON.parse(r.result) : null;
+    if (t && t.lastIn && Date.now() - t.lastIn < 23.5 * 3600000) return true;
+  } catch (e) {}
+  return false;
+}
+
+// Template parameters refuse newlines and runs of spaces; the footer lines
+// that only make sense in the full text are dropped.
+function alertLine(text) {
+  return String(text || "").split("\n").map((s) => s.trim())
+    .filter((s) => s && !/^Anni leads:|^_\(Reply/.test(s))
+    .join(" · ").replace(/\s{2,}/g, " ").slice(0, 600);
+}
+
+async function teamSend(cfg, to, text) {
+  const d = String(to || "").replace(/\D/g, "").slice(-10);
+  if (d.length !== 10) return false;
+  if (await windowOpen(cfg, d)) return sendWa(d, text);
+  const t = await sendWaTemplate(d, "daily_digest_ping", [alertLine(text)]);
+  return !!(t && t.ok);
+}
+
 async function leadAlert(cfg, lead) {
   const token = process.env.WA_CLOUD_TOKEN;
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
@@ -249,7 +298,7 @@ async function leadAlert(cfg, lead) {
     "_(Reply *ok* — next alerts kuda ravadaniki)_",
   ].filter((s) => s !== "").join("\n").slice(0, 900);
 
-  for (const to of targets) await sendWa(to, body);
+  for (const to of targets) await teamSend(cfg, to, body);
 }
 
 
@@ -314,4 +363,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, sendWa, sendWaButtons, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
+module.exports = { leadAlert, teamSend, markWindow, windowOpen, alertLine, sendWa, sendWaButtons, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };

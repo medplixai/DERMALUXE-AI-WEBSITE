@@ -43,7 +43,7 @@ async function run(cfg, max, until, ctx) {
     if (nx && nx.result) {
       const text = `⏳ *${w.name || w.phone} ${w.mins} nimishalu nundi reply kosam chustunnaru*\n\n${w.by ? w.by + " garu ee chat teesukunnaru." : "Evaro chat teesukunnaru."}\n💬 "${String(w.last).slice(0, 120)}"\n\nApp → Inbox lo reply cheyandi. Leda "🤖 AI ki ivvandi" nokkandi.`;
       for (const to of String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",").map(ten).filter((x) => x.length === 10)) {
-        await notify.sendWa(to, text).catch(() => {});
+        await notify.teamSend(cfg, to, text).catch(() => {});
       }
       try {
         const push = require("./_push.js");

@@ -101,6 +101,8 @@ stub("_notify.js", {
   sendWaAuthCode: async (...a) => { sent.push(["otp", ...a]); return { ok: true }; },
   sendWaDocLink: async (...a) => { sent.push(["doc", ...a]); return { ok: true }; },
   leadAlert: async (...a) => { sent.push(["lead", ...a]); return true; },
+  teamSend: async (cfg, ...a) => { sent.push(["wa", ...a]); return true; },   // the window check is tested on the real module
+  markWindow: async () => {},
   sendWaTemplate: async (...a) => { sent.push(["tpl", ...a]); return { ok: true }; },
   sendWaButtons: async (...a) => { sent.push(["btn", ...a]); return true; },       // boolean, like sendWa
   sendWaImageLink: async (...a) => { sent.push(["img", ...a]); return true; },

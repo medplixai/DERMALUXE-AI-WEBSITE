@@ -327,7 +327,7 @@ async function hotAlert(cfg, phone, rec, extra) {
     "App → Leads → Ippude call",
   ].filter((l) => l !== null).join("\n");
   const targets = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",").map(ten).filter((x) => x.length === 10);
-  for (const to of targets) await notify.sendWa(to, text).catch(() => {});
+  for (const to of targets) await notify.teamSend(cfg, to, text).catch(() => {});
   try {
     const push = require("./_push.js");
     if (push.enabled()) await push.notifyCap(cfg, "leads.view", {
