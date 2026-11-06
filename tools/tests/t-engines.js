@@ -216,6 +216,9 @@ const lead = (o) => h.run(["RPUSH", "dl_leads", JSON.stringify(Object.assign({ t
   is(ov.behind, 2, "at 11 AM, both callers are behind");
   is(sentTo("9010427777").some((s) => /Calls inka cheyyaledu/.test(s[2])), true, "the owner is told, with the names");
   is(sentTo("9876500901").some((s) => /call cheyyaledu/.test(s[2])), true, "and so is each person, about their own");
+  const list = h.sent.filter((s) => s[0] === "wa" && /Call list/.test(s[2] || ""));
+  is([list.length > 0, list.every((s) => /Hot 50 9876502050/.test(s[2]) && /Warm 9876502052/.test(s[2]))], [true, true],
+    "the lead phones get the whole list of today's unmarked leads, A's and B's, with numbers to call");
   h.sent.length = 0;
   is([(await queue.alertOverdue(cfg)).skipped, h.sent.length], ["already sent", 0], "once per checkpoint, not once per cron run");
   // A note written today counts as the call being made.

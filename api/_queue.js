@@ -115,6 +115,31 @@ async function teamDay(cfg, day) {
   return [...stat.values()].sort((a, b) => b.untouched - a.untouched || b.called - a.called);
 }
 
+// The list itself, for the phones on LEAD_NOTIFY_PHONES: every lead of today
+// nobody has marked yet, and the appointments still to come today and
+// tomorrow. The owner asked on 6 November for "appointments and leads anni"
+// on 9949134666, including the ones staff must call; the nudge below only
+// reaches owners and the colleague a lead was dealt to.
+async function callList(cfg, when) {
+  const rows = (((await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}))).result) || []).map((x) => parse(x, null)).filter(Boolean);
+  const status = await hashOf(cfg, "dl_status");
+  const today = istDay();
+  const open = rows.filter((l) => istDay(l.ts) === today && l.type !== "job" && ten(l.phone).length === 10 && (status[leadKey(l)] || "new") === "new")
+    .sort((a, b) => a.ts - b.ts);
+  const tomorrow = istDay(Date.now() + 86400000);
+  const appts = (((await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]).catch(() => ({}))).result) || []).map((x) => parse(x, null))
+    .filter((a) => a && a.at > Date.now() && [today, tomorrow].includes(istDay(a.at))).sort((a, b) => a.at - b.at);
+  if (!open.length && !appts.length) return null;
+  const at = (ts) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(ts));
+  return [
+    `📋 *Call list* (${when})`,
+    appts.length ? `\n📅 *Appointments*\n${appts.map((a) => `• ${at(a.at)} — ${a.name || "?"} ${a.ph} — ${String(a.concern || "").slice(0, 40)}`).join("\n")}` : "",
+    open.length ? `\n📞 *Inka call cheyyani leads* (${open.length})\n${open.slice(0, 25).map((l) => `• ${l.name || "?"} ${ten(l.phone)} — ${String(l.concern || "").slice(0, 40)}${l.slot ? ` (${[l.date, l.slot].filter(Boolean).join(" ")})` : ""}`).join("\n")}` : "",
+    open.length > 25 ? `…inka ${open.length - 25}` : "",
+    "\nCall chesaka app lo status marchandi.",
+  ].filter(Boolean).join("\n");
+}
+
 // Three times a working day: who has not made their calls.
 const CHECKPOINTS = [11, 15, 18];
 async function alertOverdue(cfg) {
@@ -128,11 +153,20 @@ async function alertOverdue(cfg) {
     if (cur === slot) return { skipped: "already sent" };
     await guard.kvCommand(cfg, ["SET", "call:alert", slot, "EX", "86400"]).catch(() => {});
   }
-  const team = await teamDay(cfg);
-  const behind = team.filter((t) => t.untouched > 0);
-  if (!behind.length) return { behind: 0 };
   const notify = require("./_notify.js");
   const when = `${istDay()}, ${hour > 12 ? hour - 12 : hour} ${hour >= 12 ? "PM" : "AM"}`;
+  let listed = 0;
+  try {
+    const list = await callList(cfg, when);
+    if (list) {
+      for (const to of String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",").map(ten).filter((x) => x.length === 10)) {
+        if (await notify.teamSend(cfg, to, list).catch(() => false)) listed++;
+      }
+    }
+  } catch (e) { console.error("queue: call list", e && e.message); }
+  const team = await teamDay(cfg);
+  const behind = team.filter((t) => t.untouched > 0);
+  if (!behind.length) return { behind: 0, listed };
   try {
     const push = require("./_push.js");
     if (push.enabled()) for (const b of behind) {
@@ -153,7 +187,7 @@ async function alertOverdue(cfg) {
       await notify.sendWaTemplate(b.phone, "staff_calls_pending", [when, `${b.name} – ${b.untouched}`, String(b.untouched)]).catch(() => {});
     }
   }
-  return { behind: behind.length, total };
+  return { behind: behind.length, total, listed };
 }
 
-module.exports = { callers, assign, teamDay, alertOverdue, leadKey, CHECKPOINTS };
+module.exports = { callers, assign, teamDay, alertOverdue, callList, leadKey, CHECKPOINTS };

@@ -240,7 +240,7 @@ async function windowOpen(cfg, digits) {
 function alertLine(text) {
   return String(text || "").split("\n").map((s) => s.trim())
     .filter((s) => s && !/^Anni leads:|^_\(Reply/.test(s))
-    .join(" · ").replace(/\s{2,}/g, " ").slice(0, 600);
+    .join(" · ").replace(/\s{2,}/g, " ").slice(0, 900);
 }
 
 async function teamSend(cfg, to, text) {
