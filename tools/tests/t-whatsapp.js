@@ -213,6 +213,19 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   await say("9876500012", "old date");
   is(h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.ph === "9876500012").length, 0, "a slot in the past is not");
 
+  // 6 Nov: a patient picked 4 PM before giving a name.
+  h.sent.length = 0;
+  claude.push({ reply: "4 PM ki book chesanu ✅ Mee peru cheppandi?", lead: { name: "", concern: "Hair fall", heat: "hot", slot: "Ivala 4 PM", slot_ts: tomorrow + " 16:00" } });
+  await say("9876500013", "4 PM ki vastanu");
+  const nq = h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.ph === "9876500013");
+  const nl = h.run(["LRANGE", "dl_leads", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.phone === "9876500013");
+  is([nq.length, nq[0] && nq[0].name, nl.length, nl[0] && nl[0].name, h.sent.some((s) => s[0] === "lead")], [1, "", 1, "Lakshmi (WhatsApp peru)", true],
+    "a slot picked before the name still books, reaches the desk and alerts the team — the reminder greets them without a borrowed name");
+  is(h.run(["GET", "wa:p:9876500013"]), null, "and the WhatsApp profile name is never remembered as their own");
+  claude.push({ reply: "Mee concern enti?", lead: { name: "", concern: "Hair fall" } });
+  await say("9876500014", "hi");
+  is(h.run(["LRANGE", "dl_leads", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.phone === "9876500014").length, 0, "with no name and no slot, it is not a lead yet");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe whatsapp agent behaves");
   process.exit(fails ? 1 : 0);
 })();

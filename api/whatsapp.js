@@ -56,7 +56,7 @@ const adConcern = (headline) => { const h = String(headline || ""); for (const [
 // WhatsApp-specific behaviour on top of the shared clinic brain.
 const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. Clinic visit or video consultation both possible.
 - TIME SLOTS (tappable): whenever you ask for the appointment time, ALSO output "slots": 6-9 realistic options inside clinic hours (Mon–Sat 9 AM – 9 PM; use the current IST time given in context — today's remaining windows first, then tomorrow; never Sunday). Each ≤22 characters in the patient's language, e.g. "Ivala 6:30 PM", "Repu 11:00 AM", "Repu 4:00 PM". They appear as a tap-to-select list; the tapped slot comes back as plain text — treat it as their chosen time. If the context lists FULL slots, NEVER offer those exact times — suggest nearby free times instead (double-booking avvakudadu).
-- When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). Otherwise "lead" must be null.
+- When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). ALSO fill "lead" the moment the patient picks a day/time, even if they have not told their name yet — then leave "name" as "" (never invent one, never use the WhatsApp profile name) and ask the name in the reply. Otherwise "lead" must be null.
 - Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
 
@@ -904,13 +904,21 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
     heat: ["hot", "warm", "cold"].indexOf(String(leadInfo.heat || "").toLowerCase()) !== -1 ? String(leadInfo.heat).toLowerCase() : "",
     call_prep: String(leadInfo.call_prep || "").slice(0, 220),
   };
-  if (!lead.name) return;
+  // A slot picked before a name is still a booking: the desk sees it, the
+  // team is alerted, the reminder goes out. The name shown is only a label
+  // for the desk — it is never remembered as the patient's name, and the
+  // reminders greet them without one.
+  const unnamed = !lead.name;
+  if (unnamed) {
+    if (!leadInfo.slot_ts && !lead.date && !lead.slot) return;
+    lead.name = leadInfo.profile ? `${String(leadInfo.profile).slice(0, 40)} (WhatsApp peru)` : "(peru cheppaledu)";
+  }
   // Amma + koothuru in one slot: the others ride on the same booking.
   const family = (Array.isArray(leadInfo.family) ? leadInfo.family : []).map((f) => ({ name: String((f && f.name) || "").slice(0, 40).trim(), concern: String((f && f.concern) || "").slice(0, 60).trim() })).filter((f) => f.name).slice(0, 4);
   if (family.length) lead.concern = (lead.concern + " + " + family.map((f) => `${f.name}${f.concern ? " (" + f.concern + ")" : ""}`).join(", ")).slice(0, 160);
   lead.src_id = phone;
   Object.assign(lead, qualify.stamp(await qualify.read(cfg, phone)));   // grade, score, km, why — for the desk
-  await saveProfile(cfg, phone, lead.name, lead.concern); // long-term greeting memory
+  if (!unnamed) await saveProfile(cfg, phone, lead.name, lead.concern); // long-term greeting memory
   // One lead per patient per 6h conversation window — as the chat progresses,
   // the earlier row is replaced by this enriched one (and keeps the desk's
   // status and notes).
@@ -946,7 +954,7 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
         }
         if (!hadSame) {
           await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(Object.assign({
-            ph: phone, name: lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 60),
+            ph: phone, name: unnamed ? "" : lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 60),
           }, family.length ? { pax: family.length + 1, with: family.map((f) => f.name).join(", ") } : {}))]);
           bookedNow = at; // advance ask only on a NEW/changed slot
         }
@@ -1415,9 +1423,9 @@ module.exports = async (req, res) => {
   }
 
   let justBooked = 0;
-  if (out.lead && out.lead.name) {
+  if (out.lead && (out.lead.name || out.lead.slot_ts || out.lead.date || out.lead.slot)) {
     try {
-      const st = await storeLead(cfg, out.lead, digits, text);
+      const st = await storeLead(cfg, Object.assign({}, out.lead, { profile: profileName }), digits, text);
       justBooked = (st && st.bookedAt) || 0;
     } catch (e) {}
   }
