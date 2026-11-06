@@ -111,7 +111,7 @@ async function rewrite(out, faults, patientText, opts) {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
-        model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 700,
+        model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 2000,
         system: "You fix one WhatsApp reply from DermaLuxe Assistant (a skin & hair clinic receptionist in Eluru), keeping the same language, tone, every fact and the booking intent. Return ONLY the corrected reply text, no JSON, no preamble.",
         messages: [{ role: "user", content: `REPLY:\n${out.reply}\n\nFAULTS TO FIX:\n${faults.map((f) => "- " + f.note).join("\n")}\n\nRules: exactly one question mark in the whole reply (or none when buttons/slots are offered); never a treatment price or a medicine name; never name a condition the patient did not name; no safety verdicts; end with one short next step unless it is a confirmation, an emergency, or the reply to a stop request; Tenglish (Telugu in English letters) unless the patient wrote real English of their own. Keep it 2–6 short lines.` }],
       }),
@@ -120,6 +120,15 @@ async function rewrite(out, faults, patientText, opts) {
     const d = await r.json();
     const fixed = String(((d.content || []).find((b) => b.type === "text") || {}).text || "").trim();
     if (!fixed) return { out, faults, rewritten: false };
+    // On 6 November a hair transplant enquiry was answered "Namaste 🙏 DermaLu"
+    // and nothing more: the rewrite stopped early, and a reply cut that short
+    // has no question, no price, no name — so it scored fewer faults than the
+    // whole one and won. A rewrite that did not finish, or lost most of the
+    // reply, is never better than the original.
+    if ((d.stop_reason && d.stop_reason !== "end_turn") || fixed.length < String(out.reply || "").length * 0.4) {
+      console.error("reply lint: rewrite dropped —", d.stop_reason, fixed.length, "of", String(out.reply || "").length);
+      return { out, faults, rewritten: false };
+    }
     const next = Object.assign({}, out, { reply: fixed });
     const left = lintReply(next, patientText, opts && opts.recent, opts);
     if (left.length < faults.length) return { out: next, faults: left, rewritten: true };

@@ -76,6 +76,17 @@ const hook = { token: "hook" };
   const hi = "Namaste andi, mee concern cheppandi.";
   is([facts.withAiLine(hi, true).endsWith(facts.AI_LINE), facts.withAiLine(hi, false), facts.withAiLine("Nenu clinic AI assistant ni andi.", true)],
     [true, hi, "Nenu clinic AI assistant ni andi."], "the first reply of a chat always says an AI is answering, once, even when the model forgets");
+  const lint = require(path.join(API, "_lint.js")), stubFetch = global.fetch, realKey = process.env.ANTHROPIC_API_KEY;
+  process.env.ANTHROPIC_API_KEY = realKey || "test";
+  const whole = { reply: "Hair transplant cost grafts batti untundi andi. Doctor garu scalp chusi exact ga cheptaru. Meeru e ooru nundi? Mee peru enti?" };
+  const cut = (stop) => async () => ({ ok: true, json: async () => ({ stop_reason: stop, content: [{ type: "text", text: "Namaste 🙏 DermaLu" }] }) });
+  global.fetch = cut("max_tokens");
+  const stopped = await lint.rewrite(whole, [{ code: "two_questions", note: "one question" }], "cost entha?", {});
+  global.fetch = cut("end_turn");
+  const shrunk = await lint.rewrite(whole, [{ code: "two_questions", note: "one question" }], "cost entha?", {});
+  global.fetch = stubFetch;
+  if (realKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = realKey;
+  is([stopped.out.reply, shrunk.out.reply], [whole.reply, whole.reply], "an editor's rewrite that stopped half-way, or lost most of the reply, never replaces the whole reply");
 
   console.log("\n  — Instagram —");
   claudeCalls = 0;
