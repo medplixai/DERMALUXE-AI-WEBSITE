@@ -775,6 +775,9 @@ module.exports = async (req, res) => {
     if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit number ivvandi" });
     const name = String(b.name || "").trim().slice(0, 60);
     if (!name) return json(res, 400, { error: "Peru ivvandi" });
+    // The desk asked for the problem to be required too (7 Nov): a follow-up
+    // call to a name and a number with no reason is a cold call.
+    if (!String(b.concern || "").trim()) return json(res, 400, { error: "Em problem / e treatment ani raayandi" });
     const rlAdd = await guard.rateLimit(cfg, `rl:ladd:${me.phone}`, 200, 3600);
     if (!rlAdd.allowed) return json(res, 429, { error: "Konchem aagandi" });
 

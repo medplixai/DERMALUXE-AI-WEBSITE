@@ -310,7 +310,7 @@ async function leadAlert(cfg, lead) {
 
   const body = [
     `🚨 *New Lead!*${heatTag} (${lead.type || "website"})`,
-    `👤 ${lead.name}`,
+    `👤 ${lead.name}${lead.lang === "hi" ? " · 🗣 Hindi lo matladandi" : ""}`,
     lead.phone ? `📱 ${lead.phone}` : "",
     lead.concern ? `💬 ${lead.concern}` : "",
     when ? `📅 ${when}` : "",

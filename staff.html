@@ -243,6 +243,14 @@
     .seatlist{margin-top:10px;display:grid;gap:6px}
     .seatlist div{font-size:.82rem;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
     .seats i.on{cursor:pointer}
+    .pwbox{position:relative}
+    .pwbox .pweye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:1rem;cursor:pointer;padding:6px;color:var(--muted)}
+    .fchips{display:flex;gap:6px;flex-wrap:wrap;margin:-2px 0 10px}
+    .fchips button{font-size:.78rem;padding:5px 11px;border-radius:100px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
+    .fchips button.on{border-color:var(--primary);color:var(--accent-fg);background:var(--accent-bg)}
+    .countdown > div[data-act]{cursor:pointer}
+    .countdown > div.on{outline:2px solid var(--primary);outline-offset:-2px;border-radius:12px}
+    .lang{display:inline-block;font-size:.75rem;padding:1px 7px;border-radius:100px;background:#fef3c7;color:#92400e;margin-left:6px}
     /* patient file */
     .daystrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
     .daystrip button{flex:none;background:var(--panel);border:1px solid var(--line);color:var(--muted);
@@ -690,7 +698,7 @@
       <p>Leads · Appointments · Academy · Today's post<br /><span class="te"><span lang="te">స్టాఫ్ లాగిన్ — మీ నంబర్ + పాస్‌వర్డ్ (లేదా</span> WhatsApp OTP)</span></p>
       <div id="stepPhone">
         <div class="field"><label>Mobile number</label><input id="phone" type="tel" inputmode="numeric" maxlength="10" placeholder="98765 43210" autocomplete="username" /></div>
-        <div class="field" id="pwdField"><label>Password</label><input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password" /></div>
+        <div class="field" id="pwdField"><label>Password</label><div class="pwbox"><input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password" style="width:100%;padding-right:40px" /><button type="button" class="pweye" data-eye="pwd" aria-label="Password chupinchu">👁</button></div></div>
         <button class="btn btn--gold btn--full" id="loginBtn">Login</button>
         <button class="btn btn--full" style="margin-top:8px" id="sendBtn">Password ledha? WhatsApp OTP pampandi</button>
       </div>
@@ -762,6 +770,13 @@
           <button data-seg="fu">📅 Follow-up<i id="segN6"></i></button>
           <button data-seg="mine">🙋 Naavi<i id="segN3"></i></button>
           <button data-seg="all">Anni<i id="segN7"></i></button>
+        </div>
+        <div class="fchips" id="fchips">
+          <button data-fq="contacted">Contacted<i id="fqN0"></i></button>
+          <button data-fq="o:noanswer">📵 Not answering<i id="fqN1"></i></button>
+          <button data-fq="o:thinking">🤔 Alochistunnaru<i id="fqN2"></i></button>
+          <button data-fq="o:notravel">🚗 Travel cheyyaleru<i id="fqN3"></i></button>
+          <button data-fq="o:notinterested">🚫 Not interested<i id="fqN4"></i></button>
         </div>
         <div class="list" id="leadList"></div>
         <div id="leadMore" style="margin-top:10px;text-align:center"></div>
@@ -1360,7 +1375,7 @@
       var heat = l.heat || "", s = srcLabel(l);
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
-        '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
+        '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + (l.lang === "hi" ? '<span class="lang">🗣 हिंदी</span>' : '') + '</h3><div class="meta">' + esc(dmyt(l.ts)) + ' · ' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
         '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
         '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc">' + esc(OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
         (l.lastCall || l.fu ? '<div class="fu-line"><span>🗓 Lead: <b>' + esc(dmy(l.ts)) + "</b></span>" + (l.lastCall ? "<span>📞 Call: <b>" + esc(dmy(l.lastCall)) + "</b></span>" : "") +
@@ -1501,6 +1516,8 @@
       if (/^\s*academy/i.test(String(l.concern || ""))) return false;
       if (!(l.status === "new" || l.status === "contacted")) return false;
       if (l.outcome === "followup") return !!l.fu && l.fu <= istToday();
+      // Ettaledu: try again three hours later, not tomorrow (7 Nov, point 10).
+      if (l.outcome === "noanswer") return !l.lastCall || Date.now() - l.lastCall > 3 * 3600000;
       if (l.lastCall && l.lastCall >= dayStartMs()) return false;
       return l.grade ? l.grade === "A" : l.heat === "hot";
     }
@@ -1508,6 +1525,9 @@
     function fuDue(l) { return l.outcome === "followup" && l.fu && l.fu <= istToday() && (l.status === "new" || l.status === "contacted"); }
     var OUT_LABEL = { noanswer: "📵 Not answering", callback: "🔁 Malli call", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Need follow up", notinterested: "🚫 Not interested", notravel: "🚗 Not willing to travel", booked: "✅ Booked for consultation" };
     var OUT_STATUS = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked" };
+    function dmyt(ts) {
+      return new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(ts || 0));
+    }
     function dmy(v) {
       if (!v) return "";
       var d = typeof v === "number" ? new Date(v) : new Date(v + "T00:00:00+05:30");
@@ -1532,6 +1552,11 @@
         base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length,
         base.filter(untouched).length, base.filter(isBooked).length, base.filter(isFu).length, base.length];
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
+      ["contacted", "o:noanswer", "o:thinking", "o:notravel", "o:notinterested"].forEach(function (f, i) {
+        var n = base.filter(function (l) { return f === "contacted" ? l.status === "contacted" : l.outcome === f.slice(2); }).length;
+        var el = $("fqN" + i); if (el) el.textContent = n ? " " + n : "";
+        var b = document.querySelector('#fchips [data-fq="' + f + '"]'); if (b) b.classList.toggle("on", fs === f);
+      });
       var list = d.leads.filter(function (l) {
         if (seg === "call" && !isHotLead(l)) return false;
         if (seg === "today" && l.ts < t00.getTime()) return false;
@@ -1540,7 +1565,7 @@
         if (seg === "wait" && !untouched(l)) return false;
         if (seg === "booked" && !isBooked(l)) return false;
         if (seg === "fu" && !isFu(l)) return false;
-        if (seg !== "call" && seg !== "fu" && l.ts < since) return false;
+        if (seg !== "fu" && l.ts < since) return false;
         if (fs === "fu:due") { if (!fuDue(l)) return false; }
         else if (fs && fs.indexOf("o:") === 0) { if (l.outcome !== fs.slice(2)) return false; }
         else if (fs && l.status !== fs) return false;
@@ -1551,6 +1576,7 @@
       }).sort(function (a, b) {
         if (seg === "wait") return (a.ts || 0) - (b.ts || 0);          // longest wait first
         if (seg === "fu") return String(a.fu || "").localeCompare(String(b.fu || ""));   // soonest follow-up first
+        if (seg !== "call") return b.ts - a.ts;                                 // 7 Nov: recent to old
         var sa = a.status === "new" || a.status === "contacted" ? 0 : 1, sb = b.status === "new" || b.status === "contacted" ? 0 : 1;
         if (sa !== sb) return sa - sb;
         var gr = { A: 0, B: 1, C: 2, D: 3 };
@@ -1565,7 +1591,7 @@
       paintMore();
     }
     // ---- the clinic day --------------------------------------------------
-    var schDay = null, schData = null, schWeek = null, schMine = false;
+    var schDay = null, schData = null, schWeek = null, schMine = false, schShow = "all";
     // The day as a plan, not a list: how full it is, which times are really
     // free, and who the records say is worth ringing to fill them.
     function paintDayPlan(p) {
@@ -1696,12 +1722,17 @@
           "<i>" + (w.total || "—") + (w.unconfirmed ? '<em title="confirm kaaleedu">•</em>' : "") + "</i></button>";
       }).join("");
       $("schHead").className = "countdown";
-      $("schHead").innerHTML = "<div><b>" + d.counts.total + "</b><span>Ee roju</span></div>" +
-        "<div><b>" + d.counts.unconfirmed + "</b><span>Confirm avvanivi</span></div>";
+      // Tap "Ee roju" to open / close the day's list; tap "Confirm avvanivi"
+      // to see only those, again for all (7 Nov, point 4).
+      $("schHead").innerHTML = '<div data-act="sch-head" data-k="all"' + (schShow === "all" ? ' class="on"' : "") + "><b>" + d.counts.total + "</b><span>Ee roju " + (schShow === "none" ? "▸" : "▾") + "</span></div>" +
+        '<div data-act="sch-head" data-k="unconf"' + (schShow === "unconf" ? ' class="on"' : "") + "><b>" + d.counts.unconfirmed + "</b><span>Confirm avvanivi</span></div>";
+      setTimeout(function () { var on = document.querySelector("#dayStrip button.on"); if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "center" }); }, 0);
       $("schNew").classList.toggle("hide", !state.allow("appts.edit"));
       paintDayPlan(d.plan);
 
       var rows = schMine ? d.rows.filter(function (r) { return r.staff === state.data.me.phone; }) : d.rows;
+      if (schShow === "unconf") rows = rows.filter(function (r) { return r.status === "booked" && !r.cf; });
+      $("schList").classList.toggle("hide", schShow === "none");
       $("schList").innerHTML = rows.length ? rows.map(function (r) {
         var canEdit = state.allow("appts.edit");
         return '<article class="slot ' + esc(r.status) + '">' +
@@ -1730,7 +1761,7 @@
             '<button class="btn btn--sm" data-act="sch-cancel" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">✖</button>' : "") +
           "</div></div></article>";
       }).join("") : '<div class="empty">' + (schMine ? "Mee peru meeda ee roju emi ledu." : "Ee roju appointments ledu.") + "</div>";
-      $("schList").classList.toggle("hide", schView === "grid");
+      $("schList").classList.toggle("hide", schView === "grid" || schShow === "none");
       $("schGrid").classList.toggle("hide", schView !== "grid");
       $("svList").classList.toggle("on", schView !== "grid"); $("svGrid").classList.toggle("on", schView === "grid");
       if (schView === "grid") renderGrid(d, rows);
@@ -1836,6 +1867,20 @@
       }).join("");
     }
     // "3 PM" typed at the desk, turned into a real moment in IST
+    // A prompt box takes any length; the number has to be a real mobile, and
+    // a wrong one is asked again rather than quietly cut down to ten digits
+    // (7 Nov: "10 digits kanna yakkuva tesukuntundi").
+    function askPhone(label) {
+      for (var tries = 0; tries < 3; tries++) {
+        var raw = prompt(label + (tries ? "\n\n⚠️ 10 ankelu matrame — 6/7/8/9 tho modalavvali" : ""), "");
+        if (raw === null) return null;
+        var d = String(raw).replace(/\D/g, "");
+        if (d.length === 12 && d.indexOf("91") === 0) d = d.slice(2);
+        if (d.length === 11 && d.charAt(0) === "0") d = d.slice(1);
+        if (/^[6-9]\d{9}$/.test(d)) return d;
+      }
+      toast("Number sarigga ledu"); return null;
+    }
     function askTime(dayISO, label) {
       var t = prompt(label || "Time? (e.g. 3:30 pm leda 15:30)", "");
       if (!t) return null;
@@ -1864,7 +1909,7 @@
         });
     }
     if ($("waitNew")) $("waitNew").onclick = function () {
-      var ph = prompt("Waitlist — patient mobile number?", ""); if (!ph) return;
+      var ph = askPhone("Waitlist — patient mobile number (10 digits)?"); if (!ph) return;
       var nm = prompt("Peru?", "") || "";
       var cn = prompt("Treatment / concern?", "") || "";
       var dy = prompt("E roju kavali? (YYYY-MM-DD, khali ga vadilithe ye roju aina)", schDay) || "";
@@ -2039,7 +2084,7 @@
         '<select id="nlSrc" class="sel" style="width:100%;margin-bottom:8px">' +
           opts.map(function (o) { return '<option value="' + o[0] + '"' + (p0.src === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>" +
         '<input id="nlRefCode" class="inp hide" placeholder="Evari code? (DL1234) — telisthe" maxlength="8" style="width:100%;margin-bottom:8px;text-transform:uppercase" />' +
-        '<input id="nlConcern" class="inp" list="nlTreat" placeholder="Em problem / e treatment?" style="width:100%;margin-bottom:8px" />' +
+        '<input id="nlConcern" class="inp" list="nlTreat" placeholder="Em problem / e treatment? *" style="width:100%;margin-bottom:8px" />' +
         '<datalist id="nlTreat"></datalist>' +
         '<textarea id="nlNote" class="inp" rows="2" placeholder="Note (optional) — em maatladaru" style="width:100%;margin-bottom:8px"></textarea>' +
         '<div style="display:flex;gap:8px;margin-bottom:10px">' +
@@ -2090,6 +2135,7 @@
         err.textContent = "";
         if (!name) { err.textContent = "Peru ivvandi"; return; }
         if (!/^[6-9]\d{9}$/.test(phone)) { err.textContent = "Sarpaina 10-digit number ivvandi"; return; }
+        if (!v("nlConcern")) { err.textContent = "Em problem / e treatment ani raayandi — follow-up ki avasaram"; return; }
 
         var wantBook = bk && bk.checked;
         var at = 0;
@@ -2925,6 +2971,7 @@
     });
 
     function stkapi(a, body) { return xcall("/api/stock", a, body); }
+    var stkShow = "all";
     function loadStock() {
       if (!state.allow("stock.view")) return Promise.resolve();
       return stkapi("list").then(function (j) {
@@ -2935,9 +2982,11 @@
         $("stkAddBox").classList.toggle("hide", !j.canEdit);
         $("stkHead").className = "countdown";
         $("stkHead").innerHTML =
-          "<div><b>" + j.rows.length + "</b><span>Items</span></div>" +
-          '<div><b style="color:' + (j.lowCount ? "var(--hot)" : "var(--ok)") + '">' + j.lowCount + "</b><span>Aipotunnavi</span></div>";
-        $("stkList").innerHTML = j.rows.length ? j.rows.map(function (it) {
+          '<div data-act="stk-head" data-k="all"' + (stkShow === "all" ? ' class="on"' : "") + "><b>" + j.rows.length + "</b><span>Items " + (stkShow === "none" ? "▸" : "▾") + "</span></div>" +
+          '<div data-act="stk-head" data-k="low"' + (stkShow === "low" ? ' class="on"' : "") + '><b style="color:' + (j.lowCount ? "var(--hot)" : "var(--ok)") + '">' + j.lowCount + "</b><span>Aipotunnavi</span></div>";
+        var stRows = stkShow === "low" ? j.rows.filter(function (it) { return it.isLow; }) : j.rows;
+        $("stkList").classList.toggle("hide", stkShow === "none");
+        $("stkList").innerHTML = stRows.length ? stRows.map(function (it) {
           return '<article class="seat' + (it.isLow ? "" : " quiet") + '"><div class="row1">' +
             "<div><h3>" + esc(it.name) + "</h3>" +
             '<div class="meta">' + it.qty + " " + esc(it.unit) + (it.low ? " · low " + it.low : "") +
@@ -2950,7 +2999,7 @@
               '<button class="btn btn--sm" data-act="stk-edit" data-id="' + esc(it.id) + '" data-n="' + esc(it.name) + '" data-low="' + it.low + '">✎</button>' +
               '<button class="btn btn--sm" data-act="stk-del" data-id="' + esc(it.id) + '" data-n="' + esc(it.name) + '" style="color:var(--bad)">Teesey</button>' +
               "</div>" : "") + "</article>";
-        }).join("") : '<div class="empty">Inka items ledu.' + (j.canEdit ? " Paina okati add cheyandi." : "") + "</div>";
+        }).join("") : '<div class="empty">' + (stkShow === "low" ? "Aipotunnavi emi levu 👍" : "Stock ledu — inka items add cheyyaledu." + (j.canEdit ? " Paina okati add cheyandi." : "")) + "</div>";
         $("stkLog").innerHTML = (j.log || []).length ? j.log.map(function (x) {
           return '<div class="vrow"><b>' + esc(x.name) + " " + (x.change > 0 ? "+" : "") + x.change + "</b>" +
             '<div class="meta">' + esc(x.reason || "") + " · " + esc(x.by) + " · " + ago(x.ts) + " · migilindi " + x.left + "</div></div>";
@@ -3318,13 +3367,14 @@
         $("ptStat").innerHTML = j.total + " patients · " + j.repeats + " malli vachina vaaru" +
           (set.length ? " · " + set.map(function (x) { return x.count + " " + esc(x.label); }).join(" · ") : "") +
           (j.stageless ? ' · <span style="color:var(--g3)">' + j.stageless + " ki stage pettaledu</span>" : "");
+        ptRows.sort(function (a, b) { return (b.last || 0) - (a.last || 0); });   // recent to old (7 Nov)
         $("ptList").innerHTML = ptRows.length ? ptRows.map(function (r) {
           return '<article class="ptrow" data-act="pt-open" data-phone="' + esc(r.phone) + '">' +
             '<div class="row1"><h3>' + esc(r.name) + ' <span class="meta">· ' + esc(r.phone) + "</span></h3>" +
             "<div>" + (r.stageLabel ? '<span class="chip ok">' + esc(r.stageLabel) + "</span> " : "") +
             (r.repeat ? '<span class="chip">' + r.visits + " sarlu</span> " : "") +
             (r.everBooked ? '<span class="chip ok">visited</span>' : "") + "</div></div>" +
-            '<div class="meta">' + esc(String(r.concern || "").slice(0, 70)) + " · chivari sari " + ago(r.last) + "</div></article>";
+            '<div class="meta">' + esc(String(r.concern || "").slice(0, 70)) + " · chivari sari " + esc(dmyt(r.last)) + " (" + ago(r.last) + ")</div></article>";
         }).join("") : '<div class="empty">Evaru dorakaledu.</div>';
         syncBadges();
       }).catch(function (e) { $("ptList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
@@ -3506,7 +3556,7 @@
     // One screen for the 10 seats: who has paid, who enquired and went quiet,
     // and who to call today. Enquiries and student records are merged on the
     // phone number by /api/academy?a=funnel.
-    var funnel = null;
+    var funnel = null, acadF = "";
     function loadFunnel() {
       return sapi("funnel").then(function (j) { funnel = j; renderSeatBoard(); })
         .catch(function (e) { $("acadBoard").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
@@ -3587,11 +3637,18 @@
         ["enquiry", "Enquiries", d.counts.enquiry],
         ["lost", "Vaddannaru", d.counts.lost],
       ];
+      // One tap shows one group, another tap shows them all (7 Nov, point 12).
+      var chips = [["call", "📞 Ivala call cheyyali", call.length]].concat(groups);
+      $("acadToday").innerHTML = '<div class="fchips">' + chips.map(function (c) {
+        return '<button data-act="acad-f" data-k="' + c[0] + '"' + (acadF === c[0] ? ' class="on"' : "") + ">" + esc(c[1]) + " " + (c[2] || 0) + "</button>";
+      }).join("") + "</div>" + (acadF && acadF !== "call" ? "" : $("acadToday").innerHTML);
+      groups = groups.filter(function (g) { return !acadF || acadF === g[0]; });
+      if (acadF === "call") groups = [];
       $("acadBoard").innerHTML = groups.map(function (g) {
         var rows = d.rows.filter(function (r) { return r.stage === g[0]; });
         if (!rows.length) return "";
         return '<div class="grp"><div class="grp-h"><h2>' + esc(g[1]) + "</h2><i>" + g[2] + "</i></div>" + rows.map(seatCard).join("") + "</div>";
-      }).join("") || '<div class="empty">Inka academy enquiries raledu.</div>';
+      }).join("") || (acadF === "call" ? "" : '<div class="empty">Ee group lo evaru levu.</div>');
     }
 
     function renderAcademy() {
@@ -4950,6 +5007,17 @@
       wrap.querySelector(".sheet-bg").onclick = close;
     }
     document.addEventListener("visibilitychange", function () { if (!document.hidden && !NATIVE) checkPendingCall(); });
+    // 👁 beside a password box: see what was typed before pressing Unlock (7 Nov).
+    // The quick filter chips above the lead list set the status filter.
+    document.addEventListener("click", function (e) {
+      var eye = e.target.closest("[data-eye]");
+      if (eye) { var inp = $(eye.dataset.eye); if (inp) { inp.type = inp.type === "password" ? "text" : "password"; eye.textContent = inp.type === "password" ? "👁" : "🙈"; inp.focus(); } return; }
+      var fq = e.target.closest("[data-fq]");
+      if (fq) {
+        var sel = $("fStatus"); sel.value = sel.value === fq.dataset.fq ? "" : fq.dataset.fq;
+        sel.dispatchEvent(new Event("change", { bubbles: true }));
+      }
+    });
     function checkPendingCall() {
       var pc = pendingCall();
       if (!pc) return;
@@ -5002,7 +5070,8 @@
       el.className = "lock";
       el.innerHTML = '<div><img src="assets/app/icon-192.png" alt="" /><h2>Locked</h2>' +
         '<p>Patient vivaralu unnayi. ' + esc(me.name || "") + ' — mee password ivvandi.</p>' +
-        '<input id="lkPwd" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;max-width:260px;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin:6px 0 10px" />' +
+        '<div class="pwbox" style="max-width:260px;margin:6px auto 10px"><input id="lkPwd" type="password" placeholder="Password" autocomplete="current-password" style="width:100%;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:11px 40px 11px 13px" />' +
+        '<button type="button" class="pweye" data-eye="lkPwd" aria-label="Password chupinchu">👁</button></div>' +
         '<div style="display:flex;gap:8px;justify-content:center"><button class="btn btn--gold btn--sm" id="lkGo">Unlock</button>' +
         '<button class="btn btn--sm" id="lkOut">Logout</button></div>' +
         '<div class="err" id="lkErr" style="margin-top:8px"></div></div>';
@@ -5263,8 +5332,8 @@
     });
     if ($("myDay")) $("myDay").onchange = function () { schMine = this.checked; renderSchedule(); };
     if ($("schNew")) $("schNew").onclick = function () {
-      var ph2 = (prompt("Patient number (10 digits):", "") || "").replace(/\D/g, "").slice(-10);
-      if (!/^[6-9]\d{9}$/.test(ph2)) { toast("Number sarigga ledu"); return; }
+      var ph2 = askPhone("Patient number (10 digits):");
+      if (!ph2) return;
       var nm5 = prompt("Peru:", "") || "Patient";
       var cn = prompt("Enduku? (treatment / concern)", "") || "";
       var at2 = askTime(schDay, "Time? (e.g. 3:30 pm) — " + schDay);
@@ -5296,8 +5365,19 @@
         var ko = el.dataset.key, ov = el.value.slice(2);
         var lo = state.data.leads.find(function (x) { return x.key === ko; });
         if (ov === "followup") { askFollowUp(ko, lo && lo.name, function (ok) { if (!ok) renderLeads(); }); return; }
-        saveOutcome(ko, ov, "", "");
+        var why0 = "";
+        if (ov === "notinterested" || ov === "notravel") {
+          why0 = (prompt("Enduku? Reason raayandi (avasaram):", "") || "").trim();
+          if (!why0) { toast("Reason lekunda close cheyyamu"); renderLeads(); return; }
+        }
+        saveOutcome(ko, ov, "", why0);
         return;
+      }
+      // Closing a lead needs the reason in the notes (7 Nov, point 7).
+      if (el.dataset.act === "status" && el.value === "closed") {
+        var why1 = (prompt("Enduku close chestunnaru? Reason raayandi:", "") || "").trim();
+        if (!why1) { toast("Reason lekunda close cheyyamu"); renderLeads(); return; }
+        api("note", { key: el.dataset.key, text: "Closed — " + why1, at: Date.now() }).catch(function () {});
       }
       if (el.dataset.act === "status") {
         var k = el.dataset.key, v = el.value;
@@ -5391,8 +5471,8 @@
       // booking, so neither is a dead end.
       if (el.dataset.act === "sch-slot") {
         var at3 = Number(el.dataset.at);
-        var ph3 = (prompt("Ee time ki evaru? Patient number (10 digits):", "") || "").replace(/\D/g, "").slice(-10);
-        if (!/^[6-9]\d{9}$/.test(ph3)) { if (ph3) toast("Number sarigga ledu"); return; }
+        var ph3 = askPhone("Ee time ki evaru? Patient number (10 digits):");
+        if (!ph3) return;
         var nm3 = prompt("Peru:", "") || "Patient";
         var cn3 = prompt("Enduku? (treatment / concern)", "") || "";
         schSend("create", { ph: ph3, name: nm3, concern: cn3, at: at3, mins: 30 }, "Book ayindi, patient ki cheppamu");
@@ -5413,6 +5493,13 @@
           .catch(function (x) { toast(x.message); }).finally(function () { el.disabled = false; });
         return;
       }
+      if (el.dataset.act === "sch-head") {
+        var k5 = el.dataset.k;
+        schShow = k5 === "all" ? (schShow === "none" ? "all" : schShow === "all" ? "none" : "all") : (schShow === "unconf" ? "all" : "unconf");
+        renderSchedule(); return;
+      }
+      if (el.dataset.act === "stk-head") { stkShow = el.dataset.k === "low" ? (stkShow === "low" ? "all" : "low") : (stkShow === "none" ? "all" : "none"); loadStock(); return; }
+      if (el.dataset.act === "acad-f") { acadF = acadF === el.dataset.k ? "" : el.dataset.k; renderSeatBoard(); return; }
       if (el.dataset.act === "tile-appts") { goTab("appts"); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
       if (el.dataset.act === "tile-seats") {
         goTab("academy");

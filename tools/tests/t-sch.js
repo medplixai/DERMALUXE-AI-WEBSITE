@@ -86,7 +86,7 @@ const tomorrow11 = () => {
 
   // the week strip
   const w = await S({ a: "week" });
-  is(w.body.days.length, 7, "seven days ahead");
+  is(w.body.days.length, 60, "two months ahead, for people who ask for a date next month");
   is(w.body.days.some((x) => x.total > 0), true, "with the counts on them");
 
   // ---- the day as a plan, not a list -------------------------------------

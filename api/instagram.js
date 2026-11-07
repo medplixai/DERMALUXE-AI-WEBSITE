@@ -65,7 +65,7 @@ const IG_RULES = `- Booking flow: collect (1) name, (2) 10-digit mobile number, 
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your dm reply>","lead":null}
 or when booking info is ready:
-{"reply":"...","lead":{"name":"...","phone":"<10 digits>","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","call_prep":"<2 short Tenglish lines: what they want + call tip>"}}
+{"reply":"...","lead":{"name":"...","phone":"<10 digits>","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","lang":"<hi if the chat is in Hindi, else blank>","call_prep":"<2 short Tenglish lines: what they want + call tip>"}}
 Optionally add "send_location":true when the patient asks for the address/directions.`;
 
 const CLINIC_FACTS = facts.clinicFacts("Instagram", IG_RULES);
@@ -289,6 +289,7 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
     treatments: [],
     page: "instagram-agent",
     heat: ["hot", "warm", "cold"].indexOf(String(leadInfo.heat || "").toLowerCase()) !== -1 ? String(leadInfo.heat).toLowerCase() : "",
+    lang: leadInfo.lang === "hi" ? "hi" : "",
     call_prep: String(leadInfo.call_prep || "").slice(0, 220),
   };
   if (!lead.name) return;

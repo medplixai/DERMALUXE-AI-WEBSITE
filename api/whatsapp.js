@@ -65,7 +65,7 @@ const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) p
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your whatsapp reply>","lead":null}
 or when booking info is ready:
-{"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","call_prep":"<2 short Tenglish lines for our team follow-up call: what the patient wants + one talking tip>"}}
+{"reply":"...","lead":{"name":"...","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","lang":"<hi if the chat is in Hindi, else blank>","call_prep":"<2 short Tenglish lines for our team follow-up call: what the patient wants + one talking tip>"}}
 heat: hot = ready to book / picked or asked slots / urgent; warm = interested, asking details; cold = casual browsing.
 slot_ts: when the patient CONFIRMS a specific day + time, ALSO add "slot_ts":"YYYY-MM-DD HH:mm" (24-hour, IST) inside lead — compute the real calendar date from the current IST date/time given in context (e.g. if today is Sun Aug 10 2026 and they pick "Repu 6:30 PM" → "2026-08-11 18:30"). Omit until a specific time is fixed — our reminder system auto-messages the patient from this.
 cancel: if the patient wants to CANCEL their appointment (and is not picking a new time), add "cancel":true inside lead. For reschedule just output the new slot_ts — old booking auto-replace avutundi. The context shows this patient's upcoming appointment if any — confirm that time with them before cancelling, and be warm about rebooking later.
@@ -891,6 +891,7 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
     treatments: [],
     page: "whatsapp-agent",
     heat: ["hot", "warm", "cold"].indexOf(String(leadInfo.heat || "").toLowerCase()) !== -1 ? String(leadInfo.heat).toLowerCase() : "",
+    lang: leadInfo.lang === "hi" ? "hi" : "",   // the desk hands Hindi chats to somebody who speaks it
     call_prep: String(leadInfo.call_prep || "").slice(0, 220),
   };
   // A slot picked before a name is still a booking: the desk sees it, the

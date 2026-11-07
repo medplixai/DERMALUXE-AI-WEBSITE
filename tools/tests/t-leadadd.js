@@ -26,6 +26,7 @@ const OWNER = mk({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: Date.now(
   is((await add({ name: "", phone: "9876500201" })).code, 400, "a lead needs a name");
   is((await add({ name: "X", phone: "12345" })).code, 400, "and a real number");
   is((await add({ name: "X", phone: "1234567890" })).code, 400, "a number that cannot be an Indian mobile is refused");
+  is((await add({ name: "X", phone: "9876500299" })).code, 400, "and the problem is required too, so the follow-up call has a reason");
 
   const r = await add({ name: "Padma Rani", phone: "9876500201", src: "phone",
     concern: "Hair fall", message: "Saturday 5pm ki randi annanu", heat: "hot", status: "contacted" });
@@ -43,15 +44,15 @@ const OWNER = mk({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: Date.now(
   is(notes[0] && notes[0].text, "Saturday 5pm ki randi annanu", "and what they said became the first note");
 
   // the same number again
-  const dupe = await add({ name: "Padma Rani", phone: "9876500201" });
+  const dupe = await add({ name: "Padma Rani", phone: "9876500201", concern: "Hair fall" });
   is(dupe.code, 409, "the same number this week is questioned, not silently doubled");
   is(/already vachindi/.test(dupe.body.error), true, "and it says when it came before");
-  const anyway = await add({ name: "Padma Rani", phone: "9876500201", anyway: true });
+  const anyway = await add({ name: "Padma Rani", phone: "9876500201", concern: "Hair fall", anyway: true });
   is(anyway.code, 200, "but the desk can insist");
   is(h.run(["LRANGE", "dl_leads", "0", "9"]).length, 2, "and then there are two");
 
   // an unknown source cannot be invented
-  const odd = await add({ name: "Y", phone: "9876500202", src: "magic" });
+  const odd = await add({ name: "Y", phone: "9876500202", src: "magic", concern: "Acne" });
   is(odd.body.lead.src, "walkin", "an unknown source falls back to walk-in");
 
   // The hospital system wants a patient, not just a name and a number.
@@ -69,7 +70,7 @@ const OWNER = mk({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: Date.now(
   h.run(["HSET", "staff:users", "9876500052", JSON.stringify({ name: "Accounts", role: "accounts" })]);
   const RECEPTION = mk({ p: "9876500051", n: "Sowmya", r: "reception", e: 0, exp: Date.now() + 86400000 });
   const ACCOUNTS = mk({ p: "9876500052", n: "Accounts", r: "accounts", e: 0, exp: Date.now() + 86400000 });
-  is((await call({ a: "lead-add" }, { a: "lead-add", name: "Z", phone: "9876500203" }, RECEPTION)).code, 200,
+  is((await call({ a: "lead-add" }, { a: "lead-add", name: "Z", phone: "9876500203", concern: "Acne" }, RECEPTION)).code, 200,
      "reception can add a lead — that is the whole point");
   is((await call({ a: "lead-add" }, { a: "lead-add", name: "Z", phone: "9876500204" }, ACCOUNTS)).code, 403,
      "accounts, who cannot edit leads, cannot add one");

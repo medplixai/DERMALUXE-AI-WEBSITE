@@ -389,9 +389,10 @@ module.exports = async (req, res) => {
         },
       });
     }
-    // seven days from today, for the strip above the day view
+    // Two months from today for the strip above the day view: people ask for
+    // a date later this month or next month, not only this week (7 Nov).
     const days = [];
-    for (let i = 0; i < 7; i++) {
+    for (let i = 0; i < 60; i++) {
       const d = istDay(Date.now() + i * 86400000);
       const list = rows.filter((r) => r.day === d);
       days.push({ day: d, total: list.length, mine: list.filter((r) => r.staff === me.phone).length,
