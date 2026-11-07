@@ -543,6 +543,19 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: photo migrate", e && e.message); }
 
+  // ---- every comment on our posts answered and made a lead (owner, 7 Nov) ----
+  // Instagram and the Facebook page, twenty of each an hour, oldest backlog
+  // first cleared over a few hours; the handler's own once-per-comment marker
+  // means nothing is ever answered twice.
+  let comments = null;
+  if (room("comments", 60000)) {
+    try {
+      const ig = require("./instagram.js");
+      comments = { ig: await ig.sweepIgComments(cfg, 20).catch((e) => ({ ok: false, why: e.message })) };
+      if (room("fb-comments", 40000)) comments.fb = await ig.sweepFbComments(cfg, 20).catch((e) => ({ ok: false, why: e.message }));
+    } catch (e) { console.error("cron: comments", e && e.message); }
+  }
+
   // ---- sweep keys whose time has passed --------------------------------
   // Redis forgets an expired key by itself. Postgres does not, so once an
   // hour the ones that have died are cleared out. Reads already ignore them;
@@ -567,5 +580,5 @@ module.exports = async (req, res) => {
   const took = Date.now() - STARTED;
   console.log(`cron-followup ${took}ms hour=${istHour}${skipped.length ? " skipped=" + skipped.join(",") : ""}` +
     ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled}`);
-  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, swept });
+  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, comments, swept });
 };

@@ -95,7 +95,7 @@ const FALLBACK_REPLY = facts.FALLBACK_REPLY;
 const COMMENT_RULES = `AN INSTAGRAM USER COMMENTED on one of our posts (you are replying as DermaLuxe).
 Decide and answer with ONLY minified JSON: {"dm": <string or null>, "public_reply": <string or null>}
 - Comment asks about treatments/booking/prices/location or shows real interest → "dm": a short warm private message in the commenter's language style (Tenglish default): thank them, answer briefly (NEVER prices), invite them to book — mention "WhatsApp: 99591 34666 (wa.me/919959134666)" for fast booking & free AI skin analysis — or ask right here in the DM. 3-4 sentences max, 1 emoji. "public_reply": one tiny acknowledgement like "Details DM chesam 💬".
-- Only praise/emojis/greetings → "dm": null, "public_reply": one short thank-you line (max 1 emoji).
+- Only praise/emojis/greetings → still answer both (owner, 7 Nov: every comment answered and turned into a lead): "dm": a warm thank-you in their language style plus one easy door — "skin leda hair gurinchi edaina doubt unte ikkade adagandi" or WhatsApp 99591 34666 — 2 sentences, 1 emoji, no pressure; "public_reply": one short thank-you line (max 1 emoji).
 - Spam, abuse, self-promo, or irrelevant → both null.`;
 
 // ── Page token resolution ────────────────────────────────────────────────────
@@ -390,21 +390,24 @@ async function askClaudeComment(username, commentText) {
 // enquiry, and the desk sees it with the rest (owner, 7 Nov: "comments lo aina
 // insta messages lo aina vachhina leads anni ikkadiki vacheyali"). One row per
 // commenter per six hours; the comment itself is the message.
-async function storeCommentLead(cfg, username, fromId, text, permalink) {
+async function storeCommentLead(cfg, username, fromId, text, permalink, kind) {
   if (!cfg) return;
+  const fb = kind === "fb";
   const lead = {
-    ts: Date.now(), type: "ig_comment",
-    name: username ? `@${username}` : "Instagram comment", phone: "",
+    ts: Date.now(), type: fb ? "fb_comment" : "ig_comment",
+    name: username ? (fb ? username : `@${username}`) : (fb ? "Facebook comment" : "Instagram comment"), phone: "",
     age: "", gender: "", concern: String(text).slice(0, 120),
-    message: `[Instagram comment] ${String(text).slice(0, 380)}`,
+    message: `[${fb ? "Facebook" : "Instagram"} comment] ${String(text).slice(0, 380)}`,
     mode: "", date: "", slot: "", skin_score: null, hair_score: null, skin_age: null, skin_type: "", treatments: [],
-    page: permalink || "instagram-comment", heat: "warm",
-    call_prep: "Instagram comment — Instagram lo DM / comment ki reply cheyyandi; number ivvamani adagandi.",
-    src_id: `c:${fromId}`,
+    page: permalink || (fb ? "facebook-comment" : "instagram-comment"),
+    // A question is warm; a thank-you or an emoji is a cold lead the desk can still greet.
+    heat: COMMENT_ASKS.test(text) ? "warm" : "cold",
+    call_prep: `${fb ? "Facebook" : "Instagram"} comment — ${fb ? "Messenger" : "Instagram"} lo reply cheyyandi; number ivvamani adagandi.`,
+    src_id: `${fb ? "fc" : "c"}:${fromId}`,
   };
   try {
-    await leadstore.saveLead(cfg, lead, (l) => l.src_id === lead.src_id && l.type === "ig_comment" && lead.ts - l.ts < 21600000, 50);
-    await notify.leadAlert(cfg, lead);
+    await leadstore.saveLead(cfg, lead, (l) => l.src_id === lead.src_id && l.type === lead.type && lead.ts - l.ts < 21600000, 50);
+    if (lead.heat === "warm") await notify.leadAlert(cfg, lead);
   } catch (e) { console.error("ig: comment lead", e && e.message); }
 }
 
@@ -428,7 +431,7 @@ async function handleComment(entry, v) {
   // limits: 3 comment-DMs per commenter/day, 100 globally/day
   const perU = await guard.rateLimit(cfg, `rl:ig:cdm:${fromId}`, 3, 86400);
   if (!perU.allowed) return;
-  const g = await guard.rateLimit(cfg, `rl:ig:cg:${guard.today()}`, 100, 90000);
+  const g = await guard.rateLimit(cfg, `rl:ig:cg:${guard.today()}`, 300, 90000);
   if (!g.allowed) return;
 
   const cred = await resolveSend(cfg);
@@ -443,8 +446,8 @@ async function handleComment(entry, v) {
     if (COMMENT_ASKS.test(text)) { await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id); await sendCommentReply(commentId, COMMENT_WA, cred); }
     return;
   }
-  // The model thought it worth a private message, or the words ask something.
-  if (out.dm || COMMENT_ASKS.test(text)) await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id);
+  // Everything that is not spam is answered, and so is a lead (owner, 7 Nov).
+  if (out.dm || out.public_reply || COMMENT_ASKS.test(text)) await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id);
 
   // The same last check the DM agent's replies get. Comment replies skipped it
   // until 5 November 2026, and a public reply is read by everyone, not one person.
@@ -467,6 +470,92 @@ async function handleComment(entry, v) {
 }
 
 // ── Handler ─────────────────────────────────────────────────────────────────
+// ── Comments the webhook never brought ─────────────────────────────────────
+// The owner asked on 7 Nov for every comment on our posts to be answered and
+// made a lead. The webhook only ever sent new ones, and nothing looked back:
+// comments from before it was set up, or ones it dropped, sat unanswered.
+// Each hour this reads the comments on the last two months of posts and
+// answers those we have not, through the same handler the webhook uses — so
+// the same once-per-comment rule, limits and editor apply. A comment older
+// than seven days can no longer get a private message; it gets the public
+// reply with the WhatsApp number instead.
+const SWEEP_DAYS = 60;
+async function sweepIgComments(cfg, max) {
+  const tok = await loginToken(cfg);
+  if (!tok || process.env.IG_AGENT_ENABLED !== "1") return { ok: false, why: "IG off" };
+  const G = "https://graph.instagram.com/v21.0";
+  const get = async (path, params) => {
+    const u = new URL(G + path);
+    for (const [k, v] of Object.entries(params || {})) u.searchParams.set(k, v);
+    u.searchParams.set("access_token", tok);
+    const r = await fetch(u.toString());
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(((d.error || {}).message || `HTTP ${r.status}`).slice(0, 160));
+    return d;
+  };
+  const me = await get("/me", { fields: "user_id,username" });
+  const ourId = String(me.user_id || me.id || ""), ourName = String(me.username || "").toLowerCase();
+  const media = await get("/me/media", { fields: "id,timestamp,permalink", limit: "30" });
+  let seen = 0, handled = 0;
+  for (const m of (media.data || [])) {
+    if ((Date.parse(m.timestamp) || 0) < Date.now() - SWEEP_DAYS * 86400000) continue;
+    const cs = await get(`/${m.id}/comments`, { fields: "id,text,username,from,timestamp,replies{username,from}", limit: "50" }).catch(() => ({ data: [] }));
+    for (const c of (cs.data || [])) {
+      seen++;
+      const fromId = String((c.from || {}).id || ""), uname = String(c.username || (c.from || {}).username || "");
+      if (!c.text || uname.toLowerCase() === ourName || (ourId && fromId === ourId)) continue;
+      const ours = (r) => (ourId && String((r.from || {}).id || "") === ourId) || String(r.username || (r.from || {}).username || "").toLowerCase() === ourName;
+      if (((c.replies || {}).data || []).some(ours)) continue;          // already answered
+      const done = await guard.kvCommand(cfg, ["GET", `ig:c:${c.id}`]).catch(() => ({}));
+      if (done && done.result) continue;
+      await handleComment({ id: ourId || "ourpage" }, { id: c.id, text: c.text, from: { id: fromId || `u:${uname}`, username: uname }, media: { id: m.id } });
+      if (++handled >= (max || 20)) return { ok: true, seen, handled, more: true };
+    }
+  }
+  return { ok: true, seen, handled };
+}
+
+// The Facebook page's own comments: nothing listened to them at all.
+async function sweepFbComments(cfg, max) {
+  const pt = await pageToken(cfg), pageId = process.env.IG_PAGE_ID;
+  if (!pt || !pageId || process.env.IG_AGENT_ENABLED !== "1") return { ok: false, why: "FB page token ledu" };
+  const F = "https://graph.facebook.com/v21.0";
+  const call = async (path, params, body) => {
+    const u = new URL(F + path);
+    for (const [k, v] of Object.entries(params || {})) u.searchParams.set(k, v);
+    if (!body) u.searchParams.set("access_token", pt);
+    const r = await fetch(u.toString(), body ? { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${pt}` }, body: JSON.stringify(body) } : undefined);
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(((d.error || {}).message || `HTTP ${r.status}`).slice(0, 160));
+    return d;
+  };
+  const posts = await call(`/${pageId}/posts`, { fields: "id,created_time,permalink_url,comments.limit(50){id,message,from,created_time,comments.limit(10){from}}", limit: "20" });
+  let seen = 0, handled = 0;
+  for (const p of (posts.data || [])) {
+    if ((Date.parse(p.created_time) || 0) < Date.now() - SWEEP_DAYS * 86400000) continue;
+    for (const c of (((p.comments || {}).data) || [])) {
+      seen++;
+      const from = c.from || {};
+      if (!c.message || String(from.id || "") === pageId) continue;
+      if ((((c.comments || {}).data) || []).some((r) => String((r.from || {}).id || "") === pageId)) continue;
+      const first = await guard.kvCommand(cfg, ["SET", `fb:c:${c.id}`, "1", "NX", "EX", String(90 * 86400)]).catch(() => ({}));
+      if (!first || !first.result) continue;
+      let out;
+      try { out = await askClaudeComment(from.name || "someone", c.message); } catch (e) { out = { dm: null, public_reply: COMMENT_ASKS.test(c.message) ? COMMENT_WA : null }; }
+      if (out.dm) { try { out.dm = (await lint.check(cfg, { reply: out.dm, lead: null }, c.message, [], { channel: "fb-comment" })).reply || out.dm; } catch (e) {} if (unsafeComment(out.dm, c.message)) out.dm = null; }
+      if (out.public_reply && unsafeComment(out.public_reply, c.message)) out.public_reply = COMMENT_WA;
+      let dmOk = false;
+      const fresh = (Date.parse(c.created_time) || 0) > Date.now() - 7 * 86400000;
+      if (out.dm && fresh) { try { await call(`/${pageId}/messages`, {}, { recipient: { comment_id: c.id }, message: { text: String(out.dm).slice(0, 1000) } }); dmOk = true; } catch (e) { console.error("fb: private reply", e.message); } }
+      const pub = dmOk ? out.public_reply : (out.dm || out.public_reply ? (COMMENT_ASKS.test(c.message) ? COMMENT_WA : out.public_reply) : null);
+      if (pub) { try { await call(`/${c.id}/comments`, {}, { message: String(pub).slice(0, 300) }); } catch (e) { console.error("fb: comment reply", e.message); } }
+      if (out.dm || out.public_reply || COMMENT_ASKS.test(c.message)) await storeCommentLead(cfg, from.name || "", from.id || c.id, c.message, p.permalink_url, "fb");
+      if (++handled >= (max || 20)) return { ok: true, seen, handled, more: true };
+    }
+  }
+  return { ok: true, seen, handled };
+}
+
 module.exports = async (req, res) => {
   const tok = process.env.WA_WEBHOOK_TOKEN;
 
@@ -683,3 +772,6 @@ async function handleMessage(req, m) {
     await sendDM(igsid, "📍 DermaLuxe by Medicare, Eluru — Google Maps: " + MAPS_LINK, false, ptok);
   }
 }
+
+module.exports.sweepIgComments = sweepIgComments;
+module.exports.sweepFbComments = sweepFbComments;

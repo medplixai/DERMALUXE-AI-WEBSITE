@@ -186,8 +186,8 @@ const hook = { token: "hook" };
   await h.call(ig, hook, batch(said("c3", "fan3", "address ekkada?"), said("c4", "fan4", "All the best 👏"), said("c5", "fan5", "Super")));
   is([claudeCalls, privates.length, publics.length], [3, 1, 3], "three comments in one delivery get three answers, not one");
   const cl = leads().filter((l) => l.type === "ig_comment");
-  is([cl.some((l) => l.name === "@fan3" && /address ekkada/.test(l.concern)), cl.some((l) => l.name === "@fan4"), cl.some((l) => l.name === "@fan5")], [true, false, false],
-    "a comment asking something reaches the desk as a lead; praise does not (owner, 7 Nov)");
+  is([cl.some((l) => l.name === "@fan3" && /address ekkada/.test(l.concern) && l.heat === "warm"), cl.some((l) => l.name === "@fan4" && l.heat === "cold"), cl.some((l) => l.name === "@fan5" && l.heat === "cold")], [true, true, true],
+    "every answered comment reaches the desk as a lead — a question warm, praise cold (owner, 7 Nov)");
   claude.push({ reply: "Acne ki baaga help chestam 🙏 Mee number cheppandi?", lead: { name: "", phone: "", concern: "Acne", heat: "warm" } });
   await h.call(ig, hook, igDm("ig-nophone", "acne undi"));
   const igNp = leads().filter((l) => l.src_id === "ig-nophone");
@@ -208,6 +208,30 @@ const hook = { token: "hook" };
   await h.call(ig, hook, batch(said("c8", "fan8", "appointment kavali"), said("c9", "fan9", "Congratulations 🎉")));
   claudeDown = false;
   is(publics.map((p) => p.on), ["c8"], "with the model down, a question still gets the WhatsApp number and praise gets nothing");
+
+  // Comments from before the webhook, read back each hour (owner, 7 Nov).
+  const igMod = require(path.join(API, "instagram.js"));
+  const keepFetch = global.fetch;
+  process.env.IG_LOGIN_TOKEN = "login";
+  privates.length = 0; publics.length = 0;
+  global.fetch = async (url, opt) => {
+    const u = String(url);
+    if (/graph\.instagram\.com\/v[\d.]+\/me\?/.test(u)) return { ok: true, json: async () => ({ user_id: "ourig", username: "dermaluxe.ai" }) };
+    if (/\/me\/media\?/.test(u)) return { ok: true, json: async () => ({ data: [{ id: "m1", timestamp: new Date().toISOString() }] }) };
+    if (/\/m1\/comments\?/.test(u)) return { ok: true, json: async () => ({ data: [
+      { id: "old1", text: "hair transplant cost entha?", username: "asker", from: { id: "u1", username: "asker" }, replies: { data: [] } },
+      { id: "old2", text: "Super 😍", username: "fan", from: { id: "u2", username: "fan" }, replies: { data: [] } },
+      { id: "old3", text: "price?", username: "done", from: { id: "u3", username: "done" }, replies: { data: [{ username: "dermaluxe.ai", from: { id: "ourig" } }] } },
+    ] }) };
+    if (/ig\.refresh|refresh_access_token/.test(u)) return { ok: false, json: async () => ({}) };
+    return keepFetch(url, opt);
+  };
+  claude.push({ dm: "Hi 🙏 WhatsApp: 99591 34666", public_reply: "Details DM chesam 💬" }, { dm: "Thank you 😊 skin leda hair doubt unte adagandi", public_reply: "Thank you 🙏" });
+  const sw = await igMod.sweepIgComments(h.cfg || {}, 20);
+  global.fetch = keepFetch; delete process.env.IG_LOGIN_TOKEN;
+  const swl = leads().filter((l) => l.type === "ig_comment");
+  is([sw.handled, swl.some((l) => l.name === "@asker" && l.heat === "warm"), swl.some((l) => l.name === "@fan" && l.heat === "cold"), swl.some((l) => l.name === "@done")],
+    [2, true, true, false], "old comments we never answered are answered and become leads — a question warm, praise cold — and one we already answered is left");
 
   dms.length = 0;
   claude.push({ reply: "Hi Ravi 🙏", lead: null }, { reply: "Hi Sita 🙏", lead: null });
