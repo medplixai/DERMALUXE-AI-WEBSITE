@@ -47,6 +47,7 @@ const page = (W, H, tall) => `<!doctype html><html><head><meta charset="utf-8">
   .offer { flex:1 1 0; min-width:0; box-sizing:border-box; border:3px solid var(--gold); border-radius:24px; background:#fffdf8; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:20px 14px; text-align:center; }
   .ribbon { background:linear-gradient(180deg,#a3262a,#7c1414); color:#fbe7b0; font-weight:700; font-size:${tall ? 30 : 24}px; letter-spacing:.04em; padding:10px 26px; border-radius:14px; }
   .pkg { margin-top:14px; font-weight:700; font-size:${tall ? 30 : 24}px; color:var(--brown); letter-spacing:.03em; }
+  .grafts { margin-top:8px; background:linear-gradient(180deg,#e9c983,#c99a45); color:#3d220f; font-weight:700; font-size:${tall ? 26 : 21}px; letter-spacing:.06em; padding:6px 18px; border-radius:100px; }
   .amt { font-family:Jost; font-weight:700; font-size:${tall ? 116 : 96}px; line-height:1; color:var(--maroon); margin-top:6px; }
   .inc { font-size:${tall ? 23 : 19}px; font-weight:600; color:var(--brown); }
   .inc-te { font-family:"Noto Sans Telugu"; font-size:${tall ? 24 : 19}px; color:var(--brown); margin-top:2px; }
@@ -76,13 +77,13 @@ const page = (W, H, tall) => `<!doctype html><html><head><meta charset="utf-8">
     <div class="photo"><img src="${photo}" alt=""><span class="lb l">BEFORE</span><span class="lb r">AFTER</span><div class="note">Stock photo — not a patient of this clinic. Results differ.</div></div>
     <div class="offer">
       <div class="ribbon">GRAND OPENING PACKAGE</div>
-      <div class="pkg">FUE HAIR TRANSPLANT</div>
+      <div class="pkg">FUE HAIR TRANSPLANT</div><div class="grafts">UP TO 2,000 GRAFTS</div>
       <div class="amt">₹59,999</div>
       <div class="inc">All-inclusive — surgery + medical expenses</div>
       <div class="inc-te">సర్జరీ, మెడికల్ ఖర్చులు అన్నీ కలిపి</div>
       <div class="dates">6 NOVEMBER – 6 DECEMBER 2026</div>
       <div class="free" data-owner="ht-offer-2026-11">Hair transplant consultation FREE</div>
-      <div class="tc">T&amp;C apply · graft count &amp; suitability decided by the surgeon</div>
+      <div class="tc">T&amp;C apply · grafts needed &amp; suitability decided by the surgeon</div>
     </div>
   </div>
   <div class="benefits"><div>సహజమైన జుట్టు పెరుగుదల</div><div>నేచురల్ లుక్</div><div>శాశ్వత పరిష్కారం</div><div>మరింత ఆత్మవిశ్వాసం</div></div>

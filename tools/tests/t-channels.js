@@ -78,7 +78,7 @@ const hook = { token: "hook" };
   Date.now = () => Date.parse("2026-12-07T00:30:00+05:30");
   const htOff = facts.clinicFacts("WhatsApp", "");
   Date.now = realNow;
-  is([/₹59,999 all-inclusive/.test(htOn), /NEVER call the hair transplant or the surgery "free"/.test(htOn), /HAIR TRANSPLANT PACKAGE/.test(htOff)], [true, true, false],
+  is([/₹59,999 all-inclusive, up to 2,000 grafts/.test(htOn), /NEVER call the hair transplant or the surgery "free"/.test(htOn), /HAIR TRANSPLANT PACKAGE/.test(htOff)], [true, true, false],
     "the hair transplant package is known until 6 December, never as 'free', and gone the day after");
   const hi = "Namaste andi, mee concern cheppandi.";
   is([facts.withAiLine(hi, true).endsWith(facts.AI_LINE), facts.withAiLine(hi, false), facts.withAiLine("Nenu clinic AI assistant ni andi.", true)],
