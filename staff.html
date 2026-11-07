@@ -741,6 +741,34 @@
     .lead.hot{border-left-color:#e0558a}.lead.warm{border-left-color:var(--primary)}
     .badge.src{background:var(--gd);color:var(--gd-ink)}
     .countdown > div.on{outline-color:var(--blk)}
+
+    /* ---- PWA / phone alignment (owner, 8 Nov: "pwa alignment check") ----
+       The filters lined up to no edge in particular and the three chip groups
+       took seven rows, so a phone opened on a screen of buttons with no lead
+       in sight. On a phone the filters sit on a two-column grid that fills the
+       width, and each chip group is one row that scrolls sideways. */
+    @media (max-width:640px){
+      #t-leads .filters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+      #t-leads .filters input,#t-leads .filters select{width:100%;min-width:0;box-sizing:border-box}
+      #t-leads .filters #q,#t-leads .filters #fStatus,#t-leads .filters #leadAdd{grid-column:1/-1}
+      #t-leads .filters #leadAdd{width:100%;justify-content:center}
+      #segs,#catchips,#fchips{flex-wrap:nowrap;overflow-x:auto;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px}
+      #segs::-webkit-scrollbar,#catchips::-webkit-scrollbar,#fchips::-webkit-scrollbar{display:none}
+      #segs button,#catchips button,#fchips button{flex:none;white-space:nowrap}
+      #segs button{min-height:36px}
+      .lead .acts{gap:6px}
+      .lead .acts select{flex:1 1 100%;min-width:0}
+      .rankbox,.goalbox,.sumbar{font-size:.8rem}
+      .lead .nxt{display:block}
+      .lead .acts > .btn{flex:1 1 calc(33.33% - 6px);justify-content:center;text-align:center;white-space:nowrap;padding-left:6px;padding-right:6px}
+      .lead .acts > [data-act="cscript"]{flex:1 1 100%}
+      .lead .acts > [data-act="delete"]{flex:0 0 auto}
+      /* appointment cards: the time on its own line, the actions in even rows */
+      .slot{grid-template-columns:1fr;gap:6px}
+      .slot .when{display:flex;align-items:baseline;gap:8px}
+      .slot .when span{display:inline}
+      .slot .acts > .btn{flex:1 1 calc(33.33% - 6px);justify-content:center;white-space:nowrap;padding-left:6px;padding-right:6px}
+    }
 </style>
 </head>
 <body>
@@ -943,7 +971,7 @@
       <section id="t-academy" class="hide">
         <div class="countdown" id="acadCount"></div>
         <div class="box">
-          <h2>Batch 1 seats <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">సీట్లు</span></span></h2>
+          <h2>Batch seats · 10 Nov <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">సీట్లు</span></span></h2>
           <div class="seats" id="seats"></div>
           <div id="seatMoney" class="meta" style="margin-top:8px"></div>
           <p style="margin-top:10px">Launch offer: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Seat reserve ₹9,999.</p>
