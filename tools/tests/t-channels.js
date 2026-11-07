@@ -80,6 +80,14 @@ const hook = { token: "hook" };
   Date.now = realNow;
   is([/₹59,999 all-inclusive, up to 2,000 grafts/.test(htOn), /NEVER call the hair transplant or the surgery "free"/.test(htOn), /HAIR TRANSPLANT PACKAGE/.test(htOff)], [true, true, false],
     "the hair transplant package is known until 6 December, never as 'free', and gone the day after");
+  const G = require(path.join(API, "_goal.js")).goalFor;
+  is([G({ concern: "Hair transplant cost" }).key, G({ concern: "Acne", km: 330 }).key, G({ concern: "Academy course enquiry – Skin" }).key,
+      G({ concern: "Hair fall", outcome: "notravel" }).key, G({ type: "job", concern: "Nursing" }).key, G({ concern: "Pigmentation", booked: true }).key, G({ concern: "Acne", km: 5 }).key],
+    ["ht_consult", "video_consult", "academy_seat", "respect", "redirect", "show_up", "clinic_consult"],
+    "every lead gets one goal from what is known: transplant, far away, academy, said no, job, booked, or a clinic consultation");
+  is(G({ concern: "Hair fall & male pattern baldness (hairline receding)" }).key, "clinic_consult", "baldness alone goes to the doctor, not to a transplant goal");
+  is([G({ concern: "" }).next, G({ concern: "Acne" }).next, G({ concern: "Acne", name: "Ravi" }).next], ["concern adugu", "peru adugu", "2 slots offer cheyyi"],
+    "and the next step is the one missing piece on the way to it");
   const hi = "Namaste andi, mee concern cheppandi.";
   is([facts.withAiLine(hi, true).endsWith(facts.AI_LINE), facts.withAiLine(hi, false), facts.withAiLine("Nenu clinic AI assistant ni andi.", true)],
     [true, hi, "Nenu clinic AI assistant ni andi."], "the first reply of a chat always says an AI is answering, once, even when the model forgets");

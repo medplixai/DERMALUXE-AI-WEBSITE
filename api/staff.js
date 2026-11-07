@@ -315,6 +315,12 @@ async function leadPage(cfg, offset, count) {
     const rec = grades[ph];
     if (rec) Object.assign(base, qual.stamp(rec));
     base.next = qual.nextAction(rec, base);
+    // The same goal the agent is working to (owner, 7 Nov).
+    try {
+      const f = (rec && rec.facts) || {};
+      base.goal = require("./_goal.js").goalFor({ concern: l.concern || f.problem || "", type: l.type, km: rec ? rec.km : null, intent: f.intent,
+        status, outcome: base.outcome, booked: status === "booked", name: l.name, slot: l.slot || l.date });
+    } catch (e) {}
     const touched = Number(stTs[k] || 0) || (n.length ? Math.max(...n.map((x) => Number(x.ts) || 0)) : 0);
     if (status === "new" && !touched) base.waiting = Math.max(0, Date.now() - Number(l.ts || 0));
     return base;

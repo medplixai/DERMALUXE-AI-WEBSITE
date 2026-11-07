@@ -1320,6 +1320,21 @@ module.exports = async (req, res) => {
     extraCtx += known;
     const qrec0 = await qualify.read(cfg, digits);
     if (qrec0) extraCtx += qualify.contextLine(qrec0);
+    // This person's goal, from what the desk and the qualifier already know.
+    try {
+      const lr = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}));
+      let last = null;
+      for (const x of ((lr && lr.result) || [])) { try { const l = JSON.parse(x); if (String(l.phone || "").replace(/\D/g, "").slice(-10) === digits) { last = l; break; } } catch (e) {} }
+      const lk = last ? `${last.ts}|${digits}` : "";
+      const [stR, ocR] = lk ? await Promise.all([guard.kvCommand(cfg, ["HGET", "dl_status", lk]).catch(() => ({})), guard.kvCommand(cfg, ["HGET", "dl_outcome", lk]).catch(() => ({}))]) : [{}, {}];
+      const f0 = (qrec0 && qrec0.facts) || {};
+      const g = require("./_goal.js").goalFor({
+        concern: (last && last.concern) || f0.problem || "", type: last && last.type, km: qrec0 ? qrec0.km : null, intent: f0.intent,
+        status: stR && stR.result, outcome: ocR && ocR.result, booked: !!apptLine, treatedBefore: !!known,
+        name: (last && last.name) || f0.name || (profile && profile.name) || "", slot: last && (last.slot || last.date),
+      });
+      extraCtx += require("./_goal.js").contextLine(g);
+    } catch (e) {}
     const ar0 = await guard.kvCommand(cfg, ["GET", `ad:ref:${digits}`]).catch(() => ({}));
     try {
       const ref0 = ar0 && ar0.result ? JSON.parse(ar0.result) : null;

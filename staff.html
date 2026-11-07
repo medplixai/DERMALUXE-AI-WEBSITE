@@ -717,6 +717,8 @@
     #catchips button[data-cat="academy"],.cat.academy{background:var(--butter);border-color:var(--butter2);color:var(--butter-ink)}
     .cat{border:1px solid transparent}
     .sumbar{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--gd);border:1px solid var(--gd2);font-size:.85rem;line-height:1.5}
+    .goalbox{margin-top:8px;padding:6px 10px;border-radius:10px;background:var(--mint);border:1px solid var(--mint2);color:var(--mint-ink);font-size:.82rem}
+    .goalbox b{font-weight:600}
     .rankbox{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--pk);border:1px solid var(--pk2);font-size:.82rem;line-height:1.45}
     .rankbox .best{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:100px;background:var(--sky);color:var(--sky-ink)}
     .older{margin-top:8px;font-size:.82rem}.older summary{cursor:pointer;color:var(--gd-ink)}
@@ -1443,6 +1445,7 @@
           ((l.why || []).length ? (l.village || l.since || l.prefers ? '<br>' : '') + esc((l.why || []).slice(0, 3).join(" · ")) : '') + '</div>' : '') +
         (l.next && l.status !== "closed" ? '<div class="nxt ' + esc(l.next.kind) + '">' + esc(l.next.text) +
           (l.waiting != null && l.next.kind !== "skip" && l.next.kind !== "done" ? ' <span class="wait' + (l.waiting > 3 * 3600000 ? " bad" : l.waiting > 30 * 60000 ? " warn" : "") + '">· ' + waitFor(l.waiting) + ' nundi waiting</span>' : "") + '</div>' : "") +
+        (l.goal && l.goal.label ? '<div class="goalbox">🎯 <b>Goal:</b> ' + esc(l.goal.label) + (l.goal.next ? ' · <span class="meta">next: ' + esc(l.goal.next) + "</span>" : "") + "</div>" : "") +
         (l._rank ? '<div class="rankbox"><b>🎯 #' + l._rank + "</b> " + esc((l._why || []).join(" · ")) + (l._best ? ' <span class="best">⏰ ' + esc(l._best) + "</span>" : "") + "</div>" : "") +
         (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
         (l._older && l._older.length ? '<details class="older"><summary>📚 Inka ' + l._older.length + " paata enquir" + (l._older.length > 1 ? "ies" : "y") + "</summary>" +
