@@ -716,6 +716,10 @@
     #catchips button[data-cat="ht"],.cat.ht{background:var(--mint);border-color:var(--mint2);color:var(--mint-ink)}
     #catchips button[data-cat="academy"],.cat.academy{background:var(--butter);border-color:var(--butter2);color:var(--butter-ink)}
     .cat{border:1px solid transparent}
+    .sumbar{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--gd);border:1px solid var(--gd2);font-size:.85rem;line-height:1.5}
+    .rankbox{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--pk);border:1px solid var(--pk2);font-size:.82rem;line-height:1.45}
+    .rankbox .best{display:inline-block;margin-left:6px;padding:1px 8px;border-radius:100px;background:var(--sky);color:var(--sky-ink)}
+    .older{margin-top:8px;font-size:.82rem}.older summary{cursor:pointer;color:var(--gd-ink)}
     #fchips button[data-fq="contacted"],.oc-callback{background:var(--sky);border-color:var(--sky2);color:var(--sky-ink)}
     #fchips button[data-fq="o:noanswer"],.oc-noanswer{background:var(--peach);border-color:var(--peach2);color:var(--peach-ink)}
     #fchips button[data-fq="o:thinking"],.oc-thinking{background:var(--butter);border-color:var(--butter2);color:var(--butter-ink)}
@@ -1402,7 +1406,7 @@
       // The tile and the "Ippude call" group used to count different things —
       // the tile went by the agent's old hot/warm guess, the group by the
       // grade — so the screen could say "2 to call" over an empty list.
-      var hot = d.leads.filter(needsCall).length;
+      var hot = groupPeople(d.leads).filter(needsCall).length;   // people, not rows
       var todayDone = d.leads.filter(function (l) { return l.ts >= dayStart.getTime() && (l.lastCall || l.status !== "new"); }).length;
       $("sTodayDone").textContent = todayDone ? "✓ " + todayDone + " call ayyayi" : "";
       $("sToday").textContent = today; $("sHot").textContent = hot; $("sAppt").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
@@ -1439,11 +1443,15 @@
           ((l.why || []).length ? (l.village || l.since || l.prefers ? '<br>' : '') + esc((l.why || []).slice(0, 3).join(" · ")) : '') + '</div>' : '') +
         (l.next && l.status !== "closed" ? '<div class="nxt ' + esc(l.next.kind) + '">' + esc(l.next.text) +
           (l.waiting != null && l.next.kind !== "skip" && l.next.kind !== "done" ? ' <span class="wait' + (l.waiting > 3 * 3600000 ? " bad" : l.waiting > 30 * 60000 ? " warn" : "") + '">· ' + waitFor(l.waiting) + ' nundi waiting</span>' : "") + '</div>' : "") +
+        (l._rank ? '<div class="rankbox"><b>🎯 #' + l._rank + "</b> " + esc((l._why || []).join(" · ")) + (l._best ? ' <span class="best">⏰ ' + esc(l._best) + "</span>" : "") + "</div>" : "") +
         (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
+        (l._older && l._older.length ? '<details class="older"><summary>📚 Inka ' + l._older.length + " paata enquir" + (l._older.length > 1 ? "ies" : "y") + "</summary>" +
+          l._older.map(function (o) { var n0 = (o.notes || [])[0]; return '<div class="meta">• ' + esc(dmy(o.ts)) + " — " + esc(o.concern || o.message || "") + " · " + esc(o.status) + (n0 ? " · “" + esc(String(n0.text).slice(0, 80)) + "” — " + esc(n0.by) : "") + "</div>"; }).join("") + "</details>" : "") +
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
         '<div class="acts">' +
         (l.phone ? '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '" data-phone="' + esc(l.phone) + '" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' + (state.allow("inbox.view") && l.type === "whatsapp" ? '<button class="btn btn--sm" data-act="ib-open" data-phone="' + esc(l.phone) + '">🗨 Chat</button>' : '') : '<span class="meta">No phone (DM lead)</span>') +
         statusSelect(l) +
+        '<button class="btn btn--sm" data-act="cscript" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '">🤖 Em matladali</button>' +
         (l.phone && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="share" data-kind="location" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">📍 Location</button>' +
           '<button class="btn btn--sm" data-act="share" data-kind="pay" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">💳 QR</button>' : '') +
         (NATIVE && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="lead" data-ref="' + esc(l.key) + '" data-who="' + esc(l.name || "") + '">📷 Photo</button>' : '') +
@@ -1612,13 +1620,72 @@
     function untouched(l) {
       return l.status === "new" && !(l.notes && l.notes.length) && !/^\s*academy/i.test(String(l.concern || ""));
     }
+    var callShowAll = false;
+    function groupPeople(leads) {
+      var sorted = leads.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+      var by = {}, out = [];
+      sorted.forEach(function (l) {
+        // Not enumerable, so the offline cache does not store every lead twice.
+        Object.defineProperty(l, "_older", { value: [], writable: true, configurable: true, enumerable: false });
+        var p = l.phone;
+        if (!p) { out.push(l); return; }
+        if (!by[p]) { by[p] = l; out.push(l); } else by[p]._older.push(l);
+      });
+      return out;
+    }
+    // Who to ring first, and why — every point is a fact on the card.
+    function priority(l) {
+      var s = l.score || (l.heat === "hot" ? 70 : l.heat === "warm" ? 45 : 20), why = [];
+      if (l.grade) why.push(l.grade + " grade · " + (l.score || 0));
+      if (fuDue(l)) { s += 25; why.push("📅 follow-up ivala"); }
+      if (l.outcome === "callback") { s += 15; why.push("🔁 malli call cheyyamannaru"); }
+      if (l.status === "new" && l.waiting != null) { s += Math.min(30, l.waiting / 600000); if (l.waiting > 600000) why.push("⏳ " + waitFor(l.waiting) + " nundi waiting"); }
+      if (l.ts >= dayStartMs()) { s += 10; why.push("🆕 ivala vachindi"); }
+      if (l.outcome === "noanswer") { s -= 5; why.push("📵 mundu ettaledu — malli try"); }
+      if (l._older && l._older.length) { s += 5; why.push("🔄 " + (l._older.length + 1) + " saarlu adigaru"); }
+      if (l.km != null && l.km > 80) { s -= 10; why.push("🎥 " + l.km + " km — video consult offer cheyyandi"); }
+      else if (l.km != null && l.km <= 25) { s += 5; why.push("📍 daggare (" + l.km + " km)"); }
+      return { s: s, why: why };
+    }
+    function bestTime(l) {
+      var t = [l.prefers, l.message, l.call_prep, (l.notes || []).map(function (n) { return n.text; }).join(" ")].join(" ").toLowerCase();
+      if (/evening|saayantram|sayantram|after 6|6 ?pm|7 ?pm|daytime|office|duty|job lo|pani lo|work/.test(t)) return "Saayantram 6–8";
+      if (/morning|udayam|poddhuna|ఉదయం/.test(t)) return "Udayam 10–12";
+      if (/afternoon|madhyahnam|lunch/.test(t)) return "Madhyahnam 1–3";
+      var h = new Date(l.ts || 0).getHours();
+      if (h >= 19 || h < 7) return "Saayantram 6–8 (raatri message chesaru)";
+      return "";
+    }
+    // One line on top: the day so far, and anything burning (owner, 7 Nov).
+    function summaryBar(people, all) {
+      var t0 = dayStartMs();
+      var today = people.filter(function (l) { return l.ts >= t0; });
+      var cat = { skin: 0, hair: 0, ht: 0, academy: 0 };
+      today.forEach(function (l) { var c = catOf(l); if (cat[c] !== undefined) cat[c]++; });
+      var burning = people.filter(function (l) { return needsCall(l) && l.waiting != null && l.waiting > 3600000; }).length;
+      var staffDay = {};
+      all.forEach(function (l) { (l.notes || []).forEach(function (n) {
+        if (!n.ts || n.ts < t0) return;
+        var s2 = staffDay[n.by] = staffDay[n.by] || { calls: 0, booked: 0 };
+        if (/^call\b/i.test(n.text || "")) s2.calls++;
+        if (/book/i.test(n.text || "")) s2.booked++;
+      }); });
+      var who = Object.keys(staffDay).map(function (k) { return esc(k) + " " + staffDay[k].calls + " calls" + (staffDay[k].booked ? ", " + staffDay[k].booked + " booked" : ""); });
+      return '<div class="sumbar"><b>Ivala ' + today.length + " leads</b>" +
+        (today.length ? " — " + [cat.hair ? cat.hair + " hair" : "", cat.skin ? cat.skin + " skin" : "", cat.ht ? cat.ht + " transplant" : "", cat.academy ? cat.academy + " academy" : ""].filter(Boolean).join(", ") : "") +
+        (burning ? ' · <span style="color:var(--pk-ink);font-weight:600">🔥 ' + burning + " hot leads 1 gantaku paiga waiting</span>" : "") +
+        (who.length ? " · " + who.join(" · ") : " · inka evaru call note raayaledu") + "</div>";
+    }
     function renderLeads() {
       var d = state.data, q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fsrc = $("fSrc").value, days = Number($("fDays").value);
       var since = Date.now() - days * 86400000; if (days === 1) { var t0 = new Date(); t0.setHours(0, 0, 0, 0); since = t0.getTime(); }
       var seg = (document.querySelector("#segs button.on") || {}).dataset; seg = seg ? seg.seg : "all";
       var isHotLead = needsCall;
       var t00 = new Date(); t00.setHours(0, 0, 0, 0);
-      var base = d.leads.filter(function (l) { return !/^academy/i.test(String(l.concern || "")); });
+      // One card per person (owner, 7 Nov): the newest enquiry leads, the
+      // older ones from the same number ride along underneath it.
+      var people = groupPeople(d.leads);
+      var base = people.filter(function (l) { return !/^academy/i.test(String(l.concern || "")); });
       var myPhone = (d.me && d.me.phone) || "";
       var isMine = function (l) { return l.owner && l.owner === myPhone && (l.status === "new" || l.status === "contacted"); };
       var isBooked = function (l) { return l.status === "booked" || l.status === "visited"; };
@@ -1629,7 +1696,7 @@
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
       var catBase = base.filter(function (l) { return l.type !== "job"; });
       ["skin", "hair", "ht", "academy"].forEach(function (c, i) {
-        var pool = c === "academy" ? d.leads : catBase;
+        var pool = c === "academy" ? people : catBase;
         var el = $("catN" + i); if (el) { var n = pool.filter(function (l) { return catOf(l) === c; }).length; el.textContent = n ? " " + n : ""; }
       });
       document.querySelectorAll("#catchips [data-cat]").forEach(function (b) { b.classList.toggle("on", b.dataset.cat === leadCat); });
@@ -1638,7 +1705,7 @@
         var el = $("fqN" + i); if (el) el.textContent = n ? " " + n : "";
         var b = document.querySelector('#fchips [data-fq="' + f + '"]'); if (b) b.classList.toggle("on", fs === f);
       });
-      var list = d.leads.filter(function (l) {
+      var list = people.filter(function (l) {
         if (seg === "call" && !isHotLead(l)) return false;
         if (seg === "today" && l.ts < t00.getTime()) return false;
         if (seg === "open" && !(l.status === "new" || l.status === "contacted")) return false;
@@ -1665,11 +1732,23 @@
         var ga = a.grade ? gr[a.grade] : (heatRank[a.heat || ""] || 0) + 0.5, gb = b.grade ? gr[b.grade] : (heatRank[b.heat || ""] || 0) + 0.5; if (ga !== gb) return ga - gb;
         return b.ts - a.ts;
       });
+      // The call list, in the order to ring them, ten at a time, each with the
+      // reason it is there and the best time to try (owner, 7 Nov).
+      people.forEach(function (l) { l._rank = 0; l._why = null; l._best = ""; });
+      var moreCalls = 0;
+      if (seg === "call") {
+        list.forEach(function (l) { var p2 = priority(l); l._prio = p2.s; l._why = p2.why; l._best = bestTime(l); });
+        list.sort(function (a, b) { return b._prio - a._prio; });
+        list.forEach(function (l, i) { l._rank = i + 1; });
+        if (!callShowAll && list.length > 10) { moreCalls = list.length - 10; list = list.slice(0, 10); }
+      }
       // The day's follow-ups, said once at the top until they are done.
       var due = base.filter(fuDue).length;
       var banner = due && seg !== "fu" ? '<div class="fu-due"><span>📅 <b>Ivala ' + due + " follow-up" + (due > 1 ? "s" : "") + "</b> cheyyali</span>" +
         '<button class="btn btn--sm btn--gold" data-act="seg-go" data-seg="fu">Chudandi</button></div>' : "";
-      $("leadList").innerHTML = banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts));
+      $("leadList").innerHTML = summaryBar(people, d.leads) + banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts)) +
+        (moreCalls ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Inka ' + moreCalls + " mandi chupinchu</button></div>" :
+          (seg === "call" && callShowAll && list.length > 10 ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Top 10 matrame chupinchu</button></div>' : ""));
       paintMore();
     }
     // ---- the clinic day --------------------------------------------------
@@ -5594,6 +5673,23 @@
         var at4 = askTime(schDay, "Eppudu? (e.g. 3:30 pm) — " + schDay);
         if (!at4) return;
         schSend("create", { ph: el.dataset.ph, name: el.dataset.name || "Patient", concern: el.dataset.why || "", at: at4, mins: 30 }, "Book ayindi, patient ki cheppamu");
+        return;
+      }
+      if (el.dataset.act === "call-all") { callShowAll = !callShowAll; renderLeads(); return; }
+      if (el.dataset.act === "cscript") {
+        var showScript = function (fresh) {
+          var wrap = document.createElement("div");
+          wrap.className = "sheet open";
+          wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>🤖 ' + esc(el.dataset.name || "Lead") + ' — em matladali</h2>' +
+            '<div id="csBody" class="meta" style="white-space:pre-wrap;font-size:.92rem;line-height:1.6;color:var(--text)">Chat chaduvutunna…</div>' +
+            '<div class="acts" style="margin-top:12px"><button class="btn btn--sm" id="csAgain">↻ Malli raayi</button><button class="btn btn--sm btn--gold" data-close="1" style="flex:1">Close</button></div></div>';
+          wrap.addEventListener("click", function (ev) { if (ev.target.classList.contains("sheet-bg") || ev.target.closest("[data-close]")) wrap.remove(); });
+          document.body.appendChild(wrap);
+          wrap.querySelector("#csAgain").onclick = function () { wrap.remove(); showScript(true); };
+          api("callscript", { key: el.dataset.key, fresh: !!fresh }).then(function (j) { var b2 = wrap.querySelector("#csBody"); if (b2) b2.textContent = j.script; })
+            .catch(function (x) { var b2 = wrap.querySelector("#csBody"); if (b2) b2.textContent = "⚠️ " + x.message; });
+        };
+        showScript(false);
         return;
       }
       if (el.dataset.act === "share") {

@@ -1,6 +1,9 @@
 {
   "regions": ["bom1"],
   "functions": {
+    "api/staff.js": {
+      "maxDuration": 30
+    },
     "api/whatsapp.js": {
       "maxDuration": 60
     },
