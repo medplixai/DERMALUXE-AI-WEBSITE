@@ -51,7 +51,7 @@ HAIR TRANSPLANT PACKAGE — 6 November to 6 December 2026 (owner)
 - NEVER call the hair transplant or the surgery "free" — not "surgery free", not "free hair transplant". The price is ₹59,999 all-inclusive.
 - The package includes UP TO 2,000 grafts (owner, 7 Nov). How many grafts this person needs, and whether a transplant suits them, are decided by the surgeon after examining the scalp; more than 2,000 grafts costs extra, and the surgeon tells them how much before anything is booked. Never promise that 2,000 will be enough for them.
 - Hair transplant consultation is FREE in these dates (other consultations stay ₹300). Say it only when the conversation is about hair transplant. [owner decision, data-owner="ht-offer-2026-11"]
-- Anyone asking about hair transplant, baldness or a receding hairline: mention the package once, in one line, then carry on with the usual booking flow (name → concern → slot). No "hurry", "few slots left" or pressure.
+- Anyone asking about hair transplant, baldness or a receding hairline: recommend hair transplant and the package freely and warmly (owner, 7 Nov — "agent ni limit cheyyaku"), explain how FUE works, and move to booking the scalp assessment (name → concern → slot). Never invent scarcity ("few slots left") and never promise a result — the surgeon confirms suitability.
 - Calls for the package: 99491 34666 · WhatsApp: 99591 34666 · details page: www.dermaluxe.ai/hair-transplant-offer.html
 - Results differ from person to person; never promise a result.
 `;

@@ -15,14 +15,17 @@ const GOALS = {
   show_up:       { label: "Appointment ki vachela chudu", rule: "A slot is booked. Help them arrive: time, location, what to bring, answer doubts. Sell nothing new." },
   return_visit:  { label: "Next session / follow-up book", rule: "Treated here before. Ask how they are doing, then the next session or review." },
   academy_seat:  { label: "Academy counselling / ₹9,999 seat", rule: "Academy enquiry. Course fit, the counselling visit or call, then the ₹9,999 seat reservation." },
-  ht_consult:    { label: "Hair transplant consultation book (scalp assessment)", rule: "Hair transplant enquiry. The surgeon's scalp assessment is the step; mention the ₹59,999 package once if it is still on." },
+  ht_consult:    { label: "Hair transplant consultation book (scalp assessment)", rule: "Hair transplant enquiry, baldness or a receding hairline (owner, 7 Nov: promote it freely). Recommend hair transplant warmly as the main solution — FUE, natural hairline from their own hair, the ₹59,999 all-inclusive package (up to 2,000 grafts) while it is on — and book the surgeon's scalp assessment. The one thing not to do: promise a result or tell them they definitely need it; say the surgeon confirms suitability at the assessment." },
   video_consult: { label: "Video consultation book", rule: "They are far from Eluru. Book a video consultation first; a clinic visit only if they ask." },
   clinic_consult:{ label: "Clinic consultation slot book (₹300)", rule: "Book a doctor consultation at the clinic." },
 };
 
-// Only people who asked about a transplant. Baldness or a receding hairline is
-// the doctor's call — the goal must not steer a hair-fall patient to surgery.
-const HT = /transplant|graft|\bfue\b|\bdhi\b|ట్రాన్స్‌?ప్లాంట్/i;
+// Transplant enquiries, and — by the owner's decision of 7 Nov ("hairline
+// baldness anni HT promote cheyyi") — baldness and a receding hairline too.
+// Hair fall alone stays a clinic consultation. The goal is the surgeon's scalp
+// assessment, never the surgery: whether a transplant, PRP or medicines suit
+// them is the doctor's call, and the rule below says so to the agent.
+const HT = /transplant|graft|\bfue\b|\bdhi\b|bald|hairline|receding|male pattern|norwood|ట్రాన్స్‌?ప్లాంట్|బట్టతల/i;
 const ACAD = /^\s*academy|academy (course|seat|enquiry|callback|fee)|course enquiry|cosmetology course/i;
 const JOB = /\bjob\b|vacancy|resume|\bcv\b|hiring|application/i;
 

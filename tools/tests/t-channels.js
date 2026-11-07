@@ -85,7 +85,8 @@ const hook = { token: "hook" };
       G({ concern: "Hair fall", outcome: "notravel" }).key, G({ type: "job", concern: "Nursing" }).key, G({ concern: "Pigmentation", booked: true }).key, G({ concern: "Acne", km: 5 }).key],
     ["ht_consult", "video_consult", "academy_seat", "respect", "redirect", "show_up", "clinic_consult"],
     "every lead gets one goal from what is known: transplant, far away, academy, said no, job, booked, or a clinic consultation");
-  is(G({ concern: "Hair fall & male pattern baldness (hairline receding)" }).key, "clinic_consult", "baldness alone goes to the doctor, not to a transplant goal");
+  is([G({ concern: "Hair fall & male pattern baldness (hairline receding)" }).key, G({ concern: "Hair fall – 6 nelala lopu" }).key, /promise a result/i.test(G({ concern: "baldness" }).rule)],
+    ["ht_consult", "clinic_consult", true], "baldness and a receding hairline go to the transplant consultation (owner, 7 Nov), hair fall alone does not, and surgery is never promised");
   is([G({ concern: "" }).next, G({ concern: "Acne" }).next, G({ concern: "Acne", name: "Ravi" }).next], ["concern adugu", "peru adugu", "2 slots offer cheyyi"],
     "and the next step is the one missing piece on the way to it");
   const hi = "Namaste andi, mee concern cheppandi.";
