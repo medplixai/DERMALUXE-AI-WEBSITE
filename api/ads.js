@@ -30,6 +30,75 @@ const rupees = (v) => Math.round(Number(v) || 0);
 // Account-level money comes from Meta in paise, unlike insights "spend".
 const paise = (v) => Math.round((Number(v) || 0) / 100);
 
+// ---- brought over from the Medicare One app (owner, 7 Nov 2026) -------------
+// Is it really running, and if not, why. A campaign reads ACTIVE on Meta while
+// its only ad is disapproved, in review or stuck on billing — which looks
+// exactly like "the ad just stopped working".
+const AD_ISSUE = {
+  DISAPPROVED: "Meta ad ni reject chesindi", WITH_ISSUES: "Ad lo problem undi", PENDING_BILLING_INFO: "Billing vivaralu kavali",
+  ADSET_PAUSED: "Ad set aagi undi", CAMPAIGN_PAUSED: "Campaign aagi undi", PAUSED: "Ad aagi undi", ARCHIVED: "Ad archive ayindi", DELETED: "Ad teesesaru",
+};
+function deliveryFrom(campaignStatus, adStatuses) {
+  if (campaignStatus !== "ACTIVE") return { state: campaignStatus, note: "" };
+  if (!adStatuses.length) return { state: "NO_ADS", note: "Ee campaign lo ad edi ledu" };
+  if (adStatuses.includes("ACTIVE")) return { state: "ACTIVE", note: "" };
+  if (adStatuses.includes("PENDING_REVIEW") || adStatuses.includes("PREAPPROVED") || adStatuses.includes("IN_PROCESS")) return { state: "IN_REVIEW", note: "Meta review lo undi" };
+  const worst = ["DISAPPROVED", "WITH_ISSUES", "PENDING_BILLING_INFO", "ADSET_PAUSED", "CAMPAIGN_PAUSED", "PAUSED", "ARCHIVED", "DELETED"].find((k) => adStatuses.includes(k));
+  return { state: "NOT_DELIVERING", note: AD_ISSUE[worst] || `Ad nadavatledu (${adStatuses[0]})` };
+}
+
+// Which budget field to write, and where. A campaign's budget lives in one of
+// four places — the campaign's daily or lifetime budget, or its ad sets' daily
+// or lifetime budgets — and they are not interchangeable: Meta refuses a daily
+// budget on a lifetime campaign ("Budget type change not allowed", subcode
+// 1885630). Every poster boosted from here keeps its budget on the ad set, so
+// the old write, straight to the campaign, could only fail for those. Medicare
+// One found the same on 29 Oct, on most of its money.
+const MIN_DAILY_PAISE = 5000;
+const amt = (v) => Number(v || 0) || 0;
+const LIFETIME_TE = "Idi mottam budget (lifetime) meeda nadustunna campaign — daanni roju budget ga marchadaniki Meta oppukodu. Ads Manager lo marchandi, leda kotha campaign pettandi.";
+function budgetWrite(inr, campaign, sets) {
+  const p = Math.round(inr * 100);
+  if (!Number.isFinite(p) || p < MIN_DAILY_PAISE) return { refuse: "Roju budget kaneesam ₹50 undali." };
+  if (amt(campaign.lifetime_budget) > 0) return { refuse: LIFETIME_TE };
+  if (amt(campaign.daily_budget) > 0) return { to: "campaign", paise: p };
+  const daily = (sets || []).filter((x) => amt(x.daily_budget) > 0);
+  // One number for the campaign, shared between the ad sets — never multiplied.
+  if (daily.length) return { to: "adsets", ids: daily.map((x) => x.id), paiseEach: Math.max(MIN_DAILY_PAISE, Math.round(p / daily.length)) };
+  if ((sets || []).some((x) => amt(x.lifetime_budget) > 0)) return { refuse: LIFETIME_TE };
+  return { to: "campaign", paise: p };
+}
+function budgetKind(campaign, sets) {
+  if (amt(campaign.lifetime_budget) > 0) return "lifetime";
+  if (amt(campaign.daily_budget) > 0) return "daily";
+  if ((sets || []).some((x) => amt(x.daily_budget) > 0)) return "daily";
+  if ((sets || []).some((x) => amt(x.lifetime_budget) > 0)) return "lifetime";
+  return null;
+}
+
+// What the ad is actually set to, read back from Meta: where it shows and where
+// a tap goes. Anything that would send a lead somewhere other than our
+// WhatsApp agent is named as a problem on the card.
+function setupFrom(set, agentNumber) {
+  if (!set) return null;
+  const t = set.targeting || {}, geo = t.geo_locations || {};
+  const custom = geo.custom_locations || [];
+  const places = custom.map((c) => `${c.name || c.address_string || "Eluru"} ${c.radius || "?"} km`)
+    .concat((geo.cities || []).map((c) => `${c.name}${c.radius ? " " + c.radius + " km" : ""}`))
+    .concat((geo.regions || []).map((r) => String(r.name)));
+  const wa = (set.promoted_object || {}).whatsapp_phone_number || "";
+  const dest = set.destination_type === "WHATSAPP" ? "whatsapp" : set.optimization_goal === "VISIT_INSTAGRAM_PROFILE" ? "profile" : set.destination_type ? "website" : "unknown";
+  const problems = [];
+  if (dest === "profile") problems.push("WhatsApp kaadu — Instagram profile ki pamputondi, lead raadu");
+  else if (dest === "website") problems.push("WhatsApp kaadu — website / link ki pamputondi");
+  else if (dest === "whatsapp" && wa && agentNumber && digits10(wa) !== digits10(agentNumber)) problems.push(`WhatsApp number vere undi (${wa}) — mana agent number kaadu`);
+  if (!places.length) problems.push("Location pettaledu — ekkadi vaallakaina chupistundi");
+  const radius = custom[0] ? Number(custom[0].radius) || null : null;
+  if (radius && radius > 60) problems.push(`${radius} km chala ekkuva — anta dooram nunchi evaru raaru`);
+  if (Array.isArray(t.locales) && t.locales.length === 0) problems.push("Bhaasha pettaledu — Hindi vaallaki kuda veltundi");
+  return { radius, places, dest, whatsapp: wa, ageMin: t.age_min || null, ageMax: t.age_max || null, locales: (t.locales || []).length, problems };
+}
+
 // Ads need their own permission (ads_read / ads_management). The page and
 // WhatsApp tokens the clinic already has do not carry it, so a dedicated one
 // is looked for first and the others are only tried in case the owner reused
@@ -638,7 +707,7 @@ module.exports = async (req, res) => {
     let account = null, campaigns = [], today = null, err = "";
     try {
       const [acc, ins, todayIns, camps, adsList] = await Promise.all([
-        graph(act, tok, { fields: "name,currency,amount_spent,spend_cap,account_status" }),
+        graph(act, tok, { fields: "name,currency,amount_spent,spend_cap,account_status,is_prepay_account,disable_reason" }),
         graph(act + "/insights", tok, { fields: "spend,impressions,reach,actions", time_range: JSON.stringify({ since: since_s, until: until_s }) }),
         graph(act + "/insights", tok, { fields: "spend,impressions", date_preset: "today" }),
         graph(act + "/campaigns", tok, {
@@ -649,8 +718,21 @@ module.exports = async (req, res) => {
         // Always: the ad list also carries the picture and the post behind each
         // campaign, which is how somebody recognises "the tonsils one" without
         // reading an id.
-        graph(act + "/ads", tok, { fields: "id,campaign_id,creative{thumbnail_url,effective_object_story_id}", limit: 500 }).catch(() => ({ data: [] })),
+        // …and, brought over from Medicare One, each ad's own status and the
+        // reason Meta gives when it rejects one.
+        graph(act + "/ads", tok, { fields: "id,campaign_id,effective_status,issues_info,ad_review_feedback,creative{thumbnail_url,effective_object_story_id,instagram_permalink_url}", limit: 500 })
+          .catch(() => graph(act + "/ads", tok, { fields: "id,campaign_id,effective_status,creative{thumbnail_url,effective_object_story_id}", limit: 500 }))
+          .catch(() => ({ data: [] })),
       ]);
+      const [setsRes, weekRes] = await Promise.all([
+        graph(act + "/adsets", tok, { fields: "id,campaign_id,daily_budget,lifetime_budget,targeting,destination_type,promoted_object,optimization_goal", limit: 300 }).catch(() => ({ data: [] })),
+        graph(act + "/insights", tok, { fields: "spend", date_preset: "last_7d", time_increment: 1 }).catch(() => ({ data: [] })),
+      ]);
+      const setsOf = {};
+      for (const st of (setsRes.data || [])) { const cid = String(st.campaign_id || ""); if (cid) (setsOf[cid] = setsOf[cid] || []).push(st); }
+      const adsOf = {};
+      for (const x of (adsList.data || [])) { const cid = String(x.campaign_id || ""); if (cid) (adsOf[cid] = adsOf[cid] || []).push(x); }
+      const agentNo = process.env.WA_AGENT_NUMBER || "9959134666";
       const adToCamp = {};
       const campArt = {};
       for (const x of (adsList.data || [])) {
@@ -659,6 +741,7 @@ module.exports = async (req, res) => {
         if (!campArt[cid]) campArt[cid] = {};
         if (cr.thumbnail_url && !campArt[cid].thumb) campArt[cid].thumb = cr.thumbnail_url;
         if (cr.effective_object_story_id && !campArt[cid].story) campArt[cid].story = cr.effective_object_story_id;
+        if (cr.instagram_permalink_url && !campArt[cid].ig) campArt[cid].ig = cr.instagram_permalink_url;
       }
       ourAdIds = Object.keys(adToCamp);
 
@@ -681,7 +764,17 @@ module.exports = async (req, res) => {
         // obvious version of this line printed "₹0 left" on an account that
         // has no limit whatsoever: the exact opposite of the truth.
         capLeft: paise(acc.spend_cap) ? Math.max(0, paise(acc.spend_cap) - paise(acc.amount_spent)) : null,
+        status: Number(acc.account_status) || null,
+        prepay: !!acc.is_prepay_account,
       };
+      // How long the limit lasts at a normal day's pace — from the last seven
+      // days that actually spent, not this morning's half day (Medicare One).
+      const realDays = (weekRes.data || []).map((x) => rupees(x.spend)).filter((v) => v >= 100);
+      account.perDay = realDays.length ? Math.round(realDays.reduce((x, y) => x + y, 0) / realDays.length) : 0;
+      account.daysLeft = account.capLeft !== null && account.perDay ? Math.floor(account.capLeft / account.perDay) : null;
+      account.statusNote = account.status && account.status !== 1
+        ? ({ 2: "Ad account DISABLE ayindi — Meta tho matladali", 3: "Payment pending — card / balance chudandi", 7: "Meta review lo undi", 9: "Grace period — payment cheyyali", 101: "Account close ayindi" }[account.status] || `Ad account status ${account.status}`)
+        : (account.capLeft === 0 ? "Spending limit aipoyindi — ads anni aagipoyayi" : "");
       const t0 = (todayIns.data || [])[0] || {};
       today = { spend: rupees(t0.spend), impressions: Number(t0.impressions || 0) };
 
@@ -698,15 +791,27 @@ module.exports = async (req, res) => {
         pts.costPerPatient = pts.came ? Math.round(s / pts.came) : 0;
         pts.back = s ? Math.round((pts.revenue / s) * 100) : 0;
         const art = campArt[String(c.id)] || {};
+        const myAds = adsOf[String(c.id)] || [], mySets = setsOf[String(c.id)] || [];
+        const dlv = deliveryFrom(c.effective_status || c.status, myAds.map((x) => x.effective_status).filter(Boolean));
+        const why = [...new Set(myAds.flatMap((x) => (x.issues_info || []).map((i) => i.error_summary || i.error_message)
+          .concat(Object.values((x.ad_review_feedback || {}).global || {}))).filter(Boolean))].join(" · ").slice(0, 300);
+        const setDaily = mySets.reduce((n, st) => n + amt(st.daily_budget), 0);
         return {
+          delivery: dlv.state, deliveryNote: dlv.note, review: why,
+          budgetKind: budgetKind(c, mySets),
+          setup: setupFrom(mySets[0], agentNo),
+          firstAd: myAds[0] ? String(myAds[0].id) : "",
+          igLink: art.ig || "",
           id: c.id, name: c.name, objective: c.objective, patients: pts,
           created: c.created_time || "",
           thumb: art.thumb || "",
           // The post the money is behind. Recognising it beats an id.
           postLink: art.story ? `https://www.facebook.com/${art.story}` : "",
           status: c.effective_status || c.status,
-          running: (c.effective_status || c.status) === "ACTIVE",
-          daily: c.daily_budget ? Math.round(Number(c.daily_budget) / 100) : 0,
+          // "running" means Meta is actually showing it, not just switched on.
+          on: (c.effective_status || c.status) === "ACTIVE",
+          running: dlv.state === "ACTIVE",
+          daily: c.daily_budget ? Math.round(Number(c.daily_budget) / 100) : (setDaily ? Math.round(setDaily / 100) : 0),
           lifetime: c.lifetime_budget ? Math.round(Number(c.lifetime_budget) / 100) : 0,
           spend: s, impressions: Number(ci.impressions || 0), reach: Number(ci.reach || 0),
           results: r, costEach: each,
@@ -929,16 +1034,21 @@ module.exports = async (req, res) => {
     const cap = Math.max(100, Math.min(50000, Number(process.env.ADS_MAX_DAILY) || 5000));
     if (!(daily >= 100)) return json(res, 400, { error: "Roju budget kaneesam ₹100" });
     if (daily > cap) return json(res, 400, { error: `Roju budget ₹${cap.toLocaleString("en-IN")} kanna ekkuva ikkada pettalemu — Ads Manager lo pettandi` });
+    let level = "campaign";
     try {
-      await graph(`/${id}`, tok, {});           // exists?
-      const u = new URL(`${GRAPH}/${id}`);
-      const r = await fetch(u.toString(), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ daily_budget: daily * 100, access_token: tok }),
-      });
-      const j = await r.json().catch(() => ({}));
-      if (!r.ok) return json(res, 502, { error: ((j.error || {}).message || "Meta oppukoledu").slice(0, 160) });
+      const [camp, sets] = await Promise.all([
+        graph(`/${id}`, tok, { fields: "daily_budget,lifetime_budget" }),
+        graph(`/${id}/adsets`, tok, { fields: "id,daily_budget,lifetime_budget", limit: 50 }).catch(() => ({ data: [] })),
+      ]);
+      const plan = budgetWrite(daily, camp, sets.data || []);
+      if (plan.refuse) return json(res, 400, { error: plan.refuse });
+      const post = async (oid, paiseV) => {
+        const r = await fetch(`${GRAPH}/${oid}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ daily_budget: paiseV, access_token: tok }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) throw new Error(((j.error || {}).message || "Meta oppukoledu").slice(0, 160));
+      };
+      if (plan.to === "adsets") { level = "adset"; for (const sid of plan.ids) await post(sid, plan.paiseEach); }
+      else await post(id, plan.paise);
     } catch (e) {
       return json(res, 502, { error: String(e.message || e).slice(0, 160) });
     }
@@ -947,7 +1057,45 @@ module.exports = async (req, res) => {
       what: `Ads: campaign ${id} roju budget ₹${daily} ki marchharu`,
     })]).catch(() => {});
     await guard.kvCommand(cfg, ["DEL", "ads:conn"]).catch(() => {});
-    return json(res, 200, { ok: true, daily });
+    return json(res, 200, { ok: true, daily, level });
+  }
+
+  // Where it shows, narrowed or widened, everything else about the audience
+  // kept: Meta replaces the whole targeting object on a write, so the live one
+  // is read first (Medicare One).
+  if (a === "radius") {
+    const km = Math.round(Number(b.km) || 0);
+    if (km < 17 || km > 80) return json(res, 400, { error: "Radius 17 – 80 km madhya undali (Meta range)" });
+    let changed = 0;
+    try {
+      const sets = await graph(`/${id}/adsets`, tok, { fields: "id,targeting", limit: 10 });
+      for (const st of (sets.data || [])) {
+        const t = Object.assign({}, st.targeting || {});
+        const custom = ((t.geo_locations || {}).custom_locations) || [];
+        if (!custom.length) continue;
+        t.geo_locations = Object.assign({}, t.geo_locations, { custom_locations: custom.map((c) => Object.assign({}, c, { radius: km, distance_unit: "kilometer" })) });
+        const r = await fetch(`${GRAPH}/${st.id}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ targeting: t, access_token: tok }) });
+        const j = await r.json().catch(() => ({}));
+        if (!r.ok) return json(res, 502, { error: ((j.error || {}).message || "Meta oppukoledu").slice(0, 160) });
+        changed++;
+      }
+    } catch (e) { return json(res, 502, { error: String(e.message || e).slice(0, 160) }); }
+    if (!changed) return json(res, 400, { error: "Ee campaign lo radius ledu — Meta lo oorla perlatho pettaru; Ads Manager lo marchandi" });
+    await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({ ts: Date.now(), by: me.name, phone: me.phone, what: `Ads: campaign ${id} radius ${km} km ki marchharu` })]).catch(() => {});
+    return json(res, 200, { ok: true, km, adSets: changed });
+  }
+
+  // The ad as a patient sees it in the feed — Meta renders it (Medicare One).
+  if (a === "preview") {
+    const adId = clean(b.ad, 40);
+    if (!/^\d+$/.test(adId)) return json(res, 400, { error: "Ad id kavali" });
+    try {
+      const r = await graph(`/${adId}/previews`, tok, { ad_format: "MOBILE_FEED_STANDARD" });
+      const html = (((r.data || [])[0]) || {}).body || "";
+      const src = ((html.match(/src="([^"]+)"/) || [])[1] || "").replace(/&amp;/g, "&");
+      if (!src) return json(res, 404, { error: "Meta nunchi preview raaledu" });
+      return json(res, 200, { ok: true, src });
+    } catch (e) { return json(res, 502, { error: String(e.message || e).slice(0, 160) }); }
   }
 
   if (a === "pause" || a === "resume") {
@@ -993,6 +1141,9 @@ module.exports.todo = todo;
 module.exports.connect = connect;
 module.exports.graph = graph;
 module.exports.tokenOf = tokenOf;
+module.exports.budgetWrite = budgetWrite;
+module.exports.deliveryFrom = deliveryFrom;
+module.exports.setupFrom = setupFrom;
 module.exports.freshImage = freshImage;
 module.exports.verdict = verdict;
 module.exports.ourSide = ourSide;

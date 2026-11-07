@@ -558,7 +558,7 @@
     .postpick img{width:100%;height:100%;object-fit:cover;display:block}
     .postpick i{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);color:#fff;font-size:.75rem;font-style:normal;padding:1px 0}
     .pbud.on{border-color:var(--g2);color:var(--g2)}
-    .adbud{text-align:right}
+    .adbud,.adrad{text-align:right}
     .goalbar i{display:block;height:100%;border-radius:3px}
     .pnl-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
     .inc-rates th{font-weight:500;color:var(--muted);font-size:.76rem;padding:4px 6px;text-align:center}
@@ -2426,12 +2426,15 @@
           return;
         }
         var A = j.account || {}, T = j.today || {}, J = j.joined || {};
+        var healthBar = A.statusNote ? '<div class="adverdict" style="color:var(--bad);background:rgba(190,60,50,.08);margin-bottom:10px">⚠️ ' + esc(A.statusNote) + "</div>" : "";
         var o = j.ours || {};
         var live = (j.campaigns || []).filter(function (c) { return c.running; }).length;
         var cards = [
           ["Ee roju kharchu", money0(T.spend), (T.impressions || 0).toLocaleString("en-IN") + " impressions", ""],
           ["Nadustunna campaigns", String(live), (j.campaigns || []).length + " mottam", ""],
-          ["Spending limit lo migilindi", A.capLeft === null || A.capLeft === undefined ? "—" : money0(A.capLeft), A.capLeft === null || A.capLeft === undefined ? "Limit pettaledu" : "", ""],
+          ["Spending limit lo migilindi", A.capLeft === null || A.capLeft === undefined ? "—" : money0(A.capLeft),
+            A.capLeft === null || A.capLeft === undefined ? "Limit pettaledu" : (A.daysLeft !== null && A.daysLeft !== undefined ? "~" + A.daysLeft + " rojulu (roju ~" + money0(A.perDay) + ")" : ""),
+            A.daysLeft !== null && A.daysLeft !== undefined && A.daysLeft <= 3 ? "bad" : ""],
           ["WhatsApp సంభాషణలు (" + insDays + "d)", (A.results || 0).toLocaleString("en-IN"), (A.reach || 0).toLocaleString("en-IN") + " mandiki", "ok"],
           ["Kharchu (" + insDays + "d)", money0(A.spend), (A.impressions || 0).toLocaleString("en-IN") + " impressions", ""],
           ["Okko సంభాషణకు", money0(A.costEach), "lakshyam " + money0(j.target), A.costEach && A.costEach <= j.target ? "ok" : A.costEach ? "bad" : ""],
@@ -2486,11 +2489,20 @@
             (c.thumb ? '<img class="adthumb" src="' + esc(c.thumb) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<div class="adthumb"></div>') +
             '<div style="min-width:0;flex:1">' +
             '<div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><b style="min-width:0">' + esc(c.name) + "</b>" +
-            '<span class="badge ' + (c.running ? "" : "quiet") + '">' + esc(c.running ? "ACTIVE" : c.status) + "</span></div>" +
+            '<span class="badge ' + (c.running ? "" : "quiet") + '">' + esc(c.running ? "ACTIVE" : ({ IN_REVIEW: "REVIEW", NOT_DELIVERING: "NADAVATLEDU", NO_ADS: "AD LEDU" }[c.delivery] || c.status)) + "</span></div>" +
             '<div class="meta" style="margin-top:2px">' + esc(String(c.objective || "").replace("OUTCOME_", "")) + " · #" + esc(c.id) +
             (c.created ? " · " + fmtAt(Date.parse(c.created)) : "") + "</div></div></div>" +
+            // Switched on but not showing, and Meta's own reason (from Medicare One).
+            (c.on && !c.running && c.deliveryNote ? '<div class="adverdict" style="color:var(--bad);background:rgba(190,60,50,.08)">⚠️ ' + esc(c.deliveryNote) + (c.review ? " — " + esc(c.review) : "") + "</div>" : "") +
+            (c.running && c.review ? '<div class="meta" style="color:var(--hot);margin-top:4px">⚠️ Meta: ' + esc(c.review) + "</div>" : "") +
             '<div class="adverdict" style="color:' + col + ";background:" + bg + '">' + esc(c.verdict.text) + "</div>" +
-            (c.postLink ? '<div style="margin-top:6px"><a class="meta" target="_blank" rel="noopener" href="' + esc(c.postLink) + '">🎬 Promote avutunna post chudu ↗</a></div>' : "") +
+            (c.setup ? '<div class="meta" style="margin-top:6px">📍 ' + esc((c.setup.places || []).join(", ") || "location ledu") +
+              " · " + (c.setup.dest === "whatsapp" ? "💬 WhatsApp ✓" : "↗ " + esc(c.setup.dest)) +
+              (c.setup.ageMin ? " · " + c.setup.ageMin + "–" + (c.setup.ageMax || "65") + " yrs" : "") + "</div>" +
+              (c.setup.problems || []).map(function (pr) { return '<div class="meta" style="color:var(--bad)">⚠️ ' + esc(pr) + "</div>"; }).join("") : "") +
+            ((c.igLink || c.postLink || c.firstAd) ? '<div style="margin-top:6px;display:flex;gap:12px;flex-wrap:wrap">' +
+              ((c.igLink || c.postLink) ? '<a class="meta" target="_blank" rel="noopener" href="' + esc(c.igLink || c.postLink) + '">🎬 Promote avutunna post chudu ↗</a>' : "") +
+              (c.firstAd && j.canChange ? '<a class="meta" href="#" data-act="ads-preview" data-ad="' + esc(c.firstAd) + '">👁 Feed lo ela kanipistundo</a>' : "") + "</div>" : "") +
             '<div class="adcells">' + cell("Kharchu", money0(c.spend)) + cell("Chusinavaaru", (c.reach || 0).toLocaleString("en-IN")) +
               cell("సంభాషణలు", String(c.results || 0)) + cell("Okkodaaniki", c.costEach ? money0(c.costEach) : "—") + "</div>" +
             '<div class="meta" style="margin-top:6px">Leads <b style="color:var(--text)">' + (p.leads || 0) + "</b> → book <b style=\"color:var(--text)\">" + (p.booked || 0) +
@@ -2499,11 +2511,13 @@
               (p.costPerPatient ? ' · <b style="color:var(--g2)">' + money0(p.costPerPatient) + "/patient</b>" : "") + "</div>" +
             (j.canChange
               ? '<div class="noteform" style="margin-top:8px;flex-wrap:wrap"><span class="meta">₹</span>' +
-                '<input class="adbud" data-id="' + esc(c.id) + '" inputmode="numeric" value="' + (c.daily || "") + '" placeholder="' + (c.lifetime ? "lifetime" : "roju") + '" style="width:90px">' +
+                '<input class="adbud" data-id="' + esc(c.id) + '" inputmode="numeric" value="' + (c.daily || "") + '" placeholder="' + (c.budgetKind === "lifetime" ? "lifetime" : "roju") + '" style="width:90px"' + (c.budgetKind === "lifetime" ? ' disabled title="Lifetime budget — Ads Manager lo marchandi"' : "") + ">" +
                 '<button class="btn btn--sm" data-act="ads-budget" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">Save</button>' +
-                (c.running
+                (c.on
                   ? '<button class="btn btn--sm" data-act="ads-pause" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '" style="color:var(--bad)">Pause</button>'
                   : '<button class="btn btn--sm" data-act="ads-resume" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">Activate</button>') +
+                (c.setup && c.setup.radius ? '<span class="meta" style="margin-left:6px">📍</span><input class="adrad" inputmode="numeric" value="' + c.setup.radius + '" style="width:56px" aria-label="Radius km"><span class="meta">km</span>' +
+                  '<button class="btn btn--sm" data-act="ads-radius" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">Radius</button>' : "") +
                 "</div>" +
                 '<div class="meta" style="margin-top:6px">More · ' +
                 '<a href="#" data-act="ads-rename" data-id="' + esc(c.id) + '" data-n="' + esc(c.name) + '">rename</a>, ' +
@@ -2512,12 +2526,16 @@
               : "") +
             "</div>";
         }
-        var live = (j.campaigns || []).filter(function (c) { return c.running; });
-        var stopped = (j.campaigns || []).filter(function (c) { return !c.running && c.spend > 0; });
+        var live = (j.campaigns || []).filter(function (c) { return c.running || (c.on && c.delivery !== "ACTIVE"); });
+        var stopped = (j.campaigns || []).filter(function (c) { return !c.on && c.spend > 0; });
+        // Everything else — finished, never started — folded away (Medicare One).
+        var archive = (j.campaigns || []).filter(function (c) { return !c.on && !(c.spend > 0); });
         var camps = (live.length ? '<h3 style="margin:14px 0 8px;font-size:1rem">Nadustunnavi (' + live.length + ")</h3>" +
             '<div class="adsgrid">' + live.map(adCard).join("") + "</div>" : "") +
           (stopped.length ? '<h3 style="margin:16px 0 8px;font-size:1rem">Aapinavi — ee ' + j.days + " rojullo kharchu ayinavi (" + stopped.length + ")</h3>" +
-            '<div class="adsgrid">' + stopped.map(adCard).join("") + "</div>" : "");
+            '<div class="adsgrid">' + stopped.map(adCard).join("") + "</div>" : "") +
+          (archive.length ? '<details style="margin-top:14px"><summary class="meta" style="cursor:pointer">Paata campaigns (' + archive.length + ")</summary>" +
+            '<div class="adsgrid" style="margin-top:8px">' + archive.map(adCard).join("") + "</div></details>" : "");
 
         // The glance: every campaign that has spent enough to have an opinion
         // about, one line each, against the account's own average.
@@ -2559,6 +2577,7 @@
           '<div class="acts"><button class="btn btn--sm" data-act="ads-sync">↻ Sync from Ads Manager</button>' +
           (j.adsManager ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(j.adsManager) + '">Open Ads Manager ↗</a>' : "") + "</div></div>" +
           (j.error ? '<p class="meta" style="color:var(--hot)">Meta nunchi: ' + esc(j.error) + "</p>" : "") +
+          healthBar +
           headline(j) +
           alertBox(j) +
           planBox(j) +
@@ -5939,6 +5958,27 @@
         adsapi("budget", { id: el.dataset.id, daily: n2 })
           .then(function () { toast("Budget marchamu"); loadAds(); })
           .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ads-radius") {
+        var ri = el.closest(".adcard") && el.closest(".adcard").querySelector(".adrad");
+        var km = Math.round(Number(ri ? ri.value : 0) || 0);
+        if (km < 17 || km > 80) { toast("Radius 17 – 80 km madhya ivvandi"); return; }
+        if (!confirm(el.dataset.n + "\n\nEluru chuttu " + km + " km lo vaallaki matrame chupinchala?")) return;
+        el.disabled = true;
+        adsapi("radius", { id: el.dataset.id, km: km })
+          .then(function () { toast("Radius " + km + " km ki marchamu"); loadAds(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "ads-preview") {
+        if (e && e.preventDefault) e.preventDefault();
+        // Meta renders the preview in its own page; it opens in a new tab
+        // because this app's security policy does not frame other sites.
+        var pw = window.open("", "_blank");
+        adsapi("preview", { id: "0", ad: el.dataset.ad }).then(function (r) {
+          if (pw) pw.location.href = r.src; else window.open(r.src, "_blank");
+        }).catch(function (x) { if (pw) pw.close(); toast(x.message); });
         return;
       }
       if (el.dataset.act === "ads-pause" || el.dataset.act === "ads-resume") {

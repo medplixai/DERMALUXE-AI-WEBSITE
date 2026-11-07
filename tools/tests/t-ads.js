@@ -357,5 +357,21 @@ const A = (q, b) => h.call(ads, q, b);
   is(off.body.needs.length > 0, true, "and names what is missing: " + off.body.needs.join(", "));
   is(off.body.ours.leads, 6, "our own side still shows, because that part needs no token");
 
+  console.log("\n  — brought over from Medicare One —");
+  const bw = ads.budgetWrite;
+  is(bw(1500, { lifetime_budget: "300000" }, []).refuse ? "refused" : "sent", "refused", "a lifetime campaign is not sent a daily budget Meta can only refuse");
+  is(bw(1500, { daily_budget: "50000" }, []), { to: "campaign", paise: 150000 }, "a campaign holding its own daily budget gets it on the campaign");
+  is(bw(1500, {}, [{ id: "s1", daily_budget: "30000" }, { id: "s2", daily_budget: "30000" }]), { to: "adsets", ids: ["s1", "s2"], paiseEach: 75000 },
+    "a boosted poster's budget goes to its ad sets, shared — never multiplied by how many there are");
+  is(!!bw(20, { daily_budget: "50000" }, []).refuse, true, "under Meta's ₹50 floor is refused with the reason");
+  const dl = ads.deliveryFrom;
+  is([dl("ACTIVE", ["DISAPPROVED"]).state, dl("ACTIVE", ["ACTIVE"]).state, dl("ACTIVE", ["PENDING_REVIEW"]).state, dl("ACTIVE", []).state, dl("PAUSED", ["ACTIVE"]).state],
+    ["NOT_DELIVERING", "ACTIVE", "IN_REVIEW", "NO_ADS", "PAUSED"], "ACTIVE on Meta is only 'running' when an ad is actually showing");
+  const su = ads.setupFrom;
+  const goodSet = su({ targeting: { geo_locations: { custom_locations: [{ radius: 30 }] }, locales: [6, 24] }, destination_type: "WHATSAPP", promoted_object: { whatsapp_phone_number: "919959134666" } }, "9959134666");
+  is([goodSet.radius, goodSet.dest, goodSet.problems.length], [30, "whatsapp", 0], "an ad going to our WhatsApp, 30 km round Eluru, has nothing to warn about");
+  const badSet = su({ targeting: { geo_locations: { custom_locations: [{ radius: 75 }] } }, optimization_goal: "VISIT_INSTAGRAM_PROFILE" }, "9959134666");
+  is([badSet.problems.some((x) => /profile/.test(x)), badSet.problems.some((x) => /75 km/.test(x))], [true, true], "one sending taps to the profile, 75 km out, is named on the card");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nads behave");
 })();
