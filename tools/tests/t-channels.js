@@ -89,6 +89,10 @@ const hook = { token: "hook" };
     ["ht_consult", "clinic_consult", true], "baldness and a receding hairline go to the transplant consultation (owner, 7 Nov), hair fall alone does not, and surgery is never promised");
   is([G({ concern: "" }).next, G({ concern: "Acne" }).next, G({ concern: "Acne", name: "Ravi" }).next], ["concern adugu", "peru adugu", "2 slots offer cheyyi"],
     "and the next step is the one missing piece on the way to it");
+  const GF = require(path.join(API, "_goal.js")).fromChat;
+  is([GF(["hi", "hair transplant cost entha?"]).key, GF(["academy course details kavali"]).key, GF(["acne undi"], { name: "Sita" }).next],
+    ["ht_consult", "academy_seat", "10-digit mobile number adugu (WhatsApp lo slot confirm kosam)"],
+    "Instagram, Messenger and the website read the same goal from what was written, and ask the number before the slot");
   const hi = "Namaste andi, mee concern cheppandi.";
   is([facts.withAiLine(hi, true).endsWith(facts.AI_LINE), facts.withAiLine(hi, false), facts.withAiLine("Nenu clinic AI assistant ni andi.", true)],
     [true, hi, "Nenu clinic AI assistant ni andi."], "the first reply of a chat always says an AI is answering, once, even when the model forgets");

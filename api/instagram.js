@@ -693,9 +693,16 @@ async function handleMessage(req, m) {
     } catch (e) {}
     igName = await fetchIgName(igsid, ptok);
   }
-  const extraCtx = facts.nowIstCtx() + (profile && profile.name
+  let extraCtx = facts.nowIstCtx() + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
     : "");
+  // The same goals the WhatsApp agent works to — book the consultation, the
+  // academy seat, the transplant assessment — read from what they have said.
+  try {
+    const G = require("./_goal.js");
+    const said = hist.map((t) => t.u).concat([text, profile && profile.concern]);
+    extraCtx += G.contextLine(G.fromChat(said, { name: profile && profile.name }));
+  } catch (e) {}
 
   let out;
   try {

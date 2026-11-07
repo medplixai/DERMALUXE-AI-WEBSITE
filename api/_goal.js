@@ -43,11 +43,19 @@ function goalFor(o) {
   const g = GOALS[key];
   let next = "";
   if (["clinic_consult", "video_consult", "ht_consult", "academy_seat", "return_visit"].includes(key)) {
-    next = !c.trim() ? "concern adugu" : !o.name ? "peru adugu" : !o.slot ? "2 slots offer cheyyi" : "slot confirm cheyyi";
+    next = !c.trim() ? "concern adugu" : !o.name ? "peru adugu" : (o.needPhone && !o.phone) ? "10-digit mobile number adugu (WhatsApp lo slot confirm kosam)" : !o.slot ? "2 slots offer cheyyi" : "slot confirm cheyyi";
   }
   let label = g.label;
   if (key === "ht_consult" && Date.now() < HT_ENDS) label = "Hair transplant FREE consultation book (scalp assessment)"; // owner's decision, data-owner="ht-offer-2026-11"
   return { key, label, rule: g.rule, next };
+}
+
+// Instagram, Messenger and the website chat know no number and keep no desk
+// record of their own until a lead is saved, so the goal is read from what the
+// person has written so far (owner, 8 Nov: goals for every agent).
+function fromChat(texts, o) {
+  const said = (texts || []).filter(Boolean).join(" \n ").slice(-1500);
+  return goalFor(Object.assign({ concern: said, needPhone: true }, o || {}));
 }
 
 // The line the agent reads.
@@ -56,4 +64,4 @@ function contextLine(g) {
   return `[GOAL for this person: ${g.label}. ${g.rule}${g.next ? " Next step: " + g.next + "." : ""} Every reply moves one step toward it — but if the patient clearly wants something else, follow them.] `;
 }
 
-module.exports = { goalFor, contextLine, GOALS };
+module.exports = { goalFor, fromChat, contextLine, GOALS };

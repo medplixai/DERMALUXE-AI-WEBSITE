@@ -115,7 +115,9 @@ module.exports = async (req, res) => {
     messages.push({ role: "user", content: t.u });
     messages.push({ role: "assistant", content: t.a });
   });
-  messages.push({ role: "user", content: nowIstCtx() + message });
+  let goalLine = "";
+  try { const G = require("./_goal.js"); goalLine = G.contextLine(G.fromChat(hist.map((t) => t.u).concat([message]))); } catch (e) {}
+  messages.push({ role: "user", content: nowIstCtx() + goalLine + message });
 
   let out;
   try {
