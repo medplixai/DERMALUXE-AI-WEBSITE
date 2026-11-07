@@ -554,6 +554,11 @@ module.exports = async (req, res) => {
       comments = { ig: await ig.sweepIgComments(cfg, 20).catch((e) => ({ ok: false, why: e.message })) };
       if (room("fb-comments", 40000)) comments.fb = await ig.sweepFbComments(cfg, 20).catch((e) => ({ ok: false, why: e.message }));
     } catch (e) { console.error("cron: comments", e && e.message); }
+    // The sweep's answer was only in the cron's reply, which nobody reads, so a
+    // Facebook permission error stayed invisible. Kept a day for the next check.
+    if (!comments || !comments.fb) (comments = comments || {}).fb = comments.fb || { ok: false, why: "skipped: no time left this run" };
+    console.log("cron: comments", JSON.stringify(comments).slice(0, 400));
+    await guard.kvCommand(cfg, ["SET", "cron:comments:last", JSON.stringify(Object.assign({ at: Date.now() }, comments)).slice(0, 2000), "EX", "86400"]).catch(() => {});
   }
 
   // ---- sweep keys whose time has passed --------------------------------

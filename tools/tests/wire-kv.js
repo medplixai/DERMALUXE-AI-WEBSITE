@@ -48,6 +48,7 @@ const OK = {
   "office:log": "what staff asked AI Office — kept for the record, 500 entries",
   "acad:dl": "which student opened which material — kept for the record",
   "ref:of:": "the patient's own code, stored beside ref:code:<code> so the pair can be audited; the code is derivable, so it is never read back",
+  "cron:comments:last": "the last comment sweep's result, kept a day so a Facebook permission error can be looked up; nothing acts on it",
 };
 const covered = (k, other) => [...other.keys()].some((o) => o === k || o.startsWith(k) || k.startsWith(o));
 let bad = 0;
