@@ -234,10 +234,14 @@ const FALLBACK_REPLY =
 // So the code adds it to the first reply of every new conversation, unless
 // the reply already says it.
 const AI_LINE = "_Ee chat lo DermaLuxe AI help chestundi — staff tho matladali ante *staff* ani type cheyandi._";
+// A Hindi chat gets the same line in Hindi (7 Nov: a Hindi speaker was told
+// in Hindi, then read the AI notice in Tenglish).
+const AI_LINE_HI = "_Is chat mein DermaLuxe AI madad kar raha hai — staff se baat karni ho to *staff* likhiye._";
+const isHindi = (t) => /[\u0900-\u097F]/.test(t) || (String(t).toLowerCase().match(/\b(aap|aapki|aapka|hai|hain|kijiye|batayein|bataiye|nahi|kya|mein|hoon|karna|chahiye|ji)\b/g) || []).length >= 4;
 function withAiLine(reply, firstTurn) {
   const r = String(reply || "");
   if (!firstTurn || !r.trim() || /\bAI\b/.test(r)) return r;
-  return r.replace(/\s+$/, "") + "\n\n" + AI_LINE;
+  return r.replace(/\s+$/, "") + "\n\n" + (isHindi(r) ? AI_LINE_HI : AI_LINE);
 }
 
 // The clock every agent is given with each message. The API has no idea what

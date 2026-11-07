@@ -83,6 +83,8 @@ const hook = { token: "hook" };
   const hi = "Namaste andi, mee concern cheppandi.";
   is([facts.withAiLine(hi, true).endsWith(facts.AI_LINE), facts.withAiLine(hi, false), facts.withAiLine("Nenu clinic AI assistant ni andi.", true)],
     [true, hi, "Nenu clinic AI assistant ni andi."], "the first reply of a chat always says an AI is answering, once, even when the model forgets");
+  is(/Is chat mein DermaLuxe AI/.test(facts.withAiLine("Namaste ji, aapki problem kya hai? Batayein, main aapki madad karta hoon, aap kitne time se pareshan hain?", true)), true,
+    "a Hindi first reply gets the AI notice in Hindi");
   const lint = require(path.join(API, "_lint.js")), stubFetch = global.fetch, realKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = realKey || "test";
   const whole = { reply: "Hair transplant cost grafts batti untundi andi. Doctor garu scalp chusi exact ga cheptaru. Meeru e ooru nundi? Mee peru enti?" };
