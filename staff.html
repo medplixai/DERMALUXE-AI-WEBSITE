@@ -250,6 +250,8 @@
     .fchips button.on{border-color:var(--primary);color:var(--accent-fg);background:var(--accent-bg)}
     .countdown > div[data-act]{cursor:pointer}
     .countdown > div.on{outline:2px solid var(--primary);outline-offset:-2px;border-radius:12px}
+    .cat{display:inline-block;font-size:.75rem;padding:1px 7px;border-radius:100px;margin-left:6px;background:#e0f2fe;color:#075985}
+    .cat.hair{background:#fce7f3;color:#9d174d}
     .lang{display:inline-block;font-size:.75rem;padding:1px 7px;border-radius:100px;background:#fef3c7;color:#92400e;margin-left:6px}
     /* patient file */
     .daystrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
@@ -770,6 +772,11 @@
           <button data-seg="fu">📅 Follow-up<i id="segN6"></i></button>
           <button data-seg="mine">🙋 Naavi<i id="segN3"></i></button>
           <button data-seg="all">Anni<i id="segN7"></i></button>
+        </div>
+        <div class="fchips" id="catchips" aria-label="Skin / Hair">
+          <button data-cat="" class="on">Anni</button>
+          <button data-cat="skin">💆 Skin<i id="catN0"></i></button>
+          <button data-cat="hair">💇 Hair<i id="catN1"></i></button>
         </div>
         <div class="fchips" id="fchips">
           <button data-fq="contacted">Contacted<i id="fqN0"></i></button>
@@ -1375,7 +1382,7 @@
       var heat = l.heat || "", s = srcLabel(l);
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
-        '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + (l.lang === "hi" ? '<span class="lang">🗣 हिंदी</span>' : '') + '</h3><div class="meta">' + esc(dmyt(l.ts)) + ' · ' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
+        '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + (l.lang === "hi" ? '<span class="lang">🗣 हिंदी</span>' : '') + (catOf(l) ? '<span class="cat ' + catOf(l) + '">' + (catOf(l) === "hair" ? "💇 Hair" : "💆 Skin") + "</span>" : "") + '</h3><div class="meta">' + esc(dmyt(l.ts)) + ' · ' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
         '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
         '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc">' + esc(OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
         (l.lastCall || l.fu ? '<div class="fu-line"><span>🗓 Lead: <b>' + esc(dmy(l.ts)) + "</b></span>" + (l.lastCall ? "<span>📞 Call: <b>" + esc(dmy(l.lastCall)) + "</b></span>" : "") +
@@ -1525,6 +1532,17 @@
     function fuDue(l) { return l.outcome === "followup" && l.fu && l.fu <= istToday() && (l.status === "new" || l.status === "contacted"); }
     var OUT_LABEL = { noanswer: "📵 Not answering", callback: "🔁 Malli call", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Need follow up", notinterested: "🚫 Not interested", notravel: "🚗 Not willing to travel", booked: "✅ Booked for consultation" };
     var OUT_STATUS = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked" };
+    // Skin or hair, read from what they asked about (owner, 7 Nov: "leads skin
+    // and hair separate"). Laser hair removal is a skin treatment, so it is
+    // checked before the word "hair" can claim it.
+    var leadCat = "";
+    function catOf(l) {
+      var t = [l.concern, l.message, (l.treatments || []).join(" ")].join(" ").toLowerCase();
+      if (/laser hair|hair removal|hair reduction|unwanted hair|facial hair|upper lip|underarm/.test(t)) return "skin";
+      if (/hair|bald|transplant|\bprp\b|\bgfc\b|dandruff|alopecia|scalp|juttu|jutt|beard|eyebrow|moustache|hairline|receding|graft|జుట్టు|బట్టతల|చుండ్రు/.test(t)) return "hair";
+      if (/skin|acne|pimple|pigment|melasma|tan\b|tanning|dull|glow|scar|marks?\b|spots?\b|wrinkle|ageing|aging|hydra|peel|laser|botox|filler|wart|mole|tag|psoriasis|eczema|vitiligo|allerg|fungal|itch|rash|dark circle|under.?eye|oil|pore|face|facial|tattoo|chamma|మొటిమ|చర్మ|మచ్చ|మొహం/.test(t)) return "skin";
+      return "";
+    }
     function dmyt(ts) {
       return new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(ts || 0));
     }
@@ -1552,6 +1570,11 @@
         base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length,
         base.filter(untouched).length, base.filter(isBooked).length, base.filter(isFu).length, base.length];
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
+      var catBase = base.filter(function (l) { return l.type !== "job"; });
+      ["skin", "hair"].forEach(function (c, i) {
+        var el = $("catN" + i); if (el) { var n = catBase.filter(function (l) { return catOf(l) === c; }).length; el.textContent = n ? " " + n : ""; }
+      });
+      document.querySelectorAll("#catchips [data-cat]").forEach(function (b) { b.classList.toggle("on", b.dataset.cat === leadCat); });
       ["contacted", "o:noanswer", "o:thinking", "o:notravel", "o:notinterested"].forEach(function (f, i) {
         var n = base.filter(function (l) { return f === "contacted" ? l.status === "contacted" : l.outcome === f.slice(2); }).length;
         var el = $("fqN" + i); if (el) el.textContent = n ? " " + n : "";
@@ -1570,6 +1593,7 @@
         else if (fs && fs.indexOf("o:") === 0) { if (l.outcome !== fs.slice(2)) return false; }
         else if (fs && l.status !== fs) return false;
         if (fsrc && src(l) !== fsrc) return false;
+        if (leadCat && catOf(l) !== leadCat) return false;
         if (/^academy/i.test(String(l.concern || ""))) return false;
         if (q && (String(l.name) + " " + String(l.phone) + " " + String(l.concern) + " " + String(l.message)).toLowerCase().indexOf(q) === -1) return false;
         return true;
@@ -5012,6 +5036,8 @@
     document.addEventListener("click", function (e) {
       var eye = e.target.closest("[data-eye]");
       if (eye) { var inp = $(eye.dataset.eye); if (inp) { inp.type = inp.type === "password" ? "text" : "password"; eye.textContent = inp.type === "password" ? "👁" : "🙈"; inp.focus(); } return; }
+      var ct = e.target.closest("[data-cat]");
+      if (ct && ct.closest("#catchips")) { leadCat = ct.dataset.cat; renderLeads(); return; }
       var fq = e.target.closest("[data-fq]");
       if (fq) {
         var sel = $("fStatus"); sel.value = sel.value === fq.dataset.fq ? "" : fq.dataset.fq;
