@@ -203,7 +203,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, imageBlock) {
       messages,
     }),
   });
-  if (!resp.ok) throw new Error(`claude HTTP ${resp.status}`);
+  if (!resp.ok) throw new Error(`claude HTTP ${resp.status} ${await notify.aiFailed(resp)}`);
   const data = await resp.json();
   const text = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
   return parseOut(text);

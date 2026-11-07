@@ -103,6 +103,7 @@ stub("_notify.js", {
   leadAlert: async (...a) => { sent.push(["lead", ...a]); return true; },
   teamSend: async (cfg, ...a) => { sent.push(["wa", ...a]); return true; },   // the window check is tested on the real module
   markWindow: async () => {},
+  aiFailed: async (r) => { try { return String(await r.text()); } catch (e) { return ""; } },
   sendWaTemplate: async (...a) => { sent.push(["tpl", ...a]); return { ok: true }; },
   sendWaButtons: async (...a) => { sent.push(["btn", ...a]); return true; },       // boolean, like sendWa
   sendWaImageLink: async (...a) => { sent.push(["img", ...a]); return true; },

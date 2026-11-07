@@ -119,6 +119,14 @@ const hook = { token: "hook" };
   is([shut.type, shut.template && shut.template.name, JSON.stringify(shut).includes("\\n"), JSON.stringify(shut).includes("Ravi · 📱 9876543210")],
     ["template", "daily_digest_ping", false, true], "a team member who hasn't written in 24 hours still gets the alert, on one line, through the template");
   is([open.type || "text", open.text && open.text.body], ["text", alert], "once they have written, the full alert goes as plain text");
+  graph.length = 0;
+  global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
+  const broke = { text: async () => '{"type":"error","error":{"message":"Your credit balance is too low to access the Anthropic API."}}' };
+  await realNotify.aiFailed(broke); const firstWave = graph.length;
+  await realNotify.aiFailed(broke);
+  global.fetch = stubFetch;
+  is([firstWave > 0, graph.length, JSON.stringify(graph[0] || {}).includes("credits aipoyayi")], [true, firstWave, true],
+    "when the AI account runs dry the team is told, once, not on every message");
 
   console.log("\n  — Instagram —");
   claudeCalls = 0;

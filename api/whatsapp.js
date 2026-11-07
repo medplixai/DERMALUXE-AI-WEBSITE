@@ -146,9 +146,8 @@ const FAST_MODEL = () => process.env.AI_FAST_MODEL || "claude-sonnet-5";
 const VOICE_ASK = /(voice\s*(lo|note|message)|audio\s*(lo|message)|vinipinch|chadav(a)?len|chadavadam kashtam|kallu\s*(kanapad|sarigga)|record\s*chesi|వాయిస్|ఆడియో|వినిపించ)/i;
 
 // "claude HTTP 400" on its own tells nobody what was wrong with the request.
-const why = async (resp) => {
-  try { return String(await resp.text()).replace(/\s+/g, " ").slice(0, 200); } catch (e) { return ""; }
-};
+// It also tells the team when the reason is an empty AI account.
+const why = (resp) => notify.aiFailed(resp);
 
 // A voice note nobody could transcribe, a sticker, a location pin: all of them
 // land in the history as a turn with no words. The API refuses an empty text

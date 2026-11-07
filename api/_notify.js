@@ -251,6 +251,28 @@ async function teamSend(cfg, to, text) {
   return !!(t && t.ok);
 }
 
+// The AI account ran out of credit at about 2:27 PM on 7 November. Every
+// agent kept answering with the fixed fallback message, and nobody at the
+// clinic knew until the owner asked for a check. Any failed AI call now passes
+// its error text through here; an out-of-credit one tells the team once every
+// three hours. Returns the error text for the caller's log line.
+async function aiFailed(resp) {
+  let text = "";
+  try { text = String(await resp.text()).replace(/\s+/g, " ").slice(0, 200); } catch (e) {}
+  if (/credit balance|billing|quota/i.test(text)) {
+    try {
+      const cfg = guard.kvConfig();
+      const nx = cfg ? await guard.kvCommand(cfg, ["SET", "ai:down", String(Date.now()), "NX", "EX", "10800"]).catch(() => ({})) : {};
+      if (nx && nx.result) {
+        const msg = "⚠️ *AI agent aagipoyindi*\n\nAnthropic account lo credits aipoyayi — WhatsApp, Instagram, website agents patients ki fixed message matrame pampistunnayi.\n\nconsole.anthropic.com → Plans & Billing lo recharge cheyandi. Appatidaka staff app → Inbox lo patients ki meere reply cheyandi.";
+        const to = new Set(String(process.env.LEAD_NOTIFY_PHONES || DEFAULT_TO).split(",").concat(guard.ownerPhones()).map((x) => String(x).replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10));
+        for (const t of to) await teamSend(cfg, t, msg).catch(() => {});
+      }
+    } catch (e) {}
+  }
+  return text;
+}
+
 async function leadAlert(cfg, lead) {
   const token = process.env.WA_CLOUD_TOKEN;
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
@@ -363,4 +385,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, teamSend, markWindow, windowOpen, alertLine, sendWa, sendWaButtons, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
+module.exports = { leadAlert, aiFailed, teamSend, markWindow, windowOpen, alertLine, sendWa, sendWaButtons, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };

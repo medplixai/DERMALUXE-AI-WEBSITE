@@ -136,7 +136,7 @@ module.exports = async (req, res) => {
         messages,
       }),
     });
-    if (!resp.ok) throw new Error("claude HTTP " + resp.status);
+    if (!resp.ok) throw new Error("claude HTTP " + resp.status + " " + (await notify.aiFailed(resp)));
     const data = await resp.json();
     const text = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
     if (data.stop_reason === "max_tokens") console.error("chat: reply cut at max_tokens", (data.usage || {}).output_tokens);
