@@ -1253,12 +1253,12 @@
       if (l.src && DESK_SRC[l.src]) return "walkin";
       var t = String(l.type || l.page || "").toLowerCase();
       if (DESK_SRC[t]) return "walkin";
-      if (t.indexOf("insta") > -1) return "instagram";
+      if (t.indexOf("insta") > -1 || t.indexOf("ig_") === 0) return "instagram";
       if (t.indexOf("face") > -1 || t.indexOf("messenger") > -1) return "facebook";
       if (t.indexOf("whatsapp") > -1) return "whatsapp";
       return "web";
     }
-    function srcLabel(l) { return DESK_SRC[l.src] || DESK_SRC[String(l.type || "").toLowerCase()] || src(l); }
+    function srcLabel(l) { if (l.type === "ig_comment") return "IG comment"; return DESK_SRC[l.src] || DESK_SRC[String(l.type || "").toLowerCase()] || src(l); }
     var heatRank = { hot: 0, warm: 1, "": 2, cold: 3 };
 
     // ---- login ----
@@ -1452,7 +1452,10 @@
           l._older.map(function (o) { var n0 = (o.notes || [])[0]; return '<div class="meta">• ' + esc(dmy(o.ts)) + " — " + esc(o.concern || o.message || "") + " · " + esc(o.status) + (n0 ? " · “" + esc(String(n0.text).slice(0, 80)) + "” — " + esc(n0.by) : "") + "</div>"; }).join("") + "</details>" : "") +
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
         '<div class="acts">' +
-        (l.phone ? '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '" data-phone="' + esc(l.phone) + '" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' + (state.allow("inbox.view") && l.type === "whatsapp" ? '<button class="btn btn--sm" data-act="ib-open" data-phone="' + esc(l.phone) + '">🗨 Chat</button>' : '') : '<span class="meta">No phone (DM lead)</span>') +
+        (l.phone ? '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '" data-phone="' + esc(l.phone) + '" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' + (state.allow("inbox.view") && l.type === "whatsapp" ? '<button class="btn btn--sm" data-act="ib-open" data-phone="' + esc(l.phone) + '">🗨 Chat</button>' : '') : (src(l) === "instagram"
+          // No number yet: answer them where they wrote (owner, 7 Nov).
+          ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="https://www.instagram.com/direct/inbox/">📩 Instagram lo reply</a><span class="meta">Number inka ivvaledu</span>'
+          : '<span class="meta">No phone (DM lead)</span>')) +
         statusSelect(l) +
         '<button class="btn btn--sm" data-act="cscript" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '">🤖 Em matladali</button>' +
         (l.phone && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="share" data-kind="location" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">📍 Location</button>' +
@@ -1579,6 +1582,7 @@
     // comes back on its own date, not before.
     function needsCall(l) {
       if (!l || l.optedOut) return false;
+      if (!l.phone) return false;                     // nothing to dial — answer them on Instagram
       if (/^\s*academy/i.test(String(l.concern || ""))) return false;
       if (!(l.status === "new" || l.status === "contacted")) return false;
       if (l.outcome === "followup") return !!l.fu && l.fu <= istToday();

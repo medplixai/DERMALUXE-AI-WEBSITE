@@ -1429,6 +1429,21 @@ module.exports = async (req, res) => {
   }
 
   let justBooked = 0;
+  // The model said a slot is held but sent no time with it: read the slot from
+  // the patient's own words, so the booking reaches the desk (7 Nov, Prasanthi).
+  try {
+    const sp = require("./_slotparse.js");
+    if (sp.HELD.test(String(out.reply || "")) && !(out.lead && out.lead.slot_ts)) {
+      const ts = sp.parseSlot(text);
+      if (ts) {
+        let prev = null;
+        const lr = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "99"]).catch(() => ({}));
+        for (const x of ((lr && lr.result) || [])) { try { const l = JSON.parse(x); if (String(l.phone || "").replace(/\D/g, "").slice(-10) === digits) { prev = l; break; } } catch (e) {} }
+        out.lead = Object.assign({ name: (prev && !/\(WhatsApp peru\)|peru cheppaledu/.test(prev.name || "") && prev.name) || "", concern: (prev && prev.concern) || "Consultation", heat: "hot" }, out.lead || {}, { slot: text.slice(0, 40), slot_ts: ts });
+        console.log("wa: slot read from the patient's words", digits.slice(-4), ts);
+      }
+    }
+  } catch (e) {}
   if (out.lead && (out.lead.name || out.lead.slot_ts || out.lead.date || out.lead.slot)) {
     try {
       const st = await storeLead(cfg, Object.assign({}, out.lead, { profile: profileName }), digits, text);

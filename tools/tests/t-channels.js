@@ -185,6 +185,13 @@ const hook = { token: "hook" };
   claude.push({ dm: "Hi 🙏 WhatsApp: 99591 34666", public_reply: "Details DM chesam 💬" }, { dm: null, public_reply: "Thank you 🙏" }, { dm: null, public_reply: "Thank you 🙏" });
   await h.call(ig, hook, batch(said("c3", "fan3", "address ekkada?"), said("c4", "fan4", "All the best 👏"), said("c5", "fan5", "Super")));
   is([claudeCalls, privates.length, publics.length], [3, 1, 3], "three comments in one delivery get three answers, not one");
+  const cl = leads().filter((l) => l.type === "ig_comment");
+  is([cl.some((l) => l.name === "@fan3" && /address ekkada/.test(l.concern)), cl.some((l) => l.name === "@fan4"), cl.some((l) => l.name === "@fan5")], [true, false, false],
+    "a comment asking something reaches the desk as a lead; praise does not (owner, 7 Nov)");
+  claude.push({ reply: "Acne ki baaga help chestam 🙏 Mee number cheppandi?", lead: { name: "", phone: "", concern: "Acne", heat: "warm" } });
+  await h.call(ig, hook, igDm("ig-nophone", "acne undi"));
+  const igNp = leads().filter((l) => l.src_id === "ig-nophone");
+  is([igNp.length, igNp[0] && igNp[0].concern, igNp[0] && !igNp[0].phone], [1, "Acne", true], "an Instagram enquiry with a concern but no number is on the desk's list too");
 
   privates.length = 0; publics.length = 0; privateRefused = true;
   claude.push({ dm: "Hi 🙏 details ivi", public_reply: "Details DM chesam 💬" });

@@ -57,7 +57,7 @@ const MAPS_LINK = "https://maps.google.com/?q=16.7107,81.0952";
 // Instagram-specific behaviour: DMs don't reveal the phone number, so the
 // booking flow must collect it before a lead is complete.
 const IG_RULES = `- Booking flow: collect (1) name, (2) 10-digit mobile number, (3) concern/treatment, (4) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
-- Instagram doesn't show us the patient's phone number — a booking is complete ONLY when you also have their 10-digit mobile number. Fill "lead" once you have name + phone + concern (keep collecting missing bits in the reply); otherwise "lead" must be null.
+- Instagram doesn't show us the patient's phone number — a booking is complete ONLY when you also have their 10-digit mobile number. But the desk wants EVERY real enquiry on its list (owner, 7 Nov): fill "lead" as soon as a patient has told you a concern, even without name or phone — name may be "" and phone "" until they give them; keep collecting the missing bits in the reply. "lead" stays null for greetings with no concern, job seekers, influencers, promotions and spam.
 - WHATSAPP FIRST: our bookings, doctor slots, reminders and free AI skin & hair analysis all run on WhatsApp. Whenever the patient shows interest (treatment, booking, price question, photo check), (a) ask for their 10-digit mobile number so "mana team WhatsApp lo slot confirm chestundi", and (b) also give the direct link: "WhatsApp: 99591 34666 → wa.me/919959134666". Once a number is captured they automatically get a WhatsApp message from us — tell them to reply there.
 - Quick-reply taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here in the DM.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a Google Maps link is sent automatically along with your reply).
@@ -292,7 +292,11 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
     lang: leadInfo.lang === "hi" ? "hi" : "",
     call_prep: String(leadInfo.call_prep || "").slice(0, 220),
   };
-  if (!lead.name) return;
+  // Every real enquiry reaches the desk (owner, 7 Nov), with or without a
+  // name or number: the Instagram name stands in, and the card says to answer
+  // in the Instagram inbox until a number comes.
+  if (!lead.concern && !lead.name) return;
+  if (!lead.name) lead.name = igName ? `@${igName}` : "Instagram user";
   lead.src_id = igsid;
   if (phone) Object.assign(lead, qualify.stamp(await qualify.read(cfg, phone)));
   try {
@@ -382,6 +386,28 @@ async function askClaudeComment(username, commentText) {
   } catch (e) { return { dm: null, public_reply: null }; }
 }
 
+// A comment that asks about a treatment, a price, a booking or the place is an
+// enquiry, and the desk sees it with the rest (owner, 7 Nov: "comments lo aina
+// insta messages lo aina vachhina leads anni ikkadiki vacheyali"). One row per
+// commenter per six hours; the comment itself is the message.
+async function storeCommentLead(cfg, username, fromId, text, permalink) {
+  if (!cfg) return;
+  const lead = {
+    ts: Date.now(), type: "ig_comment",
+    name: username ? `@${username}` : "Instagram comment", phone: "",
+    age: "", gender: "", concern: String(text).slice(0, 120),
+    message: `[Instagram comment] ${String(text).slice(0, 380)}`,
+    mode: "", date: "", slot: "", skin_score: null, hair_score: null, skin_age: null, skin_type: "", treatments: [],
+    page: permalink || "instagram-comment", heat: "warm",
+    call_prep: "Instagram comment — Instagram lo DM / comment ki reply cheyyandi; number ivvamani adagandi.",
+    src_id: `c:${fromId}`,
+  };
+  try {
+    await leadstore.saveLead(cfg, lead, (l) => l.src_id === lead.src_id && l.type === "ig_comment" && lead.ts - l.ts < 21600000, 50);
+    await notify.leadAlert(cfg, lead);
+  } catch (e) { console.error("ig: comment lead", e && e.message); }
+}
+
 async function handleComment(entry, v) {
   const commentId = String(v.id || "");
   const fromId = String((v.from && v.from.id) || "");
@@ -414,9 +440,11 @@ async function handleComment(entry, v) {
     // The model busy or down: someone asking a question still hears where to
     // ask it. Praise and spam get nothing, as they would anyway.
     console.error("ig: comment ai error", e && e.message);
-    if (COMMENT_ASKS.test(text)) await sendCommentReply(commentId, COMMENT_WA, cred);
+    if (COMMENT_ASKS.test(text)) { await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id); await sendCommentReply(commentId, COMMENT_WA, cred); }
     return;
   }
+  // The model thought it worth a private message, or the words ask something.
+  if (out.dm || COMMENT_ASKS.test(text)) await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id);
 
   // The same last check the DM agent's replies get. Comment replies skipped it
   // until 5 November 2026, and a public reply is read by everyone, not one person.
@@ -631,7 +659,7 @@ async function handleMessage(req, m) {
   if (out.lead && out.lead.phone && cfg) {
     try { const q = await qualify.absorb(cfg, out.lead.phone, out.qual || {}, { inboundCount: hist.length + 1, photo_sent: !!imageUrl, channel: "instagram" }); await qualify.react(cfg, out.lead.phone, q, { name: out.lead.name }); } catch (e) {}
   }
-  if (out.lead && out.lead.name) {
+  if (out.lead && (out.lead.name || out.lead.concern)) {
     try { await storeLead(cfg, out.lead, igsid, igName, text); } catch (e) {}
   }
   out.reply = facts.withAiLine(out.reply, firstTurn);

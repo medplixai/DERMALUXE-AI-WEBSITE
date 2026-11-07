@@ -213,6 +213,18 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   await say("9876500012", "old date");
   is(h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.ph === "9876500012").length, 0, "a slot in the past is not");
 
+  // 7 Nov: the agent said "slot hold chesanu" and sent no time — the patient's
+  // own words are read instead, so the booking still reaches the desk.
+  const sp = require(path.join(process.env.DL_API, "_slotparse.js"));
+  const sat = Date.parse("2026-11-07T23:22:00+05:30");
+  is([sp.parseSlot("Monday 6:00 PM", sat), sp.parseSlot("Somavaram 11:00 AM", sat), sp.parseSlot("Repu 11:00 AM", sat), sp.parseSlot("hello", sat)],
+    ["2026-11-09 18:00", "2026-11-09 11:00", "", ""], "a picked slot is read from the words, Sunday is never one");
+  const slotWord = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"][new Date(Date.now() + 330 * 60000 + 2 * 86400000).getUTCDay() - 1] || "Monday";
+  claude.push({ reply: `${slotWord} 6:00 PM slot meeku hold chesanu — mana team call chesi confirm chestundi 🙏`, lead: null });
+  await say("9876500015", `${slotWord} 6:00 PM`);
+  is(h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.ph === "9876500015").length, 1,
+    "a slot the agent said it held reaches the reminder queue even when the model sent no time");
+
   // 6 Nov: a patient picked 4 PM before giving a name.
   h.sent.length = 0;
   claude.push({ reply: "4 PM ki book chesanu ✅ Mee peru cheppandi?", lead: { name: "", concern: "Hair fall", heat: "hot", slot: "Ivala 4 PM", slot_ts: tomorrow + " 16:00" } });
