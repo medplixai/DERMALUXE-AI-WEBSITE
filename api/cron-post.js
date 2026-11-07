@@ -173,5 +173,9 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: broadcast drain", e && e.message); }
 
-  return res.status(200).json({ ok: true, published, kept, dropped, boosted, reminded, lateAsked, bsent, graded, rescued, adAlerts });
+  // Every ten minutes, the caller's note for up to three leads the agent could
+  // not book (owner, 8 Nov) — written before anybody picks up the phone.
+  let notes = null;
+  try { notes = await require("./_callscript.js").backfill(cfg, 3); } catch (e) { console.error("cron-post: call notes", e && e.message); }
+  return res.status(200).json({ ok: true, published, kept, dropped, boosted, reminded, lateAsked, bsent, graded, rescued, adAlerts, notes });
 };

@@ -296,6 +296,9 @@ async function leadPage(cfg, offset, count) {
     hashAll(cfg, USERS),
     hashSome(cfg, OUTCOME, keys), hashSome(cfg, FOLLOW, keys),
   ]);
+  // The caller's notes already written (owner, 8 Nov): shown on the card.
+  const csR = keys.length ? await guard.kvCommand(cfg, ["MGET"].concat(keys.map((k) => `cs:${k}`))).catch(() => ({})) : {};
+  const scripts = {}; ((csR && csR.result) || []).forEach((v, i) => { if (v) scripts[keys[i]] = v; });
   // Who this lead was dealt to, by name — so a colleague can see "naavi".
   const nameOf = (ph) => { try { return (JSON.parse(users[ph] || "{}").name) || ph; } catch (e) { return ph; } };
   const off = new Set(((optOut && optOut.result) || []));
@@ -308,6 +311,7 @@ async function leadPage(cfg, offset, count) {
     if (owner[k]) { base.owner = owner[k]; base.ownerName = nameOf(owner[k]); }
     if (outc[k] && OUTCOMES[outc[k]]) base.outcome = outc[k];
     if (fus[k]) base.fu = fus[k];
+    if (scripts[k]) base.script = scripts[k];
     const calls = n.filter((x) => /^call\b/i.test(String(x.text || "")));
     if (calls.length) base.lastCall = Math.max(...calls.map((x) => Number(x.ts) || 0));
     // The grade and, from it, the one thing to do next — and how long this
@@ -703,50 +707,15 @@ module.exports = async (req, res) => {
   if (a === "callscript") {
     if (!allow("leads.view")) return json(res, 403, { error: "Mee role ki idi ledu" });
     if (!key) return json(res, 400, { error: "key kavali" });
-    const ck = `cs:${key}`;
     if (!b.fresh) {
-      const hit = await guard.kvCommand(cfg, ["GET", ck]).catch(() => ({}));
+      const hit = await guard.kvCommand(cfg, ["GET", `cs:${key}`]).catch(() => ({}));
       if (hit && hit.result) return json(res, 200, { ok: true, script: hit.result, cached: true });
     }
     const rl = await guard.rateLimit(cfg, `rl:cs:${me.phone}`, 60, 3600);
     if (!rl.allowed) return json(res, 429, { error: "Konchem aagandi" });
-    if (!process.env.ANTHROPIC_API_KEY) return json(res, 503, { error: "AI ippudu ledu" });
-    const raw = ((await guard.kvCommand(cfg, ["LRANGE", LEADS, "0", "399"]).catch(() => ({}))).result || [])
-      .map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
-    const lead = raw.find((l) => leadKey(l) === key);
-    if (!lead) return json(res, 404, { error: "Lead dorakaledu" });
-    const ph = digits10(lead.phone);
-    const same = raw.filter((l) => ph && digits10(l.phone) === ph).slice(0, 5);
-    const notesR = await guard.kvCommand(cfg, ["HGET", NOTES, key]).catch(() => ({}));
-    let notes = []; try { notes = JSON.parse((notesR && notesR.result) || "[]"); } catch (e) {}
-    let chat = [];
-    if (ph) { try { chat = ((await require("./_inbox.js").thread(cfg, ph)).msgs || []).slice(-24); } catch (e) {} }
-    const qual = ph ? await require("./_qualify.js").read(cfg, ph).catch(() => null) : null;
-    const brief = [
-      `Lead: ${lead.name || "?"} · ${lead.concern || ""} · source ${lead.type || ""} · ${new Date(lead.ts).toISOString().slice(0, 10)}`,
-      same.length > 1 ? "Earlier enquiries: " + same.slice(1).map((l) => `${new Date(l.ts).toISOString().slice(0, 10)} ${l.concern || ""}`).join("; ") : "",
-      qual && qual.facts ? "Known: " + JSON.stringify(qual.facts).slice(0, 400) : "",
-      lead.call_prep ? "Agent's note: " + lead.call_prep : "",
-      notes.length ? "Desk notes: " + notes.slice(0, 6).map((n) => `${n.by}: ${n.text}`).join(" | ") : "No calls yet.",
-      chat.length ? "Chat (latest last):\n" + chat.map((m) => `${m.dir === "in" ? "Patient" : "Clinic"}: ${String(m.text || "").slice(0, 220)}`).join("\n") : "No chat.",
-    ].filter(Boolean).join("\n");
-    try {
-      const r = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-        body: JSON.stringify({
-          model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 600,
-          system: "You prepare a receptionist at DermaLuxe skin & hair clinic, Eluru, for a phone call to an enquiry. Write in simple Tenglish (Telugu in English letters), at most 5 short lines, each starting with an emoji: 🗣 what they want (one line), 📞 how to open the call, ✅ what to offer next (a slot, a video consultation if they are far away), ⚠️ the objection to expect and one honest answer, ⏰ what time of day to ring, if the chat shows it. Facts only from the brief. Never promise a result, never quote a treatment price (consultation is ₹300; the hair transplant package is ₹59,999 all-inclusive up to 2,000 grafts till 6 Dec 2026), never name a medicine, never say anything is free except the hair transplant consultation till 6 Dec. If they are a job seeker or not a patient, say so in one line.",
-          messages: [{ role: "user", content: brief }],
-        }),
-      });
-      const d = await r.json().catch(() => ({}));
-      if (!r.ok) return json(res, 502, { error: "AI: " + String((d.error || {}).message || r.status).slice(0, 120) });
-      const script = String(((d.content || []).find((x) => x.type === "text") || {}).text || "").trim().slice(0, 1200);
-      if (!script) return json(res, 502, { error: "AI emi ivvaledu" });
-      await guard.kvCommand(cfg, ["SET", ck, script, "EX", "21600"]).catch(() => {});
-      return json(res, 200, { ok: true, script });
-    } catch (e) { return json(res, 502, { error: "AI: " + String(e.message || e).slice(0, 120) }); }
+    const out = await require("./_callscript.js").make(cfg, key);
+    if (!out.ok) return json(res, out.code || 502, { error: out.error });
+    return json(res, 200, { ok: true, script: out.script });
   }
   // The result of a call, in one write: the reason, the stage it puts the
   // lead in, and for a follow-up the day to ring again.

@@ -717,6 +717,9 @@
     #catchips button[data-cat="academy"],.cat.academy{background:var(--butter);border-color:var(--butter2);color:var(--butter-ink)}
     .cat{border:1px solid transparent}
     .sumbar{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--gd);border:1px solid var(--gd2);font-size:.85rem;line-height:1.5}
+    .callnote{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--butter);border:1px solid var(--butter2);font-size:.85rem}
+    .callnote summary{cursor:pointer;font-weight:600;color:var(--butter-ink)}
+    .callnote div{white-space:pre-wrap;line-height:1.55;margin-top:6px;color:var(--text)}
     .goalbox{margin-top:8px;padding:6px 10px;border-radius:10px;background:var(--mint);border:1px solid var(--mint2);color:var(--mint-ink);font-size:.82rem}
     .goalbox b{font-weight:600}
     .rankbox{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--pk);border:1px solid var(--pk2);font-size:.82rem;line-height:1.45}
@@ -1475,7 +1478,9 @@
           (l.waiting != null && l.next.kind !== "skip" && l.next.kind !== "done" ? ' <span class="wait' + (l.waiting > 3 * 3600000 ? " bad" : l.waiting > 30 * 60000 ? " warn" : "") + '">· ' + waitFor(l.waiting) + ' nundi waiting</span>' : "") + '</div>' : "") +
         (l.goal && l.goal.label ? '<div class="goalbox">🎯 <b>Goal:</b> ' + esc(l.goal.label) + (l.goal.next ? ' · <span class="meta">next: ' + esc(l.goal.next) + "</span>" : "") + "</div>" : "") +
         (l._rank ? '<div class="rankbox"><b>🎯 #' + l._rank + "</b> " + esc((l._why || []).join(" · ")) + (l._best ? ' <span class="best">⏰ ' + esc(l._best) + "</span>" : "") + "</div>" : "") +
-        (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '') +
+        (l.script && (l.status === "new" || l.status === "contacted")
+          ? '<details class="callnote" open><summary>📝 Staff ki note — em matladali, ela matladali</summary><div>' + esc(l.script) + "</div></details>"
+          : (l.call_prep ? '<div class="prep">📞 ' + esc(l.call_prep) + '</div>' : '')) +
         (l._older && l._older.length ? '<details class="older"><summary>📚 Inka ' + l._older.length + " paata enquir" + (l._older.length > 1 ? "ies" : "y") + "</summary>" +
           l._older.map(function (o) { var n0 = (o.notes || [])[0]; return '<div class="meta">• ' + esc(dmy(o.ts)) + " — " + esc(o.concern || o.message || "") + " · " + esc(o.status) + (n0 ? " · “" + esc(String(n0.text).slice(0, 80)) + "” — " + esc(n0.by) : "") + "</div>"; }).join("") + "</details>" : "") +
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
@@ -1485,7 +1490,7 @@
           ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="' + (src(l) === "facebook" ? "https://business.facebook.com/latest/inbox" : "https://www.instagram.com/direct/inbox/") + '">📩 ' + (src(l) === "facebook" ? "Facebook" : "Instagram") + ' lo reply</a><span class="meta">Number inka ivvaledu</span>'
           : '<span class="meta">No phone (DM lead)</span>')) +
         statusSelect(l) +
-        '<button class="btn btn--sm" data-act="cscript" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '">🤖 Em matladali</button>' +
+        '<button class="btn btn--sm" data-act="cscript" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '">' + (l.script ? "🤖 Note malli raayi" : "🤖 Em matladali") + "</button>" +
         (l.phone && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="share" data-kind="location" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">📍 Location</button>' +
           '<button class="btn btn--sm" data-act="share" data-kind="pay" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">💳 QR</button>' : '') +
         (NATIVE && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="lead" data-ref="' + esc(l.key) + '" data-who="' + esc(l.name || "") + '">📷 Photo</button>' : '') +

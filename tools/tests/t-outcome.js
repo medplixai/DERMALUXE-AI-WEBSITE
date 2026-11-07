@@ -74,6 +74,23 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   is(forged.code, 404, "and a link edited to another amount is refused");
   if (noUpi === undefined) delete process.env.UPI_VPA; else process.env.UPI_VPA = noUpi;
 
+  console.log("\n  — the caller's note, written ahead (owner, 8 Nov) —");
+  h.run(["DEL", "dl_leads"]);
+  const old = Date.now() - 2 * 3600000;
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: old, type: "whatsapp", name: "Ramya", phone: "9876500501", concern: "Pigmentation" })]);
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: old + 1000, type: "whatsapp", name: "Kiran", phone: "9876500502", concern: "Acne", slot_ts: "2026-12-01 11:00" })]);
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: Date.now() - 60000, type: "whatsapp", name: "Fresh", phone: "9876500503", concern: "Hair fall" })]);
+  const keepF = global.fetch, keepK = process.env.ANTHROPIC_API_KEY; let asked = 0;
+  process.env.ANTHROPIC_API_KEY = "test";
+  global.fetch = async (url) => { if (String(url).includes("anthropic")) { asked++; return { ok: true, json: async () => ({ content: [{ type: "text", text: "🗣 Pigmentation\n📞 Namaste Ramya garu" }] }) }; } return keepF(url); };
+  const cs = require(path.join(process.env.DL_API, "_callscript.js"));
+  const first = await cs.backfill(h.cfg || {}, 5);
+  const again = await cs.backfill(h.cfg || {}, 5);
+  global.fetch = keepF; if (keepK === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = keepK;
+  is([first.made, again.made, asked], [1, 0, 1], "a note is written for the unbooked lead only — not the booked one, not one the agent is still talking to — and only once");
+  const ramya = ((await call({ a: "data" }, null, OWNER)).body.leads || []).find((l) => l.name === "Ramya") || {};
+  is(/Namaste Ramya garu/.test(ramya.script || ""), true, "and the lead card carries it");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\ncall outcomes behave");
   process.exit(fails ? 1 : 0);
 })();
