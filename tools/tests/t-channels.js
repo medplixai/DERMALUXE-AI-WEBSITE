@@ -73,6 +73,13 @@ const hook = { token: "hook" };
   const dayAfter = facts.clinicFacts("Instagram", "");
   Date.now = realNow;
   is([/6 November 2026, 10:32 AM/.test(onTheDay), /NEVER invent one/.test(onTheDay), /GRAND OPENING/.test(dayAfter)], [true, true, false], "every agent knows the opening until the day is over, and stops inviting after it");
+  Date.now = () => Date.parse("2026-11-20T10:00:00+05:30");
+  const htOn = facts.clinicFacts("WhatsApp", "");
+  Date.now = () => Date.parse("2026-12-07T00:30:00+05:30");
+  const htOff = facts.clinicFacts("WhatsApp", "");
+  Date.now = realNow;
+  is([/₹59,999 all-inclusive/.test(htOn), /NEVER call the hair transplant or the surgery "free"/.test(htOn), /HAIR TRANSPLANT PACKAGE/.test(htOff)], [true, true, false],
+    "the hair transplant package is known until 6 December, never as 'free', and gone the day after");
   const hi = "Namaste andi, mee concern cheppandi.";
   is([facts.withAiLine(hi, true).endsWith(facts.AI_LINE), facts.withAiLine(hi, false), facts.withAiLine("Nenu clinic AI assistant ni andi.", true)],
     [true, hi, "Nenu clinic AI assistant ni andi."], "the first reply of a chat always says an AI is answering, once, even when the model forgets");

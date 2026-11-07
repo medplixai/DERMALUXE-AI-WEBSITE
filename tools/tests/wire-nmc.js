@@ -162,8 +162,12 @@ const RULES = [
     // academy sells training to students, and 8.1(x) is scoped to inducements
     // that encourage unnecessary medical consultation or solicit PATIENTS, so
     // academy fees and the launch offer are allowed and named below.
-    re: /\bfree (consultation|assessment|check.?up|camp|procedure|treatment|session)\b|\bspecial offer\b|\bflash offer\b|\b\d{1,2}% ?off\b|\bslots limited\b|\blimited period\b|\bcashback\b|ఉచిత (కన్సల్టేషన్|పరీక్ష)/gi,
-    allow: /NEVER|never|shall not|prohibit|forbid|8\.1\(x\)|academy|Academy|course|batch|trainee|student|used to/i },
+    // "consultation is free" and "కన్సల్టేషన్ ఉచితం" — the same claim with
+    // the words the other way round — walked past this rule until 7 Nov 2026.
+    re: /\bfree (consultation|assessment|check.?up|camp|procedure|treatment|session)\b|\b(consultation|assessment|check.?up|procedure|treatment|surgery) (is |are )?(free|FREE)\b|\bspecial offer\b|\bflash offer\b|\b\d{1,2}% ?off\b|\bslots limited\b|\blimited period\b|\bcashback\b|ఉచిత (కన్సల్టేషన్|పరీక్ష)|(కన్సల్టేషన్|పరీక్ష|సర్జరీ) ఉచితం/gi,
+    // data-owner="ht-offer-2026-11" is the one line the owner decided on:
+    // see the notice printed below. Any other line making the claim fails.
+    allow: /NEVER|never|shall not|prohibit|forbid|8\.1\(x\)|academy|Academy|course|batch|trainee|student|used to|data-owner="ht-offer-2026-11"/i },
   { clause: "3.2 Expl. V", what: "asking a patient for a review or a recommendation",
     re: /review (raas|raay|ivv)|write a review|Google review|review ivvagalara|recommend (cheyandi|chey)|రివ్యూ రాయండి/gi,
     // A rule telling the agent NOT to ask, and the refusal the owner's console
@@ -446,11 +450,21 @@ ok(stale.length === 0, stale.length
 ok(/docs\.regLine\(doc\.reg\)/.test(daily), "3.2 Expl. IV · the poster's doctor credit carries the number");
 ok(/docs\.regLine\("nikhitha"\)/.test(read("api/_trust.js")), "3.2 Expl. III · the WhatsApp doctor card carries it");
 
+// The owner's second decision, 7 Nov 2026: a hair transplant package of
+// ₹59,999 for 6 Nov – 6 Dec, with the hair transplant consultation free in
+// those dates. They were told first that a free procedure or consultation is
+// the "inducement for patients" 10.1(iv) grades SERIOUS, and chose to drop the
+// poster's "Hair transplant FREE" for an all-inclusive price, but to keep the
+// free consultation. The one line carrying it is marked data-owner; it is
+// named here on every run so the audit never reads as clean over it.
+const ownerOffer = files.filter((f) => /data-owner="ht-offer-2026-11"/.test(fs.readFileSync(f, "utf8"))).map((f) => path.relative(ROOT, f));
+if (ownerOffer.length) console.log("  !   8.1(x) · a free hair transplant consultation IS offered, by the owner's decision of 7 Nov 2026 (6 Nov – 6 Dec): " + ownerOffer.join(", "));
+
 console.log("");
 // The runner prints only this last line, so it has to carry the exception.
 // "nothing a patient should not read" over a published before/after would be
 // the audit telling a comfortable lie once a week.
 console.log(bad ? `${bad} problem(s) — a patient can still read these`
-  : decided.length ? `clean except the before/after photograph the owner decided to publish (8.1(v), 27 Oct 2026)`
+  : decided.length || ownerOffer.length ? "clean except what the owner decided to publish: " + [decided.length ? "the before/after photograph (8.1(v), 27 Oct)" : "", ownerOffer.length ? "a free hair transplant consultation (8.1(x), 7 Nov)" : ""].filter(Boolean).join(" and ")
   : "nothing a patient should not read");
 process.exit(bad ? 1 : 0);
