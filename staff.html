@@ -231,6 +231,18 @@
     .netbar.off{color:#c2410c;background:#fff7ed;border-color:#fed7aa}
     .netbar.sync{color:var(--g2);border-color:var(--line2)}
     .netbar.stale{color:var(--muted)}
+    /* 7 Nov: "Updated 40 min ago" took a whole bar — now a small line in the corner */
+    .netbar.stale:not(:empty){text-align:right;background:none;border:0;padding:0 4px;margin:-6px 0 2px;font-size:.75rem}
+    /* the four tiles belong to the Leads screen only (7 Nov, point 18) */
+    body[data-tab]:not([data-tab="leads"]) .stats{display:none}
+    .stat small{display:block;font-size:.75rem;color:var(--ok);margin-top:2px}
+    .fu-line{font-size:.76rem;color:var(--muted2);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 10px}
+    .fu-line b{color:var(--text);font-weight:500}
+    .oc{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:100px;border:1px solid var(--line);color:var(--g2);margin-left:6px}
+    .fu-due{margin:0 0 10px;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+    .seatlist{margin-top:10px;display:grid;gap:6px}
+    .seatlist div{font-size:.82rem;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+    .seats i.on{cursor:pointer}
     /* patient file */
     .daystrip{display:flex;gap:8px;overflow-x:auto;padding-bottom:6px;margin-bottom:10px}
     .daystrip button{flex:none;background:var(--panel);border:1px solid var(--line);color:var(--muted);
@@ -727,16 +739,16 @@
     <main class="wrap">
       <div class="netbar" id="netBar"></div>
       <div class="stats">
-        <div class="stat" data-act="seg-go" data-seg="today" role="button" tabindex="0"><b id="sToday"></b><span>Leads today</span></div>
+        <div class="stat" data-act="seg-go" data-seg="today" role="button" tabindex="0"><b id="sToday"></b><span>Leads today</span><small id="sTodayDone"></small></div>
         <div class="stat" data-act="seg-go" data-seg="call" role="button" tabindex="0"><b id="sHot"></b><span>🔥 Ippude call</span></div>
-        <div class="stat"><b id="sAppt"></b><span>Upcoming appts</span></div>
-        <div class="stat"><b id="sSeats"></b><span>Academy seats</span></div>
+        <div class="stat" data-act="tile-appts" role="button" tabindex="0"><b id="sAppt"></b><span>Upcoming appts</span></div>
+        <div class="stat" data-act="tile-seats" role="button" tabindex="0"><b id="sSeats"></b><span>Academy seats</span></div>
       </div>
 
       <section id="t-leads">
         <div class="filters">
           <input id="q" placeholder="Search name / phone / concern" />
-          <select id="fStatus"><option value="">All status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="booked">Booked</option><option value="visited">Visited</option><option value="closed">Closed</option></select>
+          <select id="fStatus"><option value="">All status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="o:noanswer">📵 Not answering</option><option value="fu:due">📅 Follow-up — ivala / late</option><option value="o:followup">📅 Need follow up (anni)</option><option value="o:thinking">🤔 Consultation kosam alochistunnaru</option><option value="o:notinterested">🚫 Not interested</option><option value="o:notravel">🚗 Not willing to travel</option><option value="booked">Booked</option><option value="visited">Visited</option><option value="closed">Closed</option></select>
           <select id="fSrc"><option value="">All sources</option><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="web">Website</option><option value="walkin">Walk-in / call</option></select>
           <select id="fDays"><option value="7">Last 7 days</option><option value="1">Today</option><option value="30">Last 30 days</option><option value="365" selected>All</option></select>
           <button class="btn btn--sm btn--gold hide" id="leadAdd">+ Kotha lead</button>
@@ -746,8 +758,10 @@
           <button data-seg="today">Ee roju<i id="segN1"></i></button>
           <button data-seg="wait">⏳ Waiting<i id="segN4"></i></button>
           <button data-seg="open">Book kaanivi<i id="segN2"></i></button>
+          <button data-seg="booked">✅ Book ayinavi<i id="segN5"></i></button>
+          <button data-seg="fu">📅 Follow-up<i id="segN6"></i></button>
           <button data-seg="mine">🙋 Naavi<i id="segN3"></i></button>
-          <button data-seg="all">Anni</button>
+          <button data-seg="all">Anni<i id="segN7"></i></button>
         </div>
         <div class="list" id="leadList"></div>
         <div id="leadMore" style="margin-top:10px;text-align:center"></div>
@@ -1319,6 +1333,8 @@
       // the tile went by the agent's old hot/warm guess, the group by the
       // grade — so the screen could say "2 to call" over an empty list.
       var hot = d.leads.filter(needsCall).length;
+      var todayDone = d.leads.filter(function (l) { return l.ts >= dayStart.getTime() && (l.lastCall || l.status !== "new"); }).length;
+      $("sTodayDone").textContent = todayDone ? "✓ " + todayDone + " call ayyayi" : "";
       $("sToday").textContent = today; $("sHot").textContent = hot; $("sAppt").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("sSeats").textContent = d.academy.booked + "/10";
       $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
@@ -1346,7 +1362,9 @@
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + '</h3><div class="meta">' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
         '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
-        '<div class="concern">' + esc(l.concern || l.message || "") + '</div>' +
+        '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc">' + esc(OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
+        (l.lastCall || l.fu ? '<div class="fu-line"><span>🗓 Lead: <b>' + esc(dmy(l.ts)) + "</b></span>" + (l.lastCall ? "<span>📞 Call: <b>" + esc(dmy(l.lastCall)) + "</b></span>" : "") +
+          (l.fu ? '<span>⏭ Next follow-up: <b style="color:' + (l.fu <= istToday() ? "var(--hot)" : "var(--text)") + '">' + esc(dmy(l.fu)) + "</b></span>" : "") + "</div>" : "") +
         (l.grade ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +
           ((l.why || []).length ? (l.village || l.since || l.prefers ? '<br>' : '') + esc((l.why || []).slice(0, 3).join(" · ")) : '') + '</div>' : '') +
         (l.next && l.status !== "closed" ? '<div class="nxt ' + esc(l.next.kind) + '">' + esc(l.next.text) +
@@ -1355,13 +1373,25 @@
         (l.message && l.concern && !compact ? '<div class="meta">“' + esc(l.message).slice(0, 160) + '”</div>' : '') +
         '<div class="acts">' +
         (l.phone ? '<a class="btn btn--sm btn--call" data-act="call" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '" data-phone="' + esc(l.phone) + '" href="tel:+91' + esc(l.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(l.phone) + '">💬 WhatsApp</a>' + (state.allow("inbox.view") && l.type === "whatsapp" ? '<button class="btn btn--sm" data-act="ib-open" data-phone="' + esc(l.phone) + '">🗨 Chat</button>' : '') : '<span class="meta">No phone (DM lead)</span>') +
-        '<select class="s-' + l.status + '" data-act="status" data-key="' + esc(l.key) + '">' + state.data.statuses.map(function (o) { return '<option value="' + o + '"' + (o === l.status ? ' selected' : '') + '>' + o.charAt(0).toUpperCase() + o.slice(1) + '</option>'; }).join("") + '</select>' +
+        statusSelect(l) +
+        (l.phone && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="share" data-kind="location" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">📍 Location</button>' +
+          '<button class="btn btn--sm" data-act="share" data-kind="pay" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">💳 QR</button>' : '') +
         (NATIVE && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="lead" data-ref="' + esc(l.key) + '" data-who="' + esc(l.name || "") + '">📷 Photo</button>' : '') +
         (state.allow("leads.delete") ? '<button class="btn btn--sm" data-act="delete" data-key="' + esc(l.key) + '" title="Delete lead">🗑</button>' : '') +
         '</div>' +
         '<div class="phwrap" data-kind="lead" data-ref="' + esc(l.key) + '"></div>' +
         '<div class="notes">' + notes + '<form class="noteform" data-act="note" data-key="' + esc(l.key) + '"><input placeholder="Call note… (e.g. spoke, coming Sat 5 PM)" maxlength="400" /><button class="btn btn--sm btn--gold" type="submit">Add</button></form></div>' +
         '</article>';
+    }
+    // The stage and the reason in one dropdown: the desk wanted "not answering,
+    // not interested, need follow up, not willing to travel" beside the stages.
+    function statusSelect(l) {
+      var cur = l.outcome && l.outcome !== "booked" && OUT_STATUS[l.outcome] === l.status ? "o:" + l.outcome : l.status;
+      var opts = [["new", "New"], ["contacted", "Contacted"], ["o:noanswer", "📵 Not answering"], ["o:followup", "📅 Need follow up"], ["o:thinking", "🤔 Consultation kosam alochistunnaru"],
+        ["o:notinterested", "🚫 Not interested"], ["o:notravel", "🚗 Not willing to travel"], ["booked", "Booked"], ["visited", "Visited"], ["closed", "Closed"]];
+      return '<select class="s-' + l.status + '" data-act="status" data-key="' + esc(l.key) + '">' + opts.map(function (o) {
+        return '<option value="' + o[0] + '"' + (o[0] === cur ? " selected" : "") + ">" + o[1] + "</option>";
+      }).join("") + "</select>";
     }
     // An empty group is a dead end unless it says where the work actually is.
     function emptyLeads(seg, counts) {
@@ -1463,11 +1493,25 @@
 
     // Somebody to ring now: an A grade, or an ungraded lead the agent called
     // hot, still open, not opted out, and not an academy enquiry.
+    // 7 Nov: the tile said 122 to call when 22 of them had been rung that day.
+    // A lead called today is off the list until tomorrow, and a follow-up
+    // comes back on its own date, not before.
     function needsCall(l) {
       if (!l || l.optedOut) return false;
       if (/^\s*academy/i.test(String(l.concern || ""))) return false;
       if (!(l.status === "new" || l.status === "contacted")) return false;
+      if (l.outcome === "followup") return !!l.fu && l.fu <= istToday();
+      if (l.lastCall && l.lastCall >= dayStartMs()) return false;
       return l.grade ? l.grade === "A" : l.heat === "hot";
+    }
+    function dayStartMs() { var t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); }
+    function fuDue(l) { return l.outcome === "followup" && l.fu && l.fu <= istToday() && (l.status === "new" || l.status === "contacted"); }
+    var OUT_LABEL = { noanswer: "📵 Not answering", callback: "🔁 Malli call", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Need follow up", notinterested: "🚫 Not interested", notravel: "🚗 Not willing to travel", booked: "✅ Booked for consultation" };
+    var OUT_STATUS = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked" };
+    function dmy(v) {
+      if (!v) return "";
+      var d = typeof v === "number" ? new Date(v) : new Date(v + "T00:00:00+05:30");
+      return new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(d);
     }
     // Nobody has touched this one yet.
     function untouched(l) {
@@ -1482,9 +1526,11 @@
       var base = d.leads.filter(function (l) { return !/^academy/i.test(String(l.concern || "")); });
       var myPhone = (d.me && d.me.phone) || "";
       var isMine = function (l) { return l.owner && l.owner === myPhone && (l.status === "new" || l.status === "contacted"); };
+      var isBooked = function (l) { return l.status === "booked" || l.status === "visited"; };
+      var isFu = function (l) { return l.outcome === "followup" && (l.status === "new" || l.status === "contacted"); };
       var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length,
         base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length,
-        base.filter(untouched).length];
+        base.filter(untouched).length, base.filter(isBooked).length, base.filter(isFu).length, base.length];
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
       var list = d.leads.filter(function (l) {
         if (seg === "call" && !isHotLead(l)) return false;
@@ -1492,21 +1538,30 @@
         if (seg === "open" && !(l.status === "new" || l.status === "contacted")) return false;
         if (seg === "mine" && !isMine(l)) return false;
         if (seg === "wait" && !untouched(l)) return false;
-        if (seg !== "call" && l.ts < since) return false;
-        if (fs && l.status !== fs) return false;
+        if (seg === "booked" && !isBooked(l)) return false;
+        if (seg === "fu" && !isFu(l)) return false;
+        if (seg !== "call" && seg !== "fu" && l.ts < since) return false;
+        if (fs === "fu:due") { if (!fuDue(l)) return false; }
+        else if (fs && fs.indexOf("o:") === 0) { if (l.outcome !== fs.slice(2)) return false; }
+        else if (fs && l.status !== fs) return false;
         if (fsrc && src(l) !== fsrc) return false;
         if (/^academy/i.test(String(l.concern || ""))) return false;
         if (q && (String(l.name) + " " + String(l.phone) + " " + String(l.concern) + " " + String(l.message)).toLowerCase().indexOf(q) === -1) return false;
         return true;
       }).sort(function (a, b) {
         if (seg === "wait") return (a.ts || 0) - (b.ts || 0);          // longest wait first
+        if (seg === "fu") return String(a.fu || "").localeCompare(String(b.fu || ""));   // soonest follow-up first
         var sa = a.status === "new" || a.status === "contacted" ? 0 : 1, sb = b.status === "new" || b.status === "contacted" ? 0 : 1;
         if (sa !== sb) return sa - sb;
         var gr = { A: 0, B: 1, C: 2, D: 3 };
         var ga = a.grade ? gr[a.grade] : (heatRank[a.heat || ""] || 0) + 0.5, gb = b.grade ? gr[b.grade] : (heatRank[b.heat || ""] || 0) + 0.5; if (ga !== gb) return ga - gb;
         return b.ts - a.ts;
       });
-      $("leadList").innerHTML = list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts);
+      // The day's follow-ups, said once at the top until they are done.
+      var due = base.filter(fuDue).length;
+      var banner = due && seg !== "fu" ? '<div class="fu-due"><span>📅 <b>Ivala ' + due + " follow-up" + (due > 1 ? "s" : "") + "</b> cheyyali</span>" +
+        '<button class="btn btn--sm btn--gold" data-act="seg-go" data-seg="fu">Chudandi</button></div>' : "";
+      $("leadList").innerHTML = banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts));
       paintMore();
     }
     // ---- the clinic day --------------------------------------------------
@@ -1533,7 +1588,8 @@
         out += '<h3 class="plan-h">Ee slots lo evarini pettochu — <span class="meta">records batti</span></h3>' +
           fill.map(function (f) {
             return '<div class="plan-row"><span><b>' + (LBL[f.kind] || "•") + " " + esc(f.name || f.phone) + "</b>" +
-              '<div class="meta">' + esc(f.why) + (f.sub ? " · " + esc(f.sub) : "") + "</div></span>" +
+              '<div class="meta">' + esc(f.why) + (f.sub ? " · " + esc(f.sub) : "") + "</div>" +
+              (f.said ? '<div class="meta" style="color:var(--g2)">' + esc(f.said) + "</div>" : "") + "</span>" +
               '<span class="acts"><a class="btn btn--sm btn--call" href="tel:+91' + esc(f.phone) + '">📞</a>' +
               '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(f.phone) + '">💬</a>' +
               (canEdit ? '<button class="btn btn--sm btn--gold" data-act="sch-book" data-ph="' + esc(f.phone) + '" data-name="' + esc(f.name || "") + '" data-why="' + esc(f.why) + '">Book</button>' : "") +
@@ -3482,6 +3538,20 @@
           ? '<button class="btn btn--sm" data-act="seat-note" data-key="' + esc(r.leadKey) + '" data-name="' + esc(r.name || "") + '">📝 Note</button>' : "") +
         "</div></article>";
     }
+    function seatSheet(r) {
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>🎓 ' + esc(r.name || "Student") + (r.id ? ' <span class="meta">· ' + esc(r.id) + "</span>" : "") + "</h2>" +
+        [["Course", ({ skin: "Skin Care", hair: "Hair Care", both: "Skin + Hair" }[r.course] || r.course || "—") + (r.duration ? " · " + r.duration : "")],
+         ["Phone", r.phone || "—"], ["Fee", "₹" + Number(r.fee || 0).toLocaleString("en-IN")], ["Paid", "₹" + Number(r.paid || 0).toLocaleString("en-IN")],
+         ["Balance", "₹" + Number(r.balance || 0).toLocaleString("en-IN")], ["Form", r.onboarded ? "✓ nimpaaru" : "inka ledu"],
+         ["Last note", r.lastNote ? r.lastNote.text + " — " + (r.lastNote.by || "") : "—"]]
+          .map(function (x) { return '<div class="brk"><span>' + x[0] + "</span><b>" + esc(x[1]) + "</b></div>"; }).join("") +
+        '<div class="acts" style="margin-top:12px">' + (r.phone ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(r.phone) + '">📞 Call</a><a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.phone) + '">💬 WhatsApp</a>' : "") +
+        '<button class="btn btn--sm btn--gold" data-close="1" style="flex:1">Close</button></div></div>';
+      wrap.addEventListener("click", function (e) { if (e.target.classList.contains("sheet-bg") || e.target.closest("[data-close]")) wrap.remove(); });
+      document.body.appendChild(wrap);
+    }
     function renderSeatBoard() {
       if (!funnel) return;
       var d = funnel;
@@ -3489,8 +3559,16 @@
       $("acadCount").innerHTML =
         "<div><b>" + d.deadline.offerDays + "</b><span>Rojulu — offer " + esc(d.deadline.offer) + "</span></div>" +
         "<div><b>" + d.seats.left + "</b><span>Seats migilayi</span></div>";
+      // Each taken seat is a person — tap for who (7 Nov, point 6).
+      var resv = d.rows.filter(function (r) { return r.stage === "reserved"; });
       $("seats").innerHTML = Array.from({ length: d.seats.total }).map(function (_, i) {
-        return '<i class="' + (i < d.seats.booked ? "on" : "") + '"></i>';
+        return i < d.seats.booked ? '<i class="on" data-act="seat" data-idx="' + i + '" title="' + esc((resv[i] || {}).name || "") + '"></i>' : "<i></i>";
+      }).join("") ;
+      var sl = $("seatList");
+      if (!sl) { sl = document.createElement("div"); sl.id = "seatList"; sl.className = "seatlist"; $("seats").insertAdjacentElement("afterend", sl); }
+      sl.innerHTML = resv.map(function (r, i) {
+        return '<div data-act="seat" data-idx="' + i + '">🎓 <b>' + (i + 1) + ". " + esc(r.name || r.phone) + "</b> · " + esc({ skin: "Skin", hair: "Hair", both: "Skin + Hair" }[r.course] || r.course || "") +
+          ' · Paid <b style="color:var(--ok)">₹' + Number(r.paid || 0).toLocaleString("en-IN") + "</b>" + (r.balance ? ' · Balance <b style="color:var(--warm)">₹' + Number(r.balance).toLocaleString("en-IN") + "</b>" : "") + "</div>";
       }).join("");
       $("seatMoney").innerHTML = "Collected <b style=\"color:var(--ok);font-weight:500\">₹" + Number(d.money.collected).toLocaleString("en-IN") +
         '</b> · Balance pending <b style="color:var(--warm);font-weight:500">₹' + Number(d.money.pending).toLocaleString("en-IN") + "</b>" +
@@ -4756,12 +4834,85 @@
     }
     function clearCall() { try { localStorage.removeItem(PEND); } catch (e) {} }
     var OUTCOMES = [
-      { k: "booked",    label: "✅ Booked",        status: "booked",    note: "Call — appointment book ayindi" },
-      { k: "callback",  label: "🔁 Malli call",    status: "contacted", note: "Call — malli call cheyyamannaru" },
-      { k: "noanswer",  label: "📵 Ettaledu",      status: "contacted", note: "Call — ettaledu" },
-      { k: "thinking",  label: "🤔 Alochistunnaru", status: "contacted", note: "Call — alochinchi cheptanannaru" },
-      { k: "no",        label: "🚫 Vaddannaru",    status: "closed",    note: "Call — interest ledu" },
+      { k: "booked",        label: "✅ Book for consultation", note: "Call — consultation book chesamu" },
+      { k: "callback",      label: "🔁 Malli call",    note: "Call — malli call cheyyamannaru" },
+      { k: "noanswer",      label: "📵 Ettaledu",      note: "Call — ettaledu" },
+      { k: "thinking",      label: "🤔 Consultation kosam alochistunnaru", note: "Call — consultation kosam alochinchi cheptanannaru" },
+      { k: "followup",      label: "📅 Need follow up", note: "Call — follow-up" },
+      { k: "notravel",      label: "🚗 Raalemu (dooram)", note: "Call — travel cheyyalemu annaru" },
+      { k: "notinterested", label: "🚫 Vaddannaru",    note: "Call — interest ledu" },
     ];
+    // One write for what the call came to; the server sets the stage from it.
+    function saveOutcome(key, o, fu, extraNote) {
+      var lead = (state.data.leads || []).filter(function (x) { return x.key === key; })[0];
+      var o2 = OUTCOMES.filter(function (x) { return x.k === o; })[0];
+      var text = [o2 ? o2.note : "Call chesamu", fu ? "next " + dmy(fu) : "", extraNote].filter(Boolean).join(" — ").slice(0, 380);
+      if (lead) { lead.outcome = o; lead.fu = fu || ""; lead.status = OUT_STATUS[o]; lead.lastCall = Date.now(); lead.notes = [{ ts: Date.now(), by: state.data.me.name, text: text }].concat(lead.notes || []); renderLeads(); saveCache(state.data); }
+      return Promise.all([api("note", { key: key, text: text, at: Date.now() }), api("outcome", { key: key, outcome: o, fu: fu || "", at: Date.now() })])
+        .then(function () { toast(OUT_LABEL[o] + (fu ? " · " + dmy(fu) : "")); return load(true); })
+        .catch(function (e) { toast(e.message); load(true).catch(function () {}); });
+    }
+    // Follow-up: a date, then save.
+    function askFollowUp(key, name, cb) {
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      var tm = new Date(Date.now() + 86400000 + 330 * 60000);
+      if (tm.getUTCDay() === 0) tm = new Date(tm.getTime() + 86400000);   // not a Sunday
+      var tmr = tm.toISOString().slice(0, 10);
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>📅 ' + esc(name || "Lead") + " — follow-up eppudu?</h2>" +
+        '<input id="fuDate" type="date" min="' + istToday() + '" value="' + tmr + '" style="width:100%;margin:10px 0;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:11px 13px" />' +
+        '<input id="fuNote" placeholder="Em annaru? (optional)" maxlength="200" style="width:100%;margin-bottom:10px;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:11px 13px" />' +
+        '<button class="btn btn--gold" id="fuSave" style="width:100%">Save</button><button class="btn btn--sm" id="fuSkip" style="margin-top:9px;width:100%">Vaddu</button></div>';
+      document.body.appendChild(wrap);
+      var close = function () { wrap.remove(); };
+      wrap.querySelector(".sheet-bg").onclick = close; wrap.querySelector("#fuSkip").onclick = function () { close(); if (cb) cb(false); };
+      wrap.querySelector("#fuSave").onclick = function () {
+        var d = wrap.querySelector("#fuDate").value;
+        if (!d) { toast("Date ivvandi"); return; }
+        close(); saveOutcome(key, "followup", d, (wrap.querySelector("#fuNote").value || "").trim()); if (cb) cb(true);
+      };
+    }
+    // Book for consultation: day and time, then the appointment, and the
+    // payment QR / location to the patient if asked for (7 Nov, point 12).
+    function askBooking(l, cb) {
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      var times = []; for (var h = 9; h < 21; h++) { [0, 30].forEach(function (m) { times.push((h < 10 ? "0" : "") + h + ":" + (m ? "30" : "00")); }); }
+      var lab = function (t) { var hh = Number(t.slice(0, 2)), ap = hh >= 12 ? "PM" : "AM"; return ((hh % 12) || 12) + ":" + t.slice(3) + " " + ap; };
+      var inp = 'style="width:100%;margin:6px 0;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:11px 13px"';
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>✅ ' + esc(l.name || "Patient") + " — consultation book</h2>" +
+        '<input id="bkDate" type="date" min="' + istToday() + '" value="' + istToday() + '" ' + inp + " />" +
+        '<select id="bkTime" ' + inp + ">" + times.map(function (t) { return '<option value="' + t + '"' + (t === "11:00" ? " selected" : "") + ">" + lab(t) + "</option>"; }).join("") + "</select>" +
+        '<label class="meta" style="display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="bkPay" /> 💳 Payment QR WhatsApp lo pampu</label>' +
+        '<label class="meta" style="display:flex;gap:8px;align-items:center;margin:0 0 10px"><input type="checkbox" id="bkLoc" checked /> 📍 Clinic location pampu</label>' +
+        '<button class="btn btn--gold" id="bkSave" style="width:100%">Book cheyyi</button><button class="btn btn--sm" id="bkSkip" style="margin-top:9px;width:100%">Vaddu</button></div>';
+      document.body.appendChild(wrap);
+      var close = function () { wrap.remove(); };
+      wrap.querySelector(".sheet-bg").onclick = close; wrap.querySelector("#bkSkip").onclick = function () { close(); if (cb) cb(false); };
+      wrap.querySelector("#bkSave").onclick = function () {
+        var d = wrap.querySelector("#bkDate").value, t = wrap.querySelector("#bkTime").value;
+        var at = Date.parse(d + "T" + t + ":00+05:30");
+        if (!d || !(at > Date.now() - 600000)) { toast("Date / time sarigga ledu"); return; }
+        if (new Date(at + 330 * 60000).getUTCDay() === 0) { toast("Aadivaaram clinic close — vere roju choose cheyandi"); return; }
+        var wantPay = wrap.querySelector("#bkPay").checked, wantLoc = wrap.querySelector("#bkLoc").checked;
+        wrap.querySelector("#bkSave").disabled = true;
+        var mk = state.allow("appts.edit")
+          ? schapi("create", { ph: l.phone, name: l.name || "Patient", concern: l.concern || "", at: at, mins: 30 }).catch(function (e) {
+              if (e.status === 409 && confirm(e.message + "\n\nAyina book cheyyala?")) return schapi("create", { ph: l.phone, name: l.name || "Patient", concern: l.concern || "", at: at, mins: 30, force: true });
+              throw e;
+            })
+          : Promise.resolve();
+        mk.then(function () {
+          close();
+          var shares = [];
+          if (wantPay) shares.push(api("share", { phone: l.phone, name: l.name || "", kind: "pay" }));
+          if (wantLoc) shares.push(api("share", { phone: l.phone, name: l.name || "", kind: "location" }));
+          Promise.all(shares).catch(function (e) { toast(e.message); });
+          saveOutcome(l.key, "booked", "", dmy(at) + " " + lab(t));
+          if (cb) cb(true);
+        }).catch(function (e) { wrap.querySelector("#bkSave").disabled = false; toast(e.message); });
+      };
+    }
     function askCallResult(pc) {
       var mins = Math.max(1, Math.round((Date.now() - pc.at) / 60000));
       var wrap = document.createElement("div");
@@ -4780,30 +4931,33 @@
       wrap.querySelectorAll("[data-out]").forEach(function (btn) {
         btn.onclick = function () {
           picked = OUTCOMES.filter(function (o) { return o.k === btn.dataset.out; })[0];
-          wrap.querySelectorAll("[data-out]").forEach(function (x) { x.style.borderColor = ""; x.style.color = ""; });
-          btn.style.borderColor = "var(--g3)"; btn.style.color = "var(--g1)";
           haptic();
+          var lead = (state.data.leads || []).filter(function (x) { return x.key === pc.key; })[0] || { key: pc.key, name: pc.name, phone: pc.phone };
+          if (picked.k === "booked") { close(); askBooking(lead); return; }
+          if (picked.k === "followup") { close(); askFollowUp(pc.key, pc.name); return; }
           save();
         };
       });
       function save() {
         var extra = (wrap.querySelector("#cnText").value || "").trim();
         if (!picked && !extra) { close(); return; }
-        var text = [picked ? picked.note : "Call chesamu", extra].filter(Boolean).join(" — ").slice(0, 380);
-        var jobs = [api("note", { key: pc.key, text: text })];
-        if (picked) jobs.push(api("status", { key: pc.key, status: picked.status }));
         close();
-        Promise.all(jobs).then(function () { toast("Note save ayindi"); return load(true); }).catch(function (e) { toast(e.message); });
+        if (picked) { saveOutcome(pc.key, picked.k, "", extra); return; }
+        api("note", { key: pc.key, text: ["Call chesamu", extra].join(" — ").slice(0, 380) }).then(function () { toast("Note save ayindi"); return load(true); }).catch(function (e) { toast(e.message); });
       }
       wrap.querySelector("#cnForm").onsubmit = function (e) { e.preventDefault(); save(); };
       wrap.querySelector("#cnSkip").onclick = close;
       wrap.querySelector(".sheet-bg").onclick = close;
     }
+    document.addEventListener("visibilitychange", function () { if (!document.hidden && !NATIVE) checkPendingCall(); });
     function checkPendingCall() {
       var pc = pendingCall();
       if (!pc) return;
       var age = Date.now() - pc.at;
-      if (age < 12000 || age > 45 * 60000) { if (age > 45 * 60000) clearCall(); return; }
+      // A call nobody picked up lasts a few seconds; the old 12-second floor
+      // meant the question never came for exactly those (7 Nov, point 19).
+      if (age > 45 * 60000) { clearCall(); return; }
+      if (age < 2500) { setTimeout(checkPendingCall, 2600 - age); return; }
       if (document.querySelector(".sheet.open")) return;
       askCallResult(pc);
     }
@@ -5119,15 +5273,38 @@
       schSend("create", { ph: ph2, name: nm5, concern: cn, at: at2, mins: mn6 }, "Book ayindi, patient ki cheppamu");
     };
     if ($("ptQ")) { var ptT; $("ptQ").addEventListener("input", function () { clearTimeout(ptT); ptT = setTimeout(loadPatients, 260); }); }
-    ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) { $(id).addEventListener("input", renderLeads); });
+    // A status picked while "Ippude call" was on showed nothing — that group is
+    // already only new/contacted A's (7 Nov, "filters not working"). Picking a
+    // filter now looks across every lead.
+    ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) {
+      $(id).addEventListener(id === "q" ? "input" : "change", function () {
+        var on = document.querySelector("#segs button.on");
+        var narrow = on && ["call", "wait", "mine", "today", "open", "booked", "fu"].indexOf(on.dataset.seg) !== -1;
+        if (narrow && (id !== "q" || $("q").value.trim().length > 1) && (id !== "fDays")) {
+          document.querySelectorAll("#segs button").forEach(function (x) { x.classList.toggle("on", x.dataset.seg === "all"); });
+        }
+        renderLeads();
+      });
+    });
     // Searching, or asking for everything, means the older pages are actually
     // wanted — fetch them then, and only then.
     $("q").addEventListener("input", function () { if ($("q").value.trim().length > 1) loadRest("Anni leads lo vetukutunna…"); });
     $("fDays").addEventListener("change", function () { if (Number($("fDays").value) > 30) loadRest(); });
     document.addEventListener("change", function (e) {
       var el = e.target;
+      if (el.dataset.act === "status" && el.value.indexOf("o:") === 0) {
+        var ko = el.dataset.key, ov = el.value.slice(2);
+        var lo = state.data.leads.find(function (x) { return x.key === ko; });
+        if (ov === "followup") { askFollowUp(ko, lo && lo.name, function (ok) { if (!ok) renderLeads(); }); return; }
+        saveOutcome(ko, ov, "", "");
+        return;
+      }
       if (el.dataset.act === "status") {
         var k = el.dataset.key, v = el.value;
+        if (v === "booked") {
+          var lb = state.data.leads.find(function (x) { return x.key === k; });
+          if (lb && lb.phone) { askBooking(lb, function (ok) { if (!ok) renderLeads(); }); return; }
+        }
         var l = state.data.leads.find(function (x) { return x.key === k; });
         var before = l ? l.status : null;
         if (l) l.status = v;                        // show it straight away
@@ -5191,6 +5368,8 @@
         // let the tel: link do its thing, then ask about it on the way back
         rememberCall(el.dataset.key, el.dataset.name, el.dataset.phone);
         haptic();
+        // In a browser there is no "back from the dialer" moment to hook.
+        if (!NATIVE) setTimeout(checkPendingCall, 6000);
         return;
       }
       if (el.dataset.act === "photo") {
@@ -5223,6 +5402,26 @@
         var at4 = askTime(schDay, "Eppudu? (e.g. 3:30 pm) — " + schDay);
         if (!at4) return;
         schSend("create", { ph: el.dataset.ph, name: el.dataset.name || "Patient", concern: el.dataset.why || "", at: at4, mins: 30 }, "Book ayindi, patient ki cheppamu");
+        return;
+      }
+      if (el.dataset.act === "share") {
+        var what = el.dataset.kind === "pay" ? "consultation payment QR" : "clinic location";
+        if (!confirm((el.dataset.name || el.dataset.phone) + " ki WhatsApp lo " + what + " pampanaa?")) return;
+        el.disabled = true;
+        api("share", { phone: el.dataset.phone, name: el.dataset.name || "", kind: el.dataset.kind })
+          .then(function (j) { toast((el.dataset.kind === "pay" ? "QR" : "Location") + " pampamu" + (j.via === "template" ? " (template lo)" : "")); })
+          .catch(function (x) { toast(x.message); }).finally(function () { el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "tile-appts") { goTab("appts"); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+      if (el.dataset.act === "tile-seats") {
+        goTab("academy");
+        setTimeout(function () { var s2 = $("seats"); if (s2) s2.scrollIntoView({ behavior: "smooth", block: "center" }); }, 300);
+        return;
+      }
+      if (el.dataset.act === "seat") {
+        var row = funnel && funnel.rows.filter(function (r) { return r.stage === "reserved"; })[Number(el.dataset.idx)];
+        if (row) seatSheet(row);
         return;
       }
       if (el.dataset.act === "seg-go") {
@@ -5852,7 +6051,8 @@
       return fetch(ORIGIN + "/api/academy?a=" + a, opt).then(function (r) { return r.json().then(function (j) { if (!r.ok) throw new Error(j.error || ("HTTP " + r.status)); return j; }); });
     }
     var students = [];
-    function loadStudents() { sapi("list").then(function (j) { students = j.students || []; renderStudents(); fillThumbs(); }).catch(function (e) { toast(e.message); }); }
+    var studBatch = null;
+    function loadStudents() { sapi("list").then(function (j) { students = j.students || []; studBatch = j.batch || null; renderStudents(); fillThumbs(); }).catch(function (e) { toast(e.message); }); }
     function money(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
     // Where this student is, in one line and one bar. The server works it out
     // from what was already stored — start date, fee, form, certificate — so
@@ -5896,6 +6096,8 @@
           // A form filled wrong could not be filled again, and a student
           // entered by mistake could not be removed. Both existed on the
           // server and neither had a button.
+          (studBatch && state.allow("academy.edit") && Number(s.batch) !== Number(studBatch.no) && String(s.startISO || "") < String(studBatch.startISO || "") && s.status !== "completed" ?
+            '<button class="btn btn--sm btn--gold" data-sact="move-batch" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '">🗓 Batch ' + esc(studBatch.no) + " (" + esc(studBatch.start) + ") ki marchu</button>" : "") +
           (s.onboarded && state.allow("academy.edit") ? '<button class="btn btn--sm" data-sact="reopen" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '">↩ Form malli</button>' : "") +
           (state.allow("academy.delete") ? '<button class="btn btn--sm" data-sact="delete" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '" style="color:var(--bad)">Teesey</button>' : "") +
           '</div><div class="notes">' + notes + '<form class="noteform" data-sact="note" data-id="' + esc(s.id) + '"><input placeholder="Note…" maxlength="300" /><button class="btn btn--sm" type="submit">Add</button></form></div></article>';
@@ -5916,6 +6118,10 @@
       if (act === "material") { return sapi("material", { id: id }).then(function (j) { if (!j.paid) { toast("Payment record ledu — material lock lo undi"); return; } return copyText(j.day1, "Day 1 material link copy ayindi — roju material automatic ga veltundi"); }).catch(function (x) { toast(x.message); }); }
       if (act === "send") { return sapi("send", { id: id, which: ["admission", "idcard"] }).then(function () { toast("Documents sent on WhatsApp"); }).catch(function (x) { toast(x.message); }); }
       if (act === "certify") { var g = prompt("Grade (A/B/C):", "A"); if (!g) return; if (!confirm("Generate and send the certificate?")) return; return sapi("certify", { id: id, grade: g }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Certificate sent 🎓"); }).catch(function (x) { toast(x.message); }); }
+      if (act === "move-batch") {
+        if (!confirm(el.dataset.name + " ni Batch " + studBatch.no + " (" + studBatch.start + ") ki marchanaa?\n\nTraining aa roju nunchi lekkapedtam.")) return;
+        return sapi("move-batch", { id: id }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Batch " + studBatch.no + " ki marcham"); }).catch(function (x) { toast(x.message); });
+      }
       if (act === "reopen") {
         if (!confirm(el.dataset.name + " ki form malli terichi kotha link ivvanaa?\n\nVaallu mundu nimpinadi marchagalaru.")) return;
         return sapi("reopen", { id: id }).then(function (j) {

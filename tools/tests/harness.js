@@ -103,6 +103,8 @@ stub("_notify.js", {
   leadAlert: async (...a) => { sent.push(["lead", ...a]); return true; },
   teamSend: async (cfg, ...a) => { sent.push(["wa", ...a]); return true; },   // the window check is tested on the real module
   markWindow: async () => {},
+  windowOpen: async () => true,
+  sendWaLocation: async (...a) => { sent.push(["loc", ...a]); return true; },
   aiFailed: async (r) => { try { return String(await r.text()); } catch (e) { return ""; } },
   sendWaTemplate: async (...a) => { sent.push(["tpl", ...a]); return { ok: true }; },
   sendWaButtons: async (...a) => { sent.push(["btn", ...a]); return true; },       // boolean, like sendWa

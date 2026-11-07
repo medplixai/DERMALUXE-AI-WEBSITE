@@ -27,6 +27,18 @@ module.exports = async (req, res) => {
   const ip = guard.getIp(req);
   const rl = await guard.rateLimit(cfg, `rl:pay:${ip}`, 60, 3600);
   if (!rl.allowed) return json(res, 429, { error: "Konchem sepu aagi try cheyandi" });
+  // The consultation QR a colleague sends from the lead card: a PNG for an
+  // amount signed by the server, so nobody can mint one for another figure.
+  if (req.method === "GET" && q.qr) {
+    const amt = Math.round(Number(q.qr) || 0);
+    if (!(amt > 0) || !pay.okSig("qr:" + amt, t)) return json(res, 404, { error: "Ee link sarigga ledu" });
+    const u = pay.upi(amt, "consult");
+    if (!u) return json(res, 404, { error: "UPI not set" });
+    const png = await require("qrcode").toBuffer(u.url, { type: "png", margin: 2, width: 600, errorCorrectionLevel: "M" });
+    res.setHeader("Content-Type", "image/png");
+    res.setHeader("Cache-Control", "public, max-age=86400");
+    return res.status(200).send(png);
+  }
   if (!pay.okSig(id, t)) return json(res, 404, { error: "Ee link sarigga ledu — clinic ni adagandi" });
   const bill = await money.getBill(cfg, id);
   if (!bill) return json(res, 404, { error: "Bill dorakaledu" });

@@ -944,6 +944,7 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
         if (!hadSame) {
           await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(Object.assign({
             ph: phone, name: unnamed ? "" : lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 60),
+            label: unnamed ? lead.name : undefined,   // the desk's label; reminders still greet without it
           }, family.length ? { pax: family.length + 1, with: family.map((f) => f.name).join(", ") } : {}))]);
           bookedNow = at; // advance ask only on a NEW/changed slot
         }

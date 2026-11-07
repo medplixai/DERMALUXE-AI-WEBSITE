@@ -129,13 +129,16 @@ async function callList(cfg, when) {
   const tomorrow = istDay(Date.now() + 86400000);
   const appts = (((await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]).catch(() => ({}))).result) || []).map((x) => parse(x, null))
     .filter((a) => a && a.at > Date.now() && [today, tomorrow].includes(istDay(a.at))).sort((a, b) => a.at - b.at);
-  if (!open.length && !appts.length) return null;
+  const fus = await hashOf(cfg, "dl_fu");
+  const due = rows.filter((l) => { const f = fus[leadKey(l)]; return f && f <= today && ["contacted", "new"].includes(status[leadKey(l)] || "new"); });
+  if (!open.length && !appts.length && !due.length) return null;
   const at = (ts) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(ts));
   return [
     `📋 *Call list* (${when})`,
     appts.length ? `\n📅 *Appointments*\n${appts.map((a) => `• ${at(a.at)} — ${a.name || "?"} ${a.ph} — ${String(a.concern || "").slice(0, 40)}`).join("\n")}` : "",
     open.length ? `\n📞 *Inka call cheyyani leads* (${open.length})\n${open.slice(0, 25).map((l) => `• ${l.name || "?"} ${ten(l.phone)} — ${String(l.concern || "").slice(0, 40)}${l.slot ? ` (${[l.date, l.slot].filter(Boolean).join(" ")})` : ""}`).join("\n")}` : "",
     open.length > 25 ? `…inka ${open.length - 25}` : "",
+    due.length ? `\n📅 *Ivala follow-up* (${due.length})\n${due.slice(0, 20).map((l) => `• ${l.name || "?"} ${ten(l.phone)} — ${String(l.concern || "").slice(0, 40)}${fus[leadKey(l)] < today ? " (" + fus[leadKey(l)] + " nundi)" : ""}`).join("\n")}` : "",
     "\nCall chesaka app lo status marchandi.",
   ].filter(Boolean).join("\n");
 }

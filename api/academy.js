@@ -224,7 +224,7 @@ module.exports = async (req, res) => {
   // One capability per action, so the owner can hand out fee entry without
   // handing out certificates (and so on) from the Control panel.
   const NEED = {
-    create: "academy.edit", status: "academy.edit", note: "academy.edit", reopen: "academy.edit", link: "academy.edit",
+    create: "academy.edit", status: "academy.edit", note: "academy.edit", reopen: "academy.edit", link: "academy.edit", "move-batch": "academy.edit",
     pay: "academy.money", send: "academy.docs", material: "academy.material",
     certify: "academy.certify", delete: "academy.delete",
   };
@@ -463,6 +463,15 @@ module.exports = async (req, res) => {
     const st = String(b.status || "");
     if (!["enquiry", "enrolled", "active", "completed", "dropped"].includes(st)) return json(res, 400, { error: "bad status" });
     s.status = st; await putSt(cfg, s);
+    return json(res, 200, { ok: true, student: withProgress(s) });
+  }
+  // Batch 1 (20 October) never ran; it moved to 10 November. A student
+  // admitted for it still carries the old date, and on 7 Nov the screen said
+  // "day 19 / 30" for training that had not begun. One tap moves them to the
+  // batch that is actually starting.
+  if (a === "move-batch") {
+    s.batch = docs.BATCH.no; s.startISO = docs.BATCH.startISO;
+    await putSt(cfg, s);
     return json(res, 200, { ok: true, student: withProgress(s) });
   }
   if (a === "link") return json(res, 200, { ok: true, url: `${BASE}/academy-join.html?t=${linkToken(s.id)}` });

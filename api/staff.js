@@ -10,6 +10,12 @@ const notify = require("./_notify.js");
 
 const LEADS = "dl_leads", STATUS = "dl_status", NOTES = "dl_notes", USERS = "staff:users";
 const STATUS_TS = "dl_status_ts";           // when each status was last set, for offline writes
+// What the call actually came to, beside the five-way status: the desk asked
+// on 7 Nov for "not answering / not interested / need follow up / not willing
+// to travel", and a date to ring back on. The status stays the coarse stage
+// everything else counts by; this is the reason, and the date.
+const OUTCOME = "dl_outcome", FOLLOW = "dl_fu";
+const OUTCOMES = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked" };
 // A client-supplied timestamp, clamped so a wrong phone clock cannot file a
 // note in the future or resurrect a very old one.
 function stamp(v) {
@@ -282,12 +288,13 @@ async function leadPage(cfg, offset, count) {
   const raw = (lr.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
   const keys = raw.map(leadKey);
   const qual = require("./_qualify.js");
-  const [st, notes, stTs, grades, optOut, owner, users] = await Promise.all([
+  const [st, notes, stTs, grades, optOut, owner, users, outc, fus] = await Promise.all([
     hashSome(cfg, STATUS, keys), hashSome(cfg, NOTES, keys), hashSome(cfg, STATUS_TS, keys),
     qual.forPhones(cfg, raw.map((l) => l.phone)),
     guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({})),
     hashSome(cfg, "lead:owner", keys),
     hashAll(cfg, USERS),
+    hashSome(cfg, OUTCOME, keys), hashSome(cfg, FOLLOW, keys),
   ]);
   // Who this lead was dealt to, by name — so a colleague can see "naavi".
   const nameOf = (ph) => { try { return (JSON.parse(users[ph] || "{}").name) || ph; } catch (e) { return ph; } };
@@ -299,6 +306,10 @@ async function leadPage(cfg, offset, count) {
     const status = STATUSES.includes(st[k]) ? st[k] : "new";
     const base = Object.assign(trimLead(l), { key: k, status, notes: n, phone: ph, optedOut: off.has(ph) });
     if (owner[k]) { base.owner = owner[k]; base.ownerName = nameOf(owner[k]); }
+    if (outc[k] && OUTCOMES[outc[k]]) base.outcome = outc[k];
+    if (fus[k]) base.fu = fus[k];
+    const calls = n.filter((x) => /^call\b/i.test(String(x.text || "")));
+    if (calls.length) base.lastCall = Math.max(...calls.map((x) => Number(x.ts) || 0));
     // The grade and, from it, the one thing to do next — and how long this
     // person has been waiting for somebody to do it.
     const rec = grades[ph];
@@ -675,7 +686,70 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["HSET", STATUS, key, s]);
     await guard.kvCommand(cfg, ["HSET", STATUS_TS, key, String(at)]).catch(() => {});
     await guard.kvCommand(cfg, ["HSET", "dl_status_by", key, me.phone]).catch(() => {});   // who moved it — for incentives
+    // A plain stage change replaces whatever reason was on file.
+    await guard.kvCommand(cfg, ["HDEL", "dl_outcome", key]).catch(() => {});
+    await guard.kvCommand(cfg, ["HDEL", "dl_fu", key]).catch(() => {});
     return json(res, 200, { ok: true, at });
+  }
+  // The result of a call, in one write: the reason, the stage it puts the
+  // lead in, and for a follow-up the day to ring again.
+  if (a === "outcome") {
+    if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
+    const o = String(b.outcome || "");
+    if (!key || !OUTCOMES[o]) return json(res, 400, { error: "key + valid outcome required" });
+    const fu = /^\d{4}-\d{2}-\d{2}$/.test(String(b.fu || "")) ? String(b.fu) : "";
+    if (o === "followup" && !fu) return json(res, 400, { error: "Follow-up ki date ivvandi" });
+    const at = stamp(b.at);
+    await guard.kvCommand(cfg, ["HSET", STATUS, key, OUTCOMES[o]]);
+    await guard.kvCommand(cfg, ["HSET", STATUS_TS, key, String(at)]).catch(() => {});
+    await guard.kvCommand(cfg, ["HSET", "dl_status_by", key, me.phone]).catch(() => {});
+    await guard.kvCommand(cfg, ["HSET", "dl_outcome", key, o]);
+    if (fu) await guard.kvCommand(cfg, ["HSET", "dl_fu", key, fu]);
+    else await guard.kvCommand(cfg, ["HDEL", "dl_fu", key]).catch(() => {});
+    return json(res, 200, { ok: true, status: OUTCOMES[o], outcome: o, fu, at });
+  }
+  // Location pin or the consultation payment QR, sent to the patient's
+  // WhatsApp from the lead card (7 Nov: "share location, share QR for payment").
+  // Inside the 24-hour window the real pin / QR picture goes; outside it the
+  // same thing as a line of text in the approved clinic_update template.
+  if (a === "share") {
+    if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
+    const phone = digits10(b.phone), kind = String(b.kind || "");
+    if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit number ledu" });
+    const first = clean(b.name, 40).split(" ")[0] || "friend";
+    const open = await notify.windowOpen(cfg, phone);
+    const ADDR = "Rama Mahal, R.R. Peta, Kasturi Vari Street, Opp. Happy Mobiles, Eluru";
+    let sent = false, text = "";
+    if (kind === "location") {
+      text = `📍 DermaLuxe by Medicare — ${ADDR}. Mon–Sat 9 AM – 9 PM.`;
+      if (open) sent = (await notify.sendWaLocation(phone)) && (await notify.sendWa(phone, text + "\nReach ayyaka reception lo mee peru cheppandi 🙏"));
+      else sent = !!(await notify.sendWaTemplate(phone, "clinic_update", [first, `Mana clinic address: ${ADDR} (Happy Mobiles ki edurugaa). Mon–Sat 9 AM – 9 PM. Map kavali ante ee message ki reply cheyandi.`])).ok;
+    } else if (kind === "pay") {
+      const prices = await require("./_prices.js").load(cfg).catch(() => ({}));
+      const amt = Math.round(Number(b.amount) || Number(prices && prices.consult) || 300);
+      const pay = require("./_pay.js");
+      const u = pay.upi(amt, "consult");
+      if (!u) return json(res, 400, { error: "UPI ID (UPI_VPA) set cheyyaledu — owner ki cheppandi" });
+      text = `💳 Consultation fee ₹${amt} — UPI ID: ${u.vpa} (GPay / PhonePe / Paytm). Pay chesaka screenshot leda PAID ani reply cheyandi, team confirm chestundi.`;
+      if (open) {
+        const base = String(process.env.PUBLIC_BASE || "https://www.dermaluxe.ai").replace(/\/+$/, "");
+        const qr = `${base}/api/pay?qr=${amt}&t=${pay.sig("qr:" + amt)}`;
+        sent = await notify.sendWaImageLink(phone, qr, text);
+        if (!sent) sent = await notify.sendWa(phone, text + "\n" + u.url);
+      } else sent = !!(await notify.sendWaTemplate(phone, "clinic_update", [first, text])).ok;
+    } else return json(res, 400, { error: "kind = location | pay" });
+    if (!sent) return json(res, 502, { error: "WhatsApp veldaledu — patient ki call chesi cheppandi" });
+    try { await require("./_inbox.js").log(cfg, phone, { dir: "out", text, by: me.name }); } catch (e) {}
+    // The agent reads its own history, not the inbox: tell it what went, so a
+    // "PAID" or "ekkada?" reply makes sense to it.
+    try {
+      const hk = `wa:h:${phone}`;
+      const cur = await guard.kvCommand(cfg, ["GET", hk]);
+      const hist = cur && cur.result ? JSON.parse(cur.result) : [];
+      hist.push({ u: "(staff nunchi message)", a: kind === "pay" ? `[Staff consultation payment QR / UPI pampincharu — patient PAID ante thank cheppi, team verify chesi confirm chestundi ani cheppu]` : "[Staff clinic location pampincharu]" });
+      await guard.kvCommand(cfg, ["SET", hk, JSON.stringify(hist.slice(-12)), "EX", "86400"]);
+    } catch (e) {}
+    return json(res, 200, { ok: true, via: open ? "message" : "template" });
   }
   if (a === "note") {
     if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki note add chese permission ledu" });

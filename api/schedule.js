@@ -108,11 +108,18 @@ async function whoToBook(cfg, day) {
     const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}));
     const leads = ((r && r.result) || []).map((x) => parse(x, null)).filter((l) => l && l.ts > Date.now() - 21 * DAY_MS);
     const st = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result) || {};
+    // What the desk already heard from each of them, so nobody rings a
+    // person who said "next week" yesterday as if for the first time.
+    const outc = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_outcome"]).catch(() => ({}))).result) || {};
+    const fus = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_fu"]).catch(() => ({}))).result) || {};
+    const notesOf = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_notes"]).catch(() => ({}))).result) || {};
+    const SAID = { noanswer: "📵 Ettaledu", callback: "🔁 Malli call annaru", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Follow-up", notinterested: "🚫 Vaddannaru", notravel: "🚗 Raalemu annaru" };
     const grades = await qualify.forPhones(cfg, leads.map((l) => l.phone));
     const off = new Set((((await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}))) || {}).result) || []);
     for (const l of leads) {
       const ph = digits10(l.phone);
-      const status = st[`${l.ts}|${ph || l.src_id || ""}`] || "new";
+      const lk = `${l.ts}|${ph || l.src_id || ""}`;
+      const status = st[lk] || "new";
       if (!["new", "contacted"].includes(status) || booked.has(ph) || off.has(ph)) continue;
       // The same rule the Leads screen uses: the grade when there is one, the
       // agent's hot flag until the qualifier has caught up — otherwise a lead
@@ -120,7 +127,9 @@ async function whoToBook(cfg, day) {
       const g = grades[ph];
       const worth = g ? (g.grade === "A" || g.grade === "B") : l.heat === "hot";
       if (!worth) continue;
-      add({ phone: ph, name: l.name || "", kind: "lead", why: `${g ? g.grade + " grade" : "hot"} · ${String(l.concern || "").slice(0, 28)}`, sub: (g && g.facts && g.facts.village) || "", urgent: g ? g.grade === "A" : true });
+      let last = null; try { last = (JSON.parse(notesOf[lk] || "[]") || [])[0] || null; } catch (e) {}
+      const said = [status === "contacted" ? "Contacted" : "", SAID[outc[lk]] || "", fus[lk] ? "next " + fus[lk] : "", last ? `“${String(last.text || "").slice(0, 60)}” — ${last.by || ""}` : ""].filter(Boolean).join(" · ");
+      add({ phone: ph, name: l.name || "", kind: "lead", why: `${g ? g.grade + " grade" : "hot"} · ${String(l.concern || "").slice(0, 28)}`, sub: (g && g.facts && g.facts.village) || "", said, urgent: g ? g.grade === "A" : true });
     }
   } catch (e) { console.error("plan: leads", e && e.message); }
   // 4. somebody who did not turn up and was never rebooked
@@ -178,7 +187,7 @@ async function readQ(cfg) {
   return out;
 }
 const shape = (a) => ({
-  id: a.id || "", ph: digits10(a.ph), name: a.name || "Patient", at: a.at,
+  id: a.id || "", ph: digits10(a.ph), name: a.name || a.label || "Patient", at: a.at,
   concern: a.concern || a.treatment || "",
   mins: Number(a.mins) > 0 ? Number(a.mins) : 30,
   staff: digits10(a.staff) || "", staffName: a.staffName || "",
