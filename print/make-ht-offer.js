@@ -81,7 +81,7 @@ const page = (W, H, tall) => `<!doctype html><html><head><meta charset="utf-8">
       <div class="inc">All-inclusive — surgery + medical expenses</div>
       <div class="inc-te">సర్జరీ, మెడికల్ ఖర్చులు అన్నీ కలిపి</div>
       <div class="dates">6 NOVEMBER – 6 DECEMBER 2026</div>
-      <div class="free">Hair transplant consultation FREE</div>
+      <div class="free" data-owner="ht-offer-2026-11">Hair transplant consultation FREE</div>
       <div class="tc">T&amp;C apply · graft count &amp; suitability decided by the surgeon</div>
     </div>
   </div>
