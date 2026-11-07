@@ -73,7 +73,9 @@ const B_TEXT = "Namaste 🙏 Mee concern cheppandi, MD doctor tho free ga matlad
   process.env.WA_AGENT_ENABLED = "1";
   is(/^Namaste/.test(await ab.opener(cfg, "9876577777")), true, "the line the agent is told to open with is one of the two");
   await ab.save(cfg, { on: false }, "Owner");
-  is(await ab.opener(cfg, "9876588888"), "", "switched off, the agent is told nothing and opens as it always did");
+  const offLine = await ab.opener(cfg, "9876588888");
+  is([offLine, (await ab.load(cfg)).a.text === offLine, h.run(["GET", "ab:seen:leads:9876588888"])], [offLine, true, null],
+    "switched off, everybody gets the first opener, and nobody is counted (owner, 7 Nov: \"paata opener okkate\")");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe opener test behaves");
   process.exit(fails ? 1 : 0);

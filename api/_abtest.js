@@ -68,11 +68,14 @@ function side(phone) {
   return VARIANTS[h[0] % VARIANTS.length];
 }
 
-// Called on a first message. Returns the line to open with, or "" when the
-// test is off — and counts the arrival exactly once per person.
+// Called on a first message. Returns the line to open with — and counts the
+// arrival exactly once per person while a test runs. With the test off, the
+// first opener ("Paata opener") goes to everybody: on 7 Nov the owner ended
+// the test asking for "paata opener okkate", and off used to mean no opener.
 async function opener(cfg, phone, opts) {
   const c = await load(cfg);
-  if (!c.on || !cfg) return "";
+  if (!cfg) return "";
+  if (!c.on) return c.a.text || "";
   const v = side(phone);
   const first = await guard.kvCommand(cfg, ["SET", `ab:seen:leads:${phone}`, v, "NX", "EX", String(90 * 86400)]).catch(() => ({}));
   if (first && first.result) {
