@@ -691,6 +691,50 @@
     .ib-empty{flex:1;display:grid;place-items:center;color:var(--muted2);font-size:.9rem;padding:30px;text-align:center}
     @media (max-width:899px){ .ib.open .ib-list{display:none} .ib:not(.open) .ib-pane{display:none} .ib-pane{max-height:calc(100dvh - 170px)} }
     @media (min-width:900px){ .ib{grid-template-columns:320px minmax(0,1fr);align-items:start} .ib-list{max-height:calc(100dvh - 190px);overflow-y:auto;padding-right:2px} #ibBack{display:none} }
+
+    /* ---- Pastel highlights (owner, 7 Nov 2026): black, gold and baby pink as
+       the main colours; everything that has to be told apart at a glance —
+       tiles, groups, skin/hair, call results — gets its own soft pastel, so a
+       busy desk reads the colour before the words. */
+    :root{--pk:#fde4ee;--pk2:#f5bdd2;--pk-ink:#8f2452;--gd:#f8edd6;--gd2:#e2c68a;--gd-ink:#6f5119;
+      --mint:#dcf3e8;--mint2:#a9dcc4;--mint-ink:#1d6646;--lav:#ebe4f8;--lav2:#cbbdef;--lav-ink:#5a3d9c;
+      --sky:#e0eefa;--sky2:#b5d4ef;--sky-ink:#1f5683;--peach:#fde6d8;--peach2:#f3c2a3;--peach-ink:#93461b;
+      --butter:#fbf3cf;--butter2:#ecd98a;--butter-ink:#735709;--fog:#f0f0f1;--fog2:#d8d8dc;--fog-ink:#55555c;
+      --blk:#121212;--gold-hi:#e9c983}
+    .segs button.on{background:var(--blk);color:var(--gold-hi);border-color:var(--blk)}
+    .tab.on,.side .tab.on{background:var(--pk);color:var(--blk);box-shadow:inset 3px 0 0 var(--primary)}
+    .stats .stat:nth-child(1){background:var(--pk);border-color:var(--pk2)}
+    .stats .stat:nth-child(2){background:var(--peach);border-color:var(--peach2)}
+    .stats .stat:nth-child(3){background:var(--sky);border-color:var(--sky2)}
+    .stats .stat:nth-child(4){background:var(--lav);border-color:var(--lav2)}
+    .stats .stat b{color:var(--blk)}
+    .stats .stat:hover{border-color:var(--primary)}
+    .stat small{color:var(--mint-ink);font-weight:500}
+    #catchips button[data-cat=""]{background:var(--gd);border-color:var(--gd2);color:var(--gd-ink)}
+    #catchips button[data-cat="skin"],.cat.skin{background:var(--pk);border-color:var(--pk2);color:var(--pk-ink)}
+    #catchips button[data-cat="hair"],.cat.hair{background:var(--lav);border-color:var(--lav2);color:var(--lav-ink)}
+    #catchips button[data-cat="ht"],.cat.ht{background:var(--mint);border-color:var(--mint2);color:var(--mint-ink)}
+    #catchips button[data-cat="academy"],.cat.academy{background:var(--butter);border-color:var(--butter2);color:var(--butter-ink)}
+    .cat{border:1px solid transparent}
+    #fchips button[data-fq="contacted"],.oc-callback{background:var(--sky);border-color:var(--sky2);color:var(--sky-ink)}
+    #fchips button[data-fq="o:noanswer"],.oc-noanswer{background:var(--peach);border-color:var(--peach2);color:var(--peach-ink)}
+    #fchips button[data-fq="o:thinking"],.oc-thinking{background:var(--butter);border-color:var(--butter2);color:var(--butter-ink)}
+    #fchips button[data-fq="o:notravel"],.oc-notravel{background:var(--lav);border-color:var(--lav2);color:var(--lav-ink)}
+    #fchips button[data-fq="o:notinterested"],.oc-notinterested{background:var(--fog);border-color:var(--fog2);color:var(--fog-ink)}
+    .oc-followup{background:var(--sky);border-color:var(--sky2);color:var(--sky-ink)}
+    .oc-booked{background:var(--mint);border-color:var(--mint2);color:var(--mint-ink)}
+    #catchips button.on,#fchips button.on{border:2px solid var(--blk);color:var(--blk);font-weight:600}
+    .acts select.s-new{color:var(--pk-ink);background:var(--pk);border-color:var(--pk2)}
+    .acts select.s-contacted{color:var(--butter-ink);background:var(--butter);border-color:var(--butter2)}
+    .acts select.s-booked{color:var(--mint-ink);background:var(--mint);border-color:var(--mint2)}
+    .acts select.s-visited{color:var(--lav-ink);background:var(--lav);border-color:var(--lav2)}
+    .acts select.s-closed{color:var(--fog-ink);background:var(--fog);border-color:var(--fog2)}
+    .fu-due{background:var(--pk);border-color:var(--pk2)}
+    .nxt.call{background:var(--pk);color:var(--pk-ink)}
+    .nxt.book{background:var(--gd);color:var(--gd-ink)}
+    .lead.hot{border-left-color:#e0558a}.lead.warm{border-left-color:var(--primary)}
+    .badge.src{background:var(--gd);color:var(--gd-ink)}
+    .countdown > div.on{outline-color:var(--blk)}
 </style>
 </head>
 <body>
@@ -1388,7 +1432,7 @@
       return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + (l.lang === "hi" ? '<span class="lang">🗣 हिंदी</span>' : '') + (catOf(l) ? '<span class="cat ' + catOf(l) + '">' + ({ hair: "💇 Hair", skin: "💆 Skin", ht: "🌱 Hair transplant", academy: "🎓 Academy" }[catOf(l)]) + "</span>" : "") + '</h3><div class="meta">' + esc(dmyt(l.ts)) + ' · ' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
         '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
-        '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc">' + esc(OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
+        '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc oc-' + esc(l.outcome) + '">' + esc(OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
         (l.lastCall || l.fu ? '<div class="fu-line"><span>🗓 Lead: <b>' + esc(dmy(l.ts)) + "</b></span>" + (l.lastCall ? "<span>📞 Call: <b>" + esc(dmy(l.lastCall)) + "</b></span>" : "") +
           (l.fu ? '<span>⏭ Next follow-up: <b style="color:' + (l.fu <= istToday() ? "var(--hot)" : "var(--text)") + '">' + esc(dmy(l.fu)) + "</b></span>" : "") + "</div>" : "") +
         (l.grade ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +

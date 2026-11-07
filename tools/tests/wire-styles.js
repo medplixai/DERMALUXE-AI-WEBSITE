@@ -23,6 +23,7 @@ const HOOK = {
   open: "state class for sheets, styled as .sheet.open / .ptsheet.open", show: "state class for toast/banners",
   te: "styled — Telugu font", "hide-in-app": "styled under html.standalone",
   "s-": "prefix of s-<status> built at run time; each status is styled as .acts select.s-new … s-closed",
+  "oc-": "prefix of oc-<outcome> built at run time; each call result is styled as .oc-noanswer … .oc-booked",
   phwrap: "where a lead's photos are mounted; found by the script, drawn by what goes inside",
   native: "put on <html> inside the phone app so the script can tell; no look of its own",
   pband: "one price-band row — a styled .noteform; the class is how Save reads the rows back",
