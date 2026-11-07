@@ -4,13 +4,13 @@
 // Public on purpose: it carries a version number and a download link, nothing
 // else, and the app has to reach it before anyone has logged in.
 const LATEST = {
-  version: "1.51.0",
-  versionCode: 61,
+  version: "1.52.0",
+  versionCode: 62,
   // Below this, the app is too old to trust — it nags until they update.
   minVersionCode: 6,
   url: "https://www.dermaluxe.ai/assets/app/DermaLuxe-Staff.apk",
   page: "https://www.dermaluxe.ai/staff-app.html",
-  notes: "Leads lo 💆 Skin · 💇 Hair · 🌱 Hair transplant · 🎓 Academy — nalugu veru veru filters, counts tho.",
+  notes: "Kotha colours — black, gold, baby pink. Tiles, Skin / Hair / Hair transplant / Academy, call results anni pastel colours tho veru veru ga kanipistayi.",
 };
 
 module.exports = async (req, res) => {
