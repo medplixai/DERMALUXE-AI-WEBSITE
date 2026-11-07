@@ -1633,7 +1633,16 @@
     // checked before the word "hair" can claim it.
     var leadCat = "";
     function isAcad(l) { return /^\s*academy|academy (course|seat|enquiry|callback|fee)|course enquiry/i.test(String(l.concern || "")); }
+    // Read once per lead, not five times a render (8 Nov: "app speed").
     function catOf(l) {
+      var sig = (l.concern || "") + "|" + (l.message || "").length;
+      if (l._catSig === sig) return l._cat;
+      var c = catCompute(l);
+      try { Object.defineProperty(l, "_cat", { value: c, writable: true, configurable: true, enumerable: false });
+            Object.defineProperty(l, "_catSig", { value: sig, writable: true, configurable: true, enumerable: false }); } catch (e) {}
+      return c;
+    }
+    function catCompute(l) {
       if (isAcad(l)) return "academy";
       // The concern before any bracket says what they came for; a note in
       // brackets ("academy Skin+Hair seat paid") must not decide it.
@@ -1661,6 +1670,9 @@
       return l.status === "new" && !(l.notes && l.notes.length) && !/^\s*academy/i.test(String(l.concern || ""));
     }
     var callShowAll = false;
+    // Cards are drawn forty at a time: drawing all 170 on every tap and every
+    // letter typed was most of a second on the desk's phones (8 Nov).
+    var LEAD_PAGE_N = 40, leadShow = 40, leadSig = "";
     function groupPeople(leads) {
       var sorted = leads.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
       var by = {}, out = [];
@@ -1775,7 +1787,10 @@
       // The call list, in the order to ring them, ten at a time, each with the
       // reason it is there and the best time to try (owner, 7 Nov).
       people.forEach(function (l) { l._rank = 0; l._why = null; l._best = ""; });
-      var moreCalls = 0;
+      var moreCalls = 0, moreCards = 0;
+      var sig = [seg, fs, fsrc, q, days, leadCat].join("|");
+      if (sig !== leadSig) { leadSig = sig; leadShow = LEAD_PAGE_N; }
+      if (seg !== "call" && list.length > leadShow) { moreCards = list.length - leadShow; list = list.slice(0, leadShow); }
       if (seg === "call") {
         list.forEach(function (l) { var p2 = priority(l); l._prio = p2.s; l._why = p2.why; l._best = bestTime(l); });
         list.sort(function (a, b) { return b._prio - a._prio; });
@@ -1787,6 +1802,7 @@
       var banner = due && seg !== "fu" ? '<div class="fu-due"><span>📅 <b>Ivala ' + due + " follow-up" + (due > 1 ? "s" : "") + "</b> cheyyali</span>" +
         '<button class="btn btn--sm btn--gold" data-act="seg-go" data-seg="fu">Chudandi</button></div>' : "";
       $("leadList").innerHTML = summaryBar(people, d.leads) + banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts)) +
+        (moreCards ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="lead-more">Inka ' + moreCards + " leads chupinchu</button></div>" : "") +
         (moreCalls ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Inka ' + moreCalls + " mandi chupinchu</button></div>" :
           (seg === "call" && callShowAll && list.length > 10 ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Top 10 matrame chupinchu</button></div>' : ""));
       paintMore();
@@ -5577,14 +5593,19 @@
     // already only new/contacted A's (7 Nov, "filters not working"). Picking a
     // filter now looks across every lead.
     ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) {
+      var qTimer = null;
       $(id).addEventListener(id === "q" ? "input" : "change", function () {
+        if (id === "q") { clearTimeout(qTimer); qTimer = setTimeout(run, 220); return; }
+        run();
+      });
+      function run() {
         var on = document.querySelector("#segs button.on");
         var narrow = on && ["call", "wait", "mine", "today", "open", "booked", "fu"].indexOf(on.dataset.seg) !== -1;
         if (narrow && (id !== "q" || $("q").value.trim().length > 1) && (id !== "fDays")) {
           document.querySelectorAll("#segs button").forEach(function (x) { x.classList.toggle("on", x.dataset.seg === "all"); });
         }
         renderLeads();
-      });
+      }
     });
     // Searching, or asking for everything, means the older pages are actually
     // wanted — fetch them then, and only then.
@@ -5716,6 +5737,7 @@
         return;
       }
       if (el.dataset.act === "call-all") { callShowAll = !callShowAll; renderLeads(); return; }
+      if (el.dataset.act === "lead-more") { leadShow += LEAD_PAGE_N; renderLeads(); return; }
       if (el.dataset.act === "cscript") {
         var showScript = function (fresh) {
           var wrap = document.createElement("div");

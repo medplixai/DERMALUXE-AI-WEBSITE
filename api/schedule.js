@@ -107,15 +107,22 @@ async function whoToBook(cfg, day) {
     const qualify = require("./_qualify.js");
     const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}));
     const leads = ((r && r.result) || []).map((x) => parse(x, null)).filter((l) => l && l.ts > Date.now() - 21 * DAY_MS);
-    const st = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result) || {};
     // What the desk already heard from each of them, so nobody rings a
-    // person who said "next week" yesterday as if for the first time.
-    const outc = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_outcome"]).catch(() => ({}))).result) || {};
-    const fus = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_fu"]).catch(() => ({}))).result) || {};
-    const notesOf = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_notes"]).catch(() => ({}))).result) || {};
+    // person who said "next week" yesterday as if for the first time. One
+    // round trip for all four, and only the rows for these leads — the day
+    // view waited on four whole tables one after another (8 Nov, "app speed").
+    const lks = leads.map((l) => `${l.ts}|${digits10(l.phone) || l.src_id || ""}`);
+    const pick = async (cmd) => {
+      if (!lks.length) return {};
+      const r = await guard.kvCommand(cfg, cmd.concat(lks)).catch(() => ({}));
+      const a = (r && r.result) || [], o = {};
+      lks.forEach((f, i) => { if (a[i] != null) o[f] = a[i]; });
+      return o;
+    };
+    const [st, outc, fus, notesOf, grades, offR] = await Promise.all([pick(["HMGET", "dl_status"]), pick(["HMGET", "dl_outcome"]), pick(["HMGET", "dl_fu"]), pick(["HMGET", "dl_notes"]),
+      qualify.forPhones(cfg, leads.map((l) => l.phone)), guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}))]);
     const SAID = { noanswer: "📵 Ettaledu", callback: "🔁 Malli call annaru", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Follow-up", notinterested: "🚫 Vaddannaru", notravel: "🚗 Raalemu annaru" };
-    const grades = await qualify.forPhones(cfg, leads.map((l) => l.phone));
-    const off = new Set((((await guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}))) || {}).result) || []);
+    const off = new Set(((offR || {}).result) || []);
     for (const l of leads) {
       const ph = digits10(l.phone);
       const lk = `${l.ts}|${ph || l.src_id || ""}`;

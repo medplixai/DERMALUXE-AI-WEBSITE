@@ -288,16 +288,16 @@ async function leadPage(cfg, offset, count) {
   const raw = (lr.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
   const keys = raw.map(leadKey);
   const qual = require("./_qualify.js");
-  const [st, notes, stTs, grades, optOut, owner, users, outc, fus] = await Promise.all([
+  const [st, notes, stTs, grades, optOut, owner, users, outc, fus, csR] = await Promise.all([
     hashSome(cfg, STATUS, keys), hashSome(cfg, NOTES, keys), hashSome(cfg, STATUS_TS, keys),
     qual.forPhones(cfg, raw.map((l) => l.phone)),
     guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({})),
     hashSome(cfg, "lead:owner", keys),
     hashAll(cfg, USERS),
     hashSome(cfg, OUTCOME, keys), hashSome(cfg, FOLLOW, keys),
+    // The caller's notes already written (owner, 8 Nov), in the same round trip.
+    keys.length ? guard.kvCommand(cfg, ["MGET"].concat(keys.map((k) => `cs:${k}`))).catch(() => ({})) : Promise.resolve({}),
   ]);
-  // The caller's notes already written (owner, 8 Nov): shown on the card.
-  const csR = keys.length ? await guard.kvCommand(cfg, ["MGET"].concat(keys.map((k) => `cs:${k}`))).catch(() => ({})) : {};
   const scripts = {}; ((csR && csR.result) || []).forEach((v, i) => { if (v) scripts[keys[i]] = v; });
   // Who this lead was dealt to, by name — so a colleague can see "naavi".
   const nameOf = (ph) => { try { return (JSON.parse(users[ph] || "{}").name) || ph; } catch (e) { return ph; } };

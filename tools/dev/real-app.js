@@ -223,6 +223,18 @@ const MIME = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".
 const server = http.createServer(async (req, res) => {
   const u = new URL(req.url, "http://localhost");
   if (u.pathname === "/dev/token") { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ token: token() })); }
+  // A clinic-sized lead book, for timing the screens (8 Nov: "app speed").
+  if (u.pathname === "/dev/bulk") {
+    const n = Math.min(1000, Number(u.searchParams.get("n")) || 280);
+    const C = ["Hair fall – 6 nelala lopu", "Acne & scars", "Pigmentation", "Hair transplant cost enquiry", "Academy course enquiry – Skin", "Laser hair removal", "Dullness & tan"];
+    for (let i = 0; i < n; i++) {
+      const ts = Date.now() - i * 1800000, ph = String(9800000000 + i);
+      h.run(["LPUSH", "dl_leads", JSON.stringify({ ts, type: i % 5 ? "whatsapp" : "instagram", name: "Lead " + i, phone: ph, concern: C[i % C.length], message: "x".repeat(200), heat: ["hot", "warm", "cold"][i % 3], call_prep: "Prep line for lead " + i })]);
+      if (i % 2) h.run(["HSET", "dl_notes", `${ts}|${ph}`, JSON.stringify([{ ts: ts + 60000, by: "hemasri", text: "Call — ettaledu" }, { ts: ts + 120000, by: "hemasri", text: "Call — malli call cheyyamannaru" }])]);
+      if (i % 3 === 0) h.run(["SET", `cs:${ts}|${ph}`, "🗣 note\n📞 open\n💬 tone\n✅ offer\n⚠️ objection\n⏰ time"]);
+    }
+    res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify({ ok: true, n }));
+  }
   if (u.pathname === "/dev/sent") { res.writeHead(200, { "Content-Type": "application/json" }); return res.end(JSON.stringify(h.sent.slice(-50))); }
   if (u.pathname.startsWith("/api/")) {
     const name = u.pathname.slice(5).replace(/\.js$/, "");
