@@ -217,4 +217,25 @@ function withAiLine(reply, firstTurn) {
   return r.replace(/\s+$/, "") + "\n\n" + AI_LINE;
 }
 
-module.exports = { clinicFacts, photoRules, FALLBACK_REPLY, salvageReply, AI_LINE, withAiLine };
+// The clock every agent is given with each message. The API has no idea what
+// day it is, and the Instagram and Messenger agents were never told: on
+// Saturday 7 November they offered "Repu 11 AM" — a Sunday, when the clinic is
+// shut — and a re-engage message told a patient booked for that evening that
+// they had missed their slot "ninna". So the day after is spelled out too.
+function nowIstCtx() {
+  const d = new Date(Date.now() + 330 * 60000);
+  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  let h = d.getUTCHours();
+  const min = String(d.getUTCMinutes()).padStart(2, "0");
+  const ap = h >= 12 ? "PM" : "AM";
+  const late = h >= 21;
+  h = h % 12 || 12;
+  const day = d.getUTCDay();
+  const note = day === 0 ? " — Sunday: clinic CLOSED today; offer Monday or later"
+    : day === 6 ? ` — "repu" is SUNDAY, clinic CLOSED; offer ${late ? "Monday" : "ivala (Saturday) or Monday"}`
+    : late ? " — clinic closed for today (9 PM); offer repu or later" : "";
+  return `[Now: ${days[day]} ${d.getUTCDate()} ${mo[d.getUTCMonth()]}, ${h}:${min} ${ap} IST${note}] `;
+}
+
+module.exports = { nowIstCtx, clinicFacts, photoRules, FALLBACK_REPLY, salvageReply, AI_LINE, withAiLine };

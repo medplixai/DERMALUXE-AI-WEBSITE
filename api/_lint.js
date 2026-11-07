@@ -7,8 +7,11 @@
 // better, the original goes out rather than nothing.
 const facts = require("./_facts.js");
 
-// Rupee figures the agent is allowed to say: the academy's published fees.
-const ALLOWED_RUPEES = new Set([9999, 49999, 99999]);
+// Rupee figures the agent is allowed to say: the academy's published fees —
+// the seat, the two launch prices, and the two regular prices they are cut
+// from. The regular ones were missing: an honest "regular ₹1,00,000" tripped
+// price_quoted, and the rewrite "fixed" it to "regular ₹99,999" (6 Nov).
+const ALLOWED_RUPEES = new Set([9999, 49999, 99999, 100000, 200000]);
 // Medicines and doses — never from a receptionist.
 const MEDICINE = /(\b\d+\s?(mg|ml|mcg)\b|\btablet(s)?\b|\bcapsule(s)?\b|\bointment\b|\bminoxidil\b|\bfinasteride\b|\bisotretinoin\b|\btretinoin\b|\bhydroquinone\b|\bketoconazole\b|\bclindamycin\b|\bbenzoyl\b|\badapalene\b|\bbetamethasone\b|\bclobetasol\b|\bfluconazole\b|\bterbinafine\b|\bazithromycin\b|\bdoxycycline\b|\bmetformin\b)/i;
 // Conditions the agent must not guess at in plain chat.
@@ -45,7 +48,7 @@ function lintReply(out, patientText, recent, opts) {
   // Prices: the site never quotes treatment prices; the academy's fees are published.
   const rupees = [...prose.matchAll(/₹\s?([\d,]{3,})|(?:rs\.?|inr)\s?([\d,]{3,})/gi)].map((m) => Number((m[1] || m[2]).replace(/,/g, ""))).filter((n) => n >= 100);
   const odd = [...new Set(rupees.filter((n) => !ALLOWED_RUPEES.has(n) && !(o.allow && o.allow.has(n))))];
-  if (odd.length) faults.push({ code: "price_quoted", note: `₹${odd.join(", ₹")} cheppav — treatment prices eppudu cheppakudadu; "consultation lo doctor exact plan istaru" ani cheppi slot adugu (academy fees ₹9,999/₹49,999/₹99,999 matrame allowed)` });
+  if (odd.length) faults.push({ code: "price_quoted", note: `₹${odd.join(", ₹")} cheppav — treatment prices eppudu cheppakudadu; "consultation lo doctor exact plan istaru" ani cheppi slot adugu (academy fees matrame allowed: seat ₹9,999; launch ₹49,999 / ₹99,999; regular ₹1,00,000 / ₹2,00,000)` });
 
   if (MEDICINE.test(prose)) faults.push({ code: "medicine", note: "medicine peru / dose cheppav — receptionist medicines cheppadu; lifestyle tips matrame, medicines doctor consultation lo" });
 
@@ -97,9 +100,38 @@ function lintReply(out, patientText, recent, opts) {
 
   // The same thing we already said, in our last three.
   const rec = (Array.isArray(recent) ? recent : []).slice(-3);
+  // Telugu letters inside a Tenglish reply ("chestాను", "Chెప్పండి", "అయినా"):
+  // the model slips mid-word, and a patient reading English letters sees a
+  // broken word. A reply written in Telugu script for a Telugu writer is fine.
+  const mixedWord = /[A-Za-z][ఀ-౿]|[ఀ-౿][A-Za-z]/.test(prose);
+  const strayTelugu = replyTelugu > 0 && replyTelugu < 25 && replyEnglish > 40 && replyEnglish > replyTelugu * 4 && !hasTelugu(said);
+  if (mixedWord || strayTelugu) faults.push({ code: "mixed_script", note: "Telugu aksharalu English letters reply madhyalo kalisayi (udaharana 'chestాను') — motham reply English letters lo (Tenglish) raayi, Telugu script okka aksharam kuda vaddu" });
+
   if (rec.some((p) => similar(p, reply))) faults.push({ code: "repeat", note: "ide maata already cheppam — malli kaadu; kotha angle: oppukunte first slot book chesi cheppu, 'tarvata' ante okasari sare ani mugincha" });
 
   return faults;
+}
+
+// The last word of the rewrite is only the start of a word the original had,
+// and not a word of its own there.
+function cutMidWord(fixed, orig) {
+  const last = (String(fixed || "").match(/([A-Za-zఀ-౿]+)[^A-Za-zఀ-౿]*$/) || [])[1];
+  if (!last || last.length < 2) return false;
+  const words = String(orig || "").match(/[A-Za-zఀ-౿]+/g) || [];
+  return !words.includes(last) && words.some((w) => w.length > last.length && w.startsWith(last));
+}
+
+// A profile label used as a name ("Mahadev garu") is taken out here, without a
+// model call: it was the commonest fault, and each rewrite was a fresh chance
+// for the model to cut the reply short.
+function dropLabel(out, label) {
+  if (!label) return out;
+  const esc = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let r = String(out.reply || "")
+    .replace(new RegExp(`(^|\\n)\\s*${esc}\\s+garu\\s*[,—–-]?\\s*`, "gi"), "$1")
+    .replace(new RegExp(`\\s*,?\\s*\\b${esc}\\s+garu\\b`, "gi"), "")
+    .replace(/(^|\n)([a-z])/g, (m, a, b) => a + b.toUpperCase());
+  return Object.assign({}, out, { reply: r });
 }
 
 // Rewrite once with the faults named. Returns the better of the two.
@@ -129,6 +161,12 @@ async function rewrite(out, faults, patientText, opts) {
       console.error("reply lint: rewrite dropped —", d.stop_reason, fixed.length, "of", String(out.reply || "").length);
       return { out, faults, rewritten: false };
     }
+    // A rewrite that ends half-way through one of the original's words
+    // ("Mee concern cheppand", 6 Nov 18:32) lost its ending, however long it is.
+    if (cutMidWord(fixed, out.reply)) {
+      console.error("reply lint: rewrite dropped — ends mid-word");
+      return { out, faults, rewritten: false };
+    }
     const next = Object.assign({}, out, { reply: fixed });
     const left = lintReply(next, patientText, opts && opts.recent, opts);
     if (left.length < faults.length) return { out: next, faults: left, rewritten: true };
@@ -146,8 +184,17 @@ async function check(cfg, out, patientText, recent, opts) {
     if (Date.now() - allowCache.at > 300000) { allowCache = { at: Date.now(), set: await require("./_prices.js").allowed(cfg).catch(() => null) }; }
     if (allowCache.set) o.allow = allowCache.set;
   }
-  const faults = lintReply(out, patientText, recent, o);
+  let faults = lintReply(out, patientText, recent, o);
   if (!faults.length) return out;
+  if (faults.some((f) => f.code === "profile_name_used")) {
+    out = dropLabel(out, String(o.profileName || "").trim().split(/\s+/)[0] || "");
+    const before = faults.map((f) => f.code);
+    faults = lintReply(out, patientText, recent, o);
+    if (!faults.length) {
+      try { if (cfg && !o.exam) { const guard = require("./_guard.js"); await guard.kvCommand(cfg, ["LPUSH", "lint:log", JSON.stringify({ ts: Date.now(), ch: o.channel || "wa", faults: before, rewritten: "label", left: [] })]); } } catch (e) {}
+      return out;
+    }
+  }
   const res = await rewrite(out, faults, patientText, o);
   try {
     const guard = require("./_guard.js");
@@ -160,4 +207,4 @@ async function check(cfg, out, patientText, recent, opts) {
   return res.out;
 }
 
-module.exports = { lintReply, rewrite, check, isMetaPrefill, asksToStop, ALLOWED_RUPEES };
+module.exports = { lintReply, rewrite, check, cutMidWord, dropLabel, isMetaPrefill, asksToStop, ALLOWED_RUPEES };

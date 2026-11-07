@@ -349,9 +349,9 @@ module.exports = async (req, res) => {
     } catch (e) {}
     fbName = await fetchFbName(psid, ptok);
   }
-  const extraCtx = profile && profile.name
+  const extraCtx = facts.nowIstCtx() + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
-    : "";
+    : "");
 
   let out;
   let voiceScript = "";

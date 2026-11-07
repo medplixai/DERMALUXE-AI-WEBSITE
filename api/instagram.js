@@ -575,9 +575,9 @@ async function handleMessage(req, m) {
     } catch (e) {}
     igName = await fetchIgName(igsid, ptok);
   }
-  const extraCtx = profile && profile.name
+  const extraCtx = facts.nowIstCtx() + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
-    : "";
+    : "");
 
   let out;
   try {

@@ -68,7 +68,7 @@ async function run(cfg, max, until, ctx) {
         if (msgs[i].dir === "in" && msgs[i + 1].dir === "out") { hist.push({ u: msgs[i].text, a: msgs[i + 1].text }); i++; }
       }
       const hrs = Math.round((Date.now() - c.lastIn) / 3600000);
-      const ask = `[The patient has gone quiet for about ${hrs} hour(s) after our last message. Write ONE short caring message (2-4 lines) that picks up exactly where this chat stopped, adds one genuinely useful thing, and ends with ONE easy question or two slots. No greeting, no introduction, do not repeat what we already said, no pressure. "lead" must be null.]`;
+      const ask = wa.nowIstCtx() + `[The patient has gone quiet for about ${hrs} hour(s) after our last message. Write ONE short caring message (2-4 lines) that picks up exactly where this chat stopped, adds one genuinely useful thing, and ends with ONE easy question or two slots. No greeting, no introduction, do not repeat what we already said, no pressure. "lead" must be null.]`;
       const out = await wa.askClaude(hist, ask, c.name, "", sys);
       const checked = await lint.check(cfg, out, ask, msgs.filter((m) => m.dir === "out").map((m) => m.text), { channel: "re", profileName: c.name });
       const text = String(checked.reply || "").trim();

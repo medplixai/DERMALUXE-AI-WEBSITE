@@ -87,6 +87,19 @@ const hook = { token: "hook" };
   global.fetch = stubFetch;
   if (realKey === undefined) delete process.env.ANTHROPIC_API_KEY; else process.env.ANTHROPIC_API_KEY = realKey;
   is([stopped.out.reply, shrunk.out.reply], [whole.reply, whole.reply], "an editor's rewrite that stopped half-way, or lost most of the reply, never replaces the whole reply");
+  is([lint.cutMidWord("Namaste 🙏 Mee concern cheppand", "Namaste 🙏 Mee concern cheppandi 😊"), lint.cutMidWord("Mee concern cheppandi", "Mee concern cheppandi 😊")], [true, false],
+    "a rewrite that ends half-way through one of the original's words is spotted, a whole one is not");
+  is(lint.dropLabel({ reply: "Namaste Mahadev garu 🙏 DermaLuxe nunchi.\nMee concern enti, Mahadev garu?" }, "Mahadev").reply, "Namaste 🙏 DermaLuxe nunchi.\nMee concern enti?",
+    "a WhatsApp profile label used as a name is taken out without asking the model");
+  const codes = (r, s) => lint.lintReply({ reply: r }, s || "hi", [], {}).map((f) => f.code);
+  is([codes("Done! Ivala 6:30 PM ki note chesanu. Mee peru cheppandi, booking confirm chestాను?").includes("mixed_script"), codes("మీ concern ఏమిటి అండి?", "హలో అండి").includes("mixed_script")], [true, false],
+    "Telugu letters slipped into a Tenglish word are caught; a Telugu reply to a Telugu writer is left alone");
+  is(codes("Launch offer ₹49,999 (regular ₹1,00,000) — ₹9,999 tho seat lock cheyochu. Seat reserve cheddama?").includes("price_quoted"), false,
+    "the academy's regular fee is a published fee, not a quoted price");
+  const satNow = Date.now; Date.now = () => Date.parse("2026-11-07T10:00:00+05:30");
+  const sat = facts.nowIstCtx(); Date.now = () => Date.parse("2026-11-07T21:30:00+05:30");
+  const satLate = facts.nowIstCtx(); Date.now = satNow;
+  is([/Saturday/.test(sat), /"repu" is SUNDAY/.test(sat), /offer Monday/.test(satLate)], [true, true, true], "every agent's clock says on a Saturday that tomorrow is a closed Sunday");
 
   // The real notify module, not the harness's stub: the window check is the point.
   const np = require.resolve(path.join(API, "_notify.js")), stubNotify = require.cache[np];

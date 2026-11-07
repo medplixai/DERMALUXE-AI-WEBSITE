@@ -52,16 +52,7 @@ function sysBlocks(stable, volatile) {
 }
 
 
-function nowIstCtx() {
-  const d = new Date(Date.now() + 330 * 60000);
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  let h = d.getUTCHours();
-  const min = String(d.getUTCMinutes()).padStart(2, "0");
-  const ap = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `[Now: ${days[d.getUTCDay()]} ${d.getUTCDate()} ${mo[d.getUTCMonth()]}, ${h}:${min} ${ap} IST] `;
-}
+const nowIstCtx = facts.nowIstCtx;
 
 async function storeLead(cfg, info, sid, lastMsg) {
   const phone = String(info.phone || "").replace(/\D/g, "").slice(-10);

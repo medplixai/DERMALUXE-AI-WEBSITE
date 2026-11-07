@@ -447,18 +447,8 @@ async function sendCloudLocation(phoneNumberId, to) {
 
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
 
-// Current IST moment for the model — needed to offer sensible today/tomorrow
-// appointment slots (the API has no idea what time it is otherwise).
-function nowIstCtx() {
-  const d = new Date(Date.now() + 330 * 60000);
-  const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-  let h = d.getUTCHours();
-  const min = String(d.getUTCMinutes()).padStart(2, "0");
-  const ap = h >= 12 ? "PM" : "AM";
-  h = h % 12 || 12;
-  return `[Now: ${days[d.getUTCDay()]} ${d.getUTCDate()} ${mo[d.getUTCMonth()]}, ${h}:${min} ${ap} IST] `;
-}
+// The shared clock lives in _facts.js — every agent gets the same one.
+const nowIstCtx = facts.nowIstCtx;
 
 function apptFmtIst(ms) {
   const d = new Date(ms + 330 * 60000);
