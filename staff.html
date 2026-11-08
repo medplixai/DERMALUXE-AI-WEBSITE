@@ -780,6 +780,60 @@
       .slot .when span{display:inline}
       .slot .acts > .btn{flex:1 1 calc(33.33% - 6px);justify-content:center;white-space:nowrap;padding-left:6px;padding-right:6px}
     }
+
+    /* ---- Ultra gloss (owner, 8 Nov: "page mottam ultra glossy ga cheyyi") ----
+       Black, gold and baby pink stay; every surface gets a lit top edge and a
+       soft drop, buttons and active chips get a lacquer shine. Done with
+       gradients and shadows only: a blur behind forty lead cards would make
+       the desk's phones slow again, so real glass is kept to the two bars
+       that float over the page. */
+    :root{--gl-edge:inset 0 1px 0 rgba(255,255,255,.95);--gl-drop:0 10px 26px -14px rgba(18,18,18,.22),0 2px 4px -2px rgba(18,18,18,.06);
+      --gl-card:linear-gradient(180deg,#ffffff 0%,#fdfcfa 55%,#f8f5f0 100%);
+      --gl-gold:linear-gradient(180deg,#f3dc9c 0%,#d9b062 38%,#b8893d 62%,#8f6a2c 100%);
+      --gl-black:linear-gradient(180deg,#3a3a3a 0%,#1a1a1a 48%,#060606 52%,#121212 100%)}
+    body{background:radial-gradient(120% 60% at 100% 0%,#fdeef4 0%,rgba(253,238,244,0) 55%),radial-gradient(90% 50% at 0% 100%,#f8efdc 0%,rgba(248,239,220,0) 60%),#f5f4f6}
+    #login{background:transparent}
+    .card,.box,.lead,.slot,.sheet-in{background:var(--gl-card);border-color:rgba(214,206,190,.55);box-shadow:var(--gl-edge),var(--gl-drop)}
+    .lead{transition:transform .18s ease,box-shadow .18s ease}
+    @media (hover:hover){.lead:hover{transform:translateY(-1px);box-shadow:var(--gl-edge),0 16px 32px -16px rgba(18,18,18,.28),0 2px 4px -2px rgba(18,18,18,.08)}}
+    /* the four tiles: pastel lacquer with a shine across the top half */
+    .stat{position:relative;overflow:hidden;box-shadow:var(--gl-edge),var(--gl-drop)}
+    .stat::after{content:"";position:absolute;left:0;right:0;top:0;height:52%;pointer-events:none;
+      background:linear-gradient(180deg,rgba(255,255,255,.78) 0%,rgba(255,255,255,.18) 100%);border-radius:inherit}
+    .stat > *{position:relative;z-index:1}
+    .stats .stat:nth-child(1){background:linear-gradient(160deg,#fff1f6 0%,var(--pk) 55%,#f9cfe0 100%)}
+    .stats .stat:nth-child(2){background:linear-gradient(160deg,#fff3ea 0%,var(--peach) 55%,#f8d2bb 100%)}
+    .stats .stat:nth-child(3){background:linear-gradient(160deg,#f1f8fe 0%,var(--sky) 55%,#c9e1f5 100%)}
+    .stats .stat:nth-child(4){background:linear-gradient(160deg,#f6f2fd 0%,var(--lav) 55%,#d9cdf4 100%)}
+    .countdown{border-radius:16px;overflow:hidden;box-shadow:var(--gl-drop)}
+    .countdown div{background:var(--gl-card);box-shadow:var(--gl-edge)}
+    /* buttons: a lit top edge, a pressed state you can feel */
+    .btn{background:linear-gradient(180deg,#ffffff 0%,#f4f2ee 100%);border-color:rgba(200,190,170,.6);box-shadow:var(--gl-edge),0 1px 2px rgba(18,18,18,.06),0 4px 10px -6px rgba(18,18,18,.18)}
+    .btn:active{transform:translateY(1px);box-shadow:inset 0 2px 4px rgba(18,18,18,.12)}
+    .btn--gold,#leadAdd,#schNew{background:var(--gl-gold);color:#2a1c06;border-color:#a47a34;text-shadow:0 1px 0 rgba(255,240,200,.6);
+      box-shadow:inset 0 1px 0 rgba(255,250,230,.9),inset 0 -2px 4px rgba(90,60,15,.25),0 6px 16px -8px rgba(143,106,44,.7)}
+    .btn--gold:hover{filter:brightness(1.05)}
+    .btn--wa{background:linear-gradient(180deg,#f2fff8 0%,#d8f7e7 100%)}
+    .btn--call{background:linear-gradient(180deg,#ffffff 0%,#fdeef4 100%);border-color:var(--pk2)}
+    /* active group: black lacquer with gold letters */
+    .segs button{box-shadow:var(--gl-edge),0 1px 2px rgba(18,18,18,.05)}
+    .segs button.on,.lmode button.on{background:var(--gl-black);color:var(--gold-hi);border-color:#000;
+      box-shadow:inset 0 1px 0 rgba(255,255,255,.28),0 6px 14px -6px rgba(0,0,0,.55)}
+    .lmode button{background:var(--gl-card);box-shadow:var(--gl-edge),var(--gl-drop)}
+    .lmode button[data-cat="academy"].on{background:linear-gradient(180deg,#fffbe6 0%,var(--butter) 50%,#efdc93 100%);color:var(--butter-ink)}
+    .fchips button{box-shadow:inset 0 1px 0 rgba(255,255,255,.85),0 1px 2px rgba(18,18,18,.05)}
+    #catchips button,#fchips button,#afchips button,.cat,.chip{background-image:linear-gradient(180deg,rgba(255,255,255,.55) 0%,rgba(255,255,255,0) 60%)}
+    .sumbar,.goalbox,.rankbox,.callwhy{box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
+    /* inputs sit slightly into the page */
+    input,select,textarea{box-shadow:inset 0 1px 2px rgba(18,18,18,.06)}
+    .filters input,.filters select{background:linear-gradient(180deg,#fbfaf8 0%,#ffffff 100%)}
+    /* the floating bars are the real glass */
+    header.top{background:rgba(255,255,255,.66);-webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px);border-bottom-color:rgba(214,206,190,.5);box-shadow:0 8px 20px -16px rgba(18,18,18,.35)}
+    .appbar{background:rgba(255,255,255,.72);-webkit-backdrop-filter:saturate(180%) blur(18px);backdrop-filter:saturate(180%) blur(18px);box-shadow:0 -8px 22px -16px rgba(18,18,18,.35)}
+    .appbar button.on::before{background:var(--gl-gold);height:3px;width:26px}
+    .side{background:linear-gradient(180deg,#ffffff 0%,#fbf7f1 100%);box-shadow:inset -1px 0 0 rgba(214,206,190,.6),8px 0 24px -20px rgba(18,18,18,.35)}
+    .tab.on,.side .tab.on{background:linear-gradient(180deg,#fff4f8 0%,var(--pk) 100%);box-shadow:inset 3px 0 0 var(--primary),inset 0 1px 0 rgba(255,255,255,.9),0 4px 12px -8px rgba(143,36,82,.45)}
+    @media (prefers-reduced-motion:reduce){.lead,.btn{transition:none}}
 </style>
 </head>
 <body>
