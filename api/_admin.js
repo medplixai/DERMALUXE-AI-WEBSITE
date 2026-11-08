@@ -230,7 +230,7 @@ async function fbPageToken(cfg) {
   if (process.env.IG_PAGE_TOKEN) return process.env.IG_PAGE_TOKEN;
   try {
     if (cfg) {
-      const r = await guard.kvCommand(cfg, ["GET", "ig:ptok"]);
+      const r = await guard.kvCommand(cfg, ["GET", guard.ptokKey()]);
       if (r && r.result) return r.result;
     }
   } catch (e) {}
@@ -240,7 +240,7 @@ async function fbPageToken(cfg) {
     const r = await fetch(`https://graph.facebook.com/v21.0/${pid}?fields=access_token&access_token=${encodeURIComponent(sys)}`);
     const d = await r.json().catch(() => ({}));
     if (d && d.access_token) {
-      if (cfg) await guard.kvCommand(cfg, ["SET", "ig:ptok", d.access_token, "EX", "21600"]).catch(() => {});
+      if (cfg) await guard.kvCommand(cfg, ["SET", guard.ptokKey(), d.access_token, "EX", "21600"]).catch(() => {});
       return d.access_token;
     }
   } catch (e) {}
@@ -258,7 +258,7 @@ async function fbPageTokenFresh(cfg) {
     const r = await fetch(`https://graph.facebook.com/v21.0/${pid}?fields=access_token&access_token=${encodeURIComponent(sys)}`);
     const d = await r.json().catch(() => ({}));
     if (d && d.access_token) {
-      if (cfg) await guard.kvCommand(cfg, ["SET", "ig:ptok", d.access_token, "EX", "21600"]).catch(() => {});
+      if (cfg) await guard.kvCommand(cfg, ["SET", guard.ptokKey(), d.access_token, "EX", "21600"]).catch(() => {});
       return d.access_token;
     }
   } catch (e) {}

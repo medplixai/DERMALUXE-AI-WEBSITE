@@ -84,16 +84,16 @@ const PHOTO_RULES = facts.photoRules("Messenger");
 const FALLBACK_REPLY = facts.FALLBACK_REPLY;
 
 // ── Page token (shared derivation + cache with the Instagram agent) ─────────
-let memTok = null, memTokAt = 0;
+let memTok = null, memTokAt = 0, memKey = "";
 async function pageToken(cfg) {
   if (process.env.IG_PAGE_TOKEN) return process.env.IG_PAGE_TOKEN;
   const sys = process.env.IG_SYSTEM_TOKEN, pageId = process.env.IG_PAGE_ID;
   if (!sys || !pageId) return null;
-  if (memTok && Date.now() - memTokAt < 3600000) return memTok;
+  if (memTok && memKey === guard.ptokKey() && Date.now() - memTokAt < 3600000) return memTok;
   try {
     if (cfg) {
-      const c = await guard.kvCommand(cfg, ["GET", "ig:ptok"]);
-      if (c && c.result) { memTok = c.result; memTokAt = Date.now(); return memTok; }
+      const c = await guard.kvCommand(cfg, ["GET", guard.ptokKey()]);
+      if (c && c.result) { memTok = c.result; memTokAt = Date.now(); memKey = guard.ptokKey(); return memTok; }
     }
   } catch (e) {}
   try {
@@ -101,8 +101,8 @@ async function pageToken(cfg) {
     if (!r.ok) { console.error("fb: page token derive failed", r.status, (await r.text().catch(() => "")).slice(0, 200)); return null; }
     const d = await r.json();
     if (!d.access_token) return null;
-    memTok = d.access_token; memTokAt = Date.now();
-    try { if (cfg) await guard.kvCommand(cfg, ["SET", "ig:ptok", memTok, "EX", "21600"]); } catch (e) {}
+    memTok = d.access_token; memTokAt = Date.now(); memKey = guard.ptokKey();
+    try { if (cfg) await guard.kvCommand(cfg, ["SET", guard.ptokKey(), memTok, "EX", "21600"]); } catch (e) {}
     return memTok;
   } catch (e) {
     console.error("fb: page token error", e && e.message);

@@ -263,4 +263,13 @@ async function setHas(cfg, key, member) {
   return list.includes(String(member));
 }
 
-module.exports = { idem, stamp, cronAuth, kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, setHas, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone };
+// The Facebook page token is derived from IG_SYSTEM_TOKEN and cached for six
+// hours. Keyed by a fingerprint of the system token, so a new token with new
+// permissions is used at once: on 8 Nov the owner added a permission and the
+// old page token, cached twenty minutes earlier, kept being refused.
+function ptokKey() {
+  const sys = String(process.env.IG_SYSTEM_TOKEN || "");
+  return "ig:ptok:" + require("crypto").createHash("sha256").update(sys).digest("hex").slice(0, 12);
+}
+
+module.exports = { idem, stamp, cronAuth, kvConfig, kvCommand, kvPipeline, kvWrite, hashOf, setHas, getIp, originAllowed, rateLimit, today, safeEqual, phones10, ownerPhones, isOwnerPhone, ptokKey };
