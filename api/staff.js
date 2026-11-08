@@ -15,7 +15,11 @@ const STATUS_TS = "dl_status_ts";           // when each status was last set, fo
 // to travel", and a date to ring back on. The status stays the coarse stage
 // everything else counts by; this is the reason, and the date.
 const OUTCOME = "dl_outcome", FOLLOW = "dl_fu";
-const OUTCOMES = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked" };
+const OUTCOMES = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked",
+  // Academy enquiries have their own steps (8 Nov, point 3): asked about the
+  // course and slots, waiting to say yes, being processed, payment pending,
+  // slot booked, paid and confirmed.
+  a_enquiry: "contacted", a_waiting: "contacted", a_process: "contacted", a_paypend: "contacted", a_booked: "booked", a_paid: "booked" };
 // A client-supplied timestamp, clamped so a wrong phone clock cannot file a
 // note in the future or resurrect a very old one.
 function stamp(v) {
@@ -327,6 +331,11 @@ async function leadPage(cfg, offset, count) {
     } catch (e) {}
     const touched = Number(stTs[k] || 0) || (n.length ? Math.max(...n.map((x) => Number(x.ts) || 0)) : 0);
     if (status === "new" && !touched) base.waiting = Math.max(0, Date.now() - Number(l.ts || 0));
+    // The last time anybody on the desk did anything with it — a call, a note,
+    // a stage change. A lead someone wrote a note on was still "never called"
+    // and came back on the call list every morning (8 Nov, point 1).
+    const lastTouch = Math.max(Number(stTs[k] || 0), n.length ? Math.max(...n.map((x) => Number(x.ts) || 0)) : 0);
+    if (lastTouch) base.touched = lastTouch;
     return base;
   });
   const leadsTotal = Number((total && total.result) || 0) || (from + leads.length);

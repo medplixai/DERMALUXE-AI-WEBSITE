@@ -202,6 +202,9 @@ const shape = (a) => ({
   cf: !!a.cf, note: a.note || "", day: istDay(a.at), time: istTime(a.at),
   adv: Number(a.adv) || 0, lc: !!a.lc,
   pax: Number(a.pax) > 1 ? Number(a.pax) : 1, with: a.with || "",
+  // When it was booked and by whom, and when the patient confirmed — the
+  // desk asked for these dates beside every appointment (8 Nov, point 5).
+  ts: Number(a.ts) || 0, by: a.by || "", cfAt: Number(a.cfAt) || 0,
 });
 
 async function replace(cfg, rawOld, next) {
@@ -405,7 +408,11 @@ module.exports = async (req, res) => {
       days.push({ day: d, total: list.length, mine: list.filter((r) => r.staff === me.phone).length,
         unconfirmed: list.filter((r) => r.status === "booked" && !r.cf).length });
     }
-    return json(res, 200, { ok: true, days, team });
+    // Tomorrow and the rest of the week as lists, not only as counts on the
+    // strip (8 Nov, point 4).
+    const today = istDay(Date.now()), wkEnd = istDay(Date.now() + 6 * 86400000);
+    const soon = rows.filter((r) => r.day >= today && r.day <= wkEnd && r.status !== "cancelled").sort((x, y) => x.at - y.at).slice(0, 200);
+    return json(res, 200, { ok: true, days, team, soon });
   }
 
   if (req.method !== "POST") return json(res, 405, { error: "POST" });

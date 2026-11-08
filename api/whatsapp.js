@@ -517,7 +517,7 @@ async function confirmAppt(cfg, phone, askedOnly) {
       if (!a || a.ph !== phone || !a.at || a.at < Date.now() - 3600000) continue;
       if (askedOnly && !a.c1) continue;
       if (!a.cf) {
-        a.cf = true;
+        a.cf = true; a.cfAt = Date.now();
         await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]).catch(() => {});
         await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
       }
@@ -945,6 +945,7 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
         if (!hadSame) {
           await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(Object.assign({
             ph: phone, name: unnamed ? "" : lead.name.split(" ")[0], at, concern: lead.concern.slice(0, 60),
+            ts: Date.now(), by: "AI agent",
             label: unnamed ? lead.name : undefined,   // the desk's label; reminders still greet without it
           }, family.length ? { pax: family.length + 1, with: family.map((f) => f.name).join(", ") } : {}))]);
           bookedNow = at; // advance ask only on a NEW/changed slot

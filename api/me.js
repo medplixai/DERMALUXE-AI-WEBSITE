@@ -155,7 +155,7 @@ module.exports = async (req, res) => {
       const x = parse(raw, null);
       if (!x || ten(x.ph) !== phone || Math.abs(Number(x.at) - at) > 60000) continue;
       if (!x.cf) {
-        x.cf = true; x.cfVia = "portal";
+        x.cf = true; x.cfVia = "portal"; x.cfAt = Date.now();
         await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
         await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(x)]).catch(() => {});
       }

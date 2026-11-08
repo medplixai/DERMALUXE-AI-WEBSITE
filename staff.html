@@ -716,6 +716,14 @@
     #catchips button[data-cat="ht"],.cat.ht{background:var(--mint);border-color:var(--mint2);color:var(--mint-ink)}
     #catchips button[data-cat="academy"],.cat.academy{background:var(--butter);border-color:var(--butter2);color:var(--butter-ink)}
     .cat{border:1px solid transparent}
+    .lmode{display:flex;gap:8px;margin:0 0 8px}
+    .lmode button{flex:1 1 0;min-height:44px;border:1px solid var(--line2);background:var(--panel);border-radius:14px;font:inherit;font-size:.88rem;font-weight:600;color:var(--muted);cursor:pointer}
+    .lmode button i{font-style:normal;margin-left:5px;opacity:.75}
+    .lmode button.on{background:var(--blk);color:var(--gold-hi);border-color:var(--blk)}
+    .lmode button[data-cat="academy"].on{background:var(--butter);color:var(--butter-ink);border:2px solid var(--blk)}
+    .callwhy{margin:0 0 10px;padding:9px 12px;border-radius:12px;background:var(--panel);border:1px dashed var(--line2);font-size:.82rem;line-height:1.55}
+    .callwhy b{font-weight:600}
+    .adates b{font-weight:600;color:var(--text,inherit)}
     .sumbar{margin:0 0 10px;padding:10px 12px;border-radius:12px;background:var(--gd);border:1px solid var(--gd2);font-size:.85rem;line-height:1.5}
     .callnote{margin-top:8px;padding:8px 10px;border-radius:10px;background:var(--butter);border:1px solid var(--butter2);font-size:.85rem}
     .callnote summary{cursor:pointer;font-weight:600;color:var(--butter-ink)}
@@ -841,10 +849,14 @@
       <section id="t-leads">
         <div class="filters">
           <input id="q" placeholder="Search name / phone / concern" />
-          <select id="fStatus"><option value="">All status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="o:noanswer">📵 Not answering</option><option value="fu:due">📅 Follow-up — ivala / late</option><option value="o:followup">📅 Need follow up (anni)</option><option value="o:thinking">🤔 Consultation kosam alochistunnaru</option><option value="o:notinterested">🚫 Not interested</option><option value="o:notravel">🚗 Not willing to travel</option><option value="booked">Booked</option><option value="visited">Visited</option><option value="closed">Closed</option></select>
+          <select id="fStatus"><option value="">All status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="o:noanswer">📵 Not answering</option><option value="fu:due">📅 Follow-up — ivala / late</option><option value="o:followup">📅 Need follow up (anni)</option><option value="o:thinking">🤔 Consultation kosam alochistunnaru</option><option value="o:notinterested">🚫 Not interested</option><option value="o:notravel">🚗 Not willing to travel</option><option value="booked">Booked</option><option value="visited">Visited</option><option value="closed">Closed</option><optgroup label="🎓 Academy"><option value="o:a_enquiry">📋 Slot / course gurinchi adigaru</option><option value="o:a_waiting">⏳ Slot confirmation kosam waiting</option><option value="o:a_process">🔄 Under process</option><option value="o:a_paypend">💳 Payment pending</option><option value="o:a_booked">🎟 Slot booked</option><option value="o:a_paid">✅ Payment done &amp; slot confirmed</option></optgroup></select>
           <select id="fSrc"><option value="">All sources</option><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="web">Website</option><option value="walkin">Walk-in / call</option></select>
           <select id="fDays"><option value="7">Last 7 days</option><option value="1">Today</option><option value="30">Last 30 days</option><option value="365" selected>All</option></select>
           <button class="btn btn--sm btn--gold hide" id="leadAdd">+ Kotha lead</button>
+        </div>
+        <div class="lmode" id="lmode" aria-label="DermaLuxe / Academy leads">
+          <button data-cat="" class="on">🏥 DermaLuxe leads<i id="lmN0"></i></button>
+          <button data-cat="academy">🎓 Academy leads<i id="lmN1"></i></button>
         </div>
         <div class="segs" id="segs" role="tablist" aria-label="Lead groups">
           <button data-seg="call" class="on">🔥 Ippude call<i id="segN0"></i></button>
@@ -857,11 +869,10 @@
           <button data-seg="all">Anni<i id="segN7"></i></button>
         </div>
         <div class="fchips" id="catchips" aria-label="Skin / Hair">
-          <button data-cat="" class="on">Anni</button>
+          <button data-cat="" class="on">Anni clinic</button>
           <button data-cat="skin">💆 Skin<i id="catN0"></i></button>
           <button data-cat="hair">💇 Hair<i id="catN1"></i></button>
           <button data-cat="ht">🌱 Hair transplant<i id="catN2"></i></button>
-          <button data-cat="academy">🎓 Academy<i id="catN3"></i></button>
         </div>
         <div class="fchips" id="fchips">
           <button data-fq="contacted">Contacted<i id="fqN0"></i></button>
@@ -869,6 +880,15 @@
           <button data-fq="o:thinking">🤔 Alochistunnaru<i id="fqN2"></i></button>
           <button data-fq="o:notravel">🚗 Travel cheyyaleru<i id="fqN3"></i></button>
           <button data-fq="o:notinterested">🚫 Not interested<i id="fqN4"></i></button>
+        </div>
+        <div class="fchips hide" id="afchips" aria-label="Academy steps">
+          <button data-fq="o:a_enquiry">📋 Slot / course adigaru<i id="afN0"></i></button>
+          <button data-fq="o:a_waiting">⏳ Confirmation kosam waiting<i id="afN1"></i></button>
+          <button data-fq="o:a_process">🔄 Under process<i id="afN2"></i></button>
+          <button data-fq="o:a_paypend">💳 Payment pending<i id="afN3"></i></button>
+          <button data-fq="o:a_booked">🎟 Slot booked<i id="afN4"></i></button>
+          <button data-fq="o:a_paid">✅ Paid &amp; confirmed<i id="afN5"></i></button>
+          <button data-fq="o:noanswer">📵 Not answering<i id="afN6"></i></button>
         </div>
         <div class="list" id="leadList"></div>
         <div id="leadMore" style="margin-top:10px;text-align:center"></div>
@@ -1509,8 +1529,12 @@
     // not interested, need follow up, not willing to travel" beside the stages.
     function statusSelect(l) {
       var cur = l.outcome && l.outcome !== "booked" && OUT_STATUS[l.outcome] === l.status ? "o:" + l.outcome : l.status;
-      var opts = [["new", "New"], ["contacted", "Contacted"], ["o:noanswer", "📵 Not answering"], ["o:followup", "📅 Need follow up"], ["o:thinking", "🤔 Consultation kosam alochistunnaru"],
+      var opts = isAcad(l)
+        ? [["new", "New"], ["o:a_enquiry", "📋 Slot / course gurinchi adigaru"], ["o:a_waiting", "⏳ Slot confirmation kosam waiting"], ["o:a_process", "🔄 Under process"], ["o:a_paypend", "💳 Payment pending"],
+           ["o:a_booked", "🎟 Slot booked"], ["o:a_paid", "✅ Payment done & slot confirmed"], ["o:noanswer", "📵 Not answering"], ["o:followup", "📅 Need follow up"], ["o:notinterested", "🚫 Not interested"], ["closed", "Closed"]]
+        : [["new", "New"], ["contacted", "Contacted"], ["o:noanswer", "📵 Not answering"], ["o:followup", "📅 Need follow up"], ["o:thinking", "🤔 Consultation kosam alochistunnaru"],
         ["o:notinterested", "🚫 Not interested"], ["o:notravel", "🚗 Not willing to travel"], ["booked", "Booked"], ["visited", "Visited"], ["closed", "Closed"]];
+      if (isAcad(l) && cur === "contacted") cur = "o:a_enquiry";
       return '<select class="s-' + l.status + '" data-act="status" data-key="' + esc(l.key) + '">' + opts.map(function (o) {
         return '<option value="' + o[0] + '"' + (o[0] === cur ? " selected" : "") + ">" + o[1] + "</option>";
       }).join("") + "</select>";
@@ -1618,21 +1642,38 @@
     // 7 Nov: the tile said 122 to call when 22 of them had been rung that day.
     // A lead called today is off the list until tomorrow, and a follow-up
     // comes back on its own date, not before.
-    function needsCall(l) {
-      if (!l || l.optedOut) return false;
-      if (!l.phone) return false;                     // nothing to dial — answer them on Instagram
-      if (/^\s*academy/i.test(String(l.concern || ""))) return false;
-      if (!(l.status === "new" || l.status === "contacted")) return false;
-      if (l.outcome === "followup") return !!l.fu && l.fu <= istToday();
+    // Why someone is on the call list today, or "" if they are not. 8 Nov:
+    // the desk cleared Waiting to zero and the list still said 60, because a
+    // lead touched with a note — not a "Call —" note — counted as never
+    // called, and anyone once called came back every single morning. Now a
+    // lead somebody dealt with today is off; one spoken to comes back two
+    // days later, and only for a fortnight after the enquiry.
+    var DAYMS = 86400000;
+    function callWhy(l, acad) {
+      if (!l || l.optedOut || !l.phone) return "";          // nothing to dial — answer them on Instagram
+      if (!acad && isAcad(l)) return "";
+      if (!(l.status === "new" || l.status === "contacted")) return "";
+      var age = Date.now() - (l.ts || 0), last = Math.max(l.lastCall || 0, l.touched || 0);
+      if (l.outcome === "followup") return l.fu && l.fu <= istToday() ? "fu" : "";
       // Ettaledu: try again three hours later, not tomorrow (7 Nov, point 10).
-      if (l.outcome === "noanswer") return !l.lastCall || Date.now() - l.lastCall > 3 * 3600000;
-      if (l.lastCall && l.lastCall >= dayStartMs()) return false;
-      return l.grade ? l.grade === "A" : l.heat === "hot";
+      if (l.outcome === "noanswer") return age < 14 * DAYMS && (!l.lastCall || Date.now() - l.lastCall > 3 * 3600000) ? "retry" : "";
+      if (last && last >= dayStartMs()) return "";
+      if (l.outcome === "callback") return "callback";
+      var hot = acad || (l.grade ? l.grade === "A" : l.heat === "hot");
+      if (!hot) return "";
+      if (!last) return age < 30 * DAYMS ? "fresh" : "";
+      if (age > 14 * DAYMS) return "";
+      return Date.now() - last > 2 * DAYMS ? "again" : "";
     }
+    var CALL_WHY = [["fresh", "evaru inka matladanivi"], ["retry", "ettaledu — malli try"], ["fu", "follow-up ivala"], ["callback", "malli call cheyyamannaru"], ["again", "2+ rojula kritam matladaru, inka decide avvaledu"]];
+    function needsCall(l) { return !!callWhy(l, false); }
+    function needsCallAcad(l) { return !!callWhy(l, true); }
     function dayStartMs() { var t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); }
     function fuDue(l) { return l.outcome === "followup" && l.fu && l.fu <= istToday() && (l.status === "new" || l.status === "contacted"); }
-    var OUT_LABEL = { noanswer: "📵 Not answering", callback: "🔁 Malli call", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Need follow up", notinterested: "🚫 Not interested", notravel: "🚗 Not willing to travel", booked: "✅ Booked for consultation" };
-    var OUT_STATUS = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked" };
+    var OUT_LABEL = { noanswer: "📵 Not answering", callback: "🔁 Malli call", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Need follow up", notinterested: "🚫 Not interested", notravel: "🚗 Not willing to travel", booked: "✅ Booked for consultation",
+      a_enquiry: "📋 Slot / course gurinchi adigaru", a_waiting: "⏳ Slot confirmation kosam waiting", a_process: "🔄 Under process", a_paypend: "💳 Payment pending", a_booked: "🎟 Slot booked", a_paid: "✅ Payment done & slot confirmed" };
+    var OUT_STATUS = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked",
+      a_enquiry: "contacted", a_waiting: "contacted", a_process: "contacted", a_paypend: "contacted", a_booked: "booked", a_paid: "booked" };
     // Skin or hair, read from what they asked about (owner, 7 Nov: "leads skin
     // and hair separate"). Laser hair removal is a skin treatment, so it is
     // checked before the word "hair" can claim it.
@@ -1674,6 +1715,7 @@
     function untouched(l) {
       return l.status === "new" && !(l.notes && l.notes.length) && !/^\s*academy/i.test(String(l.concern || ""));
     }
+    function untouchedAcad(l) { return l.status === "new" && !(l.notes && l.notes.length); }
     var callShowAll = false;
     // Cards are drawn forty at a time: drawing all 170 on every tap and every
     // letter typed was most of a second on the desk's phones (8 Nov).
@@ -1737,22 +1779,32 @@
       var d = state.data, q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fsrc = $("fSrc").value, days = Number($("fDays").value);
       var since = Date.now() - days * 86400000; if (days === 1) { var t0 = new Date(); t0.setHours(0, 0, 0, 0); since = t0.getTime(); }
       var seg = (document.querySelector("#segs button.on") || {}).dataset; seg = seg ? seg.seg : "all";
-      var isHotLead = needsCall;
+      var acadMode = leadCat === "academy";
+      var isHotLead = acadMode ? needsCallAcad : needsCall, isUntouched = acadMode ? untouchedAcad : untouched;
       var t00 = new Date(); t00.setHours(0, 0, 0, 0);
       // One card per person (owner, 7 Nov): the newest enquiry leads, the
       // older ones from the same number ride along underneath it.
       var people = groupPeople(d.leads);
-      var base = people.filter(function (l) { return !/^academy/i.test(String(l.concern || "")); });
+      var clinicPeople = people.filter(function (l) { return !/^academy/i.test(String(l.concern || "")); });
+      var acadPeople = people.filter(function (l) { return catOf(l) === "academy"; });
+      // DermaLuxe and the academy apart (8 Nov, point 2): every group, count
+      // and filter below works on one or the other, never both mixed.
+      var base = acadMode ? acadPeople : clinicPeople;
+      var lm0 = $("lmN0"), lm1 = $("lmN1");
+      if (lm0) lm0.textContent = clinicPeople.length ? String(clinicPeople.length) : "";
+      if (lm1) lm1.textContent = acadPeople.length ? String(acadPeople.length) : "";
+      document.querySelectorAll("#lmode [data-cat]").forEach(function (b) { b.classList.toggle("on", acadMode ? b.dataset.cat === "academy" : b.dataset.cat !== "academy"); });
+      $("catchips").classList.toggle("hide", acadMode); $("fchips").classList.toggle("hide", acadMode); $("afchips").classList.toggle("hide", !acadMode);
       var myPhone = (d.me && d.me.phone) || "";
       var isMine = function (l) { return l.owner && l.owner === myPhone && (l.status === "new" || l.status === "contacted"); };
       var isBooked = function (l) { return l.status === "booked" || l.status === "visited"; };
       var isFu = function (l) { return l.outcome === "followup" && (l.status === "new" || l.status === "contacted"); };
       var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length,
         base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length,
-        base.filter(untouched).length, base.filter(isBooked).length, base.filter(isFu).length, base.length];
+        base.filter(isUntouched).length, base.filter(isBooked).length, base.filter(isFu).length, base.length];
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
       var catBase = base.filter(function (l) { return l.type !== "job"; });
-      ["skin", "hair", "ht", "academy"].forEach(function (c, i) {
+      ["skin", "hair", "ht"].forEach(function (c, i) {
         var pool = c === "academy" ? people : catBase;
         var el = $("catN" + i); if (el) { var n = pool.filter(function (l) { return catOf(l) === c; }).length; el.textContent = n ? " " + n : ""; }
       });
@@ -1762,12 +1814,17 @@
         var el = $("fqN" + i); if (el) el.textContent = n ? " " + n : "";
         var b = document.querySelector('#fchips [data-fq="' + f + '"]'); if (b) b.classList.toggle("on", fs === f);
       });
+      ["a_enquiry", "a_waiting", "a_process", "a_paypend", "a_booked", "a_paid", "noanswer"].forEach(function (o, i) {
+        var n = acadPeople.filter(function (l) { return l.outcome === o; }).length;
+        var el = $("afN" + i); if (el) el.textContent = n ? " " + n : "";
+        var b = document.querySelector('#afchips [data-fq="o:' + o + '"]'); if (b) b.classList.toggle("on", fs === "o:" + o);
+      });
       var list = people.filter(function (l) {
         if (seg === "call" && !isHotLead(l)) return false;
         if (seg === "today" && l.ts < t00.getTime()) return false;
         if (seg === "open" && !(l.status === "new" || l.status === "contacted")) return false;
         if (seg === "mine" && !isMine(l)) return false;
-        if (seg === "wait" && !untouched(l)) return false;
+        if (seg === "wait" && !isUntouched(l)) return false;
         if (seg === "booked" && !isBooked(l)) return false;
         if (seg === "fu" && !isFu(l)) return false;
         if (seg !== "fu" && l.ts < since) return false;
@@ -1776,6 +1833,7 @@
         else if (fs && l.status !== fs) return false;
         if (fsrc && src(l) !== fsrc) return false;
         if (leadCat && catOf(l) !== leadCat) return false;
+        if (acadMode && catOf(l) !== "academy") return false;
         if (leadCat !== "academy" && /^academy/i.test(String(l.concern || ""))) return false;
         if (q && (String(l.name) + " " + String(l.phone) + " " + String(l.concern) + " " + String(l.message)).toLowerCase().indexOf(q) === -1) return false;
         return true;
@@ -1806,7 +1864,13 @@
       var due = base.filter(fuDue).length;
       var banner = due && seg !== "fu" ? '<div class="fu-due"><span>📅 <b>Ivala ' + due + " follow-up" + (due > 1 ? "s" : "") + "</b> cheyyali</span>" +
         '<button class="btn btn--sm btn--gold" data-act="seg-go" data-seg="fu">Chudandi</button></div>' : "";
-      $("leadList").innerHTML = summaryBar(people, d.leads) + banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts)) +
+      var whyLine = "";
+      if (seg === "call") {
+        var wc = {}; base.forEach(function (l) { var w = callWhy(l, acadMode); if (w) wc[w] = (wc[w] || 0) + 1; });
+        var parts = CALL_WHY.filter(function (x) { return wc[x[0]]; }).map(function (x) { return "<b>" + wc[x[0]] + "</b> " + x[1]; });
+        if (parts.length) whyLine = '<div class="callwhy">🔥 Ivala ' + counts[0] + " mandiki call cheyyali — " + parts.join(" · ") + '<br><span class="meta">Waiting = evaru inka touch cheyyanivi matrame. Call list lo vaatitho paatu ettanivi, follow-up date vachinavi kuda untayi. Ivala matladina / note raasina lead repati varaku list nunchi vellipotundi.</span></div>';
+      }
+      $("leadList").innerHTML = summaryBar(people, d.leads) + whyLine + banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts)) +
         (moreCards ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="lead-more">Inka ' + moreCards + " leads chupinchu</button></div>" : "") +
         (moreCalls ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Inka ' + moreCalls + " mandi chupinchu</button></div>" :
           (seg === "call" && callShowAll && list.length > 10 ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Top 10 matrame chupinchu</button></div>' : ""));
@@ -1947,11 +2011,15 @@
       // Tap "Ee roju" to open / close the day's list; tap "Confirm avvanivi"
       // to see only those, again for all (7 Nov, point 4).
       $("schHead").innerHTML = '<div data-act="sch-head" data-k="all"' + (schShow === "all" ? ' class="on"' : "") + "><b>" + d.counts.total + "</b><span>Ee roju " + (schShow === "none" ? "▸" : "▾") + "</span></div>" +
-        '<div data-act="sch-head" data-k="unconf"' + (schShow === "unconf" ? ' class="on"' : "") + "><b>" + d.counts.unconfirmed + "</b><span>Confirm avvanivi</span></div>";
+        '<div data-act="sch-head" data-k="unconf"' + (schShow === "unconf" ? ' class="on"' : "") + "><b>" + d.counts.unconfirmed + "</b><span>Confirm avvanivi</span></div>" +
+        // Tomorrow and the rest of the week open as lists too (8 Nov, point 4).
+        '<div data-act="sch-head" data-k="tom"' + (schShow === "tom" ? ' class="on"' : "") + "><b>" + soonOf("tom").length + "</b><span>Repu " + (schShow === "tom" ? "▾" : "▸") + "</span></div>" +
+        '<div data-act="sch-head" data-k="week"' + (schShow === "week" ? ' class="on"' : "") + "><b>" + soonOf("week").length + "</b><span>Ee vaaram " + (schShow === "week" ? "▾" : "▸") + "</span></div>";
       setTimeout(function () { var on = document.querySelector("#dayStrip button.on"); if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "center" }); }, 0);
       $("schNew").classList.toggle("hide", !state.allow("appts.edit"));
       paintDayPlan(d.plan);
 
+      if (schShow === "tom" || schShow === "week") { renderSoon(); renderWait(d); return; }
       var rows = schMine ? d.rows.filter(function (r) { return r.staff === state.data.me.phone; }) : d.rows;
       if (schShow === "unconf") rows = rows.filter(function (r) { return r.status === "booked" && !r.cf; });
       $("schList").classList.toggle("hide", schShow === "none");
@@ -1967,6 +2035,7 @@
           "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') +
           (r.pax > 1 ? ' <span class="chip" title="' + esc(r.with || "") + '">👥 ' + r.pax + " mandi</span>" : "") + (r.adv ? ' <span class="chip ok">💳 ₹' + r.adv + ' advance</span>' : "") + (r.lc && r.status === "booked" ? ' <span class="chip">vastunnara adigam</span>' : "") +
           (r.status !== "booked" ? ' <span class="chip">' + esc(r.status) + "</span>" : "") + "</div></div>" +
+          apptDates(r) +
           ((r.risk || []).length ? '<div class="meta" style="margin-top:5px">' + r.risk.map(function (x) { return '<span class="chip hot">⚠️ ' + esc(x) + "</span>"; }).join(" ") + "</div>" : "") +
           (r.note ? '<div class="meta" style="margin-top:5px">📝 ' + esc(r.note) + "</div>" : "") +
           '<div class="acts">' +
@@ -1988,6 +2057,48 @@
       $("svList").classList.toggle("on", schView !== "grid"); $("svGrid").classList.toggle("on", schView === "grid");
       if (schView === "grid") renderGrid(d, rows);
       renderWait(d);
+    }
+    // The dates the desk asked for beside every appointment (8 Nov, point 5):
+    // when the enquiry came, when someone last rang, when it was booked and
+    // by whom, and when the patient confirmed.
+    function apptDates(r) {
+      var ph = String(r.ph || ""), leads = ((state.data || {}).leads || []).filter(function (l) { return l.phone === ph; });
+      var cut = r.ts || r.at, ld = 0, lc = 0;
+      leads.forEach(function (l) { if (l.ts && l.ts <= cut && l.ts > ld) ld = l.ts; if (l.lastCall && l.lastCall > lc) lc = l.lastCall; });
+      if (!ld && leads.length) ld = Math.min.apply(null, leads.map(function (l) { return l.ts || Date.now(); }));
+      var bits = [];
+      if (ld) bits.push("📥 Lead: <b>" + esc(dmy(ld)) + "</b>");
+      if (lc) bits.push("📞 Call: <b>" + esc(dmy(lc)) + "</b>");
+      if (r.ts) bits.push("🗓 Book chesindi: <b>" + esc(dmy(r.ts)) + "</b>" + (r.by ? " · " + esc(r.by) : ""));
+      if (r.cfAt) bits.push("✅ Confirm: <b>" + esc(dmy(r.cfAt)) + "</b>");
+      return bits.length ? '<div class="meta adates" style="margin-top:4px">' + bits.join(" &nbsp;·&nbsp; ") + "</div>" : "";
+    }
+    function istDayOf(ts) {
+      return new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
+    }
+    function soonOf(k) {
+      var soon = (schWeek && schWeek.soon) || [], today = istToday(), tmr = istDayOf(Date.now() + 86400000);
+      if (schMine) soon = soon.filter(function (r) { return r.staff === state.data.me.phone; });
+      return soon.filter(function (r) { return k === "tom" ? r.day === tmr : r.day > today; });
+    }
+    function renderSoon() {
+      var rows = soonOf(schShow), byDay = {}, order = [];
+      rows.forEach(function (r) { if (!byDay[r.day]) { byDay[r.day] = []; order.push(r.day); } byDay[r.day].push(r); });
+      $("schGrid").classList.add("hide"); $("schList").classList.remove("hide");
+      $("schList").innerHTML = order.length ? order.map(function (day) {
+        var dt = new Date(day + "T00:00:00+05:30");
+        var head = dt.toLocaleDateString("en-IN", { weekday: "long", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+        return '<div class="grp"><div class="grp-h"><h2>' + esc(head) + '</h2><i>' + byDay[day].length + ' · <button class="btn btn--sm" data-act="sch-day" data-day="' + esc(day) + '">Aa roju open cheyyi</button></i></div>' +
+          byDay[day].map(function (r) {
+            return '<article class="slot ' + esc(r.status) + '"><div class="when">' + esc(r.time) + "<span>" + r.mins + " min</span></div><div>" +
+              '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><h3 data-act="pt-open" data-phone="' + esc(r.ph) + '" style="cursor:pointer">' + esc(r.name) + ' <span class="meta">· ' + esc(r.ph) + "</span></h3>" +
+              '<div class="meta">' + esc(r.concern || "—") + (r.staffName ? " · 👩‍⚕️ " + esc(r.staffName) : "") + "</div></div>" +
+              "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') + "</div></div>" +
+              apptDates(r) +
+              '<div class="acts"><a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name) + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞</a>' +
+              '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.ph) + '">💬</a></div></div></article>';
+          }).join("") + "</div>";
+      }).join("") : '<div class="empty">' + (schShow === "tom" ? "Repu appointments ledu." : "Ee vaaram inka appointments ledu.") + "</div>";
     }
     // ---- the day as a grid: one column per doctor, drag to move ----------
     var schView = (function () { try { return localStorage.getItem("dl_schview") || "list"; } catch (e) { return "list"; } })();
@@ -5147,10 +5258,22 @@
       { k: "notravel",      label: "🚗 Raalemu (dooram)", note: "Call — travel cheyyalemu annaru" },
       { k: "notinterested", label: "🚫 Vaddannaru",    note: "Call — interest ledu" },
     ];
+    // The academy's own steps, for the call sheet and the card (8 Nov, point 3).
+    var ACAD_OUTCOMES = [
+      { k: "a_enquiry", label: "📋 Slot / course adigaru", note: "Call — slot / courses gurinchi adigaru" },
+      { k: "a_waiting", label: "⏳ Confirm cheyyaledu", note: "Call — slot book cheyyala vadda inka cheppaledu" },
+      { k: "a_process", label: "🔄 Under process", note: "Call — under process" },
+      { k: "a_paypend", label: "💳 Payment pending", note: "Call — payment pending" },
+      { k: "a_booked",  label: "🎟 Slot booked", note: "Call — slot booked" },
+      { k: "a_paid",    label: "✅ Paid & confirmed", note: "Call — payment done, slot confirmed" },
+      { k: "noanswer",  label: "📵 Ettaledu", note: "Call — ettaledu" },
+      { k: "followup",  label: "📅 Need follow up", note: "Call — follow-up" },
+      { k: "notinterested", label: "🚫 Vaddannaru", note: "Call — interest ledu" },
+    ];
     // One write for what the call came to; the server sets the stage from it.
     function saveOutcome(key, o, fu, extraNote) {
       var lead = (state.data.leads || []).filter(function (x) { return x.key === key; })[0];
-      var o2 = OUTCOMES.filter(function (x) { return x.k === o; })[0];
+      var o2 = OUTCOMES.concat(ACAD_OUTCOMES).filter(function (x) { return x.k === o; })[0];
       var text = [o2 ? o2.note : "Call chesamu", fu ? "next " + dmy(fu) : "", extraNote].filter(Boolean).join(" — ").slice(0, 380);
       if (lead) { lead.outcome = o; lead.fu = fu || ""; lead.status = OUT_STATUS[o]; lead.lastCall = Date.now(); lead.notes = [{ ts: Date.now(), by: state.data.me.name, text: text }].concat(lead.notes || []); renderLeads(); saveCache(state.data); }
       return Promise.all([api("note", { key: key, text: text, at: Date.now() }), api("outcome", { key: key, outcome: o, fu: fu || "", at: Date.now() })])
@@ -5220,12 +5343,14 @@
     }
     function askCallResult(pc) {
       var mins = Math.max(1, Math.round((Date.now() - pc.at) / 60000));
+      var pcLead = (state.data.leads || []).filter(function (x) { return x.key === pc.key; })[0];
+      var LIST = pcLead && isAcad(pcLead) ? ACAD_OUTCOMES : OUTCOMES;
       var wrap = document.createElement("div");
       wrap.className = "sheet open";
       wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
         '<h2>' + esc(pc.name || "Call") + ' ki call chesara?</h2>' +
         '<p style="color:var(--muted2);font-size:.82rem;margin-bottom:12px">' + mins + ' nimishala kritam · ' + esc(pc.phone || "") + '</p>' +
-        '<div class="pwrow" style="gap:7px">' + OUTCOMES.map(function (o) {
+        '<div class="pwrow" style="gap:7px">' + LIST.map(function (o) {
           return '<button class="pw" style="padding:9px 13px;font-size:.85rem" data-out="' + o.k + '">' + o.label + "</button>";
         }).join("") + "</div>" +
         '<form class="noteform" style="margin-top:12px" id="cnForm"><input id="cnText" placeholder="Em maatladaru? (optional)" maxlength="300" /><button class="btn btn--sm btn--gold" type="submit">Save</button></form>' +
@@ -5235,7 +5360,7 @@
       var close = function () { wrap.remove(); clearCall(); };
       wrap.querySelectorAll("[data-out]").forEach(function (btn) {
         btn.onclick = function () {
-          picked = OUTCOMES.filter(function (o) { return o.k === btn.dataset.out; })[0];
+          picked = LIST.filter(function (o) { return o.k === btn.dataset.out; })[0];
           haptic();
           var lead = (state.data.leads || []).filter(function (x) { return x.key === pc.key; })[0] || { key: pc.key, name: pc.name, phone: pc.phone };
           if (picked.k === "booked") { close(); askBooking(lead); return; }
@@ -5261,14 +5386,12 @@
       var eye = e.target.closest("[data-eye]");
       if (eye) { var inp = $(eye.dataset.eye); if (inp) { inp.type = inp.type === "password" ? "text" : "password"; eye.textContent = inp.type === "password" ? "👁" : "🙈"; inp.focus(); } return; }
       var ct = e.target.closest("[data-cat]");
-      if (ct && ct.closest("#catchips")) {
+      if (ct && (ct.closest("#catchips") || ct.closest("#lmode"))) {
+        var wasAcad = leadCat === "academy";
         leadCat = ct.dataset.cat;
-        // Academy enquiries are never on the patient call list, so the
-        // academy chip looks across every group rather than show nothing.
-        var onSeg = document.querySelector("#segs button.on");
-        if (leadCat === "academy" && onSeg && ["call", "wait", "mine"].indexOf(onSeg.dataset.seg) !== -1) {
-          document.querySelectorAll("#segs button").forEach(function (x) { x.classList.toggle("on", x.dataset.seg === "all"); });
-        }
+        // Switching between DermaLuxe and the academy clears a status filter
+        // that belongs to the other one.
+        if (wasAcad !== (leadCat === "academy") && $("fStatus").value) $("fStatus").value = "";
         renderLeads(); return;
       }
       var fq = e.target.closest("[data-fq]");
@@ -5778,7 +5901,7 @@
       }
       if (el.dataset.act === "sch-head") {
         var k5 = el.dataset.k;
-        schShow = k5 === "all" ? (schShow === "none" ? "all" : schShow === "all" ? "none" : "all") : (schShow === "unconf" ? "all" : "unconf");
+        schShow = k5 === "all" ? (schShow === "none" ? "all" : schShow === "all" ? "none" : "all") : (schShow === k5 ? "all" : k5);
         renderSchedule(); return;
       }
       if (el.dataset.act === "stk-head") { stkShow = el.dataset.k === "low" ? (stkShow === "low" ? "all" : "low") : (stkShow === "none" ? "all" : "none"); loadStock(); return; }
@@ -5837,7 +5960,7 @@
           .catch(function (x) { toast(x.message); });
         return;
       }
-      if (el.dataset.act === "sch-day") { schDay = el.dataset.day; haptic(); loadSchedule(true); return; }
+      if (el.dataset.act === "sch-day") { schDay = el.dataset.day; if (schShow === "tom" || schShow === "week") schShow = "all"; haptic(); loadSchedule(true); return; }
       if (el.dataset.act === "sch-arrived") { schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "arrived" }, "Vachharu ani mark chesamu"); return; }
       if (el.dataset.act === "sch-done") {
         var dn = prompt("Em chesaru? (optional note)", "") || "";

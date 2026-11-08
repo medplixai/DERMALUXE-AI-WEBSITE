@@ -47,7 +47,7 @@ module.exports = async (req, res) => {
       if (!a || a.ph !== ph) continue;
       name = a.name || name;
       if (a.at !== at) continue;
-      a.adv = (Number(a.adv) || 0) + amount; a.cf = 1; a.advRef = pid;
+      a.adv = (Number(a.adv) || 0) + amount; a.cf = 1; a.cfAt = a.cfAt || Date.now(); a.advRef = pid;
       await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
       await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
       found = true;
