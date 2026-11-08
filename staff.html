@@ -1447,7 +1447,12 @@
       $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
       $("nAppts").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("nAcad").textContent = d.academy.leads.length;
-      renderLeads(); renderAppts(); renderAcademy(); renderToday(); renderReviews(); fillThumbs();
+      // The posts tab is drawn when someone opens it. Drawn on every open and
+      // every refresh, it fired eight requests and pulled every poster picture
+      // — 49 of them in half an hour on 8 Nov — ahead of the leads the desk
+      // had actually opened the app for.
+      if (document.body.getAttribute("data-tab") === "today") { todayDirty = false; renderToday(); } else todayDirty = true;
+      renderLeads(); renderAppts(); renderAcademy(); renderReviews(); fillThumbs();
       if ($("dailyToggle")) {
         $("dailyToggle").checked = !!d.dailyOn;
         // This capability existed and was never checked — anyone who could
@@ -3155,8 +3160,14 @@
       var sec = $("t-inbox"); if (!sec || sec.classList.contains("hide") || document.hidden || !tok) return;
       if (ib.phone) openThread(ib.phone, true);
     }, 8000);
+    // Off the inbox the list is only wanted for the unread badge, so once a
+    // minute is enough; every 20 seconds it was three requests a minute on
+    // every phone all day, queued in front of whatever the person tapped.
+    var ibTick = 0;
     setInterval(function () {
       if (!tok || document.hidden || !state.allow || !state.allow("inbox.view")) return;
+      var sec = $("t-inbox"), onInbox = sec && !sec.classList.contains("hide");
+      if (!onInbox && (++ibTick % 3)) return;
       loadInbox(true);
     }, 20000);
     if ($("ibBack")) $("ibBack").onclick = function () { haptic(); closeThread(); };
@@ -3901,6 +3912,7 @@
       });
     }
 
+    var todayDirty = true;
     function renderToday() {
       var d = state.data, t = d.today, html = '';
       html += '<div class="box"><h2>Today\'s auto post</h2>' + (t ? '<p><b style="color:var(--g1);font-weight:500">' + esc(t.h1) + '</b><br /><span class="te">' + esc(t.te || "") + '</span><br /><span class="meta">' + (t.page ? 'Page: ' + esc(t.page) : '') + '</span></p>' : '<p>No post generated yet today (7:00 AM build → 8:30 AM publish).</p>') +
@@ -4103,7 +4115,7 @@
           return '<div class="vrow"><div style="display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start">' +
             // A picture that has expired keeps its space: hiding it outright let
             // the words fall into the 72px picture column, one word a line.
-            '<img class="qimg" src="' + ORIGIN + '/api/media?id=' + esc(it.imgId) + '" alt="" onerror="this.style.visibility=\'hidden\'" />' +
+            '<img class="qimg" loading="lazy" decoding="async" src="' + ORIGIN + '/api/media?id=' + esc(it.imgId) + '" alt="" onerror="this.style.visibility=\'hidden\'" />' +
             "<div><b>" + (it.kind === "story" ? "📸 Story" : it.kind === "reel" ? "🎬 Reel" : "🖼 Post") + "</b> " +
             '<span class="meta">· ' + fmtAt(it.due) + (it.by ? " · " + esc(it.by) : "") + "</span>" +
             (late ? '<div class="meta" style="color:var(--hot)">Time dati poyindi — cron 10 nimishalaki okasari chustundi' + (it.tries ? " · " + it.tries + " sarlu try chesindi" : "") + "</div>" : "") +
@@ -4114,7 +4126,7 @@
 
         var posted = (j.posted || []).map(function (p) {
           return '<div class="vrow"><div style="display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start">' +
-            (p.imgId ? '<img class="qimg" src="' + ORIGIN + '/api/media?id=' + esc(p.imgId) + '" alt="" onerror="this.style.visibility=\'hidden\'" />' : "<div></div>") +
+            (p.imgId ? '<img class="qimg" loading="lazy" decoding="async" src="' + ORIGIN + '/api/media?id=' + esc(p.imgId) + '" alt="" onerror="this.style.visibility=\'hidden\'" />' : "<div></div>") +
             "<div><b>" + (p.kind === "story" ? "📸 Story" : p.kind === "reel" ? "🎬 Reel" : "🖼 Post") + "</b> " +
             '<span class="meta">· ' + fmtAt(p.at) + (p.by ? " · " + esc(p.by) : "") + "</span>" +
             '<div class="meta" style="margin-top:2px">Instagram ✓' + (p.fb ? " · Facebook ✓" : ' · <span style="opacity:.7">Facebook ✗</span>') + "</div>" +
@@ -5527,6 +5539,7 @@
       if (t === "numbers") loadInsights();
       if (t === "ads") loadAds();
       if (t === "appts") loadSchedule();
+      if (t === "today" && todayDirty && state.data) { todayDirty = false; renderToday(); }
     });
     // Deep link from an app shortcut or a shared URL: /staff.html#office
     var hashDone = false;

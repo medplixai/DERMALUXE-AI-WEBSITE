@@ -78,7 +78,10 @@ module.exports = async (req, res) => {
     if (!r.result) return res.status(404).json({ error: "Not found or expired" });
     const buf = Buffer.from(r.result, "base64");
     res.setHeader("Content-Type", "image/jpeg");
-    res.setHeader("Cache-Control", "public, max-age=3600");
+    // An id is never reused for another picture, so the phone may keep it for
+    // a week instead of downloading the same poster every hour. Private: what
+    // the owner sends for posting stays off the shared edge cache.
+    res.setHeader("Cache-Control", "private, max-age=604800, immutable");
     return res.status(200).send(buf);
   } catch (e) {
     return res.status(500).json({ error: "Media fetch failed" });
