@@ -2,6 +2,7 @@
 //   node print/make-ht-offer.js
 // ht-offer-feed.png    2160 x 2700 (4:5)  Instagram feed, WhatsApp
 // ht-offer-status.png  2160 x 3840 (9:16) WhatsApp Status, Instagram story
+// ht-offer-feed-te.png / ht-offer-status-te.png — the same two in Telugu
 //
 // The owner's own artwork said "Hair transplant FREE — only medical expenses
 // ₹59,999". Told that a free procedure is the inducement NMC 10.1(iv) grades
@@ -20,7 +21,12 @@ const photo = data("assets/ht-before-after.jpg", "image/jpeg");
 const docs = require(path.join(ROOT, "api", "_docs.js"));
 const credit = docs.DOCTORS ? Object.values(docs.DOCTORS).map((d) => `${d.name}, ${d.qual || "MD (DVL)"} · ${d.reg}`).join("  ·  ") : "";
 
-const page = (W, H, tall) => `<!doctype html><html><head><meta charset="utf-8">
+// te = the Telugu edition (owner, 9 Nov 2026: "telugu poster kuda"): every
+// line a patient reads is Telugu, set in Noto Sans Telugu; the doctors' credit
+// line stays as registered. Telugu glyphs are taller than Latin and Chrome
+// breaks their conjuncts under letter-spacing, so the Telugu edition sets its
+// own sizes, line-height and no tracking.
+const page = (W, H, tall, te) => { const T = (en, tel) => (te ? tel : en); return `<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,600&family=Jost:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@500;700&display=block" rel="stylesheet">
 <style>
   :root { --cream:#fbf6ec; --cream2:#f3e8d3; --gold:#b8893d; --gold-hi:#e9c983; --brown:#4a2a12; --maroon:#8e1b1b; --ink:#2b1a0e; }
@@ -67,40 +73,62 @@ const page = (W, H, tall) => `<!doctype html><html><head><meta charset="utf-8">
   .ph { background:linear-gradient(180deg,#5a3418,#3d220f); color:#fff; border-radius:100px; padding:8px 26px; font-weight:700; font-size:${tall ? 40 : 30}px; display:flex; align-items:center; gap:12px; }
   .ph small { font-size:.45em; font-weight:500; color:#f1d9a6; letter-spacing:.06em; }
   .credit { margin-top:auto; font-size:12.5px; color:#6b5640; text-align:center; line-height:1.4; padding-top:10px; }
+  ${te ? `
+  .sheet { font-family:"Noto Sans Telugu", Jost, sans-serif; }
+  .kicker, .ribbon, .pkg, .grafts, .dates, .free, .cta, .ph small, .photo .lb, .feat div, .tc, .title .a, .title .b { letter-spacing:0; }
+  .kicker { font-size:${tall ? 19 : 16}px; text-transform:none; }
+  .title { font-family:"Noto Sans Telugu"; line-height:1.18; margin-top:${tall ? 22 : 10}px; }
+  .title .a { font-size:${tall ? 92 : 66}px; }
+  .title .b { font-size:${tall ? 54 : 40}px; }
+  .tag { font-family:"Noto Sans Telugu"; font-style:normal; font-weight:500; font-size:${tall ? 30 : 24}px; margin-top:8px; }
+  .photo .lb { font-size:${tall ? 16 : 14}px; }
+  .photo .note { font-size:${tall ? 15 : 13.5}px; line-height:1.45; padding:7px 10px; }
+  .ribbon { font-size:${tall ? 26 : 21}px; padding:8px 22px; }
+  .pkg { font-size:${tall ? 27 : 22}px; }
+  .grafts { font-size:${tall ? 24 : 19}px; }
+  .inc { font-size:${tall ? 22 : 18}px; }
+  .inc-te { font-family:Jost; font-weight:500; font-size:${tall ? 20 : 16}px; }
+  .dates { font-size:${tall ? 22 : 18}px; }
+  .free { font-size:${tall ? 23 : 18}px; }
+  .tc { font-size:${tall ? 15 : 13.5}px; line-height:1.5; max-width:${tall ? 92 : 94}%; text-wrap:balance; margin-top:10px; }
+  .feat div { font-size:${tall ? 21 : 16.5}px; line-height:1.4; padding:12px 6px; }
+  .cta { font-size:${tall ? 24 : 19}px; padding:13px 28px; line-height:1.4; }
+  .ph small { font-size:.5em; }
+  ` : ""}
 </style></head><body><div class="sheet">
   <div class="frame"></div>
   <div class="logobox"><img class="logo" src="${logo}" alt=""></div>
-  <div class="kicker">Premium Skin &amp; Hair Clinic · Eluru</div>
-  <div class="title"><span class="a">HAIR</span><span class="b">TRANSPLANTATION</span></div>
-  <div class="tag">Get your hair back… regain your confidence!</div>
+  <div class="kicker">${T("Premium Skin &amp; Hair Clinic · Eluru", "ప్రీమియం స్కిన్ &amp; హెయిర్ క్లినిక్ · ఏలూరు")}</div>
+  <div class="title"><span class="a">${T("HAIR", "హెయిర్")}</span><span class="b">${T("TRANSPLANTATION", "ట్రాన్స్‌ప్లాంటేషన్")}</span></div>
+  <div class="tag">${T("Get your hair back… regain your confidence!", "మీ జుట్టు తిరిగి పొందండి… ఆత్మవిశ్వాసం తిరిగి తెచ్చుకోండి!")}</div>
   <div class="mid">
-    <div class="photo"><img src="${photo}" alt=""><span class="lb l">BEFORE</span><span class="lb r">AFTER</span><div class="note">Stock photo — not a patient of this clinic. Results differ.</div></div>
+    <div class="photo"><img src="${photo}" alt=""><span class="lb l">${T("BEFORE", "ముందు")}</span><span class="lb r">${T("AFTER", "తర్వాత")}</span><div class="note">${T("Stock photo — not a patient of this clinic. Results differ.", "స్టాక్ ఫోటో — ఈ క్లినిక్ పేషెంట్ కాదు. ఫలితాలు వ్యక్తిని బట్టి మారతాయి.")}</div></div>
     <div class="offer">
-      <div class="ribbon">GRAND OPENING PACKAGE</div>
-      <div class="pkg">FUE HAIR TRANSPLANT</div><div class="grafts">UP TO 3,000 GRAFTS</div>
+      <div class="ribbon">${T("GRAND OPENING PACKAGE", "గ్రాండ్ ఓపెనింగ్ ప్యాకేజీ")}</div>
+      <div class="pkg">${T("FUE HAIR TRANSPLANT", "FUE హెయిర్ ట్రాన్స్‌ప్లాంట్")}</div><div class="grafts">${T("UP TO 3,000 GRAFTS", "3,000 గ్రాఫ్ట్‌ల వరకు")}</div>
       <div class="amt">₹59,999</div>
-      <div class="inc">All-inclusive — surgery + medical expenses</div>
-      <div class="inc-te">సర్జరీ, మెడికల్ ఖర్చులు అన్నీ కలిపి</div>
-      <div class="dates">6 NOVEMBER – 6 DECEMBER 2026</div>
-      <div class="free" data-owner="ht-offer-2026-11">Hair transplant consultation FREE</div>
-      <div class="tc">T&amp;C apply · beyond 3,000 grafts ₹20 per graft · grafts needed &amp; suitability decided by the surgeon</div>
+      <div class="inc">${T("All-inclusive — surgery + medical expenses", "అన్నీ కలిపి — సర్జరీ + మెడికల్ ఖర్చులు")}</div>
+      <div class="inc-te">${T("సర్జరీ, మెడికల్ ఖర్చులు అన్నీ కలిపి", "All-inclusive — surgery + medical expenses")}</div>
+      <div class="dates">${T("6 NOVEMBER – 6 DECEMBER 2026", "6 నవంబర్ – 6 డిసెంబర్ 2026")}</div>
+      <div class="free" data-owner="ht-offer-2026-11">${T("Hair transplant consultation FREE", "హెయిర్ ట్రాన్స్‌ప్లాంట్ కన్సల్టేషన్ ఉచితం")}</div>
+      <div class="tc">${T("T&amp;C apply · beyond 3,000 grafts ₹20 per graft · grafts needed &amp; suitability decided by the surgeon", "నిబంధనలు వర్తిస్తాయి · 3,000 గ్రాఫ్ట్‌లకు మించి ప్రతి గ్రాఫ్ట్‌కు ₹20 · ఎన్ని గ్రాఫ్ట్‌లు అవసరమో, మీకు సరిపోతుందో లేదో సర్జన్ నిర్ణయిస్తారు")}</div>
     </div>
   </div>
   <div class="benefits"><div>సహజమైన జుట్టు పెరుగుదల</div><div>నేచురల్ లుక్</div><div>శాశ్వత పరిష్కారం</div><div>మరింత ఆత్మవిశ్వాసం</div></div>
-  <div class="feat"><div>FUE<br>Technique</div><div>Natural Hairline<br>Design</div><div>Expert Hair<br>Transplant Team</div><div>Personalised Care<br>&amp; Follow-up</div></div>
+  <div class="feat">${T("<div>FUE<br>Technique</div><div>Natural Hairline<br>Design</div><div>Expert Hair<br>Transplant Team</div><div>Personalised Care<br>&amp; Follow-up</div>", "<div>FUE<br>టెక్నిక్</div><div>సహజమైన<br>హెయిర్‌లైన్ డిజైన్</div><div>నిపుణులైన హెయిర్<br>ట్రాన్స్‌ప్లాంట్ టీమ్</div><div>వ్యక్తిగత సంరక్షణ<br>&amp; ఫాలో-అప్</div>")}</div>
   <div class="clinic">డెర్మాలక్స్ స్కిన్ &amp; హెయిర్ క్లినిక్ – ఏలూరు</div>
   <div class="addr">రమా మహల్, కస్తూరి వారి వీధి, R.R పేట, హ్యాపీ మొబైల్స్ ఎదురుగా, ఏలూరు</div>
-  <div class="cta">BOOK YOUR HAIR TRANSPLANT CONSULTATION TODAY</div>
-  <div class="phones"><div class="ph"><small>CALL</small>99491 34666</div><div class="ph"><small>WHATSAPP</small>99591 34666</div></div>
+  <div class="cta">${T("BOOK YOUR HAIR TRANSPLANT CONSULTATION TODAY", "ఈరోజే మీ హెయిర్ ట్రాన్స్‌ప్లాంట్ కన్సల్టేషన్ బుక్ చేసుకోండి")}</div>
+  <div class="phones"><div class="ph"><small>${T("CALL", "కాల్")}</small>99491 34666</div><div class="ph"><small>${T("WHATSAPP", "వాట్సాప్")}</small>99591 34666</div></div>
   <div class="credit">${credit}</div>
-</div></body></html>`;
+</div></body></html>`; };
 
 (async () => {
   const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: "new" });
-  for (const [name, W, H, tall] of [["ht-offer-feed", 1080, 1350, false], ["ht-offer-status", 1080, 1920, true]]) {
+  for (const [name, W, H, tall, te] of [["ht-offer-feed", 1080, 1350, false, false], ["ht-offer-status", 1080, 1920, true, false], ["ht-offer-feed-te", 1080, 1350, false, true], ["ht-offer-status-te", 1080, 1920, true, true]]) {
     const pg = await browser.newPage();
     await pg.setViewport({ width: W, height: H, deviceScaleFactor: 2 });
-    await pg.setContent(page(W, H, tall), { waitUntil: "networkidle0" });
+    await pg.setContent(page(W, H, tall, te), { waitUntil: "networkidle0" });
     await pg.evaluate(() => document.fonts.ready);
     const over = await pg.evaluate(() => { const s = document.querySelector(".sheet"); return s.scrollHeight - s.clientHeight; });
     await pg.screenshot({ path: path.join(__dirname, name + ".png"), clip: { x: 0, y: 0, width: W, height: H } });
