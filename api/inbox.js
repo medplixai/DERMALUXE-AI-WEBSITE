@@ -23,6 +23,60 @@ const json = (res, code, body) => {
 const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
 const ten = (p) => String(p || "").replace(/\D/g, "").slice(-10);
 
+// The lead each chat belongs to — its stage, call result and booked slot —
+// so the inbox can say "book ayindi" or "closed" instead of making the desk
+// open the Leads tab to find out. The newest enquiry per number wins, the
+// same way the Leads screen groups them.
+const leadKey = (l) => `${l.ts}|${ten(l.phone) || l.src_id || ""}`;
+// The list is polled every 20 seconds by every open inbox and the thread
+// every 8, so the 400-row page is read at most once a minute per instance;
+// the stage and call result (two small HMGETs) are read fresh every time.
+let leadPage = { at: 0, rows: [] };
+async function leadsByPhone(cfg, phones) {
+  const want = new Set(phones);
+  if (Date.now() - leadPage.at > 60000) {
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]).catch(() => ({}));
+    const rows = [];
+    for (const raw of ((r && r.result) || [])) { try { rows.push(JSON.parse(raw)); } catch (e) {} }
+    if (rows.length || (r && r.result)) leadPage = { at: Date.now(), rows };
+  }
+  const by = {};
+  for (const l0 of leadPage.rows) {
+    const ph = ten(l0 && l0.phone);
+    if (!want.has(ph) || by[ph]) continue;              // newest first in the list
+    by[ph] = Object.assign({}, l0);
+  }
+  const keys = Object.values(by).map(leadKey);
+  if (!keys.length) return by;
+  const [st, oc] = await Promise.all([
+    guard.kvCommand(cfg, ["HMGET", "dl_status"].concat(keys)).catch(() => ({})),
+    guard.kvCommand(cfg, ["HMGET", "dl_outcome"].concat(keys)).catch(() => ({})),
+  ]);
+  Object.values(by).forEach((l, i) => {
+    l.status = (((st && st.result) || [])[i]) || "new";
+    l.outcome = (((oc && oc.result) || [])[i]) || "";
+  });
+  return by;
+}
+
+// One chat's intelligence: what it needs, where it stands, what it is about,
+// and the goal the agent is working to — the Leads card's words, in the inbox.
+function enrich(t, rec, lead, now) {
+  const triage = require("./_triage.js");
+  const f = (rec && rec.facts) || {};
+  const out = triage.triage(t, lead, now);
+  t.need = out.need; t.stage = out.stage; t.bucket = out.bucket;
+  t.concern = String(f.problem || (lead && lead.concern) || "").slice(0, 60);
+  if (rec) { t.grade = rec.grade; t.score = rec.score; t.village = f.village || ""; t.km = rec.km; }
+  t.leadStatus = lead ? lead.status : "";
+  try {
+    const g = require("./_goal.js").goalFor({ concern: (lead && lead.concern) || f.problem || "", type: lead ? lead.type : "whatsapp", km: rec ? rec.km : null, intent: f.intent,
+      status: lead ? lead.status : "", outcome: lead ? lead.outcome : "", booked: !!(lead && lead.status === "booked"), name: t.name || (lead && lead.name), slot: lead && (lead.slot || lead.date) });
+    t.goal = g.label; t.goalKey = g.key;
+  } catch (e) {}
+  return t;
+}
+
 async function audit(cfg, me, what) {
   await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({ ts: Date.now(), by: me.name, phone: me.phone, what: clean(what, 200) })]).catch(() => {});
   await guard.kvCommand(cfg, ["LTRIM", "staff:audit", "0", "199"]).catch(() => {});
@@ -44,20 +98,21 @@ module.exports = async (req, res) => {
   if (a === "list") {
     const rows = await inbox.threads(cfg, 150);
     const unread = rows.reduce((n, t) => n + (t.unread || 0), 0);
-    // The grade the qualifier gave each patient, so the desk can see at a
-    // glance which waiting chat is worth answering first.
+    // The grade the qualifier gave each patient and the lead each chat belongs
+    // to, then the triage: which chats need a person, which the agent has.
+    const now = Date.now();
     try {
       const qualify = require("./_qualify.js");
-      const recs = await qualify.forPhones(cfg, rows.map((t) => t.phone));
-      for (const t of rows) {
-        const rec = recs[t.phone];
-        if (rec) { t.grade = rec.grade; t.score = rec.score; t.status = rec.status || ""; }
-      }
-    } catch (e) { console.error("inbox: grades", e && e.message); }
-    // yesterday's agent review rides along, for the card at the top of the screen
+      const [recs, leads] = await Promise.all([qualify.forPhones(cfg, rows.map((t) => t.phone)), leadsByPhone(cfg, rows.map((t) => t.phone))]);
+      for (const t of rows) enrich(t, recs[t.phone], leads[t.phone], now);
+    } catch (e) { console.error("inbox: triage", e && e.message); for (const t of rows) if (!t.stage) enrich(t, null, null, now); }
+    rows.sort(require("./_triage.js").order);
+    const counts = { need: 0, human: 0, ai: 0, booked: 0, quiet: 0 };
+    for (const t of rows) counts[t.bucket] = (counts[t.bucket] || 0) + 1;
+    // yesterday's agent review rides along, one tap away behind the list
     let review = null; try { review = await require("./_review.js").latest(cfg); } catch (e) {}
     let exam = null; try { exam = await require("./_exam.js").latest(cfg); } catch (e) {}
-    return json(res, 200, { ok: true, threads: rows.map((t) => Object.assign(t, { open: inbox.windowOpen(t) })), unread, canReply, review, exam });
+    return json(res, 200, { ok: true, threads: rows.map((t) => Object.assign(t, { open: inbox.windowOpen(t) })), unread, needs: counts.need, counts, canReply, review, exam });
   }
 
   if (a === "thread") {
@@ -69,23 +124,27 @@ module.exports = async (req, res) => {
     // Who this is, in the words the Leads screen uses: the grade and why, the
     // one thing to do next, what the clinic already knows about them, and how
     // long they have been waiting for an answer.
-    let card = null;
+    let card = null, tri = null;
     try {
       const qualify = require("./_qualify.js");
-      const rec = await qualify.read(cfg, ph);
-      const known = await require("./_memory.js").facts(cfg, ph).catch(() => null);
+      const [rec, known, leads] = await Promise.all([qualify.read(cfg, ph), require("./_memory.js").facts(cfg, ph).catch(() => null), leadsByPhone(cfg, [ph])]);
+      const lead = leads[ph] || null;
       const lastIn = (t.meta && Number(t.meta.lastIn)) || 0;
       const lastOut = [...(t.msgs || [])].reverse().find((m) => m.dir === "out");
+      tri = enrich(Object.assign({ phone: ph }, t.meta || {}, { human: t.human }), rec, lead, Date.now());
       card = {
         grade: rec ? rec.grade : "", score: rec ? rec.score : 0,
         why: rec ? (rec.signals || []).map((s) => s.why).slice(0, 3) : [],
         village: rec && rec.facts ? rec.facts.village || "" : "", km: rec ? rec.km : null,
         since: rec && rec.facts ? rec.facts.problem_since || "" : "",
         problem: rec && rec.facts ? rec.facts.problem || "" : "",
-        next: rec ? qualify.nextAction(rec, { status: rec.status || "new" }) : null,
+        prefers: rec && rec.facts ? rec.facts.prefers || "" : "",
+        next: qualify.nextAction(rec, lead || { status: (rec && rec.status) || "new" }),
         waiting: lastIn && (!lastOut || lastOut.ts < lastIn) ? Date.now() - lastIn : 0,
         visits: known ? known.came : 0, lastVisit: known && known.last ? known.last.at : 0,
         due: known ? known.cycle || "" : "",
+        goal: tri.goal || "", stage: tri.stage, need: tri.need, concern: tri.concern,
+        leadStatus: lead ? lead.status : "", slot: lead ? lead.slot || "" : "",
       };
     } catch (e) { console.error("inbox: card", e && e.message); }
     return json(res, 200, Object.assign({ ok: true, open: inbox.windowOpen(t.meta), canReply, card }, t));

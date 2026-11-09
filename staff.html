@@ -635,36 +635,104 @@
     .segs button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 13px;min-height:40px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
     .segs button.on{background:var(--g1);color:#fff;border-color:var(--g1)}
     .segs button i{font-style:normal;margin-left:4px;opacity:.8}
+    /* ---- WhatsApp inbox ----
+       Rebuilt 9 Nov 2026 (owner: "chala confusing"). The inbox is a work
+       queue, not a chat log: the chats a person must act on come first and
+       say why, the agent's own chats sit under them, booked ones after, and
+       the quiet ones stay folded. The agent's nightly report, which used to
+       fill the screen before the first chat, is one tap away at the foot. */
+    body[data-tab="inbox"] .stats{display:none}
+    #t-inbox{padding-top:14px}
+    .ib{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
+    .ib-list{display:flex;flex-direction:column;gap:8px;min-width:0}
+    .ib-top{display:flex;flex-direction:column;gap:8px}
+    .ib-find{display:flex;gap:8px;align-items:center}
+    .ib-find input{flex:1;min-width:0;min-height:42px;background:var(--panel);border:1px solid var(--line);border-radius:100px;padding:8px 14px;font-size:.9rem;outline:none}
+    .ib-find input:focus{border-color:var(--primary)}
+    .ib-find button{flex:none;border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:4px 12px;min-height:42px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted);white-space:nowrap}
+    .ib-find button.on{background:var(--gl-black);color:var(--gold-hi,#e9c983);border-color:#000}
+    /* The four buckets, with their counts — tap one to see only that. */
+    .ib-segs{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px}
+    .ib-segs button{display:flex;flex-direction:column;align-items:center;gap:1px;border:1px solid var(--line);background:var(--gl-card);border-radius:14px;padding:7px 4px 6px;min-height:52px;font:inherit;cursor:pointer;color:var(--muted);box-shadow:var(--gl-edge),0 1px 2px rgba(18,18,18,.05)}
+    .ib-segs button b{font-size:1.15rem;font-weight:700;color:var(--text);line-height:1.1;font-variant-numeric:tabular-nums}
+    .ib-segs button span{font-size:.75rem;letter-spacing:.02em;white-space:nowrap}
+    .ib-segs button.on{border-color:var(--g1);background:var(--gl-black);color:#d8d8d8}
+    .ib-segs button.on b{color:var(--gold-hi,#e9c983)}
+    .ib-segs button[data-ibf="need"].hot b{color:var(--bad)}
+    .ib-segs button[data-ibf="need"].hot{border-color:#f3b8b8;background:linear-gradient(180deg,#fff,#fff1f1)}
+    .ib-segs button[data-ibf="need"].hot.on{background:linear-gradient(180deg,#b91c1c,#7f1d1d);border-color:#7f1d1d;color:#fecaca}
+    .ib-segs button[data-ibf="need"].hot.on b{color:#fff}
+    /* Group headings inside the list. */
+    .ib-sec{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 2px 2px;font-size:.78rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+    .ib-sec i{font-style:normal;font-weight:600;background:var(--panel2);border-radius:99px;padding:1px 8px;color:var(--muted);font-size:.75rem}
+    .ib-sec.need{color:#991b1b}.ib-sec.need i{background:#fee2e2;color:#991b1b}
+    .ib-calm{font-size:.84rem;color:var(--mint-ink);background:var(--mint);border:1px solid var(--mint2);border-radius:12px;padding:9px 12px}
+    .ib-more{width:100%;border:1px dashed var(--line2);background:transparent;border-radius:12px;padding:9px;min-height:42px;font:inherit;font-size:.82rem;color:var(--muted);cursor:pointer;margin-top:6px}
+    .ib-more:hover{border-color:var(--primary);color:var(--text)}
+    /* One chat. Name and grade, what it is about, the one line that says
+       what it needs or where it stands, then the last words. */
+    .ib-row{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;background:var(--gl-card);border:1px solid rgba(214,206,190,.55);border-radius:14px;padding:10px 12px;cursor:pointer;font:inherit;color:inherit;box-shadow:var(--gl-edge),0 1px 2px rgba(18,18,18,.05);margin-top:6px}
+    .ib-row:hover{border-color:var(--line2)}
+    .ib-row.on{border-color:var(--primary);box-shadow:var(--gl-edge),inset 3px 0 0 var(--primary)}
+    .ib-row.need{border-color:#f0c4c4;background:linear-gradient(180deg,#ffffff 0%,#fff7f7 100%)}
+    .ib-av{flex:none;position:relative;width:40px;height:40px;border-radius:50%;background:var(--panel2);display:grid;place-items:center;font-weight:700;color:var(--g2);font-size:1rem;box-shadow:var(--gl-edge)}
+    .ib-av.A{background:#fee2e2;color:#991b1b}.ib-av.B{background:#fef3c7;color:#92400e}.ib-av.C{background:#e0f2fe;color:#075985}
+    .ib-dot{position:absolute;top:-1px;right:-1px;width:12px;height:12px;border-radius:50%;background:var(--ok);border:2px solid #fff}
+    .ib-mid{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
+    .ib-l1{display:flex;align-items:center;gap:6px;min-width:0}
+    .ib-l1 b{font-weight:600;font-size:.95rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+    .ib-l1 time{margin-left:auto;flex:none;font-size:.75rem;color:var(--muted2);font-variant-numeric:tabular-nums}
+    .ib-l2{font-size:.8rem;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ib-last{margin:0;color:var(--muted2);font-size:.82rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ib-tag{display:inline-flex;align-items:center;gap:4px;align-self:flex-start;max-width:100%;font-size:.76rem;font-weight:600;border-radius:8px;padding:3px 8px;line-height:1.3;background:var(--panel2);color:var(--muted)}
+    .ib-tag.n1{background:#fee2e2;color:#991b1b}
+    .ib-tag.n2{background:#ffedd5;color:#9a3412}
+    .ib-tag.n4{background:var(--gd);color:var(--gd-ink)}
+    .ib-tag.n6{background:var(--lav);color:var(--lav-ink)}
+    .ib-tag.st-booked,.ib-tag.st-visited{background:var(--mint);color:var(--mint-ink)}
+    .ib-tag.st-ai{background:#eef2ff;color:#3730a3}
+    .ib-tag.st-human{background:var(--gd);color:var(--gd-ink)}
+    .ib-tag.st-quiet,.ib-tag.st-closed{background:var(--panel2);color:var(--muted2)}
+    /* The report strip at the foot: one line, opens the full review. */
+    .ib-rep{width:100%;display:flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--gl-card);border-radius:12px;padding:9px 12px;min-height:42px;font:inherit;font-size:.82rem;color:var(--muted);cursor:pointer;text-align:left;margin-top:4px;box-shadow:var(--gl-edge)}
+    .ib-rep b{font-weight:700}.ib-rep b.ok{color:var(--ok)}.ib-rep b.mid{color:var(--hot)}.ib-rep b.bad{color:var(--bad)}
+    .ib-rep span{margin-left:auto;color:var(--primary);font-weight:600;white-space:nowrap}
     .rvcard{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-bottom:10px}
     .rvcard h3{margin:0 0 4px;font-size:.92rem;display:flex;justify-content:space-between;gap:8px}
     .rvcard .f{font-size:.82rem;padding:5px 0;border-top:1px solid var(--line)}
     .rvcard .f small{display:block;color:var(--muted)}
-    /* ---- WhatsApp inbox ---- */
-    body[data-tab="inbox"] .stats{display:none}
-    #t-inbox{padding-top:14px}
-    .ib{display:grid;grid-template-columns:minmax(0,1fr);gap:12px}
-    .ib-list{display:flex;flex-direction:column;gap:6px}
-    .ib-row{display:flex;gap:10px;align-items:flex-start;text-align:left;width:100%;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px 12px;cursor:pointer;font:inherit;color:inherit}
-    .ib-row:hover{border-color:var(--line2)}
-    .ib-row.on{border-color:var(--primary);box-shadow:inset 3px 0 0 var(--primary)}
-    .ib-av{flex:none;width:36px;height:36px;border-radius:50%;background:var(--panel2);display:grid;place-items:center;font-weight:600;color:var(--g2)}
-    .ib-mid{flex:1;min-width:0}
-    .ib-mid b{font-weight:600;font-size:.92rem}
-    .ib-mid p{margin:2px 0 0;color:var(--muted);font-size:.84rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .ib-side{flex:none;display:flex;flex-direction:column;align-items:flex-end;gap:4px;font-size:.75rem;color:var(--muted2)}
-    .ib-un{background:var(--ok);color:#fff;border-radius:99px;min-width:20px;height:20px;display:grid;place-items:center;font-size:.75rem;font-weight:600;padding:0 6px}
-    .ib-hum{font-size:.75rem;color:var(--g2);background:#fbf3e3;border-radius:6px;padding:1px 6px}
-    .ib-pane{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-height:60vh;max-height:calc(100dvh - 190px);overflow:hidden}
-    .ib-head{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line)}
+    /* The conversation. */
+    .ib-pane{background:var(--gl-card);border:1px solid rgba(214,206,190,.55);border-radius:var(--r);display:flex;flex-direction:column;min-height:60vh;max-height:calc(100dvh - 190px);overflow:hidden;box-shadow:var(--gl-edge),var(--gl-drop)}
+    .ib-head{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);flex:none}
     .ib-head > div{flex:1;min-width:0}
+    .ib-head b{display:block;font-weight:600;font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ib-head .meta{font-size:.78rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .ib-hold{flex:none;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 12px;border-bottom:1px solid var(--line);background:var(--panel)}
+    .ib-hold .btn{flex:none}
+    .ib-who{display:inline-block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;font-weight:600;border-radius:99px;padding:3px 10px;background:#eef2ff;color:#3730a3}
+    .ib-who.human{background:var(--gd);color:var(--gd-ink)}
+    .ib-alert{flex:none;display:flex;align-items:center;gap:10px;padding:9px 12px;font-size:.84rem;font-weight:600;border-bottom:1px solid var(--line)}
+    .ib-alert.n1{background:#fee2e2;color:#991b1b}.ib-alert.n2{background:#ffedd5;color:#9a3412}.ib-alert.n4{background:var(--gd);color:var(--gd-ink)}.ib-alert.n6{background:var(--lav);color:var(--lav-ink)}
+    .ib-alert span{flex:1;min-width:0}
+    .ib-alert .btn{flex:none}
+    /* Who the person is: the facts in one scrolling line, the plan under it. */
+    .ib-card{flex:none;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--ink2);font-size:.8rem;color:var(--muted);display:flex;flex-direction:column;gap:6px;cursor:pointer}
+    .ib-chips{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;white-space:nowrap}
+    .ib-chips::-webkit-scrollbar{display:none}
+    .ib-card.more .ib-chips{flex-wrap:wrap;white-space:normal}
+    .ib-chips span{flex:none;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:3px 9px;color:var(--text);font-size:.78rem}
+    .ib-plan{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .ib-plan .nxt{margin:0;padding:4px 9px;font-size:.78rem}
+    .ib-goal{font-size:.78rem;color:var(--mint-ink);background:var(--mint);border:1px solid var(--mint2);border-radius:8px;padding:3px 8px;font-weight:600;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .ib-card.more .ib-goal{white-space:normal}
     .ib-msgs{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:6px;background:var(--ink2)}
     .ib-b{max-width:82%;padding:8px 11px;border-radius:12px;font-size:.9rem;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;overflow-wrap:anywhere}
     .ib-b small{display:block;margin-top:3px;font-size:.75rem;color:var(--muted2)}
     .ib-b.in{align-self:flex-start;background:var(--panel);border:1px solid var(--line);border-bottom-left-radius:4px}
     .ib-b.ai{align-self:flex-end;background:#eef2ff;border-bottom-right-radius:4px}
     .ib-b.st{align-self:flex-end;background:#fbf3e3;border:1px solid #efdcb4;border-bottom-right-radius:4px}
-    .ib-day{align-self:center;font-size:.75rem;color:var(--muted2);margin:6px 0}
-    .ib-note{font-size:.78rem;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line)}
+    .ib-day{align-self:center;font-size:.75rem;color:var(--muted2);margin:6px 0;background:var(--panel);border:1px solid var(--line);border-radius:99px;padding:1px 10px}
+    .ib-note{flex:none;font-size:.76rem;color:var(--muted);padding:6px 12px;border-top:1px solid var(--line);background:var(--panel)}
     .ib-note.warn{color:#b45309;background:#fffbeb}
     /* flex:none — in the pane's flex column these rows were shrinkable, so
        the chips came out sliced in half under the composer. */
@@ -672,25 +740,19 @@
     .ib-quick::-webkit-scrollbar{display:none}
     .ib-quick button{flex:none;border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 10px;font:inherit;font-size:.78rem;cursor:pointer;color:var(--muted);white-space:nowrap}
     .ib-quick button:hover{border-color:var(--primary);color:var(--text)}
-    .ib-compose{flex:none;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line)}
-    .ib-card{flex:none;display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;padding:8px 12px;border-bottom:1px solid var(--line);background:var(--ink2);font-size:.8rem;color:var(--muted)}
-    .ib-card b{font-weight:600;color:var(--text)}
-    .ib-card .nxt{flex-basis:100%;margin:0}
-    /* These were the smallest controls in the dashboard: 28px tall, 12.2px
-       type, 5px apart. Four filters and a search box that staff hit all day. */
-    .ib-find{flex:none;display:flex;gap:8px;padding:0 0 8px;flex-wrap:wrap}
-    .ib-find input{flex:1;min-width:130px;min-height:40px}
-    .ib-find button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:4px 14px;min-height:40px;font:inherit;font-size:.76rem;cursor:pointer;color:var(--muted);white-space:nowrap}
-    .ib-find button.on{background:var(--g1);color:#fff;border-color:var(--g1)}
-    .ib-gr{font-size:.75rem;font-weight:700;border-radius:5px;padding:1px 4px;margin-left:4px}
-    .ib-gr.A{background:#fde8e8;color:#a61b1b} .ib-gr.B{background:#fff2d8;color:#8a5a00}
-    .ib-gr.C{background:var(--line);color:var(--muted)} .ib-gr.D{background:var(--line);color:var(--muted2)}
+    .ib-compose{flex:none;display:flex;gap:8px;padding:10px 12px;border-top:1px solid var(--line);align-items:flex-end}
+    .ib-compose textarea{flex:1;resize:none;border:1px solid var(--line2);border-radius:12px;padding:9px 11px;font:inherit;font-size:.92rem;max-height:120px;background:var(--panel);color:var(--text)}
     .ib-ct{font-size:.75rem;color:var(--muted2);align-self:center;min-width:34px;text-align:right}
     .ib-ct.over{color:var(--bad);font-weight:600}
-    .ib-compose textarea{flex:1;resize:none;border:1px solid var(--line2);border-radius:10px;padding:9px 11px;font:inherit;font-size:.92rem;max-height:120px;background:var(--panel);color:var(--text)}
-    .ib-empty{flex:1;display:grid;place-items:center;color:var(--muted2);font-size:.9rem;padding:30px;text-align:center}
-    @media (max-width:899px){ .ib.open .ib-list{display:none} .ib:not(.open) .ib-pane{display:none} .ib-pane{max-height:calc(100dvh - 170px)} }
-    @media (min-width:900px){ .ib{grid-template-columns:320px minmax(0,1fr);align-items:start} .ib-list{max-height:calc(100dvh - 190px);overflow-y:auto;padding-right:2px} #ibBack{display:none} }
+    /* The desk's board, where the empty pane used to be (desktop only): the
+       chats that need a person, ready to open, then the agent's report. */
+    .ib-board{flex:1;overflow-y:auto;padding:16px 16px 20px}
+    .ib-board h2{font-size:1.15rem;font-weight:800;letter-spacing:-.01em;margin:0 0 2px}
+    .ib-board .meta{margin:0 0 10px}
+    .ib-board h3{font-size:.8rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin:14px 0 4px}
+    .ib-board .ib-row{background:var(--panel)}
+    @media (max-width:899px){ .ib.open .ib-list{display:none} .ib:not(.open) .ib-pane{display:none} .ib-pane{max-height:calc(100dvh - 170px)} .ib-head .btn--call span{display:none} }
+    @media (min-width:900px){ .ib{grid-template-columns:360px minmax(0,1fr);align-items:start} .ib-list{max-height:calc(100dvh - 190px);overflow-y:auto;padding-right:2px} #ibBack{display:none} }
 
     /* ---- Pastel highlights (owner, 7 Nov 2026): black, gold and baby pink as
        the main colours; everything that has to be told apart at a glance —
@@ -949,24 +1011,31 @@
       </section>
       <section id="t-inbox" class="hide">
         <div class="ib" id="ib">
-          <div class="ib-list"><div id="ibReview"></div>
-            <div class="ib-find">
-              <input id="ibSearch" placeholder="Peru / number / message" />
-              <button type="button" data-ibf="all" class="on">Anni</button>
-              <button type="button" data-ibf="wait">Waiting</button>
-              <button type="button" data-ibf="unread">Chadavanivi</button>
-              <button type="button" data-ibf="hot">🔥 A/B</button>
+          <div class="ib-list">
+            <div class="ib-top">
+              <div class="ib-find"><input id="ibSearch" placeholder="Peru / number / matter" aria-label="Search chats" /><button type="button" id="ibHot" title="A/B grade matrame">🔥 A/B</button></div>
+              <div class="ib-segs" id="ibSegs">
+                <button type="button" data-ibf="all" class="on"><b id="ibN0">–</b><span>Anni</span></button>
+                <button type="button" data-ibf="need"><b id="ibN1">–</b><span>Meeru</span></button>
+                <button type="button" data-ibf="ai"><b id="ibN2">–</b><span>Nadustunnavi</span></button>
+                <button type="button" data-ibf="booked"><b id="ibN3">–</b><span>Booked</span></button>
+              </div>
             </div>
-            <div id="ibList"><div class="sk"><div></div><div></div><div></div><div></div></div></div></div>
+            <div id="ibList"><div class="sk"><div></div><div></div><div></div><div></div></div></div>
+            <div id="ibReview"></div>
+          </div>
           <div class="ib-pane" id="ibPane">
-            <div class="ib-empty" id="ibEmpty">Edaina chat open cheyandi.<br />Patients WhatsApp lo agent tho matladinavanni ikkada kanipistayi.</div>
+            <div class="ib-board" id="ibEmpty"></div>
             <div class="ib-head hide" id="ibHead"><button class="btn btn--sm" id="ibBack" aria-label="Back">‹</button>
+              <span class="ib-av" id="ibAv"></span>
               <div><b id="ibName"></b><div class="meta" id="ibSub"></div></div>
-              <button class="btn btn--sm hide" id="ibPt" title="Patient file">📋</button>
-              <button class="btn btn--sm hide" id="ibTake"></button></div>
+              <a class="btn btn--sm btn--call hide" id="ibCall" href="#">📞<span> Call</span></a>
+              <button class="btn btn--sm hide" id="ibPt" title="Patient file">📋</button></div>
+            <div class="ib-hold hide" id="ibHold"><span class="ib-who" id="ibWho"></span><button class="btn btn--sm hide" id="ibTake"></button></div>
+            <div class="ib-alert hide" id="ibAlert"></div>
+            <div class="ib-card hide" id="ibCard"></div>
             <div class="ib-msgs hide" id="ibMsgs"></div>
             <div class="ib-note hide" id="ibNote"></div>
-            <div class="ib-card hide" id="ibCard"></div>
             <div class="ib-quick hide" id="ibQuick"></div>
             <form class="ib-compose hide" id="ibForm"><textarea id="ibText" rows="1" maxlength="1500" placeholder="Reply raayandi…" aria-label="Reply"></textarea><span class="ib-ct hide" id="ibCt"></span><button class="btn btn--sm" type="button" id="ibDraft" title="AI draft">✍️</button><button class="btn btn--gold btn--sm" type="submit" id="ibSend">Send</button></form>
           </div>
@@ -3161,6 +3230,13 @@
     // ---- WhatsApp inbox -----------------------------------------------------
     // The agent's conversations, where the desk can read them, answer, and
     // take a chat over when a person should be the one talking.
+    //
+    // Rebuilt 9 Nov 2026. The server now says, for every chat, whether a
+    // person must act and why (api/_triage.js) — a colleague holding a chat
+    // the patient has written back to, the agent gone silent, an emergency
+    // word, a request for a call, a hot lead's 24-hour window closing, the
+    // agent repeating itself. Those come first and say so; the agent's own
+    // chats sit under them; booked ones after; the quiet ones stay folded.
     function ibapi(a, body, qs) {
       var opt = { method: body ? "POST" : "GET", headers: { Authorization: "Bearer " + tok } };
       if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a }, body)); }
@@ -3168,7 +3244,7 @@
         return r.json().then(function (j) { if (!r.ok) { var e = new Error(j.error || ("HTTP " + r.status)); e.status = r.status; throw e; } return j; });
       });
     }
-    var ib = { phone: null, canReply: false, timer: null, sending: false, lastCount: -1, threads: [], filter: "all" };
+    var ib = { phone: null, canReply: false, timer: null, sending: false, lastCount: -1, threads: [], filter: "all", hot: false, quiet: false, counts: {}, review: null, exam: null };
     // The lines the desk sends again and again — one tap into the composer.
     var CANNED = [
       { label: "⏰ Timings", text: "Namaste 🙏 DermaLuxe by Medicare, Eluru.\n🕘 Monday–Saturday 9 AM – 9 PM (Sunday closed)\n📞 +91 99591 34666" },
@@ -3179,74 +3255,165 @@
       { label: "🎥 Video consult", text: "Meeru dooram unnaru kabatti *video consultation* kuda undi andi — doctor tho direct ga matladavachu, prescription WhatsApp lo vastundi. Eppudu set cheyyamantaru?" },
       { label: "🙏 Thanks", text: "Thank you andi 🙏 Emaina doubts unte ikkade message cheyandi — mee kosam eppudaina unnam 😊" },
     ];
+    // Urgency → colour. 1 red, 2–3 orange, 4–5 gold, 6 lavender.
+    var NEED_CLS = { 1: "n1", 2: "n2", 3: "n2", 4: "n4", 5: "n4", 6: "n6" };
+    // The goal in two words for a phone-width row; the card carries the whole label.
+    var GOAL_SHORT = { clinic_consult: "Consultation book", video_consult: "Video consult", ht_consult: "HT consultation", academy_seat: "Academy seat", return_visit: "Next session", show_up: "Appointment ki raavali", respect: "Vaddannaru", redirect: "Patient kaadu" };
     function ibTime(ts) {
       var d = new Date(ts), now = new Date();
       if (d.toDateString() === now.toDateString()) return d.toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" });
       return d.toLocaleDateString("en-IN", { day: "numeric", month: "short" });
     }
+    function ibLeft(ms) {
+      var h = Math.floor(ms / 3600000);
+      if (h >= 1) return h === 1 ? "1 ganta" : h + " gantalu";
+      var m = Math.max(1, Math.round(ms / 60000));
+      return m === 1 ? "1 nimisham" : m + " nimishalu";
+    }
+    function ibInitial(t) { return String(t.name || t.phone || "?").trim().charAt(0).toUpperCase() || "?"; }
+    // The one line that says what a chat needs, or where it stands.
+    function ibTag(t) {
+      if (t.need) return '<span class="ib-tag ' + (NEED_CLS[t.need.pri] || "n4") + '">' + esc((t.need.icon || "") + " " + t.need.text) + "</span>";
+      if (t.stage) return '<span class="ib-tag st-' + esc(t.stage.kind) + '">' + esc(t.stage.text) + "</span>";
+      return "";
+    }
+    function ibRow(t) {
+      var nm = t.name || t.phone;
+      var about = [t.concern, t.village ? "📍 " + t.village + (t.km != null ? " · " + t.km + " km" : "") : "", t.goal ? "🎯 " + (GOAL_SHORT[t.goalKey] || t.goal) : ""].filter(Boolean).join(" · ");
+      var who = t.lastDir === "out" ? (t.lastBy === "ai" ? "🤖 " : "👤 " + String(t.lastBy || "").split(" ")[0] + ": ") : "";
+      return '<button class="ib-row' + (t.need ? " need" : "") + (t.phone === ib.phone ? " on" : "") + '" data-act="ib-open" data-phone="' + esc(t.phone) + '">' +
+        '<span class="ib-av ' + esc(t.grade || "") + '">' + esc(ibInitial(t)) + (t.unread ? '<i class="ib-dot"></i>' : "") + "</span>" +
+        '<span class="ib-mid"><span class="ib-l1"><b>' + esc(nm) + "</b>" + (t.grade ? '<span class="gr ' + esc(t.grade) + '">' + esc(t.grade) + "</span>" : "") + "<time>" + ibTime(t.ts) + "</time></span>" +
+        (about ? '<span class="ib-l2">' + esc(about) + "</span>" : "") + ibTag(t) +
+        '<p class="ib-last">' + esc(who + (t.last || "")) + "</p></span></button>";
+    }
+    function ibBucket(t) { return t.bucket || (t.need ? "need" : t.stage && (t.stage.kind === "booked" || t.stage.kind === "visited") ? "booked" : t.stage && (t.stage.kind === "quiet" || t.stage.kind === "closed") ? "quiet" : t.stage && t.stage.kind === "human" ? "human" : "ai"); }
     function loadInbox(quiet) {
       if (!state.allow || !state.allow("inbox.view")) return Promise.resolve();
       return ibapi("list").then(function (j) {
         ib.canReply = !!j.canReply;
-        $("nInbox").textContent = j.unread || 0; syncBadges();
-        var rv = j.review, rvh = $("ibReview");
-        if (rvh) rvh.innerHTML = rv && rv.checked ? '<div class="rvcard"><h3><span>🧐 Agent review · ' + esc(rv.day) + '</span><b style="color:' + (rv.score >= 75 ? "var(--ok)" : rv.score >= 50 ? "var(--hot)" : "var(--bad)") + '">' + rv.score + '/100</b></h3>' +
-          '<p class="meta" style="margin:0 0 4px">' + esc(rv.summary) + " · " + rv.checked + " chats" + (rv.lint && rv.lint.checked ? " · editor " + rv.lint.rewritten + "/" + rv.lint.checked + " replies sari chesindi" : "") + "</p>" +
-          (rv.findings || []).slice(0, 4).map(function (f) { return '<div class="f">' + (f.severity === "high" ? "🔴" : f.severity === "medium" ? "🟠" : "🟡") + " <b>" + esc(f.who || "…" + f.phone) + "</b> — " + esc(f.issue) + "<small>↳ " + esc(f.fix) + "</small></div>"; }).join("") + "</div>" : "";
-        var ex = j.exam;
-        var exOk = ex && ex.n >= 3;
-        if (rvh && ex && ex.n) rvh.innerHTML += '<div class="rvcard"><h3><span>🎓 Raatri exam · ' + esc(ex.day) + "</span>" +
-          (exOk ? '<b style="color:' + (ex.score >= 75 ? "var(--ok)" : ex.score >= 50 ? "var(--hot)" : "var(--bad)") + '">' + ex.score + "/100" + (ex.drop ? " ⚠️" : "") + "</b>" : '<b style="color:var(--muted)">score raaledu</b>') + "</h3>" +
-          '<p class="meta" style="margin:0 0 4px">' + ex.n + " test patients · " + ex.booked + " booked · traps " + esc(ex.traps) + (ex.unjudged ? " · " + ex.unjudged + " verdict raaledu" : "") + (ex.avg7 != null ? " · 7-night avg " + ex.avg7 : "") + "</p>" +
-          (ex.worst || []).filter(function (w) { return w.score < 75; }).slice(0, 2).map(function (w) { return '<div class="f">' + (w.score < 50 ? "🔴" : "🟠") + " <b>" + esc(w.who) + "</b> " + w.score + " — " + esc(w.note) + "</div>"; }).join("") + "</div>";
-        ib.threads = j.threads || [];
-        renderIbList();
+        ib.threads = j.threads || []; ib.counts = j.counts || null; ib.review = j.review || null; ib.exam = j.exam || null;
+        // The badge counts the chats that need a person — not the 500 the
+        // agent has already answered, which is what "unread" came to.
+        var needs = j.needs != null ? j.needs : ib.threads.filter(function (t) { return t.need; }).length;
+        $("nInbox").textContent = needs; syncBadges();
+        renderIbList(); renderIbBoard(); renderIbReport();
       }).catch(function (e) { if (!quiet) $("ibList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
-    // The list, with the desk's search and filter applied. A chat where the
-    // patient spoke last is "waiting" — that is the queue that matters.
+    function ibMatches(t, q) {
+      if (ib.hot && !(t.grade === "A" || t.grade === "B")) return false;
+      if (!q) return true;
+      return (String(t.name || "") + " " + t.phone + " " + String(t.last || "") + " " + String(t.concern || "") + " " + String(t.goal || "")).toLowerCase().indexOf(q) !== -1;
+    }
+    // The list: grouped when nothing is filtered, flat when something is.
     function renderIbList() {
       var rows = ib.threads || [];
       var q = (($("ibSearch") || {}).value || "").trim().toLowerCase();
       var f = ib.filter || "all";
-      var list = rows.filter(function (t) {
-        if (f === "unread" && !t.unread) return false;
-        if (f === "wait" && t.lastDir !== "in") return false;
-        if (f === "hot" && !(t.grade === "A" || t.grade === "B")) return false;
-        if (q && (String(t.name || "") + " " + t.phone + " " + String(t.last || "")).toLowerCase().indexOf(q) === -1) return false;
-        return true;
+      var groups = { need: [], human: [], ai: [], booked: [], quiet: [] };
+      rows.forEach(function (t) { (groups[ibBucket(t)] || groups.ai).push(t); });
+      // The third tile is every live conversation — the agent's and the ones
+      // a colleague holds — so a held chat is never counted as the agent's.
+      var n = { all: rows.length, need: groups.need.length, ai: groups.ai.length + groups.human.length, booked: groups.booked.length };
+      ["all", "need", "ai", "booked"].forEach(function (k, i) {
+        var b = document.querySelector('[data-ibf="' + k + '"]'); if (!b) return;
+        b.classList.toggle("on", f === k);
+        var c = $("ibN" + i); if (c) c.textContent = n[k];
+        if (k === "need") b.classList.toggle("hot", n.need > 0);
       });
-      ["all", "wait", "unread", "hot"].forEach(function (k) {
-        var b = document.querySelector('[data-ibf="' + k + '"]'); if (b) b.classList.toggle("on", f === k);
-      });
-      var waiting = rows.filter(function (t) { return t.lastDir === "in"; }).length;
-      var wb = document.querySelector('[data-ibf="wait"]');
-      if (wb) wb.textContent = "Waiting" + (waiting ? " " + waiting : "");
-      $("ibList").innerHTML = list.length ? list.map(function (t) {
-        var nm = t.name || t.phone;
-        var wait = t.lastDir === "in" && t.lastIn ? Date.now() - t.lastIn : 0;
-        return '<button class="ib-row' + (t.phone === ib.phone ? " on" : "") + '" data-act="ib-open" data-phone="' + esc(t.phone) + '">' +
-          '<span class="ib-av">' + esc(String(nm).trim().charAt(0).toUpperCase() || "?") + "</span>" +
-          '<span class="ib-mid"><b>' + esc(nm) + "</b>" + (t.grade ? '<span class="ib-gr ' + esc(t.grade) + '">' + esc(t.grade) + "</span>" : "") +
-          (t.name ? ' <span class="meta">· ' + esc(t.phone) + "</span>" : "") +
-          "<p>" + (t.lastDir === "out" ? (t.lastBy === "ai" ? "🤖 " : "👤 ") : "") + esc(t.last || "") + "</p></span>" +
-          '<span class="ib-side">' + ibTime(t.ts) + (t.unread ? '<span class="ib-un">' + t.unread + "</span>" : "") +
-          (wait > 20 * 60000 ? '<span class="wait' + (wait > 3 * 3600000 ? " bad" : " warn") + '">' + waitFor(wait) + "</span>" : "") +
-          (t.human ? '<span class="ib-hum">👤 ' + esc(String(t.human.by || "").split(" ")[0]) + "</span>" : "") + "</span></button>";
-      }).join("") : '<div class="empty">' + (rows.length ? "Ee filter lo chats levu." : "Inka WhatsApp chats levu. Patient message chesthe ikkada kanipistundi.") + "</div>";
+      var hb = $("ibHot"); if (hb) hb.classList.toggle("on", ib.hot);
+      var seen = rows.filter(function (t) { return ibMatches(t, q); });
+      var html;
+      if (f === "all" && !q && !ib.hot) {
+        var sec = function (key, title, list, calm) {
+          if (!list.length && !calm) return "";
+          return '<div class="ib-sec ' + key + '"><span>' + title + "</span><i>" + list.length + "</i></div>" +
+            (list.length ? list.map(ibRow).join("") : '<div class="ib-calm">' + calm + "</div>");
+        };
+        html = sec("need", "🔴 Meeru cheyyalsinavi", groups.need, "Ippudu meeru cheyyalsindi emi ledu — AI anni chusukuntondi ✅") +
+          sec("human", "👤 Staff matladutunnaru", groups.human) +
+          sec("ai", "🤖 AI matladutondi", groups.ai) +
+          sec("booked", "📅 Book ayinavi · vachinavi", groups.booked) +
+          (groups.quiet.length ? (ib.quiet
+            ? sec("quiet", "💤 Paatavi", groups.quiet) + '<button type="button" class="ib-more" data-act="ib-quiet">Paatavi daachu</button>'
+            : '<button type="button" class="ib-more" data-act="ib-quiet">💤 Inka ' + groups.quiet.length + " paata chats chupinchu</button>") : "");
+        if (!rows.length) html = '<div class="empty">Inka WhatsApp chats levu. Patient message chesthe ikkada kanipistundi.</div>';
+      } else {
+        var list = seen.filter(function (t) { var b = ibBucket(t); return f === "all" || b === f || (f === "ai" && b === "human"); });
+        html = list.length ? list.map(ibRow).join("")
+          : '<div class="empty">' + (q ? "“" + esc(q) + "” ki chats levu."
+            : ib.hot ? "A/B grade lo ikkada chats levu" + (f === "need" && n.need ? " — inka " + n.need + " unnayi, 🔥 teesi chudandi" : "")
+            : f === "need" ? "Meeru cheyyalsina chats levu — AI anni chusukuntondi ✅" : "Ee filter lo chats levu.") + "</div>";
+      }
+      $("ibList").innerHTML = html;
     }
     if ($("ibSearch")) $("ibSearch").addEventListener("input", function () { renderIbList(); });
     document.querySelectorAll("[data-ibf]").forEach(function (b) {
-      b.onclick = function () { ib.filter = b.dataset.ibf; renderIbList(); };
+      b.onclick = function () { haptic(); ib.filter = b.dataset.ibf; renderIbList(); };
     });
+    if ($("ibHot")) $("ibHot").onclick = function () { haptic(); ib.hot = !ib.hot; renderIbList(); };
+    // The desk's board, in the pane while no chat is open (desktop): the
+    // chats that need a person, ready to open, and the agent's report.
+    function renderIbBoard() {
+      var el = $("ibEmpty"); if (!el || ib.phone) return;
+      var needs = (ib.threads || []).filter(function (t) { return t.need; });
+      var ai = (ib.threads || []).filter(function (t) { return ibBucket(t) === "ai"; }).length;
+      var held = (ib.threads || []).filter(function (t) { return ibBucket(t) === "human"; }).length;
+      el.innerHTML = '<h2>Ippudu</h2><p class="meta">' + (needs.length ? needs.length + " chats ki meeru kavali · " : "") + ai + " chats AI chusukuntondi" + (held ? " · " + held + " staff daggara" : "") + "</p>" +
+        (needs.length ? "<h3>Meeru cheyyalsinavi</h3>" + needs.slice(0, 8).map(ibRow).join("")
+          : '<div class="ib-calm">✅ Prathi chat ki reply undi. Patient reply kosam waiting unte, leda evaraina call adigithe, ikkada kanipistundi.</div>') +
+        reportCards(true);
+    }
+    // Yesterday's agent review and last night's exam, as cards.
+    function reportCards(compact) {
+      var rv = ib.review, ex = ib.exam, out = "";
+      var tone = function (s) { return s >= 75 ? "var(--ok)" : s >= 50 ? "var(--hot)" : "var(--bad)"; };
+      if (rv && rv.checked) out += '<div class="rvcard"><h3><span>🧐 Agent review · ' + esc(rv.day) + '</span><b style="color:' + tone(rv.score) + '">' + rv.score + "/100</b></h3>" +
+        '<p class="meta" style="margin:0 0 4px">' + esc(rv.summary) + " · " + rv.checked + " chats" + (rv.lint && rv.lint.checked ? " · editor " + rv.lint.rewritten + "/" + rv.lint.checked + " replies sari chesindi" : "") + "</p>" +
+        (rv.findings || []).slice(0, compact ? 3 : 8).map(function (f) { return '<div class="f">' + (f.severity === "high" ? "🔴" : f.severity === "medium" ? "🟠" : "🟡") + " <b>" + esc(f.who || "…" + f.phone) + "</b> — " + esc(f.issue) + "<small>↳ " + esc(f.fix) + "</small></div>"; }).join("") + "</div>";
+      if (ex && ex.n) {
+        var exOk = ex.n >= 3;
+        out += '<div class="rvcard"><h3><span>🎓 Raatri exam · ' + esc(ex.day) + "</span>" +
+          (exOk ? '<b style="color:' + tone(ex.score) + '">' + ex.score + "/100" + (ex.drop ? " ⚠️" : "") + "</b>" : '<b style="color:var(--muted)">score raaledu</b>') + "</h3>" +
+          '<p class="meta" style="margin:0 0 4px">' + ex.n + " test patients · " + ex.booked + " booked · traps " + esc(ex.traps) + (ex.unjudged ? " · " + ex.unjudged + " verdict raaledu" : "") + (ex.avg7 != null ? " · 7-night avg " + ex.avg7 : "") + "</p>" +
+          (ex.worst || []).filter(function (w) { return w.score < 75; }).slice(0, compact ? 2 : 5).map(function (w) { return '<div class="f">' + (w.score < 50 ? "🔴" : "🟠") + " <b>" + esc(w.who) + "</b> " + w.score + " — " + esc(w.note) + "</div>"; }).join("") + "</div>";
+      }
+      return out ? (compact ? "<h3>Agent report</h3>" : "") + out : "";
+    }
+    // One line at the foot of the list; the full report opens in a sheet.
+    function renderIbReport() {
+      var el = $("ibReview"); if (!el) return;
+      var rv = ib.review, ex = ib.exam;
+      if (!(rv && rv.checked) && !(ex && ex.n)) { el.innerHTML = ""; return; }
+      var bits = [];
+      if (rv && rv.checked) bits.push('Ninna agent <b class="' + (rv.score >= 75 ? "ok" : rv.score >= 50 ? "mid" : "bad") + '">' + rv.score + "/100</b>" + ((rv.findings || []).length ? " · " + rv.findings.length + " issues" : ""));
+      if (ex && ex.n >= 3) bits.push("🎓 exam " + ex.score);
+      el.innerHTML = '<button type="button" class="ib-rep" data-act="ib-report">🧐 ' + bits.join(" · ") + "<span>chudandi ›</span></button>";
+    }
+    function reportSheet() {
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>Agent report</h2>' +
+        '<p class="meta" style="margin:0 0 10px">Prathi udayam 8:15 ki ninna chats ni AI reviewer chustundi; raatri exam lo test patients tho agent ni parikshistundi.</p>' +
+        (reportCards(false) || '<div class="empty">Report inka raaledu.</div>') +
+        '<div class="acts" style="margin-top:12px"><button class="btn btn--sm btn--gold" data-close="1" style="flex:1">Close</button></div></div>';
+      wrap.addEventListener("click", function (e) { if (e.target.classList.contains("sheet-bg") || e.target.closest("[data-close]")) wrap.remove(); });
+      document.body.appendChild(wrap);
+    }
     function paintThread(j) {
-      var nm = (j.meta && j.meta.name) || j.phone;
+      var nm = (j.meta && j.meta.name) || j.phone, c = j.card || {};
       $("ibName").textContent = nm;
-      $("ibSub").textContent = j.phone + (j.human ? " · 👤 " + j.human.by + " chusukuntunnaru — AI aagindi" : " · 🤖 AI agent matladutondi");
-      ["ibHead", "ibMsgs", "ibForm", "ibNote"].forEach(function (id) { $(id).classList.remove("hide"); });
-      paintIbCard(j.card);
+      $("ibSub").textContent = j.phone + (c.concern ? " · " + c.concern : "");
+      var av = $("ibAv"); av.textContent = ibInitial({ name: nm, phone: j.phone }); av.className = "ib-av " + (c.grade || "");
+      var who = $("ibWho");
+      who.className = "ib-who" + (j.human ? " human" : "");
+      who.textContent = j.human ? "👤 " + String(j.human.by || "").split(" ")[0] + " chusukuntunnaru" : "🤖 AI matladutondi";
+      ["ibHead", "ibHold", "ibMsgs", "ibForm", "ibNote"].forEach(function (id) { $(id).classList.remove("hide"); });
+      $("ibCall").href = "tel:+91" + j.phone; $("ibCall").classList.remove("hide");
+      paintIbAlert(c.need, j.phone);
+      paintIbCard(c);
       $("ibQuick").classList.toggle("hide", !j.canReply);
-      $("ibQuick").innerHTML = CANNED.map(function (c, i) { return '<button type="button" data-canned="' + i + '">' + esc(c.label) + "</button>"; }).join("");
+      $("ibQuick").innerHTML = CANNED.map(function (c2, i) { return '<button type="button" data-canned="' + i + '">' + esc(c2.label) + "</button>"; }).join("");
       $("ibEmpty").classList.add("hide");
       $("ibPt").classList.toggle("hide", !state.allow("leads.view"));
       var tk = $("ibTake");
@@ -3254,10 +3421,13 @@
       tk.textContent = j.human ? "🤖 AI ki ivvandi" : "✋ Nenu chusukunta";
       tk.dataset.on = j.human ? "0" : "1";
       $("ibForm").classList.toggle("hide", !j.canReply);
-      var note = $("ibNote");
+      // WhatsApp lets us write freely for 24 hours after the patient's last
+      // message; after that only the approved template goes through, 250
+      // letters of it. The strip says which, and how long is left.
+      var note = $("ibNote"), left = j.meta && j.meta.lastIn ? j.meta.lastIn + 86400000 - Date.now() : 0;
       note.className = "ib-note" + (j.open ? "" : " warn");
       note.textContent = j.open
-        ? (j.human ? "Meeru reply chesthe AI 12 gantalu aagi untundi." : "Reply chesthe ee chat meeru teesukuntaru — AI aagipotundi.")
+        ? "⏱ WhatsApp window inka " + ibLeft(left) + (j.human ? " · 👤 " + j.human.by + " chusukuntunnaru — AI 12 gantalu aagutundi" : " · meeru reply chesthe ee chat meedi avutundi, AI aagipotundi")
         : "24 gantala window close ayindi — mee reply 'clinic_update' template ga veltundi (250 letters varaku).";
       var box = $("ibMsgs"), atEnd = box.scrollHeight - box.scrollTop - box.clientHeight < 60 || ib.lastCount !== j.msgs.length;
       var lastDay = "";
@@ -3268,29 +3438,44 @@
         // Why an automatic message went out — otherwise the desk sees the
         // agent writing to a patient hours later and cannot tell what it was.
         var VIA = { template: "template", reengage: "malli palakarinchindi", resumed: "AI venakki teesukundi", recovered: "aagipoina reply", advance: "advance vachindi", draft: "draft" };
-        var who = m.dir === "in" ? "" : (m.by === "ai" ? "🤖 AI" : "👤 " + m.by) + (VIA[m.via] ? " · " + VIA[m.via] : "") + " · ";
-        return sep + '<div class="ib-b ' + cls + '">' + esc(m.text) + "<small>" + esc(who) + new Date(m.ts).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) + "</small></div>";
-      }).join("") || '<div class="ib-empty">Messages levu.</div>';
+        var w = m.dir === "in" ? "" : (m.by === "ai" ? "🤖 AI" : "👤 " + m.by) + (VIA[m.via] ? " · " + VIA[m.via] : "") + " · ";
+        return sep + '<div class="ib-b ' + cls + '">' + esc(m.text) + "<small>" + esc(w) + new Date(m.ts).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit" }) + "</small></div>";
+      }).join("") || '<div class="empty">Messages levu.</div>';
       if (atEnd) box.scrollTop = box.scrollHeight;
       ib.lastCount = j.msgs.length;
       ibCount();
     }
-    // Who the person on the other side is — the same facts the Leads card shows.
+    // The red line over the chat when a person must act, with the one
+    // button it calls for.
+    function paintIbAlert(need, phone) {
+      var el = $("ibAlert"); if (!el) return;
+      if (!need) { el.classList.add("hide"); el.innerHTML = ""; return; }
+      var call = need.kind === "emergency" || need.kind === "ask_call" || need.kind === "hot_window";
+      el.className = "ib-alert " + (NEED_CLS[need.pri] || "n4");
+      el.innerHTML = "<span>" + esc((need.icon || "") + " " + need.text) + "</span>" + (call ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(phone) + '">📞 Call</a>' : "");
+    }
+    // Who the person on the other side is — the same facts the Leads card
+    // shows — and the plan: where it stands, the goal, the next step.
     function paintIbCard(c) {
       var el = $("ibCard"); if (!el) return;
-      if (!c || (!c.grade && !c.visits && !c.waiting)) { el.classList.add("hide"); el.innerHTML = ""; return; }
-      var bits = [];
-      if (c.grade) bits.push('<span>Grade <span class="ib-gr ' + esc(c.grade) + '">' + esc(c.grade) + " " + (c.score || 0) + "</span></span>");
-      if (c.problem) bits.push("<span>💬 <b>" + esc(c.problem) + "</b></span>");
-      if (c.since) bits.push("<span>⏳ <b>" + esc(c.since) + "</b></span>");
-      if (c.village) bits.push("<span>📍 <b>" + esc(c.village) + "</b>" + (c.km != null ? " · " + c.km + " km" : "") + "</span>");
-      if (c.visits) bits.push("<span>🩺 <b>" + c.visits + "</b> visits" + (c.lastVisit ? " · " + ago(c.lastVisit) : "") + "</span>");
-      if (c.due) bits.push("<span>🔁 " + esc(c.due) + "</span>");
-      if (c.waiting > 60000) bits.push('<span class="wait' + (c.waiting > 3 * 3600000 ? " bad" : c.waiting > 30 * 60000 ? " warn" : "") + '">⏱ ' + waitFor(c.waiting) + " nundi waiting</span>");
-      if (c.next && c.next.kind !== "skip" && c.next.kind !== "done") bits.push('<div class="nxt ' + esc(c.next.kind) + '">' + esc(c.next.text) + "</div>");
-      el.innerHTML = bits.join("");
-      el.classList.toggle("hide", !bits.length);
+      var chips = [];
+      if (c.problem) chips.push("💬 " + c.problem);
+      if (c.since) chips.push("⏳ " + c.since);
+      if (c.village) chips.push("📍 " + c.village + (c.km != null ? " · " + c.km + " km" : ""));
+      if (c.prefers) chips.push("📅 " + c.prefers);
+      if (c.visits) chips.push("🩺 " + c.visits + " visits" + (c.lastVisit ? " · " + ago(c.lastVisit) : ""));
+      if (c.due) chips.push("🔁 " + c.due);
+      if (c.slot) chips.push("🗓 Slot: " + c.slot);
+      if (c.grade) chips.push("Grade " + c.grade + " · " + (c.score || 0) + "/100");
+      var plan = (c.stage ? '<span class="ib-tag st-' + esc(c.stage.kind) + '">' + esc(c.stage.text) + "</span>" : "") +
+        (c.goal ? '<span class="ib-goal">🎯 ' + esc(c.goal) + "</span>" : "") +
+        (c.next && c.next.kind !== "skip" && c.next.kind !== "done" ? '<span class="nxt ' + esc(c.next.kind) + '">' + esc(c.next.text) + "</span>" : "");
+      if (!chips.length && !plan) { el.classList.add("hide"); el.innerHTML = ""; return; }
+      el.innerHTML = (chips.length ? '<div class="ib-chips">' + chips.map(function (s) { return "<span>" + esc(s) + "</span>"; }).join("") + "</div>" : "") +
+        (plan ? '<div class="ib-plan">' + plan + "</div>" : "");
+      el.classList.remove("hide");
     }
+    if ($("ibCard")) $("ibCard").onclick = function () { this.classList.toggle("more"); };
     // Outside WhatsApp's 24 hours a reply travels as a template, and anything
     // past 250 characters is silently cut — so the count is on screen.
     function ibCount() {
@@ -3303,20 +3488,32 @@
       el.classList.toggle("over", n > 250);
     }
     function openThread(phone, quiet) {
+      if (!phone) return Promise.resolve();
       ib.phone = phone;
       $("ib").classList.add("open");
-      if (!quiet) { ib.lastCount = -1; $("ibMsgs").innerHTML = '<div class="sk"><div></div><div></div><div></div></div>'; $("ibMsgs").classList.remove("hide"); $("ibEmpty").classList.add("hide"); }
+      if (!quiet) {
+        // Clear the last chat out before the next one arrives — on a slow
+        // line, or a number with no thread, the old header and composer
+        // stayed up under the new name (review, 9 Nov).
+        ib.lastCount = -1;
+        ["ibHold", "ibAlert", "ibCard", "ibNote", "ibQuick", "ibForm"].forEach(function (id) { $(id).classList.add("hide"); });
+        $("ibHead").classList.remove("hide"); $("ibName").textContent = phone; $("ibSub").textContent = "";
+        var av0 = $("ibAv"); av0.textContent = ibInitial({ phone: phone }); av0.className = "ib-av";
+        $("ibCall").href = "tel:+91" + phone; $("ibPt").classList.add("hide");
+        $("ibMsgs").innerHTML = '<div class="sk"><div></div><div></div><div></div></div>'; $("ibMsgs").classList.remove("hide"); $("ibEmpty").classList.add("hide");
+      }
       document.querySelectorAll(".ib-row").forEach(function (r) { r.classList.toggle("on", r.dataset.phone === phone); });
       return ibapi("thread", null, "&phone=" + encodeURIComponent(phone)).then(function (j) {
         if (ib.phone !== phone) return;
         paintThread(j);
         if (!quiet) loadInbox(true);
-      }).catch(function (e) { if (!quiet) { $("ibMsgs").innerHTML = '<div class="ib-empty">' + esc(e.message) + "</div>"; } });
+      }).catch(function (e) { if (!quiet && ib.phone === phone) { $("ibMsgs").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; } });
     }
     function closeThread() {
       ib.phone = null; $("ib").classList.remove("open");
-      ["ibHead", "ibMsgs", "ibForm", "ibNote", "ibQuick", "ibCard"].forEach(function (id) { $(id).classList.add("hide"); });
+      ["ibHead", "ibHold", "ibMsgs", "ibForm", "ibNote", "ibQuick", "ibCard", "ibAlert"].forEach(function (id) { $(id).classList.add("hide"); });
       $("ibEmpty").classList.remove("hide");
+      renderIbBoard();
       loadInbox(true);
     }
     // While the inbox is on screen it stays live: the list every 20 seconds,
@@ -3325,9 +3522,9 @@
       var sec = $("t-inbox"); if (!sec || sec.classList.contains("hide") || document.hidden || !tok) return;
       if (ib.phone) openThread(ib.phone, true);
     }, 8000);
-    // Off the inbox the list is only wanted for the unread badge, so once a
-    // minute is enough; every 20 seconds it was three requests a minute on
-    // every phone all day, queued in front of whatever the person tapped.
+    // Off the inbox the list is only wanted for the badge, so once a minute
+    // is enough; every 20 seconds it was three requests a minute on every
+    // phone all day, queued in front of whatever the person tapped.
     var ibTick = 0;
     setInterval(function () {
       if (!tok || document.hidden || !state.allow || !state.allow("inbox.view")) return;
@@ -3357,27 +3554,28 @@
         .then(function () { b.disabled = false; b.textContent = "✍️"; });
     };
     if ($("ibTake")) $("ibTake").onclick = function () {
-      var on = this.dataset.on === "1", btn = this;
+      var on = this.dataset.on === "1", btn = this, ph = ib.phone;
+      if (!ph) return;
       btn.disabled = true;
-      ibapi("takeover", { phone: ib.phone, on: on }).then(function () {
+      ibapi("takeover", { phone: ph, on: on }).then(function () {
         toast(on ? "Ee chat meeru chusukuntunnaru — AI aagindi" : "AI malli matladutundi");
         loadInbox(true);
-        return openThread(ib.phone, true);
+        if (ib.phone === ph) return openThread(ph, true);
       }).catch(function (x) { toast(x.message); }).then(function () { btn.disabled = false; });
     };
     if ($("ibText")) $("ibText").addEventListener("input", function () { this.style.height = "auto"; this.style.height = Math.min(120, this.scrollHeight) + "px"; ibCount(); });
     if ($("ibText")) $("ibText").addEventListener("keydown", function (e) { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); $("ibForm").requestSubmit(); } });
     if ($("ibForm")) $("ibForm").addEventListener("submit", function (e) {
       e.preventDefault();
-      var text = $("ibText").value.trim();
-      if (!text || ib.sending || !ib.phone) return;
+      var text = $("ibText").value.trim(), ph = ib.phone;
+      if (!text || ib.sending || !ph) return;
       ib.sending = true; $("ibSend").disabled = true;
-      ibapi("reply", { phone: ib.phone, text: text }).then(function (j) {
+      ibapi("reply", { phone: ph, text: text }).then(function (j) {
         $("ibText").value = ""; $("ibText").style.height = "auto";
         toast(j.via === "template" ? "Template ga pampamu ✅" : "Pampamu ✅");
         haptic(12);
         loadInbox(true);
-        return openThread(ib.phone, true);
+        if (ib.phone === ph) return openThread(ph, true);
       }).catch(function (x) { toast(x.message); })
         .then(function () { ib.sending = false; $("ibSend").disabled = false; });
     });
@@ -5987,6 +6185,8 @@
       }
       if (el.dataset.act === "pt-compare") { haptic(); if (ptOpen) openCompare(ptOpen.photos); return; }
       if (el.dataset.act === "ib-open") { haptic(); if (ptOpen) closePatient(); goTab("inbox"); openThread(el.dataset.phone); return; }
+      if (el.dataset.act === "ib-report") { haptic(); reportSheet(); return; }
+      if (el.dataset.act === "ib-quiet") { haptic(); ib.quiet = !ib.quiet; renderIbList(); return; }
       if (el.dataset.act === "pkg-drop") {
         if (!confirm(el.dataset.t + " package ni aapeyyanaa?\n\n" + el.dataset.left + " sittings migili unnayi. Aapesaka recall messages pampamu. Malli modalu pettalante kotha package pettandi.")) return;
         el.disabled = true;

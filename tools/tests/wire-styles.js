@@ -24,6 +24,7 @@ const HOOK = {
   te: "styled — Telugu font", "hide-in-app": "styled under html.standalone",
   "s-": "prefix of s-<status> built at run time; each status is styled as .acts select.s-new … s-closed",
   "oc-": "prefix of oc-<outcome> built at run time; each call result is styled as .oc-noanswer … .oc-booked",
+  "st-": "prefix of st-<stage> built at run time in the inbox; each stage is styled as .ib-tag.st-booked … .st-quiet",
   phwrap: "where a lead's photos are mounted; found by the script, drawn by what goes inside",
   native: "put on <html> inside the phone app so the script can tell; no look of its own",
   pband: "one price-band row — a styled .noteform; the class is how Save reads the rows back",

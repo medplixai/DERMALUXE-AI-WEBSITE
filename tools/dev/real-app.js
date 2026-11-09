@@ -210,6 +210,19 @@ async function seed() {
   await post(sch, "create", { ph: "9876503007", name: "Suresh", at: Date.now() + 2 * 3600000, concern: "Pigmentation", mins: 30 });
   h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876503008", name: "Late One", at: Date.now() - 40 * 60000, concern: "Acne" })]);
   await post(inbox, "takeover", { phone: "9876503002" });
+  // The inbox's four situations (9 Nov): the chat a colleague holds while the
+  // patient waits, an emergency word, a request for a call, and a chat the
+  // agent never answered — plus one that went quiet days ago.
+  await say("9876503002", "Ok, repu 11 ki vastanu. Confirm cheyandi?", "Ravi");
+  await say("9876503009", "Peel chesaka face meeda mantalu, bleeding kuda undi", "Sunitha");
+  await say("9876503010", "Doctor tho direct ga matladali, call cheyandi please", "Venkat");
+  const ago20 = Date.now() - 20 * 60000, ago3d = Date.now() - 3 * 86400000;
+  h.run(["SET", "ib:t:9876503011", JSON.stringify({ phone: "9876503011", name: "Padma", last: "Hello? evaraina unnara?", lastDir: "in", lastBy: "", ts: ago20, lastIn: ago20, lastInText: "Hello? evaraina unnara?", unread: 2, inCount: 2 })]);
+  h.run(["LPUSH", "ib:m:9876503011", JSON.stringify({ dir: "in", text: "Hello? evaraina unnara?", ts: ago20 })]);
+  h.run(["LPUSH", "ib:list", "9876503011"]);
+  h.run(["SET", "ib:t:9876503012", JSON.stringify({ phone: "9876503012", name: "Old Chat", last: "Thank you andi 🙏", lastDir: "out", lastBy: "ai", ts: ago3d, lastIn: ago3d - 60000, lastOut: ago3d, unread: 0, inCount: 3 })]);
+  h.run(["LPUSH", "ib:m:9876503012", JSON.stringify({ dir: "out", by: "ai", text: "Thank you andi 🙏", ts: ago3d })]);
+  h.run(["RPUSH", "ib:list", "9876503012"]);
   await post(staff, "rule-add", { text: "Ee nela laser offer cheppaku" });
   await post(staff, "prices-set", { mode: "consult", consult: 500 });
   await call(load("cron-followup"), { method: "GET", headers: {}, query: { key: "local-admin" }, body: {} });

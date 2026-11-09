@@ -72,10 +72,19 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   is(claudeCalls, 0, "while a person has the chat, the agent does not answer");
   const t3 = await h.call(inbox, { a: "thread", phone: "9876500910" });
   is(t3.body.msgs[t3.body.msgs.length - 1].dir, "in", "but the patient's message still lands in the thread");
+  // The dangerous moment (9 Nov): the agent is silent because Sowmya holds
+  // the chat, the patient has written back, and nobody notices.
+  const held = (await h.call(inbox, { a: "list" })).body;
+  const hrow = held.threads.find((t) => t.phone === "9876500910");
+  is([hrow.need && hrow.need.kind, held.needs, hrow.bucket], ["human_wait", 1, "need"], "the list says Sowmya must answer, and the badge counts it");
+  is(hrow.stage && hrow.stage.kind, "human", "and shows the chat is hers");
+  is(t3.body.card && t3.body.card.need && t3.body.card.need.kind, "human_wait", "the open chat carries the same warning");
   await h.call(inbox, {}, { a: "takeover", phone: "9876500910", on: false });
   claudeCalls = 0;
   await say("9876500910", "Saturday ok");
   is(claudeCalls, 1, "handed back, the agent answers again");
+  const back = (await h.call(inbox, { a: "list" })).body;
+  is([back.needs, back.threads[0].need, back.threads[0].stage.kind], [0, null, "ai"], "answered, the chat needs nobody — the agent has it");
   is(JSON.parse(h.run(["LRANGE", "staff:audit", "0", "0"])[0]).what, "handed back WhatsApp chat 9876500910", "and who did what is in the audit");
 
   console.log("\n  — after WhatsApp's 24 hours —");
@@ -103,6 +112,17 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   const card = th2.body.card;
   is([card.grade, card.problem, card.since, card.village], ["A", "pigmentation", "8 nelalu", "Eluru"], "and the thread carries the card: grade, concern, how long, town");
   is(card.next && card.next.kind, "call", "with the one thing to do next");
+  is(typeof card.goal === "string" && card.goal.length > 0, true, "and the goal the agent is working to");
+  is(row.concern, "pigmentation", "the list row says what the chat is about");
+  // The lead's own stage reaches the inbox: book them on the Leads screen and
+  // the chat says so.
+  const leadRow = JSON.parse(h.run(["LRANGE", "dl_leads", "0", "0"])[0] || "{}");
+  if (leadRow.ts) {
+    h.run(["HSET", "dl_status", `${leadRow.ts}|9876500910`, "booked"]);
+    const bk = (await h.call(inbox, { a: "list" })).body.threads.find((t) => t.phone === "9876500910");
+    is([bk.stage.kind, bk.bucket], ["booked", "booked"], "a lead the desk marked booked sits under 'Book ayinavi'");
+    h.run(["HDEL", "dl_status", `${leadRow.ts}|9876500910`]);
+  }
 
   console.log("\n  — who may —");
   h.as(["inbox.view"], DESK);

@@ -110,6 +110,22 @@ const mockIb = [
     { dir: "out", by: "ai", text: "Skin Care course ₹49,999 (launch offer). Batch 20 Oct nundi, 10 seats matrame 🎓", ts: Date.now() - 30 * 60 * M + M },
   ] },
 ];
+// The real triage over the invented chats, so this screen shows what the
+// live one will — a held chat the patient wrote back to, a stuck one, a booked one.
+const MOCK_LEAD = { "9876543210": { status: "new", concern: "Pigmentation" }, "9876500223": { status: "booked", slot: "Repu 11 AM", concern: "Hair fall – PRP" }, "9876500311": { status: "new", concern: "Academy course enquiry" } };
+const MOCK_QUAL = { "9876543210": { grade: "A", score: 82, village: "Eluru", km: 0 }, "9876500223": { grade: "B", score: 64, village: "Bhimavaram", km: 38 }, "9876500311": { grade: "C", score: 40 } };
+function ibRows() {
+  const triage = require(path.join(__dirname, "..", "api", "_triage.js")), goal = require(path.join(__dirname, "..", "api", "_goal.js"));
+  const rows = mockIb.map((t) => {
+    const last = t.msgs[t.msgs.length - 1], lastIn = t.msgs.filter((m) => m.dir === "in").pop(), lastHum = t.msgs.filter((m) => m.dir === "out" && m.by !== "ai").pop();
+    const lead = MOCK_LEAD[t.phone] || {}, q = MOCK_QUAL[t.phone] || {};
+    const row = { phone: t.phone, name: t.name, last: last.text, lastDir: last.dir, lastBy: last.by || "", ts: last.ts, unread: t.unread, human: t.human, open: t.open,
+      lastIn: lastIn ? lastIn.ts : 0, lastInText: lastIn ? lastIn.text : "", lastHuman: lastHum ? lastHum.ts : 0, grade: q.grade, score: q.score, village: q.village, km: q.km,
+      concern: lead.concern || "", leadStatus: lead.status || "", goal: goal.goalFor({ concern: lead.concern || "", status: lead.status, km: q.km, name: t.name, slot: lead.slot }).label };
+    return Object.assign(row, triage.triage(row, lead, Date.now()));
+  });
+  return rows.sort(triage.order);
+}
 const TYPES = { ".html": "text/html; charset=utf-8", ".js": "text/javascript", ".css": "text/css", ".png": "image/png", ".svg": "image/svg+xml", ".webmanifest": "application/manifest+json", ".json": "application/json" };
 
 http.createServer((req, res) => {
@@ -349,12 +365,15 @@ http.createServer((req, res) => {
     if (a === "list") return send(200, { ok: true, canReply: true, unread: mockIb.reduce((n, t) => n + t.unread, 0),
       review: { day: "2026-09-19", checked: 12, score: 78, summary: "Chala chats lo slots baaga offer chesindi · Okka chat lo price cheppesindi · Price rule lint lo undi, ippudu rewrite avutundi", lint: { checked: 4, rewritten: 3 },
         findings: [{ phone: "3210", who: "Lakshmi Priya", severity: "high", issue: "PICO laser ki ₹8,000 ani price cheppindi", fix: "Consultation lo doctor exact plan istaru ani cheppi slot adagali" }, { phone: "0223", who: "Ravi Teja", severity: "medium", issue: "Rendu questions okate message lo", fix: "Okka question, migilinavi statements" }] },
-      threads: mockIb.map((t) => ({ phone: t.phone, name: t.name, last: t.msgs[t.msgs.length - 1].text, lastDir: t.msgs[t.msgs.length - 1].dir, lastBy: t.msgs[t.msgs.length - 1].by || "", ts: t.msgs[t.msgs.length - 1].ts, unread: t.unread, human: t.human, open: t.open })) });
+      needs: ibRows().filter((t) => t.need).length, counts: ibRows().reduce((c, t) => { c[t.bucket] = (c[t.bucket] || 0) + 1; return c; }, { need: 0, ai: 0, booked: 0, quiet: 0 }),
+      threads: ibRows() });
     if (a === "thread") {
       const t = mockIb.find((x) => x.phone === u.searchParams.get("phone"));
       if (!t) return send(404, { error: "Ee number tho chat ledu" });
       t.unread = 0;
-      return send(200, { ok: true, phone: t.phone, msgs: t.msgs, meta: { name: t.name, lastIn: t.msgs.filter((m) => m.dir === "in").pop().ts }, human: t.human, open: t.open, canReply: true });
+      const row = ibRows().find((x) => x.phone === t.phone) || {};
+      return send(200, { ok: true, phone: t.phone, msgs: t.msgs, meta: { name: t.name, lastIn: t.msgs.filter((m) => m.dir === "in").pop().ts }, human: t.human, open: t.open, canReply: true,
+        card: { grade: row.grade, score: row.score, problem: row.concern, village: row.village, km: row.km, since: "6 nelalu", next: { kind: "book", text: "Slot pettandi — Saturday evening" }, goal: row.goal, stage: row.stage, need: row.need, concern: row.concern, visits: 0 } });
     }
     let raw = ""; req.on("data", (c) => { raw += c; });
     return req.on("end", () => {

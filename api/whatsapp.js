@@ -1158,6 +1158,7 @@ module.exports = async (req, res) => {
     try {
       const hrReply = await hr.handle(cfg, digits, text, docId ? { id: docId, name: docName } : null);
       if (hrReply) {
+        await logOut(hrReply.text);          // or the applicant looks unanswered in the inbox for ever
         if (hrReply.list) {
           await sendCloudList(cloud.phoneNumberId, cloud.to, hrReply.text, hrReply.list.button, hrReply.list.title, hrReply.list.rows);
         } else if (hrReply.buttons) {

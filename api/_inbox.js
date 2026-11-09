@@ -41,8 +41,15 @@ async function log(cfg, phone, m) {
   meta.lastDir = rec.dir;
   meta.lastBy = rec.by || "";
   meta.ts = now;
-  if (rec.dir === "in") { meta.unread = (meta.unread || 0) + 1; meta.lastIn = now; meta.inCount = (meta.inCount || 0) + 1; }
-  else if (rec.by !== "ai") meta.unread = 0;          // a person answered, so somebody has read it
+  // What the triage needs later, kept at write time so the list never has to
+  // open 150 threads: the patient's last words, whether a person has answered
+  // since, and whether the agent is sending the same line again and again.
+  if (rec.dir === "in") { meta.unread = (meta.unread || 0) + 1; meta.lastIn = now; meta.inCount = (meta.inCount || 0) + 1; meta.lastInText = text.slice(0, 200); }
+  else {
+    meta.lastOut = now;
+    if (rec.by === "ai") { const line = text.slice(0, 120); meta.aiRep = meta.lastAi === line ? (meta.aiRep || 0) + 1 : 0; meta.lastAi = line; }
+    else { meta.unread = 0; meta.lastHuman = now; meta.aiRep = 0; }          // a person answered, so somebody has read it
+  }
   await guard.kvCommand(cfg, ["SET", `ib:t:${ph}`, JSON.stringify(meta), "EX", String(KEEP)]).catch(() => {});
   await guard.kvCommand(cfg, ["LREM", "ib:list", "0", ph]).catch(() => {});
   await guard.kvCommand(cfg, ["LPUSH", "ib:list", ph]).catch(() => {});
