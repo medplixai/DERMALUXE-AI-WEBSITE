@@ -57,7 +57,8 @@ const adConcern = (headline) => { const h = String(headline || ""); for (const [
 const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. Clinic visit or video consultation both possible.
 - TIME SLOTS (tappable): whenever you ask for the appointment time, ALSO output "slots": 6-9 realistic options inside clinic hours (Mon–Sat 9 AM – 9 PM; use the current IST time given in context — today's remaining windows first, then tomorrow; never Sunday). Each ≤22 characters in the patient's language, e.g. "Ivala 6:30 PM", "Repu 11:00 AM", "Repu 4:00 PM". They appear as a tap-to-select list; the tapped slot comes back as plain text — treat it as their chosen time. If the context lists FULL slots, NEVER offer those exact times — suggest nearby free times instead (double-booking avvakudadu).
 - When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). ALSO fill "lead" the moment the patient picks a day/time, even if they have not told their name yet — then leave "name" as "" (never invent one, never use the WhatsApp profile name) and ask the name in the reply. Otherwise "lead" must be null.
-- Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here.
+- Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here; "Skin" / "Hair" (the opener's buttons) → one line asking what exactly, with up to 3 buttons.
+- OFFER SLOTS THE MOMENT YOU CAN: once the concern AND the town or distance are both known (the qualifier context line names the town or says "patient is from … km") and the context shows no upcoming appointment, that SAME reply must carry "slots" (6-9 of them) with a one-line lead-in — not another question first. On 8 Nov a patient said hair fall and named their town and was still not offered a time; the chat ended there. A "[OFFER SLOTS NOW …]" marker in the context means exactly this.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
 
 - TAPPABLE BUTTONS: whenever your reply asks the patient to pick between clear options (clinic visit vs video, morning vs evening, day choices, yes/no, book now vs more info), ALSO output "buttons": up to 3 short options (each ≤20 characters, patient's language). Tapping one sends that text back to you. Prefer buttons over asking them to type — most replies that pose a choice should carry buttons.
@@ -948,6 +949,18 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
             label: unnamed ? lead.name : undefined,   // the desk's label; reminders still greet without it
           }, family.length ? { pax: family.length + 1, with: family.map((f) => f.name).join(", ") } : {}))]);
           bookedNow = at; // advance ask only on a NEW/changed slot
+          // The agent tells the patient "mana team call chesi confirm
+          // chestundi" — and in the opening week it held 14 slots of which
+          // one got that call (plan, 9 Nov). The desk's phones are told the
+          // moment the slot is held, so the call happens inside 30 minutes.
+          try {
+            const push = require("./_push.js");
+            if (push.enabled()) await push.notifyCap(cfg, "appts.edit", {
+              title: `☎️ Confirm call — ${unnamed ? lead.name : lead.name.split(" ")[0]} · ${apptFmtIst(at)}`.slice(0, 120),
+              body: "Agent slot hold chesindi. 30 nimishallo call chesi confirm cheyandi.",
+              tab: "appts", urgent: true, data: { kind: "confirm", ph: phone, at },
+            });
+          } catch (e) { console.error("push: confirm call", e && e.message); }
         }
       }
     }
@@ -1244,7 +1257,15 @@ module.exports = async (req, res) => {
 
   // Layer 3: rate limits — per phone + global daily
   const perPhone = await guard.rateLimit(cfg, `rl:wa:h:${digits}`, 15, 3600);
-  if (!perPhone.allowed) return respond("Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.");
+  if (!perPhone.allowed) {
+    // Said once per phone per two hours. It used to go out on every message
+    // over the limit, and on 7 Nov one patient was told "please wait" eight
+    // times in a row — a loop, to anyone reading it. The message is already
+    // in the inbox and _rescue pages a human, so a silent 200 loses nothing.
+    const first = cfg ? await guard.kvCommand(cfg, ["SET", `wa:wait:${digits}`, "1", "NX", "EX", "7200"]).catch(() => ({})) : { result: "OK" };
+    if (first && first.result) return respond("Please wait a bit — our team will get back to you. 🙏 · కాసేపు ఆగండి, మా team మీకు reply చేస్తుంది.");
+    return isMeta ? res.status(200).json({ ok: true, muted: true }) : twiml(res, "");
+  }
   const globalCap = await guard.rateLimit(cfg, `rl:wa:g:${guard.today()}`, 400, 90000);
   if (!globalCap.allowed) return respond(FALLBACK_REPLY);
 
@@ -1308,7 +1329,8 @@ module.exports = async (req, res) => {
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;
   const apptLine = await apptCtx(cfg, digits);
-  let extraCtx = nowIstCtx() + apptLine + (await academyCtx(cfg, hist, text)) + (profile && profile.name
+  const acadLine = await academyCtx(cfg, hist, text);   // non-empty = an academy enquiry, where fees may be said
+  let extraCtx = nowIstCtx() + apptLine + acadLine + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
     : "");
   // What the qualifier already knows (how far they are, what is still unasked),
@@ -1335,6 +1357,12 @@ module.exports = async (req, res) => {
         name: (last && last.name) || f0.name || (profile && profile.name) || "", slot: last && (last.slot || last.date),
       });
       extraCtx += require("./_goal.js").contextLine(g);
+      // Concern known, town known, no appointment yet: this reply offers the
+      // slots. The ladder's third rung is the town, and on 8 Nov the agent
+      // learned it and then asked another question instead of a time.
+      const concernKnown = !!((last && last.concern) || f0.problem);
+      const townKnown = !!(qrec0 && (qrec0.km != null || qrec0.place || f0.village || f0.place));
+      if (hist.length >= 2 && concernKnown && townKnown && !/upcoming appointment/.test(apptLine)) extraCtx += '[OFFER SLOTS NOW — concern and town are known; put 6-9 "slots" in this reply] ';
     } catch (e) {}
     const ar0 = await guard.kvCommand(cfg, ["GET", `ad:ref:${digits}`]).catch(() => ({}));
     try {
@@ -1411,8 +1439,20 @@ module.exports = async (req, res) => {
     }
   } catch (e) {
     console.error("wa: ai error", e && e.message);
-    return respond(FALLBACK_REPLY);
+    // The clinic-card fallback goes once per phone per two hours. When the AI
+    // account ran dry on 7 Nov (15:28–16:50) every message from the same four
+    // patients was answered with the same card; the second and later ones
+    // are answered to Meta only, and _rescue has already alerted the team.
+    const first = cfg ? await guard.kvCommand(cfg, ["SET", `wa:fb:${digits}`, "1", "NX", "EX", "7200"]).catch(() => ({})) : { result: "OK" };
+    if (first && first.result) return respond(FALLBACK_REPLY);
+    return isMeta ? res.status(200).json({ ok: true, muted: true }) : twiml(res, "");
   }
+
+  // The opener. On 9 Nov, 10 of 40 chats stopped at the first reply, which
+  // asked "which language?" with Telugu / English / Hindi buttons. A bare
+  // greeting is now answered with one question about the concern, and these
+  // three buttons ride on it whether or not the model remembered them.
+  if (firstTurn && fast && !(Array.isArray(out.buttons) && out.buttons.length)) out.buttons = ["Skin", "Hair", "📅 Book Now"];
 
   // Save what the agent learned, re-score, tell the desk if it just became an A.
   let qrec = null;
@@ -1427,6 +1467,18 @@ module.exports = async (req, res) => {
     // The editor: a deterministic read of the reply before it goes out.
     try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName, channel: "wa", analysis: !!imageId, booked: /appointment/i.test(apptLine) }); }
     catch (e) { console.error("wa: lint", e && e.message); }
+    // The hard price block (owner, 9 Nov), after the editor: a treatment price
+    // of ₹500 or more leaves the reply with its sentence, text and photo
+    // replies alike. The owner's "bands" policy and an academy enquiry (its
+    // fees are published) are the two cases where a number may stand.
+    try {
+      const pol = await require("./_prices.js").load(cfg);
+      if (pol.mode !== "bands" && !acadLine) {
+        const allow = new Set(pol.mode !== "none" && pol.consult ? [pol.consult] : []);
+        const cut = lint.stripTreatmentPrices(out.reply, { allow });
+        if (cut.removed.length) { console.log("wa: price removed", digits.slice(-4), cut.removed.join(",")); out.reply = cut.reply; }
+      }
+    } catch (e) { console.error("wa: price block", e && e.message); }
   }
 
   let justBooked = 0;
@@ -1513,11 +1565,13 @@ module.exports = async (req, res) => {
         if (mp3) await sendCloudVoice(cloud.phoneNumberId, cloud.to, mp3);
       } catch (e) { console.error("wa: voice reply error", e && e.message); }
     }
-    // First reply of a conversation carries the quick-menu buttons; after that
-    // the AI's tappable slot list / choice buttons ride along with the reply.
-    if (firstTurn && !imageId) await sendCloudButtons(cloud.phoneNumberId, cloud.to, out.reply);
-    else if (Array.isArray(out.slots) && out.slots.length) await sendCloudSlotList(cloud.phoneNumberId, cloud.to, out.reply, out.slots);
+    // The AI's tappable slot list or choice buttons ride along with the reply.
+    // A first reply with neither gets the quick menu. Until 9 Nov the quick
+    // menu won on every first reply, so the opener's Skin / Hair / Book Now
+    // buttons (and a first-turn slot list) would never have reached the phone.
+    if (Array.isArray(out.slots) && out.slots.length) await sendCloudSlotList(cloud.phoneNumberId, cloud.to, out.reply, out.slots);
     else if (Array.isArray(out.buttons) && out.buttons.length) await sendCloudDynButtons(cloud.phoneNumberId, cloud.to, out.reply, out.buttons);
+    else if (firstTurn && !imageId) await sendCloudButtons(cloud.phoneNumberId, cloud.to, out.reply);
     else await sendCloud(cloud.phoneNumberId, cloud.to, out.reply);
     // Fresh booking + UPI configured → optional advance ask (cuts no-shows).
     // Off until UPI_VPA env is set; amount via ADVANCE_AMOUNT (default 200).

@@ -181,6 +181,61 @@ async function rewrite(out, faults, patientText, opts) {
   } catch (e) { return { out, faults, rewritten: false }; }
 }
 
+// The hard price block, after the editor has had its say.
+//
+// On 7 and 8 November the WhatsApp agent told hair transplant enquiries
+// "₹59,999" — the brief carried that figure for the owner's package, and the
+// daily review (review:2026-11-07, review:2026-11-08) marked the chats down
+// for it. The owner's decision of 9 Nov: no treatment price in chat at all,
+// as a rule the code enforces rather than one the model is asked to follow.
+// Any rupee amount of ₹500 or more is cut out with the sentence it sits in,
+// and one line sends them to the consultation. The two cases where a number
+// is still allowed are decided by the caller, not here: the owner's "bands"
+// price policy, and an academy enquiry (the academy's fees are published).
+//
+// Forms caught: ₹59,999 · Rs 60000 · Rs. 60,000 · INR 60000 · 60k · ₹60k ·
+// 1.2 lakh · 59,999 rupees / rupayalu. A bare number with no rupee mark or
+// unit ("3,000 grafts", "6:30 PM") is left alone, and so is anything under
+// ₹500 — the ₹300 consultation fee and "₹20 per graft" pass untouched.
+const PRICE_FLOOR = 500;
+const NUM = "\\d[\\d,]*(?:\\.\\d+)?";
+const AMOUNT = new RegExp(`(?:₹|\\brs\\.?|\\binr\\b)\\s*(${NUM})\\s*(k|lakhs?|lacs?)?\\b|\\b(${NUM})\\s*(k|lakhs?|lacs?|rupees|rupayalu|rupaayalu|rs\\.?|రూపాయలు)\\b`, "gi");
+const UNIT = { k: 1000, lakh: 100000, lakhs: 100000, lac: 100000, lacs: 100000 };
+const CONSULT_LINE = "Exact cost doctor consultation lo mee skin/hair chusaka cheptaru — consultation ₹300 matrame 🙏";
+function amountsIn(sentence) {
+  const out = [];
+  for (const m of String(sentence || "").matchAll(AMOUNT)) {
+    const n = Number(String(m[1] || m[3]).replace(/,/g, ""));
+    const unit = String(m[2] || m[4] || "").toLowerCase();
+    if (!isFinite(n)) continue;
+    out.push(Math.round(n * (UNIT[unit] || 1)));
+  }
+  return out;
+}
+// opts.allow: a Set of amounts the caller still permits (the owner's
+// consultation fee when it is ₹500 or more). Returns {reply, removed}.
+function stripTreatmentPrices(reply, opts) {
+  const o = opts || {};
+  const allow = o.allow instanceof Set ? o.allow : new Set();
+  const removed = [];
+  const lines = String(reply || "").split("\n").map((line) => {
+    // Sentences, keeping their own end marks so what stays reads as written.
+    // An end mark only counts before a space or the end of the line, and not
+    // after "Rs" / "Dr" / "approx", so the point in "1.2 lakh" or "Rs. 60,000"
+    // does not split a sentence in two and leave the number standing alone.
+    const parts = line.match(/.+?(?:(?<!\b(?:rs|dr|mrs?|approx|no))[.!?]+(?=\s|$)|$)/gi) || [];
+    return parts.filter((s) => {
+      const bad = amountsIn(s).filter((n) => n >= PRICE_FLOOR && !allow.has(n));
+      if (!bad.length) return true;
+      removed.push(...bad);
+      return false;
+    }).join("").replace(/\s+$/, "");
+  }).filter((l) => l.trim());
+  if (!removed.length) return { reply: String(reply || ""), removed };
+  const kept = lines.join("\n").trim();
+  return { reply: (kept ? kept + "\n\n" : "") + CONSULT_LINE, removed: [...new Set(removed)] };
+}
+
 // Lint, rewrite if needed, and write the editor's log line. Returns the reply to send.
 let allowCache = { at: 0, set: null };
 async function check(cfg, out, patientText, recent, opts) {
@@ -214,4 +269,4 @@ async function check(cfg, out, patientText, recent, opts) {
   return res.out;
 }
 
-module.exports = { lintReply, rewrite, check, cutMidWord, dropLabel, isMetaPrefill, asksToStop, ALLOWED_RUPEES };
+module.exports = { lintReply, rewrite, check, cutMidWord, dropLabel, isMetaPrefill, asksToStop, ALLOWED_RUPEES, stripTreatmentPrices, amountsIn, CONSULT_LINE };
