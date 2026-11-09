@@ -36,6 +36,9 @@ stub("_admin.js", {
 stub("_hr.js", { handle: async () => null });
 stub("_clinic.js", { forwardLead: async () => ({ attempted: false }) });
 stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () => null, transcribe: async () => null });
+// Pushes to the staff phones, recorded as [capability, message].
+const pushes = [];
+stub("_push.js", { enabled: () => true, notifyCap: async (cfg, cap, msg) => { pushes.push([cap, msg]); return { ok: true, sent: 1 }; }, send: async () => ({ ok: true }) });
 
 // The network. Claude answers with whatever the test sets next; every message
 // the agent sends to a patient is recorded.
@@ -56,7 +59,9 @@ global.fetch = async (url, opt) => {
   }
   if (u.includes("graph.facebook.com")) {
     const b = opt && opt.body ? JSON.parse(opt.body) : {};
-    sent.push({ to: b.to, text: (b.text && b.text.body) || (b.interactive && b.interactive.body && b.interactive.body.text) || "", type: b.type || "text" });
+    const act = (b.interactive && b.interactive.action) || {};
+    sent.push({ to: b.to, text: (b.text && b.text.body) || (b.interactive && b.interactive.body && b.interactive.body.text) || "", type: b.type || "text",
+      buttons: Array.isArray(act.buttons) ? act.buttons.map((x) => x.reply.title) : undefined });
     return { ok: true, status: 200, json: async () => ({}), text: async () => "" };
   }
   return { ok: true, status: 200, json: async () => ({}), text: async () => "" };
@@ -83,6 +88,9 @@ const get = (q) => new Promise((resolve) => {
 });
 const say = (from, text) => post(msgBody(from, text));
 const lastTo = (ph) => [...sent].reverse().find((s) => s.to === "91" + ph);
+// The last words sent to a phone — a catalog PDF or a map pin that follows the reply is not the reply.
+const lastText = (ph) => [...sent].reverse().find((s) => s.to === "91" + ph && (s.type === "text" || s.type === "interactive"));
+const sentTo = (ph) => sent.filter((s) => s.to === "91" + ph).length;
 const leads = () => h.run(["LRANGE", "dl_leads", "0", "-1"]).map((x) => JSON.parse(x));
 const clear = () => { sent.length = 0; h.sent.length = 0; };
 
@@ -152,6 +160,11 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   for (let i = 0; i < 16; i++) await say("9876500005", "message " + i);
   is(claudeCalls, 15, "fifteen messages an hour reach the model");
   is(/wait/i.test((lastTo("9876500005") || {}).text || ""), true, "the sixteenth is asked to wait");
+  // 7 Nov: one patient read "please wait" eight times in a row.
+  const beforeMore = sentTo("9876500005");
+  const muted = await say("9876500005", "message 17");
+  is([muted.code, muted.body && muted.body.muted, sentTo("9876500005") - beforeMore], [200, true, 0], "the seventeenth gets a silent 200 — the wait message goes once per two hours, not on every message");
+  is(h.run(["GET", "wa:wait:9876500005"]), "1", "because a two-hour marker remembers it was said");
 
   console.log("\n  — a conversation becomes a lead —");
   clear();
@@ -188,6 +201,12 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   const f = await say("9876500008", "hello");
   is(f.code, 200, "a model outage still answers Meta, so it does not retry forever");
   is(((lastTo("9876500008") || {}).text || "").length > 10, true, "and the patient still gets a reply");
+  // 7 Nov, 15:28–16:50: the AI account was empty and four patients got the
+  // same clinic card for every message they sent.
+  const cardsBefore = sentTo("9876500008");
+  claude.push(500);
+  const again = await say("9876500008", "hello?");
+  is([again.code, again.body && again.body.muted, sentTo("9876500008") - cardsBefore], [200, true, 0], "a second failure within two hours answers Meta silently — the card is not repeated");
   claude.push("sorry I can't format that");
   await say("9876500009", "hello");
   is(((lastTo("9876500009") || {}).text || "").length > 5, true, "a reply that is not JSON is salvaged, not thrown");
@@ -209,6 +228,15 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   await say("9876500011", "repu 5 ki vastanu");
   const q = h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.ph === "9876500011");
   is(q.length, 1, "the booking is queued for its reminders");
+  // Opening week: 14 slots held by the agent, 1 confirm call made. The desk's
+  // phones are told the moment a slot is held.
+  const confirmPush = () => pushes.filter((p) => p[0] === "appts.edit" && p[1].data && p[1].data.kind === "confirm" && p[1].data.ph === "9876500011");
+  is(confirmPush().length, 1, "the desk gets exactly one confirm-call push for the held slot");
+  is([confirmPush()[0][1].tab, confirmPush()[0][1].urgent, confirmPush()[0][1].data.at === q[0].at, /Confirm call — Ravi/.test(confirmPush()[0][1].title)], ["appts", true, true, true],
+    "on the Appointments tab, urgent, carrying the slot time and the patient's name");
+  claude.push({ reply: "Repu 5 PM slot hold lo undi 🙏", lead: { name: "Ravi", concern: "Hair fall", heat: "hot", slot_ts: tomorrow + " 17:00" } });
+  await say("9876500011", "ok repu 5 PM");
+  is(confirmPush().length, 1, "the same slot said again mid-chat does not push the desk a second time");
   claude.push({ reply: "Booked 🙏", lead: { name: "Ravi", concern: "Hair fall", heat: "hot", slot_ts: "2020-01-01 10:00" } });
   await say("9876500012", "old date");
   is(h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.ph === "9876500012").length, 0, "a slot in the past is not");
@@ -237,6 +265,60 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   claude.push({ reply: "Mee concern enti?", lead: { name: "", concern: "Hair fall" } });
   await say("9876500014", "hi");
   is(h.run(["LRANGE", "dl_leads", "0", "-1"]).map((x) => JSON.parse(x)).filter((x) => x.phone === "9876500014").length, 0, "with no name and no slot, it is not a lead yet");
+
+  // 9 Nov: 10 of 40 chats stopped at the first reply, which asked which
+  // language the patient wanted. The first reply now asks about the concern.
+  console.log("\n  — the first hello —");
+  clear();
+  claude.push({ reply: "Namaste 🙏 Skin leda hair — e concern gurinchi matladali?", lead: null });   // the model forgot the buttons
+  await say("9876500021", "Hi");
+  const hello = lastText("9876500021") || {};
+  is(hello.buttons, ["Skin", "Hair", "📅 Book Now"], "a bare 'Hi' is answered with Skin / Hair / Book Now buttons even when the model left them out");
+  const brief = String((claudeBody.system || [])[0] && claudeBody.system[0].text || "");
+  is([/हिंदी/.test(brief), /"buttons": \["Skin", "Hair", "📅 Book Now"\]/.test(brief), /OFFER SLOTS THE MOMENT YOU CAN/.test(brief)], [false, true, true],
+    "the brief no longer asks for the language buttons, asks for the concern buttons, and tells the agent to offer slots once the town is known");
+  claude.push({ reply: "Pimples entakalam nundi unnayi?", lead: null, buttons: ["6 nelala lopu", "1 year+"] });
+  await say("9876500022", "pimples unnayi");
+  is((lastText("9876500022") || {}).buttons, ["6 nelala lopu", "1 year+"], "a first message that names the concern keeps the model's own buttons instead of the quick menu");
+
+  // 7–8 Nov: the agent quoted the hair transplant package price in chat; the
+  // daily review marked it down. A treatment price now never leaves the file.
+  console.log("\n  — no treatment price leaves the chat —");
+  const CONSULT = require(path.join(API, "_lint.js")).CONSULT_LINE;
+  claude.push({ reply: "Hair transplant gurinchi cheppandi — entakalam nundi hair fall undi?", lead: null });
+  await say("9876500023", "hair transplant kavali");
+  claude.push({ reply: "FUE package ₹59,999 all-inclusive andi, 3,000 grafts varaku. Surgeon garu scalp chusi cheptaru. Assessment ki eppudu ravagalaru?", lead: null });
+  await say("9876500023", "cost entha?");
+  const priced = (lastText("9876500023") || {}).text || "";
+  is([/59,999/.test(priced), priced.endsWith(CONSULT), /Surgeon garu scalp chusi cheptaru/.test(priced)], [false, true, true],
+    "₹59,999 and its sentence are gone, the rest of the reply stays, and it ends with the consultation line");
+  claude.push({ reply: "Consultation ₹300 matrame andi. Repu eppudu ravagalaru?", lead: null });
+  await say("9876500023", "consultation fee?");
+  const fee = (lastText("9876500023") || {}).text || "";
+  is([/₹300 matrame andi/.test(fee), fee.includes(CONSULT)], [true, false], "the ₹300 consultation fee passes untouched, with no line added");
+  claude.push({ reply: "Skin Care course launch offer ₹49,999 andi (regular ₹1,00,000). Mee background cheppandi?", lead: null, send_catalog: true });
+  await say("9876500024", "academy course fees entha?");
+  is(/₹49,999/.test((lastText("9876500024") || {}).text || ""), true, "an academy fee in an academy chat survives — those fees are published");
+  h.run(["SET", "agent:prices", JSON.stringify({ mode: "bands", consult: 300, bands: [{ name: "Laser hair removal", from: 2500, to: 4000 }] })]);
+  claude.push({ reply: "Laser hair removal ₹2,500 nunchi start avutundi, exact plan consultation lo. Repu slot chuddama?", lead: null });
+  await say("9876500025", "laser hair removal cost?");
+  is(/₹2,500/.test((lastText("9876500025") || {}).text || ""), true, "under the owner's 'bands' policy a listed range stands");
+  h.run(["DEL", "agent:prices"]);
+  claude.push({ reply: "Package 60k varaku avutundi. Repu ravagalara?", lead: null });
+  await say("9876500026", "[📷 photo] hair transplant cost?");
+  is(/60k/.test((lastText("9876500026") || {}).text || ""), false, "and a figure written as '60k' is caught too");
+
+  // 8 Nov: the agent learned the town and asked another question instead of a time.
+  console.log("\n  — slots the moment the town is known —");
+  claude.push({ reply: "Hair fall entakalam nundi undi?", lead: null, qual: { problem: "hair fall" } });
+  await say("9876500027", "hair fall undi");
+  claude.push({ reply: "Nuzvid nunchi aithe morning slot one trip lo ayipotundi. E roju convenient?", lead: null, qual: { village: "Nuzvid" } });
+  await say("9876500027", "Nuzvid nunchi");
+  is(/OFFER SLOTS NOW/.test(String(claudeBody.messages.slice(-1)[0].content)), false, "the turn that brings the town is not yet told — the agent has not had two turns to learn");
+  claude.push({ reply: "Ee slots lo okati select cheyandi 🙏", lead: null, slots: ["Repu 10:00 AM", "Repu 11:00 AM"] });
+  await say("9876500027", "ok eppudu ravali?");
+  is(/OFFER SLOTS NOW/.test(String(claudeBody.messages.slice(-1)[0].content)), true, "with the concern and the town known and no appointment, the next turn is told to offer slots");
+  is((lastText("9876500027") || {}).type, "interactive", "and the slot list reaches the phone as a tappable list");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe whatsapp agent behaves");
   process.exit(fails ? 1 : 0);
