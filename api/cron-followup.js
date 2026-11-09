@@ -123,6 +123,99 @@ module.exports = async (req, res) => {
     if (ok) sent++;
   }
 
+  // ---- the desk's two hourly nags (9 AM – 9 PM) ---------------------------
+  // The owner's diagnosis of 9 Nov 2026, in two numbers: of 5 slots the agent
+  // held that week ONE got a confirm call, and a new WhatsApp lead waited 39
+  // hours on average for its first touch. Both are told to the reception
+  // phones once an hour, as one push and one WhatsApp each — never one per
+  // row, which would be ignored by lunchtime.
+  // Who hears it: the desk stream's notifyTargets (reception + env list) when
+  // it is there, else the env list alone. Defensive: three streams, one day.
+  const deskTargets = async () => {
+    const env = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
+    try { if (notify.notifyTargets) { const t = await notify.notifyTargets(cfg); if (Array.isArray(t) && t.length) return t; } } catch (e) {}
+    return env;
+  };
+  const deskHours = istHour >= 9 && istHour <= 21;
+  const first = (n) => String(n || "").trim().split(" ")[0];
+  let confirmNags = 0;
+  try {
+    if (deskHours) {
+      const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "399"]).catch(() => ({}));
+      const due = [];
+      for (const raw of (aq.result || [])) {
+        let a; try { a = JSON.parse(raw); } catch (e) { continue; }
+        if (!a || !a.ph || !a.at || a.cf || a.cfn || a.at <= now) continue;
+        if (a.status && a.status !== "booked") continue;
+        if (now - (Number(a.ts) || 0) < 45 * 60000) continue;             // booked just now — give the desk its 45 minutes
+        // cfn: this row has had its nag. One per row, ever — the hourly
+        // list is for the NEW ones; the old ones are on the Appts screen.
+        a.cfn = 1;
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
+        due.push(a);
+      }
+      if (due.length) {
+        due.sort((x, y) => (x.ts || 0) - (y.ts || 0));
+        const names = due.map((a) => first(a.name || a.label) || a.ph).slice(0, 5).join(", ") + (due.length > 5 ? ` +${due.length - 5}` : "");
+        try {
+          const push = require("./_push.js");
+          if (push.enabled()) await push.notifyCap(cfg, "appts.edit", {
+            title: `⏰ ${due.length} slot${due.length > 1 ? "s" : ""} confirm call pending — ${names}`,
+            body: "Call chesi Appts lo ✅ Confirm cheyandi. Call raakapothe patient raaru.",
+            tab: "appts", urgent: true, data: { kind: "confirm" },
+          });
+        } catch (e) { console.error("cron: confirm nag push", e && e.message); }
+        const lines = due.slice(0, 10).map((a) => `• ${a.name || a.label || "Patient"} · ${admin.fmtIst(a.at)} · ${a.ph}`);
+        for (const to of await deskTargets()) {
+          await notify.teamSend(cfg, to, `⏰ *${due.length} slot${due.length > 1 ? "s" : ""} confirm call pending*\n${lines.join("\n")}${due.length > 10 ? `\n…inka ${due.length - 10}` : ""}\n\nCall chesi app lo ✅ Confirm cheyandi.`).catch(() => {});
+        }
+        confirmNags = due.length;
+      }
+    }
+  } catch (e) { console.error("cron: confirm nag", e && e.message); }
+
+  // A new lead with a number that nobody has touched in an hour. "new" is the
+  // desk's own status (dl_status); anything else means somebody has at least
+  // looked. Jobs and academy enquiries have their own paths; a day old and it
+  // is the daily follow-ups' problem, not this hour's.
+  let slaNags = 0;
+  try {
+    if (deskHours) {
+      const lr = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}));
+      const late = [];
+      for (const raw of (lr.result || [])) {
+        let l; try { l = JSON.parse(raw); } catch (e) { continue; }
+        if (!l || !l.ts || l.type === "job" || acadfu.isAcademyLead(l)) continue;
+        const ph = String(l.phone || "").replace(/\D/g, "").slice(-10);
+        if (ph.length !== 10 || optSet.has(ph)) continue;
+        const age = now - l.ts;
+        if (age < 3600000 || age > 86400000) continue;
+        if ((deskStatus[leadKey(l)] || "new") !== "new") continue;
+        const nx = await guard.kvCommand(cfg, ["SET", `ntf:sla:${leadKey(l)}`, "1", "NX", "EX", "86400"]).catch(() => ({}));
+        if (!nx || !nx.result) continue;                                // this lead's hour has been told
+        late.push(l);
+      }
+      if (late.length) {
+        late.sort((x, y) => x.ts - y.ts);
+        const names = late.map((l) => first(l.name) || l.phone).slice(0, 5).join(", ") + (late.length > 5 ? ` +${late.length - 5}` : "");
+        try {
+          const push = require("./_push.js");
+          if (push.enabled()) await push.notifyCap(cfg, "leads.edit", {
+            title: `⏰ ${late.length} lead${late.length > 1 ? "s" : ""} ki 1 ganta daatina call ledu — ${names}`,
+            body: "Leads lo call chesi status pettandi.",
+            tab: "leads", urgent: true, data: { kind: "sla" },
+          });
+        } catch (e) { console.error("cron: sla nag push", e && e.message); }
+        const lines = late.slice(0, 10).map((l) => `• ${l.name || "?"} · ${String(l.concern || "").slice(0, 30) || l.type} · ${String(l.phone || "").replace(/\D/g, "").slice(-10)}`);
+        for (const to of await deskTargets()) {
+          await notify.teamSend(cfg, to, `⏰ *${late.length} lead${late.length > 1 ? "s" : ""} ki 1 ganta daatina call ledu*\n${lines.join("\n")}${late.length > 10 ? `\n…inka ${late.length - 10}` : ""}\n\nCall chesi app lo status pettandi.`).catch(() => {});
+        }
+        slaNags = late.length;
+      }
+    }
+  } catch (e) { console.error("cron: sla nag", e && e.message); }
+
   // ---- Day-3 booking push: enquired but never booked → ONE paid template
   // follow-up (~11:45 IST run; window closed by now so free-form won't land).
   // Guardrails: skip booked/opted-out/jobs, NX marker 30d, max 8 per day.
@@ -215,8 +308,9 @@ module.exports = async (req, res) => {
       const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "299"]);
       for (const raw of (dq.result || [])) {
         let a; try { a = JSON.parse(raw); } catch (e) { continue; }
-        // a cancelled or missed appointment was not a visit — no "how was it?"
-        if (!a || !a.ph || !a.at || a.ns || a.status === "cancelled" || a.status === "noshow") continue;
+        // a cancelled or missed appointment was not a visit — no "how was it?";
+        // nor is one nobody marked ("unmarked"): we do not know they came
+        if (!a || !a.ph || !a.at || a.ns || a.status === "cancelled" || a.status === "noshow" || a.status === "unmarked") continue;
         const days = (now - a.at) / 86400000;
         const first = String(a.name || "").split(" ")[0] || "friend";
         const what = String(a.concern || "treatment").slice(0, 50);
@@ -255,7 +349,8 @@ module.exports = async (req, res) => {
       const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]);
       for (const raw of (dq.result || [])) {
         let a; try { a = JSON.parse(raw); } catch (e) { continue; }
-        if (!a || !a.ph || !a.at || a.fu || a.ns || a.status === "cancelled" || a.status === "noshow") continue; // ns = marked no-show (rebook nudge already sent)
+        // ns = marked no-show (rebook nudge already sent); unmarked = nobody said they came
+        if (!a || !a.ph || !a.at || a.fu || a.ns || a.status === "cancelled" || a.status === "noshow" || a.status === "unmarked") continue;
         if (istDay(a.at) !== yday) continue;
         const first = String(a.name || "").split(" ")[0] || "friend";
         const ok = await notify.sendWa(a.ph,
@@ -561,6 +656,13 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["SET", "cron:comments:last", JSON.stringify(Object.assign({ at: Date.now() }, comments)).slice(0, 2000), "EX", "86400"]).catch(() => {});
   }
 
+  // ---- the Instagram enquiries that never gave a number -------------------
+  // Seven Instagram DM leads in three weeks, three with a number, none booked
+  // (9 Nov). A few hours after the chat went quiet, one DM asks for the
+  // number again, once per conversation; the marker lives in instagram.js.
+  let igNudge = null;
+  try { if (room("ig-nudge", 30000)) igNudge = await require("./instagram.js").nudgeQuiet(cfg, 10); } catch (e) { console.error("cron: ig nudge", e && e.message); }
+
   // ---- sweep keys whose time has passed --------------------------------
   // Redis forgets an expired key by itself. Postgres does not, so once an
   // hour the ones that have died are cleared out. Reads already ignore them;
@@ -585,5 +687,5 @@ module.exports = async (req, res) => {
   const took = Date.now() - STARTED;
   console.log(`cron-followup ${took}ms hour=${istHour}${skipped.length ? " skipped=" + skipped.join(",") : ""}` +
     ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled}`);
-  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, comments, swept });
+  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, confirmNags, slaNags, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, early, reengaged, rescued, assigned, overdue, photosMoved, comments, igNudge, swept });
 };

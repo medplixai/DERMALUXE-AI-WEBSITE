@@ -89,6 +89,51 @@ const tomorrow11 = () => {
   is(w.body.days.length, 60, "two months ahead, for people who ask for a date next month");
   is(w.body.days.some((x) => x.total > 0), true, "with the counts on them");
 
+  // ---- the confirm call ---------------------------------------------------
+  // Opening week the agent held 14 slots and the desk rang ONE of them (9 Nov).
+  // The list of who still needs the call, oldest booking first, and the one
+  // tap that records the call was made.
+  console.log("\n  — the confirm call —");
+  const H = 3600000;
+  const dOf = (t) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(t));
+  const dayAfterAt = at + 24 * H;
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500101", name: "Oldest Uma", at: dayAfterAt, ts: Date.now() - 5 * H })]);
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500102", name: "Newer Vani", at: dayAfterAt + H, ts: Date.now() - 1 * H })]);
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500103", name: "Confirmed Wali", at: dayAfterAt + 2 * H, ts: Date.now() - 6 * H, cf: true, cfAt: Date.now() })]);
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500104", name: "Yesterday Xavi", at: Date.now() - 20 * H, ts: Date.now() - 30 * H })]);
+  const wk = await S({ a: "week" });
+  const pend = wk.body.pending.map((r) => r.ph);
+  is(pend.indexOf("9876500101") < pend.indexOf("9876500102"), true, "the Confirm-pending list puts the oldest booking first — that patient has waited longest for the call");
+  is([pend.includes("9876500103"), pend.includes("9876500104")], [false, false], "a confirmed booking is not on it, nor one whose time has passed");
+  is(wk.body.pending.every((r) => r.status === "booked" && !r.cf && r.at > Date.now()), true, "every row on it is a live booking nobody has confirmed");
+  const umaRow = (await S({ a: "day", day: dOf(dayAfterAt) })).body.rows.find((r) => r.ph === "9876500101");
+  is(umaRow.risk.some((x) => /confirm call pending — \d+ nimishalu/.test(x)), true, "booked five hours ago and nobody rang: the row says so, with the minutes — " + umaRow.risk.join(" / "));
+  const vaniBefore = (await S({ a: "day", day: dOf(dayAfterAt) })).body.rows.find((r) => r.ph === "9876500102");
+  is(vaniBefore.risk.some((x) => /confirm call pending/.test(x)), true, "an hour is past the forty-five minutes the desk gets");
+  const cfm = await S({ a: "confirm" }, { a: "confirm", ph: "9876500101", at: dayAfterAt });
+  is([cfm.code, cfm.body.appt.cf, cfm.body.appt.cfBy, cfm.body.appt.cfVia, cfm.body.appt.cfAt > 0], [200, true, "Owner", "desk", true],
+    "the desk's call is recorded: confirmed, by whom, over the phone, and when — on a row the agent wrote, found by number and time");
+  is((await S({ a: "week" })).body.pending.some((r) => r.ph === "9876500101"), false, "and the row leaves the Confirm-pending list");
+  is((await S({ a: "confirm" }, { a: "confirm", id: "nothere" })).code, 404, "confirming one that is not there says so");
+  h.as(["appts.view"]);
+  is((await S({ a: "confirm" }, { a: "confirm", ph: "9876500102", at: dayAfterAt + H })).code, 403, "somebody who can only look cannot confirm");
+  h.as(["*"]);
+
+  // ---- a slot nobody marked -----------------------------------------------
+  // 28 of 33 history rows were closed by a timer with nobody saying who came.
+  // Such a row is now "unmarked": counted on the day as a question, never as
+  // a visit, and it does not hold a chair.
+  console.log("\n  — a slot nobody marked —");
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500105", name: "Unmarked Yash", at: dayAfterAt + 3 * H, status: "unmarked", staff: "9876500061", staffName: "Dr Meghana" })]);
+  h.run(["LPUSH", "appt:q", JSON.stringify({ ph: "9876500106", name: "Asked Zoya", at: dayAfterAt + 3 * H, ask: Date.now() })]);
+  const dq = await S({ a: "day", day: dOf(dayAfterAt) });
+  is([dq.body.counts.unmarked, dq.body.counts.asked], [1, 1], "the day counts the slot nobody marked, and the one the desk is being asked about");
+  is(dq.body.rows.find((r) => r.ph === "9876500106").ask > 0, true, "the question is on the row, so the screen can show it");
+  const onTop = await S({ a: "create" }, { a: "create", ph: "9876500107", name: "Next", at: dayAfterAt + 3 * H, staff: "9876500061", staffName: "Dr Meghana" });
+  is(onTop.code, 200, "an unmarked slot does not hold the doctor: the next patient can be booked over it");
+  const twoMore = await S({ a: "create" }, { a: "create", ph: "9876500108", name: "Next2", at: dayAfterAt + 3 * H, staff: "9876500061", staffName: "Dr Meghana" });
+  is(twoMore.code, 409, "but a real booking still does");
+
   // ---- the day as a plan, not a list -------------------------------------
   // An empty morning is not "nothing to do": it is a morning nobody filled.
   console.log("\n  — the day as a plan —");

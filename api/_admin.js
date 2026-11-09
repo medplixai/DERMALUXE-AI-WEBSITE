@@ -1036,6 +1036,22 @@ async function handle(cfg, digits, text, photo, video) {
   if ((um = t.match(/^arrived\s+(\d{10})$/i))) {
     if (!cfg) return "Storage ledu.";
     const ph = um[1];
+    // Since 9 Nov 2026 a slot that has passed stays on the day's list for two
+    // days with the question "vacharu aa?" on it, so the answer is usually
+    // still in appt:q: mark it done and file it, the way the app's ✅ does.
+    const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]).catch(() => ({}));
+    for (const s of (q.result || [])) {
+      try {
+        const a = JSON.parse(s);
+        if (a.ph === ph && a.at && a.at < Date.now() && (!a.status || a.status === "booked" || a.status === "arrived")) {
+          a.v = 1; a.status = "done"; a.doneAt = Date.now();
+          await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]);
+          await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]);
+          try { await require("./_memory.js").forget(cfg, ph); } catch (e) {}
+          return `✅ ${a.name || ph} — vacharu ani mark chesanu. Repu udayam care follow-up auto veltundi 💖`;
+        }
+      } catch (e) {}
+    }
     const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]).catch(() => ({}));
     for (const s of (dq.result || [])) {
       try {
@@ -1062,9 +1078,27 @@ async function handle(cfg, digits, text, photo, video) {
       if (name) break;
     }
     const first = String(name).split(" ")[0];
-    // mark ns on their latest appt:done row → morning care-check skips them
+    // The row is usually still on the day's list (two days, since 9 Nov 2026):
+    // mark it missed and file it, the way the app's ❌ does.
+    let filed = false;
     try {
-      const dq = await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]);
+      const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
+      for (const s of (q.result || [])) {
+        try {
+          const a = JSON.parse(s);
+          if (a.ph === ph && a.at && a.at < Date.now() && (!a.status || a.status === "booked")) {
+            a.ns = 1; a.status = "noshow"; a.doneAt = Date.now();
+            await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]);
+            await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]);
+            filed = true;
+            break;
+          }
+        } catch (e) {}
+      }
+    } catch (e) {}
+    // else mark ns on their latest appt:done row → morning care-check skips them
+    try {
+      const dq = filed ? { result: [] } : await guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "199"]);
       for (const s of (dq.result || [])) {
         try {
           const a = JSON.parse(s);

@@ -41,7 +41,12 @@ async function facts(cfg, phone) {
   const past = ((doneR && doneR.result) || []).map((x) => parse(x, null)).filter(Boolean)
     .filter((a) => ten(a.ph) === ph && a.at && a.status !== "cancelled")
     .sort((a, b) => b.at - a.at);
-  const came = past.filter((a) => !a.ns && a.status !== "noshow" && (a.v || a.arrived || a.status === "done" || a.status === "arrived" || (!a.status && a.doneAt)));
+  // A row filed as "unmarked" — the slot passed and nobody at the desk said
+  // whether the person came — is not a visit, however old it gets. Rows with
+  // no status and a doneAt are the ones the old three-hour timer closed; they
+  // stay counted because that is all the record there is of those months.
+  const came = past.filter((a) => !a.ns && a.status !== "noshow" && a.status !== "unmarked"
+    && (a.v || a.arrived || a.status === "done" || a.status === "arrived" || (!a.status && a.doneAt)));
   const missed = past.filter((a) => a.ns || a.status === "noshow");
   const pkgIds = (pkgR && pkgR.result) || [];
   let packages = [];

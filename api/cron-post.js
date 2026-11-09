@@ -19,6 +19,21 @@ async function notifyAdmin(digits, text) {
   } catch (e) {}
 }
 
+// Who at the desk hears about a slot that has passed: the reception phones
+// the desk stream keeps in _notify.notifyTargets, else the env list this file
+// has always used. Defensive because the three streams were built in parallel.
+async function deskTargets(cfg) {
+  const env = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
+    .split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
+  try { if (notify.notifyTargets) { const t = await notify.notifyTargets(cfg); if (Array.isArray(t) && t.length) return t; } } catch (e) {}
+  return env;
+}
+
+const HOUR_MS = 3600000;
+// A row that nobody has marked by now is filed as "unmarked", not "done".
+const UNMARKED_AFTER_MS = 48 * HOUR_MS;
+const CLOSED = ["done", "noshow", "cancelled"];
+
 module.exports = async (req, res) => {
   const gate = guard.cronAuth(req);
   if (!gate.ok) return res.status(401).json({ error: "unauthorized", note: gate.note });
@@ -77,27 +92,27 @@ module.exports = async (req, res) => {
   // ---- Appointment reminders: ~2h-before nudge via template ---------------
   // (Same-day 9AM reminder lives in cron-digest; if that one already covered
   // a near appointment it sets r2 too, so patients never get double-pinged.)
-  let reminded = 0, lateAsked = 0;
+  let reminded = 0, lateAsked = 0, deskAsked = 0, unmarked = 0;
   try {
     const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
     for (const raw of (aq.result || [])) {
       let a;
       try { a = JSON.parse(raw); } catch (e) { a = null; }
       if (!a || !a.at || !a.ph) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; }
-      if (a.at < now - 10800000) {
-        // Visit window over → move to appt:done (next-morning follow-up reads
-        // it) + one team check-in so no-shows get a rebook nudge.
+      const open = !a.status || a.status === "booked";
+      // Two days past the slot the row leaves the day's list for the history.
+      // Until 9 Nov 2026 this happened THREE HOURS after the slot, the row was
+      // filed as a visit, and a team WhatsApp went out — 28 of 33 history
+      // rows got there that way and not one of them says who came. Now a row
+      // the desk never marked is filed as "unmarked": not a visit, no
+      // "how was it?" message, never counted. One already marked done, missed
+      // or cancelled goes across as it is.
+      if (a.at < now - UNMARKED_AFTER_MS) {
         await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        if (!CLOSED.includes(a.status)) { a.status = "unmarked"; unmarked++; }
         a.doneAt = now;
         await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
         await guard.kvCommand(cfg, ["LTRIM", "appt:done", "0", "499"]).catch(() => {});
-        if (a.at > now - 14400000) { // just crossed the 3h line → ping once
-          const team = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666")
-            .split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
-          for (const to of team) {
-            await notify.teamSend(cfg, to, `🩺 ${a.name || "?"} (${a.ph}) — ${admin.fmtIst(a.at)} appointment time daatindi.\nVachhara? — *arrived ${a.ph}* pampandi ✅\nRaakapothe — *noshow ${a.ph}* pampandi (rebook nudge veltundi)`).catch(() => {});
-          }
-        }
         continue;
       }
       // Thirty minutes past the slot and not marked arrived: ask the patient
@@ -105,7 +120,7 @@ module.exports = async (req, res) => {
       // tap lands with the agent, which offers new slots; the desk sees the
       // rest on the day's list.
       const late = (now - a.at) / 60000;
-      if (late >= 30 && late <= 90 && !a.lc && (!a.status || a.status === "booked")) {
+      if (late >= 30 && late <= 90 && !a.lc && open) {
         const first = String(a.name || "").trim().split(" ")[0] || "andi";
         let ok = await notify.sendWaButtons(a.ph, `${first} garu 🙏 mee ${admin.fmtIst(a.at)} DermaLuxe appointment ki vastunnara?`, ["✅ Vastunnanu", "⏰ Late avutundi", "📅 Reschedule"]).catch(() => false);
         if (!ok) ok = !!(await notify.sendWaTemplate(a.ph, "appointment_reminder", [first, `${admin.fmtIst(a.at)} — vastunnara? Late ayite / time marchali ante ee message ki reply cheyandi 🙏`]).catch(() => null) || {}).ok;
@@ -113,6 +128,29 @@ module.exports = async (req, res) => {
         await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
         await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
         if (ok) lateAsked++;
+        continue;
+      }
+      // An hour past the slot and still only "booked": ask the DESK, once,
+      // whether the person came. The row stays on the day's list with the
+      // question on it until somebody answers — in the app, or by replying
+      // "arrived <number>" / "noshow <number>" to the WhatsApp.
+      if (late >= 60 && open && !a.ask) {
+        a.ask = now;
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        await guard.kvCommand(cfg, ["LPUSH", "appt:q", JSON.stringify(a)]).catch(() => {});
+        const who = a.name || a.label || "Patient", when = admin.fmtIst(a.at);
+        try {
+          const push = require("./_push.js");
+          if (push.enabled()) await push.notifyCap(cfg, "appts.edit", {
+            title: `🧾 ${who} — ${when} vacharu aa?`,
+            body: "Appts lo ✅ Vacharu leda ❌ Raledu mark cheyandi",
+            tab: "appts", urgent: false, data: { kind: "arrived?", ph: a.ph, at: a.at, id: a.id || "" },
+          });
+        } catch (e) { console.error("cron-post: arrived? push", e && e.message); }
+        for (const to of await deskTargets(cfg)) {
+          await notify.teamSend(cfg, to, `🧾 ${who} (${a.ph}) — ${when} vacharu aa?\nAppts lo ✅ Vacharu leda ❌ Raledu mark cheyandi.\nVachhara? — *arrived ${a.ph}* pampandi ✅\nRaakapothe — *noshow ${a.ph}* pampandi (rebook nudge veltundi)`).catch(() => {});
+        }
+        deskAsked++;
         continue;
       }
       const mins = (a.at - now) / 60000;
@@ -177,5 +215,5 @@ module.exports = async (req, res) => {
   // not book (owner, 8 Nov) — written before anybody picks up the phone.
   let notes = null;
   try { notes = await require("./_callscript.js").backfill(cfg, 3); } catch (e) { console.error("cron-post: call notes", e && e.message); }
-  return res.status(200).json({ ok: true, published, kept, dropped, boosted, reminded, lateAsked, bsent, graded, rescued, adAlerts, notes });
+  return res.status(200).json({ ok: true, published, kept, dropped, boosted, reminded, lateAsked, deskAsked, unmarked, bsent, graded, rescued, adAlerts, notes });
 };
