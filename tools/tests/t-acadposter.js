@@ -64,6 +64,12 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   booked(10);
   is((await daily.academyState({ kind: "pg" })).on, false, "a full batch stops advertising seats");
   is(await daily.academyTopic({ kind: "pg" }), null, "and no poster is built");
+  // 9 Nov: the switch reads the students on the books, not only the typed count
+  h.run(["DEL", "acad:booked"]); h.run(["DEL", "acad:st:list"]);
+  for (let i = 1; i <= 10; i++) { h.run(["SET", `acad:st:T${i}`, JSON.stringify({ id: `T${i}`, name: `T${i}`, status: "enrolled" })]); h.run(["LPUSH", "acad:st:list", `T${i}`]); }
+  is((await daily.academyState({ kind: "pg" })).on, false, "ten students on the books and nothing typed: the poster stops — it counts the students, not the hand-typed number");
+  for (let i = 1; i <= 10; i++) h.run(["DEL", `acad:st:T${i}`]);
+  h.run(["DEL", "acad:st:list"]);
   booked(3);
   at(AFTER_BATCH);
   is((await daily.academyState({ kind: "pg" })).on, false, "and once the batch has started it stops too");

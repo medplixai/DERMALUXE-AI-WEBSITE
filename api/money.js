@@ -258,7 +258,10 @@ module.exports = async (req, res) => {
     const rec = parse(((await guard.kvCommand(cfg, ["GET", `cash:close:${day}`]).catch(() => ({}))) || {}).result || "", null);
     if (!rec) return json(res, 404, { error: "Aa roju cash close ledu" });
     const gone = Object.assign({}, rec, { undone: { by: me.name, at: Date.now(), why: clean(b.why, 160) } });
-    await guard.kvWrite(cfg, ["LPUSH", "cash:undone", JSON.stringify(gone)], "cash close undo");
+    // The copy must exist before the original goes; kvWrite says false, not
+    // throws, when the database refuses, and a close the owner was told is
+    // "kept aside" must never simply be gone.
+    if (!(await guard.kvWrite(cfg, ["LPUSH", "cash:undone", JSON.stringify(gone)], "cash close undo"))) return json(res, 503, { error: "Database save kaaledu — close alaage undi, malli try cheyyandi" });
     await guard.kvCommand(cfg, ["LTRIM", "cash:undone", "0", "199"]).catch(() => {});
     await guard.kvCommand(cfg, ["DEL", `cash:close:${day}`]);
     await guard.kvCommand(cfg, ["LREM", "cash:closes", "0", day]).catch(() => {});

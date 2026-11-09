@@ -57,6 +57,7 @@ const CAPS = {
   "money.expense":    "Kharchulu & migilindi",
   "stock.view":       "Stock chudadam",
   "stock.edit":       "Stock marchadam & order",
+  "files.view":       "Files — forms, posters, videos, photos, material",
   "attend.manage":    "Andari haajaru mark cheyyadam",
   "consent.take":     "Treatment consent teesukovadam",
   "reviews.view":     "Patient ratings",
@@ -70,7 +71,7 @@ const CAP_TE = {
   "appts.view": "అపాయింట్‌మెంట్లు", "appts.edit": "బుక్ / రీషెడ్యూల్", "academy.view": "అకాడమీ స్టూడెంట్స్", "academy.edit": "స్టూడెంట్ యాడ్ / ఎడిట్",
   "academy.seats": "సీట్ల లెక్క మార్చడం", "academy.money": "ఫీజు నమోదు", "academy.docs": "డాక్యుమెంట్లు పంపడం",
   "academy.material": "మెటీరియల్ లింక్", "academy.certify": "సర్టిఫికెట్", "academy.delete": "స్టూడెంట్ తొలగింపు",
-  "pkg.log": "సెషన్ నమోదు", "reports.view": "నంబర్లు / రిపోర్ట్‌లు", "money.view": "కలెక్షన్ & బాకీలు", "money.bill": "బిల్ & పేమెంట్", "money.expense": "ఖర్చులు & మిగిలింది", "stock.view": "స్టాక్ చూడటం", "stock.edit": "స్టాక్ మార్చటం", "attend.manage": "అందరి హాజరు", "consent.take": "ట్రీట్‌మెంట్ కన్సెంట్",
+  "pkg.log": "సెషన్ నమోదు", "reports.view": "నంబర్లు / రిపోర్ట్‌లు", "money.view": "కలెక్షన్ & బాకీలు", "money.bill": "బిల్ & పేమెంట్", "money.expense": "ఖర్చులు & మిగిలింది", "stock.view": "స్టాక్ చూడటం", "stock.edit": "స్టాక్ మార్చటం", "files.view": "ఫైళ్లు — ఫారాలు, పోస్టర్లు, ఫోటోలు", "attend.manage": "అందరి హాజరు", "consent.take": "ట్రీట్‌మెంట్ కన్సెంట్",
   "posts.view": "ఈరోజు పోస్ట్", "posts.toggle": "ఆటో-పోస్ట్ ఆన్/ఆఫ్", "reviews.view": "పేషెంట్ రేటింగ్స్",
   "ai.use": "AI ఆఫీస్", "msg.send": "మెసేజ్ పంపడం", "team.manage": "కంట్రోల్ ప్యానెల్", "settings.manage": "సెట్టింగ్స్",
 };
@@ -79,7 +80,7 @@ const CAP_GROUPS = [
   { key: "appts",   label: "Appointments",     te: "అపాయింట్‌మెంట్లు", caps: ["appts.view", "appts.edit", "pkg.log"] },
   { key: "academy", label: "Academy",          te: "అకాడమీ",        caps: ["academy.view", "academy.edit", "academy.seats", "academy.money", "academy.docs", "academy.material", "academy.certify", "academy.delete"] },
   { key: "money",   label: "Money",             te: "డబ్బు",         caps: ["money.view", "money.bill", "money.expense", "reports.view"] },
-  { key: "clinic",  label: "Clinic",            te: "క్లినిక్",       caps: ["stock.view", "stock.edit", "attend.manage", "consent.take"] },
+  { key: "clinic",  label: "Clinic",            te: "క్లినిక్",       caps: ["stock.view", "stock.edit", "files.view", "attend.manage", "consent.take"] },
   { key: "posts",   label: "Marketing & posts", te: "మార్కెటింగ్",   caps: ["posts.view", "posts.toggle"] },
   { key: "reviews", label: "Reviews",          te: "రివ్యూలు",      caps: ["reviews.view"] },
   { key: "admin",   label: "Admin",            te: "అడ్మిన్",       caps: ["ai.use", "msg.send", "team.manage", "settings.manage"] },
@@ -91,21 +92,21 @@ const BUILTIN_ROLES = {
   owner:     { label: "Owner",     te: "ఓనర్",       note: "Anni powers — ee role marchalemu.",
     caps: ["*"] },
   manager:   { label: "Manager",   te: "మేనేజర్",     note: "Clinic mottam nadipevaru. Delete tappa dadapu anni.",
-    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","money.expense","reports.view","stock.view","stock.edit","attend.manage","consent.take","posts.view","posts.toggle","reviews.view","ai.use","msg.send","team.manage"] },
+    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","money.expense","reports.view","stock.view","stock.edit","attend.manage","consent.take","posts.view","posts.toggle","reviews.view","ai.use","msg.send","team.manage","files.view"] },
   doctor:    { label: "Doctor",    te: "డాక్టర్",     note: "Consultations + academy training. Money/settings ledu.",
-    caps: ["inbox.view","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use","msg.send"] },
+    caps: ["inbox.view","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use","msg.send","files.view"] },
   reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count.",
-    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use","msg.send"] },
+    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use","msg.send","files.view"] },
   accounts:  { label: "Accounts",  te: "అకౌంట్స్",    note: "Fees, receipts, documents. Leads edit cheyaleru.",
-    caps: ["leads.view","appts.view","academy.view","academy.money","academy.docs","money.view","money.bill","money.expense","reports.view","stock.view","reviews.view","ai.use"] },
+    caps: ["leads.view","appts.view","academy.view","academy.money","academy.docs","money.view","money.bill","money.expense","reports.view","stock.view","reviews.view","ai.use","files.view"] },
   therapist: { label: "Therapist", te: "థెరపిస్ట్",   note: "Treatments chese vaaru — chudatam matrame.",
-    caps: ["leads.view","appts.view","pkg.log","stock.view","stock.edit","consent.take","posts.view","ai.use"] },
+    caps: ["leads.view","appts.view","pkg.log","stock.view","stock.edit","consent.take","posts.view","ai.use","files.view"] },
   trainer:   { label: "Trainer",   te: "ట్రైనర్",     note: "Academy batch nadipevaru.",
-    caps: ["academy.view","academy.edit","academy.material","academy.docs","appts.view","ai.use"] },
+    caps: ["academy.view","academy.edit","academy.material","academy.docs","appts.view","ai.use","files.view"] },
   marketing: { label: "Marketing", te: "మార్కెటింగ్", note: "Posts, campaigns, ratings.",
-    caps: ["inbox.view","leads.view","posts.view","posts.toggle","reviews.view","reports.view","ai.use"] },
+    caps: ["inbox.view","leads.view","posts.view","posts.toggle","reviews.view","reports.view","ai.use","files.view"] },
   staff:     { label: "Staff",     te: "స్టాఫ్",      note: "Default role — basic access.",
-    caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use"] },
+    caps: ["leads.view","leads.edit","appts.view","academy.view","posts.view","ai.use","files.view"] },
 };
 const ROLES_KEY = "staff:roles";
 const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
@@ -325,7 +326,7 @@ async function leadPage(cfg, offset, count) {
     // No number yet and the enquiry came through Instagram or Facebook: the
     // agent there is doing the asking, so the card says that instead of
     // "Adagandi: …" and a waiting clock the desk cannot stop (9 Nov).
-    const social = !ph && /^(instagram|ig_comment|fb_comment|messenger)$/.test(String(l.type || ""));
+    const social = !ph && (status === "new" || status === "contacted") && !base.optedOut && /^(instagram|ig_comment|fb_comment|messenger)$/.test(String(l.type || ""));
     base.next = social
       ? { kind: "ig", text: `📩 ${/^(fb_comment|messenger)$/.test(String(l.type || "")) ? "Facebook" : "Instagram"} lo agent matladutondi — number vachaka ikkada call ki vastundi` }
       : qual.nextAction(rec, base);

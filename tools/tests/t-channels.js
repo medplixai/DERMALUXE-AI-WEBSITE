@@ -228,6 +228,10 @@ const hook = { token: "hook" };
 
   // Comments from before the webhook, read back each hour (owner, 7 Nov).
   const igMod = require(path.join(API, "instagram.js"));
+  is([["Interested", true], ["DM please", true], ["Call me", true], ["How much", true], ["opening eppudu", true], ["ధర ఎంత", true], ["మీరు ఆదివారం ఓపెన్ ఉంటారా చెప్పండి", true], ["meeru sunday open untara", true], ["naku acne problem undi", true],
+      ["చాలా బాగుంది", false], ["ధన్యవాదాలు", false], ["Super macha 🔥", false], ["Wishing Oscar all the best", false], ["Congratulations Dr Meghana garu proud of you", false], ["💖💖💖 @a @b", false], ["🔥🔥🔥🔥", false]]
+      .filter((c) => igMod.isEnquiry(c[0]) !== c[1]).map((c) => c[0]), [],
+    "what counts as an enquiry: interest, a question or a concern in any script — not praise, Telugu praise, or a friend's nickname that looks like the word for a spot");
   const keepFetch = global.fetch;
   process.env.IG_LOGIN_TOKEN = "login";
   privates.length = 0; publics.length = 0;

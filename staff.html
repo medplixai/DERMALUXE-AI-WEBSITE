@@ -623,6 +623,16 @@
     .nxt.video{background:#f5f3ff;color:#5b21b6}
     .nxt.skip,.nxt.done{background:var(--panel2);color:var(--muted)}
     .nxt.ig{background:#fdf2f8;color:#9d174d}
+    /* the file library */
+    .fi-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:10px;margin-top:10px}
+    .fi{background:var(--panel2);border:1px solid var(--line);border-radius:12px;padding:10px;min-width:0}
+    .fi-th{height:120px;border-radius:8px;overflow:hidden;background:rgba(0,0,0,.05);display:grid;place-items:center;font-size:2rem}
+    .fi-th img{width:100%;height:100%;object-fit:cover;display:block}
+    .fi h4{margin:8px 0 2px;font-size:.92rem;line-height:1.3;overflow-wrap:anywhere}
+    .fi .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+    .fi-box{scroll-margin-top:60px}
+    .fi-days{display:flex;flex-wrap:wrap;gap:6px;margin:4px 0 10px}
+    .fi-days .btn{min-width:40px;justify-content:center}
     .wait{font-weight:600}
     .wait.warn{color:var(--hot)}.wait.bad{color:var(--bad)}
     .gr{cursor:pointer}
@@ -939,6 +949,7 @@
         <button class="tab" data-t="reviews"><span>Reviews</span></button>
         <button class="tab hide" data-t="office" id="officeTab"><span>AI Office</span></button>
         <button class="tab hide" data-t="stock" id="stockTab"><span>Stock</span></button>
+        <button class="tab hide" data-t="files" id="filesTab"><span>Files</span></button>
         <button class="tab" data-t="attend"><span>Attendance</span></button>
         <button class="tab hide" data-t="team" id="teamTab"><span>Control panel</span></button>
       </div>
@@ -1152,6 +1163,13 @@
         <div class="box" style="position:sticky;bottom:8px;margin-top:8px">
           <div class="noteform"><input id="officeQ" placeholder="Ex: ee roju enni leads? evariki mundu call cheyyali?" maxlength="1200" /><button class="btn btn--gold btn--sm" id="officeSend">Ask</button></div>
           <div class="err" id="officeErr"></div></div>
+      </section>
+      <section id="t-files" class="hide">
+        <div class="box"><h2>Files <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">ఫైళ్లు</span></span></h2>
+          <p>Forms, posters, videos, photos, academy material, Instagram posters — anni ikkada. <b>Open</b> chesi chudandi, <b>Download</b> chesi phone lo save cheyyandi, <b>Link</b> copy chesi WhatsApp lo pampandi.</p>
+          <div class="noteform"><input id="fiQ" placeholder="Vethakandi… poster, consent, logo, video" aria-label="Search files" /></div>
+        </div>
+        <div id="fiList"><div class="sk"><div></div><div></div><div></div></div></div>
       </section>
       <section id="t-stock" class="hide">
         <div class="countdown" id="stkHead"><div class="skk"></div><div class="skk"></div></div>
@@ -1574,7 +1592,7 @@
       if (allow("stock.view")) $("stockTab").classList.remove("hide");
       if (allow("inbox.view")) { $("inboxTab").classList.remove("hide"); if (ib && !ib.loadedOnce) { ib.loadedOnce = true; loadInbox(true); } }
       if (allow("leads.edit")) $("leadAdd").classList.remove("hide");
-      [["leads", "leads.view"], ["inbox", "inbox.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["ads", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"], ["stock", "stock.view"]].forEach(function (p) {
+      [["leads", "leads.view"], ["inbox", "inbox.view"], ["appts", "appts.view"], ["patients", "leads.view"], ["money", "money.view"], ["numbers", "reports.view"], ["ads", "reports.view"], ["academy", "academy.view"], ["students", "academy.view"], ["today", "posts.view"], ["reviews", "reviews.view"], ["stock", "stock.view"], ["files", "files.view"]].forEach(function (p) {
         var b = document.querySelector('.tab[data-t="' + p[0] + '"]'); if (b) b.classList.toggle("hide", !allow(p[1]));
       });
       var firstTab = document.querySelector(".tab:not(.hide)");
@@ -1842,12 +1860,12 @@
     // to them, and the card joins the desk's lists when a number arrives. They
     // have their own group so nothing is lost (owner, 7 Nov: every enquiry
     // reaches the desk) without sitting in Waiting as if the desk were late.
-    function igOnly(l) { return !l.phone && (src(l) === "instagram" || src(l) === "facebook"); }
+    function igOnly(l) { return !l.phone && (l.status === "new" || l.status === "contacted") && (src(l) === "instagram" || src(l) === "facebook"); }
     // Nobody has touched this one yet.
     function untouched(l) {
       return l.status === "new" && !(l.notes && l.notes.length) && !/^\s*academy/i.test(String(l.concern || "")) && !igOnly(l);
     }
-    function untouchedAcad(l) { return l.status === "new" && !(l.notes && l.notes.length); }
+    function untouchedAcad(l) { return l.status === "new" && !(l.notes && l.notes.length) && !igOnly(l); }
     var callShowAll = false;
     // Cards are drawn forty at a time: drawing all 170 on every tap and every
     // letter typed was most of a second on the desk's phones (8 Nov).
@@ -3592,6 +3610,64 @@
 
     function stkapi(a, body) { return xcall("/api/stock", a, body); }
     var stkShow = "all";
+    // ---- the file library ------------------------------------------------
+    // Every form, poster, video and photo the clinic hands out or posts, from
+    // files/manifest.json by way of /api/files, plus the academy study
+    // material and the saved Instagram posters for those who may see them
+    // (owner, 9 Nov: "docs anni oka folder lo, eppudaina download").
+    function fapi(a, body, qs) { return xcall("/api/files", a, body, qs); }
+    var filesData = null, filePosters = null;
+    function loadFiles() {
+      if (filesData) { renderFiles(); return Promise.resolve(); }
+      return fapi("list").then(function (j) {
+        filesData = j; renderFiles();
+        if (j.posters) postapi("list").then(function (p) { filePosters = (p.posters || []).filter(function (r) { return r.imgId; }); renderFiles(); }).catch(function () { filePosters = []; renderFiles(); });
+      }).catch(function (x) { $("fiList").innerHTML = '<div class="empty">' + esc(x.message) + "</div>"; });
+    }
+    function fsize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
+    function fileCard(it) {
+      var url = ORIGIN + it.path;
+      var th = it.kind === "image" ? '<img src="' + esc(url) + '" alt="" loading="lazy" decoding="async">' : it.kind === "video" ? "🎬" : it.kind === "pdf" ? "📄" : "📎";
+      return '<div class="fi" data-q="' + esc((it.title + " " + it.name + " " + (it.te || "")).toLowerCase()) + '"><div class="fi-th">' + th + '</div>' +
+        '<h4>' + esc(it.title) + '</h4>' + (it.te ? '<div class="te" lang="te">' + esc(it.te) + '</div>' : '') +
+        '<div class="meta">' + esc(String(it.ext || "").toUpperCase()) + ' · ' + fsize(it.bytes) + '</div>' +
+        '<div class="acts"><a class="btn btn--sm" href="' + esc(url) + '" target="_blank" rel="noopener">👁 Open</a>' +
+        '<a class="btn btn--sm btn--gold" href="' + esc(url) + '" download="' + esc(it.name) + '" target="_blank" rel="noopener">⬇ Download</a>' +
+        '<button class="btn btn--sm" data-act="fi-copy" data-url="' + esc(url) + '">🔗 Link</button></div></div>';
+    }
+    function renderFiles() {
+      var d = filesData; if (!d || !$("fiList")) return;
+      var html = "";
+      (d.groups || []).forEach(function (g) {
+        if (!g.items.length) return;
+        html += '<div class="box"><h2>' + esc(g.title) + ' <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">' + esc(g.te || "") + '</span></span> <span class="meta">' + g.items.length + '</span></h2>' +
+          '<div class="fi-grid">' + g.items.map(fileCard).join("") + '</div></div>';
+      });
+      if (d.material) {
+        var days = function (t) { var s = ""; for (var n = 1; n <= (d.material.days || 30); n++) s += '<button class="btn btn--sm" data-act="fi-mat" data-track="' + t + '" data-day="' + n + '">' + n + '</button>'; return s; };
+        html += '<div class="box fi-box" data-q="academy study material skin hair day"><h2>Academy study material <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">స్టడీ మెటీరియల్</span></span></h2>' +
+          '<p>Roju-vaari PDF. Nokkithe open avutundi — link 15 nimishalu matrame pani chestundi, students ki idi pampoddu (vaallaki vaalla link WhatsApp lo veltundi).</p>' +
+          d.material.tracks.map(function (t) { return '<h4>' + esc(t.title) + ' · Day</h4><div class="fi-days">' + days(t.key) + '</div>'; }).join("") +
+          (d.material.books && d.material.books.length ? '<h4>Full books — trainers</h4><div class="fi-days">' + d.material.books.map(function (b) { return '<button class="btn btn--sm btn--gold" data-act="fi-mat" data-book="' + esc(b.key) + '">📚 ' + esc(b.title) + '</button>'; }).join("") + '</div>' : '') + '</div>';
+      }
+      if (d.posters) {
+        html += '<div class="box fi-box" data-q="instagram posters insta"><h2>Instagram posters <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">ఇన్‌స్టా పోస్టర్లు</span></span></h2>' +
+          (filePosters === null ? '<div class="sk"><div></div><div></div></div>' : filePosters.length ? '<p>Post tab lo save ayina posters — konni rojulu matrame untayi, kavalsinavi download chesukondi.</p><div class="fi-grid">' + filePosters.map(function (r) {
+            var u = ORIGIN + "/api/media?id=" + encodeURIComponent(r.imgId);
+            return '<div class="fi" data-q="' + esc(String((r.h1 || "") + " " + (r.topic || "") + " poster").toLowerCase()) + '"><div class="fi-th"><img src="' + esc(u) + '" alt="" loading="lazy" decoding="async" onerror="this.parentNode.textContent=\'🖼\'"></div>' +
+              '<h4>' + esc(r.h1 || r.topic || "Poster") + '</h4><div class="meta">' + esc(dmy(r.at || r.ts || Date.now())) + (r.status ? ' · ' + esc(r.status) : '') + '</div>' +
+              '<div class="acts"><a class="btn btn--sm" href="' + esc(u) + '" target="_blank" rel="noopener">👁 Open</a><a class="btn btn--sm btn--gold" href="' + esc(u) + '" download="dermaluxe-poster-' + esc(r.imgId) + '.jpg" target="_blank" rel="noopener">⬇ Download</a>' + (r.link ? '<a class="btn btn--sm" href="' + esc(r.link) + '" target="_blank" rel="noopener">📸 Post</a>' : '') + '</div></div>';
+          }).join("") + '</div>' : '<p class="meta">Save ayina posters levu — Post tab lo create cheyyandi.</p>') + '</div>';
+      }
+      $("fiList").innerHTML = html || '<div class="empty">Files levu.</div>';
+      filterFiles();
+    }
+    function filterFiles() {
+      var q = ($("fiQ") ? $("fiQ").value : "").trim().toLowerCase();
+      document.querySelectorAll("#fiList .fi, #fiList .fi-box").forEach(function (c) { c.classList.toggle("hide", !!q && (c.dataset.q || "").indexOf(q) < 0); });
+      document.querySelectorAll("#fiList .box:not(.fi-box)").forEach(function (b) { b.classList.toggle("hide", !!q && !b.querySelector(".fi:not(.hide)")); });
+    }
+    if ($("fiQ")) $("fiQ").oninput = filterFiles;
     function loadStock() {
       if (!state.allow("stock.view")) return Promise.resolve();
       return stkapi("list").then(function (j) {
@@ -4993,6 +5069,7 @@
       numbers:'<svg viewBox="0 0 24 24"><path d="M4 19.5V15M9.3 19.5V9M14.7 19.5v-6M20 19.5V5"/></svg>',
       ads:'<svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L14 5.5v13L7.5 14.5H4a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1Z"/><path d="M17.5 9.2a4 4 0 0 1 0 5.6M20 7a7.5 7.5 0 0 1 0 10"/></svg>',
       money:'<svg viewBox="0 0 24 24"><rect x="3" y="6.5" width="18" height="11" rx="2"/><circle cx="12" cy="12" r="2.6"/><path d="M6.5 12h.01M17.5 12h.01"/></svg>',
+      files:'<svg viewBox="0 0 24 24"><path d="M3.5 7.5a2 2 0 0 1 2-2h4l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2h-13a2 2 0 0 1-2-2v-10Z"/><path d="M3.5 10.5h17"/></svg>',
       patients:'<svg viewBox="0 0 24 24"><path d="M12 20.5s-7-4.3-7-9.3A3.8 3.8 0 0 1 12 8a3.8 3.8 0 0 1 7 3.2c0 5-7 9.3-7 9.3Z"/><path d="M12 11.2v3.4M10.3 12.9h3.4"/></svg>',
       academy:'<svg viewBox="0 0 24 24"><path d="M5 20V6a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v14"/><path d="M5 20h14M9 8h6M9 12h6M9 16h3"/></svg>',
       office:'<svg viewBox="0 0 24 24"><path d="M12 3.5 13.7 9l5.3 1.8L13.7 12.6 12 18l-1.7-5.4L5 10.8 10.3 9 12 3.5Z"/><path d="M18.5 16.2l.7 2 2 .7-2 .7-.7 2-.7-2-2-.7 2-.7.7-2Z"/></svg>',
@@ -5003,8 +5080,8 @@
       attend:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path d="M12 7.5V12l3 1.8"/></svg>',
       team:'<svg viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h2M10 17h10"/><circle cx="16" cy="7" r="2.2"/><circle cx="8" cy="17" r="2.2"/></svg>'
     };
-    var NAV_LABEL = { inbox:"Inbox", leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", ads:"Ads", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", stock:"Stock", attend:"Attendance", team:"Panel" };
-    var NAV_PREF = ["leads","inbox","appts","patients","money","numbers","ads","attend","stock","academy","students","office","today","reviews","team"];
+    var NAV_LABEL = { inbox:"Inbox", leads:"Leads", appts:"Appts", patients:"Patients", money:"Money", numbers:"Numbers", ads:"Ads", students:"Students", academy:"Seats", office:"AI Office", today:"Post", reviews:"Reviews", stock:"Stock", files:"Files", attend:"Attendance", team:"Panel" };
+    var NAV_PREF = ["leads","inbox","appts","patients","money","numbers","ads","attend","stock","files","academy","students","office","today","reviews","team"];
     var NAV_BADGE = { inbox:"nInbox", leads:"nLeads", appts:"nAppts", students:"nStud", academy:"nAcad", patients:"nPt" };
 
     function plug(n) { return (window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins[n]) || null; }
@@ -5925,6 +6002,7 @@
       if (t === "patients") loadPatients();
       if (t === "money") { loadMoney(); loadExpenses(); }
       if (t === "stock") loadStock();
+      if (t === "files") loadFiles();
       if (t === "inbox") loadInbox();
       if (t === "attend") loadAttend();
       if (t === "numbers") loadInsights();
@@ -6177,6 +6255,22 @@
       if (el.dataset.act === "tile-appts") { goTab("appts"); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
       // A cash close entered by mistake: moved aside on the server, never
       // deleted, and the owner is told (9 Nov: the ₹1/+₹2 trial on 8 Nov).
+      // The file library: copy a link, or open a study-material PDF through a
+      // link minted for this person (the window opens first, or the browser
+      // calls it a popup and blocks it).
+      if (el.dataset.act === "fi-copy") {
+        var fu = el.dataset.url;
+        (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(fu) : Promise.reject()).then(function () { toast("Link copy ayindi"); }, function () { prompt("Link:", fu); });
+        return;
+      }
+      if (el.dataset.act === "fi-mat") {
+        var mw = window.open("", "_blank");
+        el.disabled = true;
+        fapi("mlink", el.dataset.book ? { book: el.dataset.book } : { track: el.dataset.track, day: Number(el.dataset.day) })
+          .then(function (j) { if (mw) mw.location.href = ORIGIN + j.url; else window.open(ORIGIN + j.url, "_blank"); })
+          .catch(function (x) { if (mw) mw.close(); toast(x.message); }).then(function () { el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "cash-undo") {
         if (!confirm("Ee cash close (" + el.dataset.day + ") teeseyala?\n\nLekka pakkana pettabadutundi, owner ki WhatsApp veltundi. Aa roju malli close cheyyochu.")) return;
         el.disabled = true;

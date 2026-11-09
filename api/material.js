@@ -73,8 +73,18 @@ module.exports = async (req, res) => {
   // A staff token alone is not enough: the person must still exist, still be
   // active, and still hold academy.material. A 30-day token from someone who
   // has since been suspended or removed used to open the whole library.
+  // A link the Files tab minted for a logged-in staff member (api/files.js):
+  // the payload names them and dies in fifteen minutes, so a PDF opens in the
+  // phone's own viewer without the session token ever appearing in a URL.
+  if (q.f) {
+    const [p, s] = String(q.f).split(".");
+    if (p && s && guard.safeEqual(s, sign("files:" + p).slice(0, 32))) {
+      try { const u = JSON.parse(Buffer.from(p, "base64url").toString("utf8")); if (u.exp > Date.now()) who = { kind: "staff", name: String(u.name || "staff").slice(0, 60), full: !!u.full }; } catch (e) {}
+    }
+    if (!who) return deny(res, "Ee link time ayipoyindi. App lo Files nunchi malli open cheyyandi.");
+  }
   const staff = staffUser(req);
-  if (staff && cfg) {
+  if (!who && staff && cfg) {
     try {
       const staffMod = require("./staff.js");
       const auth = await staffMod.requireStaff(cfg, req);
@@ -143,4 +153,14 @@ module.exports = async (req, res) => {
     console.error("material: read failed", file, e && e.message);
     return res.status(404).send("Material not found");
   }
+};
+
+// Minted by api/files.js for the Files tab and checked above under q.f: who
+// it is for, whether they may open the whole book, and when it dies.
+module.exports.staffLink = (me, full, q) => {
+  if (!secret()) return null;
+  const p = Buffer.from(JSON.stringify({ name: (me && me.name) || "staff", full: !!full, exp: Date.now() + 15 * 60000 }), "utf8").toString("base64url");
+  const f = `${p}.${sign("files:" + p).slice(0, 32)}`;
+  const qs = q.book ? `book=${encodeURIComponent(q.book)}` : `track=${encodeURIComponent(q.track)}&day=${Number(q.day)}`;
+  return `/api/material?${qs}&f=${encodeURIComponent(f)}`;
 };

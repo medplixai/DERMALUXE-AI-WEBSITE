@@ -316,7 +316,7 @@ module.exports = async (req, res) => {
       const dropped = p.studentStatus === "dropped" || p.leadStatus === "closed";
       // A student record the desk created holds a seat whether or not the fee
       // has started coming in (9 Nov); an enquiry-only record does not.
-      const stage = dropped ? "lost" : (paid > 0 || (p.id && !["enquiry", "completed"].includes(String(p.studentStatus || "")))) ? "reserved" : "enquiry";
+      const stage = dropped ? "lost" : (p.id && require("./_seats.js").holdsSeat({ status: p.studentStatus })) ? "reserved" : "enquiry";
       const touched = p.lastNote ? p.lastNote.ts : (p.enquiredAt || p.createdAt || 0);
       return Object.assign({}, p, {
         stage,
@@ -338,7 +338,7 @@ module.exports = async (req, res) => {
     return json(res, 200, {
       ok: true,
       rows,
-      seats: { total: 10, booked: seatsBooked, left: Math.max(0, 10 - seatsBooked) },
+      seats: { total: docs.BATCH.seats, booked: seatsBooked, left: Math.max(0, docs.BATCH.seats - seatsBooked) },
       money: { collected, pending },
       counts: {
         reserved: reserved.length,

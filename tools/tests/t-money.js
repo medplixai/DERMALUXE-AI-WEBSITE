@@ -83,6 +83,10 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   is([kept.length, kept[0] && kept[0].day, kept[0] && kept[0].diff, kept[0] && kept[0].undone.why], [1, cday, c1.body.close.diff, "trial entry"], "nothing is deleted — the count is kept aside with who undid it");
   const u2 = await M({ a: "close-undo" }, { a: "close-undo", day: cday });
   is(u2.code, 404, "undoing it twice finds nothing the second time");
+  is((await M({ a: "close-undo" }, { a: "close-undo", day: "yesterday" })).code, 400, "a day must be yyyy-mm-dd");
+  h.as(["money.view"], { name: "Sowmya", phone: "9876500051", role: "reception" });
+  is((await M({ a: "close-undo" }, { a: "close-undo", day: cday })).code, 403, "somebody who may only look at money cannot take a close back");
+  h.as(["*"], { name: "Owner", phone: "9010427777", role: "owner" });
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nmoney behaves");
 })();

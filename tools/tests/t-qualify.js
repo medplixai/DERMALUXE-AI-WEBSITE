@@ -265,6 +265,15 @@ const cfg = { kind: "pg" };
   is([row.grade, row.village, row.since, row.next.kind], ["A", "Eluru", "8 nelalu", "call"], "the lead card carries the grade, the facts and the next step");
   is(row.waiting > 0, true, "and how long they have been waiting for somebody to touch it");
   is(page.leads.find((l) => l.phone === "9876501911").next.kind, "done", "a lead the desk closed says so");
+  // 9 Nov: a social enquiry with no number is the agent's to chase, not the
+  // desk's — and the seats tile counts the students on the books.
+  const igTs = Date.now() - 3600000;
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: igTs, name: "@fanx", phone: "", type: "ig_comment", concern: "Acne", heat: "warm", message: "[Instagram comment] acne" })]);
+  h.run(["SET", "acad:st:DLA-1", JSON.stringify({ id: "DLA-1", name: "Seat Test", status: "enrolled" })]); h.run(["LPUSH", "acad:st:list", "DLA-1"]);
+  const page2 = (await h.call(staffApi, { a: "data" }, null, bearer)).body;
+  const igRow = page2.leads.find((l) => l.ts === igTs);
+  is([igRow && igRow.next.kind, igRow && igRow.waiting == null, /Instagram lo agent/.test(igRow && igRow.next.text)], ["ig", true, true], "an Instagram enquiry with no number says the agent there is asking, and carries no waiting clock");
+  is([page2.academy.booked, page2.academy.left], [1, 9], "the Leads tile counts the student on the books, not a typed number (9 Nov)");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nqualification behaves");
   process.exit(fails ? 1 : 0);

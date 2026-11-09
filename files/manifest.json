@@ -1,0 +1,493 @@
+{
+ "generated": 1794222816677,
+ "groups": [
+  {
+   "key": "forms",
+   "title": "Forms & handouts",
+   "te": "ఫారాలు",
+   "items": [
+    {
+     "name": "ht-consent-form.pdf",
+     "title": "Hair transplant consent booklet — 10 pages",
+     "te": "హెయిర్ ట్రాన్స్‌ప్లాంట్ కన్సెంట్ బుక్‌లెట్",
+     "path": "/files/forms/ht-consent-form.pdf",
+     "bytes": 802087,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1794215311325
+    },
+    {
+     "name": "ht-consultation-form.pdf",
+     "title": "Consultation form + treatment plan & cost (clinic & patient copy)",
+     "te": "కన్సల్టేషన్ ఫారం",
+     "path": "/files/forms/ht-consultation-form.pdf",
+     "bytes": 415076,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1794207829015
+    },
+    {
+     "name": "ht-pre-surgery.pdf",
+     "title": "Pre-surgery protocol — patient handout",
+     "te": "సర్జరీకి ముందు సూచనలు",
+     "path": "/files/forms/ht-pre-surgery.pdf",
+     "bytes": 294659,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1794215312481
+    },
+    {
+     "name": "ht-post-surgery.pdf",
+     "title": "Post-surgery discharge instructions — patient handout",
+     "te": "సర్జరీ తర్వాత సూచనలు",
+     "path": "/files/forms/ht-post-surgery.pdf",
+     "bytes": 293004,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1794215313855
+    },
+    {
+     "name": "rx-qr-label.pdf",
+     "title": "Prescription pad QR label (print sheet)",
+     "te": "ప్రిస్క్రిప్షన్ QR లేబుల్",
+     "path": "/files/forms/rx-qr-label.pdf",
+     "bytes": 30643,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1793693518190
+    },
+    {
+     "name": "academy-course-catalog.pdf",
+     "title": "Academy course catalogue",
+     "te": "అకాడమీ కోర్సు కేటలాగ్",
+     "path": "/files/forms/academy-course-catalog.pdf",
+     "bytes": 3001865,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1789199148645
+    }
+   ]
+  },
+  {
+   "key": "posters",
+   "title": "Posters & print",
+   "te": "పోస్టర్లు",
+   "items": [
+    {
+     "name": "ht-offer-feed-en.png",
+     "title": "Hair transplant package — Instagram feed (English)",
+     "te": "HT ప్యాకేజీ పోస్టర్ — ఇంగ్లీష్",
+     "path": "/files/posters/ht-offer-feed-en.png",
+     "bytes": 1672664,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1794206274150
+    },
+    {
+     "name": "ht-offer-status-en.png",
+     "title": "Hair transplant package — WhatsApp status / story (English)",
+     "te": "HT ప్యాకేజీ స్టేటస్ — ఇంగ్లీష్",
+     "path": "/files/posters/ht-offer-status-en.png",
+     "bytes": 2055018,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1794206275415
+    },
+    {
+     "name": "ht-offer-feed-te.png",
+     "title": "Hair transplant package — Instagram feed (Telugu)",
+     "te": "HT ప్యాకేజీ పోస్టర్ — తెలుగు",
+     "path": "/files/posters/ht-offer-feed-te.png",
+     "bytes": 1754131,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1794206276662
+    },
+    {
+     "name": "ht-offer-status-te.png",
+     "title": "Hair transplant package — WhatsApp status / story (Telugu)",
+     "te": "HT ప్యాకేజీ స్టేటస్ — తెలుగు",
+     "path": "/files/posters/ht-offer-status-te.png",
+     "bytes": 2136034,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1794206277963
+    },
+    {
+     "name": "opening-invite-poster.png",
+     "title": "Grand opening invitation poster",
+     "te": "ఓపెనింగ్ ఆహ్వాన పోస్టర్",
+     "path": "/files/posters/opening-invite-poster.png",
+     "bytes": 2991730,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1793792276570
+    },
+    {
+     "name": "opening-invite-poster.pdf",
+     "title": "Grand opening invitation poster — print PDF",
+     "te": "ఓపెనింగ్ ఆహ్వాన పోస్టర్ (ప్రింట్)",
+     "path": "/files/posters/opening-invite-poster.pdf",
+     "bytes": 1796841,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1793792275063
+    },
+    {
+     "name": "opening-invite-card-front.png",
+     "title": "Invitation card — front",
+     "te": "ఆహ్వాన కార్డు — ముందు",
+     "path": "/files/posters/opening-invite-card-front.png",
+     "bytes": 3588112,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1793792275741
+    },
+    {
+     "name": "opening-invite-card-back.png",
+     "title": "Invitation card — back",
+     "te": "ఆహ్వాన కార్డు — వెనుక",
+     "path": "/files/posters/opening-invite-card-back.png",
+     "bytes": 1284919,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1793792276068
+    },
+    {
+     "name": "opening-invite-card.pdf",
+     "title": "Invitation card — print PDF",
+     "te": "ఆహ్వాన కార్డు (ప్రింట్)",
+     "path": "/files/posters/opening-invite-card.pdf",
+     "bytes": 1921239,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1793792274801
+    },
+    {
+     "name": "team-poster.png",
+     "title": "Team poster",
+     "te": "టీమ్ పోస్టర్",
+     "path": "/files/posters/team-poster.png",
+     "bytes": 3400610,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1793793625163
+    },
+    {
+     "name": "team-poster.pdf",
+     "title": "Team poster — print PDF",
+     "te": "టీమ్ పోస్టర్ (ప్రింట్)",
+     "path": "/files/posters/team-poster.pdf",
+     "bytes": 682324,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1793793624607
+    },
+    {
+     "name": "welcome-board.jpg",
+     "title": "Welcome board",
+     "te": "వెల్‌కమ్ బోర్డు",
+     "path": "/files/posters/welcome-board.jpg",
+     "bytes": 1551868,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1793792278198
+    },
+    {
+     "name": "welcome-board.pdf",
+     "title": "Welcome board — print PDF",
+     "te": "వెల్‌కమ్ బోర్డు (ప్రింట్)",
+     "path": "/files/posters/welcome-board.pdf",
+     "bytes": 1586984,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1793792278007
+    },
+    {
+     "name": "stage-backdrop.jpg",
+     "title": "Stage backdrop",
+     "te": "స్టేజ్ బ్యాక్‌డ్రాప్",
+     "path": "/files/posters/stage-backdrop.jpg",
+     "bytes": 3870912,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1793792283363
+    },
+    {
+     "name": "stage-backdrop.pdf",
+     "title": "Stage backdrop — print PDF",
+     "te": "స్టేజ్ బ్యాక్‌డ్రాప్ (ప్రింట్)",
+     "path": "/files/posters/stage-backdrop.pdf",
+     "bytes": 992436,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1793792279698
+    },
+    {
+     "name": "academy-batch-poster.jpg",
+     "title": "Academy batch poster — feed",
+     "te": "అకాడమీ బ్యాచ్ పోస్టర్",
+     "path": "/files/posters/academy-batch-poster.jpg",
+     "bytes": 266142,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1790802998355
+    },
+    {
+     "name": "academy-batch-story.jpg",
+     "title": "Academy batch poster — story",
+     "te": "అకాడమీ బ్యాచ్ స్టోరీ",
+     "path": "/files/posters/academy-batch-story.jpg",
+     "bytes": 314573,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1790803000798
+    }
+   ]
+  },
+  {
+   "key": "videos",
+   "title": "Videos & reels",
+   "te": "వీడియోలు",
+   "items": [
+    {
+     "name": "opening-promo.mp4",
+     "title": "Opening promo reel — full quality (Instagram)",
+     "te": "ఓపెనింగ్ ప్రోమో రీల్",
+     "path": "/files/videos/opening-promo.mp4",
+     "bytes": 21136688,
+     "ext": "mp4",
+     "kind": "video",
+     "mtime": 1793788833112
+    },
+    {
+     "name": "opening-promo-whatsapp.mp4",
+     "title": "Opening promo reel — WhatsApp size",
+     "te": "ఓపెనింగ్ ప్రోమో (వాట్సాప్)",
+     "path": "/files/videos/opening-promo-whatsapp.mp4",
+     "bytes": 7666014,
+     "ext": "mp4",
+     "kind": "video",
+     "mtime": 1793788836126
+    },
+    {
+     "name": "opening-tour.mp4",
+     "title": "Clinic tour video — full quality",
+     "te": "క్లినిక్ టూర్ వీడియో",
+     "path": "/files/videos/opening-tour.mp4",
+     "bytes": 26075055,
+     "ext": "mp4",
+     "kind": "video",
+     "mtime": 1793811828634
+    },
+    {
+     "name": "opening-tour-whatsapp.mp4",
+     "title": "Clinic tour video — WhatsApp size",
+     "te": "క్లినిక్ టూర్ (వాట్సాప్)",
+     "path": "/files/videos/opening-tour-whatsapp.mp4",
+     "bytes": 9269939,
+     "ext": "mp4",
+     "kind": "video",
+     "mtime": 1793811832815
+    },
+    {
+     "name": "opening-reel-fast.mp4",
+     "title": "Opening reel, fast cut — full quality",
+     "te": "ఓపెనింగ్ రీల్ (ఫాస్ట్)",
+     "path": "/files/videos/opening-reel-fast.mp4",
+     "bytes": 9101923,
+     "ext": "mp4",
+     "kind": "video",
+     "mtime": 1793789727573
+    },
+    {
+     "name": "opening-reel-fast-whatsapp.mp4",
+     "title": "Opening reel, fast cut — WhatsApp size",
+     "te": "ఓపెనింగ్ రీల్ ఫాస్ట్ (వాట్సాప్)",
+     "path": "/files/videos/opening-reel-fast-whatsapp.mp4",
+     "bytes": 3588175,
+     "ext": "mp4",
+     "kind": "video",
+     "mtime": 1793789729086
+    },
+    {
+     "name": "dr-meghana-intro.mp4",
+     "title": "Dr. Meghana introduction — full quality (never a paid ad)",
+     "te": "డా. మేఘన పరిచయ వీడియో",
+     "path": "/files/videos/dr-meghana-intro.mp4",
+     "bytes": 17715720,
+     "ext": "mp4",
+     "kind": "video",
+     "mtime": 1793797420314
+    },
+    {
+     "name": "dr-meghana-intro-whatsapp.mp4",
+     "title": "Dr. Meghana introduction — WhatsApp size (never a paid ad)",
+     "te": "డా. మేఘన పరిచయం (వాట్సాప్)",
+     "path": "/files/videos/dr-meghana-intro-whatsapp.mp4",
+     "bytes": 5798702,
+     "ext": "mp4",
+     "kind": "video",
+     "mtime": 1793797423215
+    }
+   ]
+  },
+  {
+   "key": "photos",
+   "title": "Photos & logo",
+   "te": "ఫోటోలు & లోగో",
+   "items": [
+    {
+     "name": "dermaluxe-logo.png",
+     "title": "DermaLuxe logo — PNG",
+     "te": "లోగో (PNG)",
+     "path": "/files/photos/dermaluxe-logo.png",
+     "bytes": 126899,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1789019675000
+    },
+    {
+     "name": "dermaluxe-logo.webp",
+     "title": "DermaLuxe logo — WebP (web)",
+     "te": "లోగో (WebP)",
+     "path": "/files/photos/dermaluxe-logo.webp",
+     "bytes": 26750,
+     "ext": "webp",
+     "kind": "image",
+     "mtime": 1789093516881
+    },
+    {
+     "name": "dr-meghana-valleti.png",
+     "title": "Dr. Meghana Valleti — portrait, original",
+     "te": "డా. మేఘన వల్లేటి — ఫోటో",
+     "path": "/files/photos/dr-meghana-valleti.png",
+     "bytes": 3153361,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1782410448000
+    },
+    {
+     "name": "dr-meghana-valleti-web.jpg",
+     "title": "Dr. Meghana Valleti — portrait, web size",
+     "te": "డా. మేఘన — వెబ్ సైజు",
+     "path": "/files/photos/dr-meghana-valleti-web.jpg",
+     "bytes": 58632,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1782607797000
+    },
+    {
+     "name": "dr-nikhitha-priyanka.jpg",
+     "title": "Dr. Nikhitha Priyanka — portrait",
+     "te": "డా. నిఖిత ప్రియాంక — ఫోటో",
+     "path": "/files/photos/dr-nikhitha-priyanka.jpg",
+     "bytes": 361341,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1789015433000
+    },
+    {
+     "name": "dr-sai-divija.jpg",
+     "title": "Dr. K. Sai Divija — portrait",
+     "te": "డా. సాయి దివిజ — ఫోటో",
+     "path": "/files/photos/dr-sai-divija.jpg",
+     "bytes": 132257,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1789015786000
+    },
+    {
+     "name": "nagaraju-bandaru.png",
+     "title": "Nagaraju Bandaru — portrait, original",
+     "te": "నాగరాజు బండారు — ఫోటో",
+     "path": "/files/photos/nagaraju-bandaru.png",
+     "bytes": 1774596,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1782460332000
+    },
+    {
+     "name": "nagaraju-bandaru-web.jpg",
+     "title": "Nagaraju Bandaru — portrait, web size",
+     "te": "నాగరాజు — వెబ్ సైజు",
+     "path": "/files/photos/nagaraju-bandaru-web.jpg",
+     "bytes": 58387,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1782607797000
+    },
+    {
+     "name": "team-photo.webp",
+     "title": "Team photo",
+     "te": "టీమ్ ఫోటో",
+     "path": "/files/photos/team-photo.webp",
+     "bytes": 109966,
+     "ext": "webp",
+     "kind": "image",
+     "mtime": 1793793760134
+    },
+    {
+     "name": "clinic-hero.jpg",
+     "title": "Clinic — website hero photo",
+     "te": "క్లినిక్ ఫోటో",
+     "path": "/files/photos/clinic-hero.jpg",
+     "bytes": 88707,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1784167072000
+    },
+    {
+     "name": "clinic-about.jpg",
+     "title": "Clinic — about photo",
+     "te": "క్లినిక్ ఫోటో (అబౌట్)",
+     "path": "/files/photos/clinic-about.jpg",
+     "bytes": 87015,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1782605707000
+    },
+    {
+     "name": "clinic-building-evening.jpg",
+     "title": "Clinic building — evening",
+     "te": "క్లినిక్ బిల్డింగ్ — సాయంత్రం",
+     "path": "/files/photos/clinic-building-evening.jpg",
+     "bytes": 1207979,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1793786802529
+    },
+    {
+     "name": "clinic-building-front.jpg",
+     "title": "Clinic building — front",
+     "te": "క్లినిక్ బిల్డింగ్ — ముందు",
+     "path": "/files/photos/clinic-building-front.jpg",
+     "bytes": 1206826,
+     "ext": "jpg",
+     "kind": "image",
+     "mtime": 1793786539493
+    },
+    {
+     "name": "whatsapp-qr.png",
+     "title": "WhatsApp QR code (99591 34666)",
+     "te": "వాట్సాప్ QR",
+     "path": "/files/photos/whatsapp-qr.png",
+     "bytes": 482,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1786195884000
+    },
+    {
+     "name": "rx-qr.png",
+     "title": "Prescription QR (opens the AI analysis form)",
+     "te": "ప్రిస్క్రిప్షన్ QR",
+     "path": "/files/photos/rx-qr.png",
+     "bytes": 17417,
+     "ext": "png",
+     "kind": "image",
+     "mtime": 1793693515835
+    }
+   ]
+  }
+ ]
+}
