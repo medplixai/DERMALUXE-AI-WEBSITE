@@ -270,6 +270,19 @@ const hook = { token: "hook" };
   await h.call(ig, hook, wordless("ig-del", { is_deleted: true }));
   is(claudeCalls, 0, "a deleted message does not");
 
+  // Of 7 Instagram DM leads in three weeks, 3 gave a number and 0 booked
+  // (9 Nov): the bookings happen on WhatsApp, so the menu now has a door
+  // there, and the tap is answered without asking the model.
+  dms.length = 0; claudeCalls = 0;
+  const tapped = { object: "instagram", entry: [{ id: "ourpage", messaging: [{ sender: { id: "ig-tap" }, message: { mid: "ig.tap1", text: "📱 WhatsApp lo", quick_reply: { payload: "wa" } } }] }] };
+  await h.call(ig, hook, tapped);
+  const tapReply = (dms.find((d) => d.to === "ig-tap") || {}).text || "";
+  is([claudeCalls, /wa\.me\/919959134666/.test(tapReply), /10-digit number/.test(tapReply)], [0, true, true],
+    "the '📱 WhatsApp lo' quick reply gets the link and the ask for a number, with no model call");
+  dms.length = 0;
+  await h.call(ig, hook, igDm("ig-tap2", "whatsapp lo"));
+  is([claudeCalls, /wa\.me/.test((dms.find((d) => d.to === "ig-tap2") || {}).text || "")], [0, true], "typing the same words does the same");
+
   console.log("\n  — Messenger —");
   claudeCalls = 0;
   const fbTwice = fbDm("fb-ravi", "hello");

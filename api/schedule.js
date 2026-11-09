@@ -10,8 +10,12 @@
 // patient when something moves.
 //
 // A record can now carry: id, mins, staff (phone) + staffName, room, status
-// (booked | arrived | done | cancelled | noshow) and a note. Records written
-// by the agent have none of that and are treated as booked, unassigned.
+// (booked | arrived | done | cancelled | noshow | unmarked) and a note.
+// Records written by the agent have none of that and are treated as booked,
+// unassigned. "unmarked" is the one status the desk never sets: it is what a
+// row becomes 48 hours after its slot when nobody said whether the person
+// came (9 Nov 2026: 28 of 33 history rows had been closed by a timer and
+// nobody could say how many patients the clinic had actually seen).
 const crypto = require("crypto");
 const guard = require("./_guard.js");
 const staff = require("./staff.js");
@@ -26,7 +30,14 @@ const json = (res, code, body) => {
 const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
 const clean = (v, n) => String(v == null ? "" : v).trim().slice(0, n);
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
-const STATUS = ["booked", "arrived", "done", "cancelled", "noshow"];
+const STATUS = ["booked", "arrived", "done", "cancelled", "noshow", "unmarked"];
+// The statuses that no longer hold a chair: finished, missed, cancelled, or
+// never marked at all. One list, so a slot count and a clash check agree.
+const NOT_OCCUPYING = ["cancelled", "done", "noshow", "unmarked"];
+const MIN = 60000;
+// A fresh booking the desk has not rung yet. Opening week: the agent held 14
+// slots, the queue had 5 waiting, and ONE confirm call was made (9 Nov).
+const CONFIRM_AFTER_MIN = 45;
 
 const istDay = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
 const istTime = (ts) => new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", hour: "numeric", minute: "2-digit", hour12: true }).format(new Date(ts));
@@ -50,7 +61,7 @@ async function freeSlots(cfg, day, rows) {
   const per = Math.max(1, Number(process.env.APPT_PER_SLOT || 2));
   const taken = {};
   for (const r of rows) {
-    if (["cancelled", "noshow"].includes(r.status)) continue;
+    if (["cancelled", "noshow", "unmarked"].includes(r.status)) continue;
     taken[istTime(r.at)] = (taken[istTime(r.at)] || 0) + 1;
   }
   let blocks = [];
@@ -176,6 +187,11 @@ function spread(list, n) {
 function riskOf(a, noShowsBy) {
   const out = [];
   const hrs = (a.at - Date.now()) / 3600000;
+  // Booked three quarters of an hour ago and still nobody has rung: the
+  // patient was told "team call chesi confirm chestundi", and when that call
+  // does not come they do not come either (owner's diagnosis, 9 Nov).
+  const sinceMin = a.ts ? Math.floor((Date.now() - a.ts) / MIN) : 0;
+  if (a.status === "booked" && !a.cf && a.ts && sinceMin >= CONFIRM_AFTER_MIN) out.push(`confirm call pending — ${sinceMin} nimishalu`);
   if (a.status === "booked" && !a.cf && hrs > 0 && hrs < 24) out.push("konni gantallo — confirm cheyyandi");
   const n = noShowsBy[digits10(a.ph)] || 0;
   if (n) out.push(`mundu ${n} sari${n > 1 ? "lu" : ""} raaledu`);
@@ -205,6 +221,10 @@ const shape = (a) => ({
   // When it was booked and by whom, and when the patient confirmed — the
   // desk asked for these dates beside every appointment (8 Nov, point 5).
   ts: Number(a.ts) || 0, by: a.by || "", cfAt: Number(a.cfAt) || 0,
+  // Who confirmed and how (the patient over WhatsApp, or the desk after a
+  // call), and when the cron asked the desk "vacharu aa?" for a slot that
+  // has passed — so the screen can show the question instead of hiding the row.
+  cfBy: a.cfBy || "", cfVia: a.cfVia || "", ask: Number(a.ask) || 0,
 });
 
 async function replace(cfg, rawOld, next) {
@@ -228,7 +248,7 @@ function clash(rows, next, skipId) {
   const s1 = next.at, e1 = next.at + (next.mins || 30) * 60000;
   for (const { a } of rows) {
     if (skipId && a.id === skipId) continue;
-    if (["cancelled", "done", "noshow"].includes(a.status)) continue;
+    if (NOT_OCCUPYING.includes(a.status)) continue;
     const s2 = Number(a.at), e2 = s2 + (Number(a.mins) || 30) * 60000;
     if (!(s1 < e2 && s2 < e1)) continue;
     if (next.staff && digits10(a.staff) === next.staff) return { who: "doctor", name: a.staffName || "aa doctor", at: istTime(s2), name2: a.name };
@@ -379,7 +399,7 @@ module.exports = async (req, res) => {
           // no free times can mean two different things, and the screen should
           // not congratulate the clinic for a day that has simply ended
           over: !cap.closed && !cap.free.length && day <= istDay(Date.now()),
-          used: list.filter((r) => !["cancelled", "noshow"].includes(r.status)).length,
+          used: list.filter((r) => !["cancelled", "noshow", "unmarked"].includes(r.status)).length,
           // Spread across the day, not the first twelve: a desk offering times
           // needs a morning, an afternoon and an evening, not four 9 o'clocks.
           free: spread(cap.free, 12),
@@ -396,6 +416,10 @@ module.exports = async (req, res) => {
           arrived: list.filter((r) => r.status === "arrived").length,
           done: list.filter((r) => r.status === "done").length,
           unconfirmed: list.filter((r) => r.status === "booked" && !r.cf).length,
+          // slots that passed with nobody saying who came, and the ones the
+          // cron is asking the desk about right now
+          unmarked: list.filter((r) => r.status === "unmarked").length,
+          asked: list.filter((r) => r.ask && r.status === "booked").length,
         },
       });
     }
@@ -412,7 +436,11 @@ module.exports = async (req, res) => {
     // strip (8 Nov, point 4).
     const today = istDay(Date.now()), wkEnd = istDay(Date.now() + 6 * 86400000);
     const soon = rows.filter((r) => r.day >= today && r.day <= wkEnd && r.status !== "cancelled").sort((x, y) => x.at - y.at).slice(0, 200);
-    return json(res, 200, { ok: true, days, team, soon });
+    // Every upcoming booking nobody has rung, oldest booking first — the
+    // "Confirm pending" list the desk works through (plan of 9 Nov, item 3).
+    // Oldest first because that patient has waited longest for the call.
+    const pending = rows.filter((r) => r.at > Date.now() && r.status === "booked" && !r.cf).sort((x, y) => x.ts - y.ts).slice(0, 100);
+    return json(res, 200, { ok: true, days, team, soon, pending });
   }
 
   if (req.method !== "POST") return json(res, 405, { error: "POST" });
@@ -471,6 +499,15 @@ module.exports = async (req, res) => {
   if (!found) return json(res, 404, { error: "Appointment dorakaledu — refresh chesi malli try cheyandi" });
   const cur = Object.assign({}, found.a);
   if (!cur.id) cur.id = crypto.randomBytes(6).toString("hex");   // give legacy records one
+
+  // The desk rang and the patient said yes. Until now "confirmed" could only
+  // be set by the patient tapping a WhatsApp button; a call that ended in
+  // "vastanu" had nowhere to go, so the row kept nagging (9 Nov).
+  if (a === "confirm") {
+    const next = Object.assign({}, cur, { cf: true, cfAt: Date.now(), cfBy: me.name, cfVia: "desk" });
+    await replace(cfg, found.raw, next);
+    return json(res, 200, { ok: true, appt: shape(next) });
+  }
 
   // move it, and tell the patient
   if (a === "move") {

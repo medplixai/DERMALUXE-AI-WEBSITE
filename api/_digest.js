@@ -86,10 +86,15 @@ async function buildDigest(cfg, live) {
         if (live) await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
         continue;
       }
-      if (a.at < now - 10800000) {
+      // Two days past its slot a row goes to the history — the same rule
+      // cron-post applies every ten minutes. This used to be three hours,
+      // and a row filed here looked like a visit although nobody had said
+      // the patient came (9 Nov 2026). A row the desk never marked is filed
+      // as "unmarked"; one marked done, missed or cancelled goes as it is.
+      if (a.at < now - 48 * 3600000) {
         if (live) {
-          // Long past (overnight stragglers) → move to appt:done, no team ping
           await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+          if (!["done", "noshow", "cancelled"].includes(a.status)) a.status = "unmarked";
           a.doneAt = now;
           await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
         }

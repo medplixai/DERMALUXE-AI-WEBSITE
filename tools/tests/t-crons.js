@@ -42,6 +42,13 @@ const day0 = istMidnight(docs.BATCH.startMs - 5 * 86400000);
 const at = (hh, mm) => { const t = day0 + (hh * 60 + (mm || 0)) * 60000; Date.now = () => t; return t; };
 const HOUR = 3600000;
 
+// Pushes are collected like the WhatsApps: the harness stub has them switched
+// off, and the "vacharu aa?" question to the desk is a push first.
+const pushStub = require(path.join(API, "_push.js"));
+pushStub.enabled = () => true;
+pushStub.notifyCap = async (cfg, cap, m) => { h.sent.push(["push", cap, m]); return { ok: true, sent: 1 }; };
+const pushes = (kind) => h.sent.filter((s) => s[0] === "push" && s[2] && s[2].data && s[2].data.kind === kind);
+
 const followup = h.load("cron-followup"), post = h.load("cron-post"), digest = h.load("cron-digest");
 const run = (mod) => h.call(mod, { key: "local-admin" });
 const lead = (o) => h.run(["LPUSH", "dl_leads", JSON.stringify(Object.assign({ type: "whatsapp", heat: "warm" }, o))]);
@@ -142,12 +149,30 @@ process.env.LEAD_NOTIFY_PHONES = "9989325777";
   h.run(["DEL", "appt:q"]); h.sent.length = 0;
   h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500731", name: "Mani", at: now + 100 * 60000 })]);
   h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500732", name: "Nila", at: now + 5 * 60000 })]);
-  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500733", name: "Oma", at: now - 3.2 * HOUR })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500733", name: "Oma", at: now - 61 * 60000 })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500734", name: "Padma", at: now - 49 * HOUR })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500735", name: "Quasar", at: now - 2 * HOUR, status: "noshow", ns: 1 })]);
   await run(post); await run(post);
   is(to("9876500731").map((s) => s[2]), ["appointment_reminder"], "a patient two hours out is reminded — once, over two runs");
   is(to("9876500732").length, 0, "one who booked five minutes ago is not");
-  is(h.run(["LRANGE", "appt:done", "0", "-1"]).some((x) => JSON.parse(x).ph === "9876500733"), true, "a visit whose time has passed moves to the done list");
-  is(h.sent.some((s) => s[0] === "wa" && s[1] === "9989325777" && s[2].includes("9876500733")), true, "and the desk is asked whether they came");
+
+  // Until 9 Nov 2026 a slot was filed as a visit three hours after its time,
+  // and 28 of 33 history rows had been filed that way with nobody saying who
+  // came. Now the desk is ASKED, and the row waits on the day's list for the
+  // answer; only after two days with no answer is it filed — as "unmarked".
+  console.log("\n  — who actually came (the same job) —");
+  const oma = h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).find((x) => x.ph === "9876500733");
+  is([!!oma, oma && oma.ask > 0], [true, true], "an hour past the slot the row is still on the day's list, with the question on it");
+  is(h.run(["LRANGE", "appt:done", "0", "-1"]).some((x) => JSON.parse(x).ph === "9876500733"), false, "it is NOT filed as a visit");
+  const asked = pushes("arrived?");
+  is([asked.length, asked[0] && asked[0][1], asked[0] && asked[0][2].data.ph, asked[0] && asked[0][2].tab], [1, "appts.edit", "9876500733", "appts"],
+    "one push asks the desk 'vacharu aa?' — once, over two runs — on the Appts tab");
+  is(h.sent.filter((s) => s[0] === "wa" && s[1] === "9989325777" && s[2].includes("9876500733")).length, 1, "and one team WhatsApp with the arrived/noshow reply commands");
+  const padma = h.run(["LRANGE", "appt:done", "0", "-1"]).map((x) => JSON.parse(x)).find((x) => x.ph === "9876500734");
+  is([!!padma, padma && padma.status, padma && padma.doneAt > 0], [true, "unmarked", true], "two days past with no answer, the row is filed as 'unmarked' — not as a visit");
+  is(h.sent.some((s) => s[0] === "wa" && s[1] === "9989325777" && s[2].includes("9876500734")), false, "and nobody is asked about a slot two days old");
+  is([pushes("arrived?").some((p) => p[2].data.ph === "9876500735"), h.sent.some((s) => s[0] === "wa" && s[2].includes("9876500735"))], [false, false],
+    "a row already marked missed is not asked about");
 
   console.log("\n  — a broadcast draining over hours —");
   h.sent.length = 0;

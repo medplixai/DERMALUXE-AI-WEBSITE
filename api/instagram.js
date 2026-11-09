@@ -59,7 +59,7 @@ const MAPS_LINK = "https://maps.google.com/?q=16.7107,81.0952";
 const IG_RULES = `- Booking flow: collect (1) name, (2) 10-digit mobile number, (3) concern/treatment, (4) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
 - Instagram doesn't show us the patient's phone number — a booking is complete ONLY when you also have their 10-digit mobile number. But the desk wants EVERY real enquiry on its list (owner, 7 Nov): fill "lead" as soon as a patient has told you a concern, even without name or phone — name may be "" and phone "" until they give them; keep collecting the missing bits in the reply. "lead" stays null for greetings with no concern, job seekers, influencers, promotions and spam.
 - WHATSAPP FIRST: our bookings, doctor slots, reminders and free AI skin & hair analysis all run on WhatsApp. Whenever the patient shows interest (treatment, booking, price question, photo check), (a) ask for their 10-digit mobile number so "mana team WhatsApp lo slot confirm chestundi", and (b) also give the direct link: "WhatsApp: 99591 34666 → wa.me/919959134666". Once a number is captured they automatically get a WhatsApp message from us — tell them to reply there.
-- Quick-reply taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here in the DM.
+- Quick-reply taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here in the DM; "📱 WhatsApp lo" → give the wa.me link and ask for their 10-digit number (the code answers this one itself; if it reaches you, do the same).
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a Google Maps link is sent automatically along with your reply).
 
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
@@ -179,6 +179,10 @@ async function sendDM(igsid, text, withMenu, cred) {
       { content_type: "text", title: "📅 Book Now", payload: "book" },
       { content_type: "text", title: "💆 Services", payload: "services" },
       { content_type: "text", title: "📸 Skin Check", payload: "skincheck" },
+      // Instagram DMs hide the number, and the bookings happen on WhatsApp:
+      // of 7 Instagram DM leads in three weeks, 3 gave a number, 0 booked
+      // (9 Nov). One tap takes them where the booking actually happens.
+      { content_type: "text", title: "📱 WhatsApp lo", payload: "wa" },
     ];
   }
   try {
@@ -323,6 +327,50 @@ function wordlessDm(type) {
 }
 
 const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|dhari|dari|chirunama|అడ్రస|చిరునామా|ఎక్కడ|లొకేషన|దారి|మ్యాప)/i;
+
+// Where the booking really happens. Said the same way whether they tapped
+// the quick reply or the chat simply went quiet.
+const WA_LINK = "wa.me/919959134666";
+const WA_HANDOFF_DM = `WhatsApp lo direct ga book cheyochu 😊 ${WA_LINK}\n\nLeda mee 10-digit number ikkada pampithe mana team WhatsApp lo doctor slot confirm chestundi · మీ నంబర్ పంపితే WhatsApp లో స్లాట్ కన్ఫర్మ్ చేస్తాం`;
+const QUIET_NUDGE_DM = `Mee number ikkada pampithe mana team WhatsApp lo doctor slot confirm chestundi 😊 Leda direct ga WhatsApp: ${WA_LINK} · మీ నంబర్ పంపితే WhatsApp లో స్లాట్ కన్ఫర్మ్ చేస్తాం`;
+
+// ── The DM enquiries that never gave a number ──────────────────────────────
+// An Instagram or Messenger chat that named a concern but stopped without a
+// number is a lead the desk cannot ring. Between two and twenty hours after
+// the lead was written — the chat has gone quiet, Meta's 24-hour reply window
+// is still open — one DM asks for the number again. Once per conversation,
+// ever (the marker lasts a week, the lead row is replaced within six hours
+// anyway), never when a number is already known, never once the desk has
+// moved the lead off "new".
+async function nudgeQuiet(cfg, max) {
+  if (!cfg) return { sent: 0, checked: 0, why: "kv ledu" };
+  const now = Date.now();
+  const r = await guard.kvCommand(cfg, ["LRANGE", LIST_KEY, "0", "199"]).catch(() => ({}));
+  const st = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result);
+  let igCred = null, fbCred = null, sent = 0, checked = 0;
+  for (const raw of (r.result || [])) {
+    if (sent >= (max || 10)) break;
+    let l; try { l = JSON.parse(raw); } catch (e) { continue; }
+    if (!l || !l.ts || !l.src_id || (l.type !== "instagram" && l.type !== "messenger")) continue;
+    if (String(l.phone || "").replace(/\D/g, "").length >= 10) continue;       // they gave it; the WhatsApp agent has them
+    const age = now - l.ts;
+    if (age < 2 * 3600000 || age > 20 * 3600000) continue;
+    if ((st[`${l.ts}|${l.src_id}`] || "new") !== "new") continue;             // the desk has it in hand
+    checked++;
+    // A Messenger person is reached through the Page token on graph.facebook;
+    // the Instagram-login token only knows Instagram ids.
+    let cred;
+    if (l.type === "messenger") { if (fbCred === null) { const pt = await pageToken(cfg); fbCred = pt ? { tok: pt, host: "graph.facebook.com" } : false; } cred = fbCred; }
+    else { if (igCred === null) igCred = (await resolveSend(cfg)) || false; cred = igCred; }
+    if (!cred) continue;
+    const nx = await guard.kvCommand(cfg, ["SET", `ntf:ignudge:${l.src_id}`, "1", "NX", "EX", "604800"]).catch(() => ({}));
+    if (!nx || !nx.result) continue;
+    const ok = await sendDM(l.src_id, QUIET_NUDGE_DM, false, cred);
+    if (ok) sent++;
+    else await guard.kvCommand(cfg, ["DEL", `ntf:ignudge:${l.src_id}`]).catch(() => {});   // Meta refused; try next hour
+  }
+  return { sent, checked };
+}
 
 // ── Comment → private DM + public acknowledgement ──────────────────────────
 // The public fallback, when the model is unavailable or a private reply is refused.
@@ -706,6 +754,20 @@ async function handleMessage(req, m) {
     const r = cfg ? await guard.kvCommand(cfg, ["GET", histKey]) : null;
     hist = r && r.result ? JSON.parse(r.result) : [];
   } catch (e) { hist = []; }
+
+  // The "📱 WhatsApp lo" tap (or the same words typed) has one answer, and
+  // the model is not needed to give it: the link, and the ask for a number so
+  // the team can write to them first. Kept in the chat history so the model
+  // knows what was said if they carry on here.
+  const quick = String((msg.quick_reply && msg.quick_reply.payload) || "");
+  if (quick === "wa" || /^\s*(📱\s*)?whatsapp\s*lo\s*$/i.test(text)) {
+    await sendDM(igsid, WA_HANDOFF_DM, false, ptok);
+    if (cfg) {
+      hist.push({ u: text, a: WA_HANDOFF_DM });
+      try { await guard.kvCommand(cfg, ["SET", histKey, JSON.stringify(hist.slice(-MAX_TURNS)), "EX", String(HIST_TTL)]); } catch (e) {}
+    }
+    return;
+  }
   const firstTurn = hist.length === 0;
 
   // Returning-patient profile + IG display name (first turn only, best effort)
@@ -807,3 +869,4 @@ async function handleMessage(req, m) {
 module.exports.sweepIgComments = sweepIgComments;
 module.exports.isEnquiry = isEnquiry;
 module.exports.sweepFbComments = sweepFbComments;
+module.exports.nudgeQuiet = nudgeQuiet;
