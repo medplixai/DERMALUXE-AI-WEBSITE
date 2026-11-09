@@ -96,7 +96,10 @@ const RULES = [
     // "your best self" is the patient, not the clinic; "Best for" heads a list
     // of who a treatment suits; "best results when started early" is about
     // timing. The rest are ordinary identifiers for a highest-scoring item.
-    allow: /your best self|మీ ఉత్తమ రూపాని|>Best for<|\b(let|const|var)\s+best|best(Score|Cost|Day|Img)|\bbest\s*(&&|\|\||[=!<>,);.\]])|[.[]best\b|\bbest\)|Best-effort|best effort|which should I choose|బెస్ట్ ఫలితం కోసం చాలా మంది|NEVER write|binds every word|best topic|\$\{best\}|Best for|best suits|best when|works best|best combined|best control|at its best|బెస్ట్‌గా|బెస్ట్ కంట్రోల్|All the best/i,
+    allow: /your best self|మీ ఉత్తమ రూపాని|>Best for<|\b(let|const|var)\s+best|best(Score|Cost|Day|Img)|\bbest\s*(&&|\|\||[=!<>,);.\]])|[.[]best\b|\bbest\)|Best-effort|best effort|which should I choose|బెస్ట్ ఫలితం కోసం చాలా మంది|NEVER write|binds every word|best topic|\$\{best\}|Best for|best suits|best when|works best|best combined|best control|at its best|బెస్ట్‌గా|బెస్ట్ కంట్రోల్|All the best|to the best of my knowledge/i,
+    // "to the best of my knowledge" is the patient's own declaration on the
+    // consultation form (make-ht-consult.js), not a word about the clinic.
+
     // "Starting early gives the best results" is advice about when to begin,
     // not a claim that this clinic beats another one.
     allowEarly: /\b(early|fresh|starting early|sooner)\b|ముందుగా|ముందే/i },
@@ -143,7 +146,7 @@ const RULES = [
     // saying plainly that nothing is guaranteed — which is the disclosure the
     // clause wants, not a breach of it — and the academy's promise of machine
     // time to a student, which is not a treatment outcome.
-    allow: /NEVER|never|not (a )?guarantee|shall not|guarantee (ledu|levu|ivvaledu)|no guarantee|no "guaranteed"|Guaranteed machine time|no permanent cure|శాశ్వత క్యూర్ లేదు|not miracle promises|గోప్యత/i,
+    allow: /NEVER|never|not (a )?guarantee|shall not|guarantee (ledu|levu|ivvaledu)|no guarantee|no "guaranteed"|cannot be guaranteed|Guaranteed machine time|no permanent cure|శాశ్వత క్యూర్ లేదు|not miracle promises|గోప్యత/i,
     // Telugu: "హామీ" next to a denial — "అద్భుత హామీలు కాదు", "తప్పుడు హామీలు
     // ఉండవు", "హామీ ఇచ్చేవారు నిజాయితీగా లేరు" — is the clinic refusing to
     // promise, which is what 8.1(vi) wants, not a breach of it.

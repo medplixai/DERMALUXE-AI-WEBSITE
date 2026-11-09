@@ -105,18 +105,20 @@ const CSS = `
   .dense { font-size: 9.4pt; } .dense .row { margin: 2.2mm 0; } .dense ol.roman { font-size: 8.6pt; } .dense .cols ul { font-size: 8.8pt; } .dense .bar { margin: 2mm 0; padding: 1.2mm; } .dense .bx, .dense .dt { height: 6.2mm; }
   .dense .heads svg { width: 160px; height: 174px; } .dense .heads { margin: 1mm 0 0; }`;
 
-const sheet = (pages) => `<!doctype html><html><head><meta charset="utf-8">
+const sheet = (pages, extra) => `<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=block" rel="stylesheet">
-<style>${CSS}</style></head><body>${pages.join("")}</body></html>`;
+<style>${CSS}${extra || ""}</style></head><body>${pages.join("")}</body></html>`;
 
-// pages: the HTML of each page(); out: the PDF path. Prints how many pages
+// pages: the HTML of each page(); out: the PDF path; extra: CSS a document
+// adds on top of the shared sheet (the handouts set their own list style).
+// Prints how many pages
 // fit, or which one overflows — a page whose content runs past the sheet
 // prints onto a blank extra page, and nobody wants to find that out after
 // a hundred copies.
-async function render(pages, out) {
+async function render(pages, out, extra) {
   const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: "new" });
   const pg = await browser.newPage();
-  await pg.setContent(sheet(pages), { waitUntil: "networkidle0", timeout: 90000 });
+  await pg.setContent(sheet(pages, extra), { waitUntil: "networkidle0", timeout: 90000 });
   await pg.evaluate(() => document.fonts.ready);
   await pg.emulateMediaType("print");
   const over = await pg.evaluate(() => [...document.querySelectorAll(".pg")].map((p, i) => { const room = p.clientHeight, used = p.scrollHeight; return used > room + 1 ? `page ${i + 1} overflows by ${Math.round(used - room)}px` : null; }).filter(Boolean));
