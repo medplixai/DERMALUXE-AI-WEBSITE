@@ -89,6 +89,22 @@ Last 3 weeks lo leads ekkadi nunchi (job enquiries teesesi):
 | First touch time | 39 h | < 1 h (9 AM–9 PM) |
 | Arrived / no-show marked | 1 of 33 | 100% |
 
+## 3b. Drafts — owner ok tarvata matrame veltayi
+
+**(14) Paata leads ki informational message** (clinic_update utility template, 1 sari, opt-out unna vallaki kaadu, job/academy leads ki kaadu). Promo kaadu, discount kaadu, doctor photo kaadu — NMC lo factual information matrame:
+
+> Namaste {first} garu 🙏 DermaLuxe by Medicare, Eluru nunchi oka update: mana kotha clinic Rama Mahal, R.R. Peta (Happy Mobiles ki edurugaa) lo 6 November nunchi open ayindi. MD dermatologist consultation, hair transplant surgeon, laser & aesthetic treatments — Mon–Sat 9 AM – 9 PM. Meeru mundu '{concern}' gurinchi adigaru — doctor ni kalavali ante ee message ki reply cheyandi, slot book chestam. · మా కొత్త క్లినిక్ 6 నవంబర్ నుంచి తెరిచాం — అపాయింట్‌మెంట్ కావాలంటే రిప్లై చేయండి.
+
+**(11) Click-to-WhatsApp campaign — 3 creatives (text only; artwork tarvata).** Rules: doctor photo ledu, price ledu, "free" ledu, patient result photos ledu, treatment peru + clinic facts matrame.
+
+| # | Headline | Primary text | CTA |
+|---|---|---|---|
+| 1 | Hair fall ki doctor consultation — Eluru lo | Hair fall, thinning, dandruff — MD dermatologist scalp chusi correct cause cheptaru. PRP/GFC, medical treatment, hair transplant (surgeon tho). Rama Mahal, R.R. Peta, Eluru. WhatsApp lo slot book cheyandi. | WhatsApp ki message |
+| 2 | Acne, marks & pigmentation — dermatologist treatment | Pimples, acne marks, dark spots, melasma — skin type ki taggattu treatment plan: peels, lasers, medical care. MD dermatologist consultation. Mon–Sat 9 AM – 9 PM, Eluru. | WhatsApp ki message |
+| 3 | Laser hair reduction — Eluru lo | Face, underarms, full body — doctor supervision lo laser hair reduction. Skin type chusi sessions plan. DermaLuxe by Medicare, Rama Mahal, Eluru. Slot kosam WhatsApp cheyandi. | WhatsApp ki message |
+
+Targeting: Eluru + 30 km, 20–55, all; budget ₹500/day total (3 ad sets ₹170 each) 14 rojulu trial; result metric = WhatsApp conversations → appointments (app lo ad_headline tho track avutundi).
+
 ## 4. Owner nunchi kavalsinavi
 1. Anthropic auto-reload (meeru console lo; key chat lo paste cheyyoddu).
 2. Auto-boosts pause ki ok, kotha campaign budget ki ok.

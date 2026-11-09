@@ -538,6 +538,11 @@ module.exports = async (req, res) => {
     const st = String(b.status || "").toLowerCase();
     if (!STATUS.includes(st)) return json(res, 400, { error: "bad status" });
     const next = Object.assign({}, cur, { status: st, note: b.note !== undefined ? clean(b.note, 200) : cur.note });
+    // The same marks the WhatsApp "arrived <number>" command leaves, so the
+    // weekly report, the agent's memory and the history read one visit the
+    // same way whichever button recorded it.
+    if (st === "done") next.v = 1;
+    if (st === "arrived") next.arrived = Date.now();
     if (st === "cancelled") {
       await guard.kvCommand(cfg, ["LREM", Q, "1", found.raw]).catch(() => {});
       await guard.kvCommand(cfg, ["LPUSH", DONE, JSON.stringify(next)]).catch(() => {});

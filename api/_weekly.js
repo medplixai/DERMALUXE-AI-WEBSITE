@@ -63,7 +63,8 @@ async function buildWeekly(cfg) {
         const k = `${a.ph}:${a.at}`; if (seen.has(k)) continue; seen.add(k);
         if (a.at >= since) {
           if (a.ph) booked.add(a.ph);
-          if (a.v) arrived++; else if (a.ns) noshow++; else if (key === "appt:q") { upcoming++; if (a.cf) confirmed++; }
+          // v is the WhatsApp command's mark; the app's ✅ buttons leave status done/arrived (9 Nov)
+          if (a.v || a.status === "done" || a.status === "arrived") arrived++; else if (a.ns || a.status === "noshow") noshow++; else if (key === "appt:q") { upcoming++; if (a.cf) confirmed++; }
         } else if (a.at >= prev && a.ph) prevBooked.add(a.ph);
       }
     }

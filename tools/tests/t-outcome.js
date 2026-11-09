@@ -103,7 +103,8 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   const c1 = await post("call-notice", { phone: "9876500601", name: "Lakshmi Devi", key: k2 });
   is([c1.code, c1.body.sent, c1.body.via], [200, true, "text"], "inside the 24-hour window the heads-up goes as plain text");
   const hd = toPatient("9876500601")[0] || [];
-  is([/^Lakshmi garu/.test(hd[2] || ""), /Owner/.test(hd[2] || ""), /99491 34666/.test(hd[2] || "")], [true, true, true], "addressed by first name, naming who is calling and from which number");
+  is([/^Lakshmi garu/.test(hd[2] || ""), /Owner/.test(hd[2] || ""), /\d{5} \d{5} nunchi call chestunnaru/.test(hd[2] || ""), /99491 34666/.test(hd[2] || ""), /teliyani number ayina lift/.test(hd[2] || "")], [true, true, true, false, true],
+    "addressed by first name, naming who is calling and the caller's OWN number (the handset that dials), not the clinic line, and asking them to lift an unknown number");
   is((JSON.parse(h.run(["HGET", "dl_notes", k2]) || "[]")[0] || {}).text, "📲 Call heads-up WhatsApp vellindi", "and the lead card says it went");
   h.sent.length = 0;
   const c2 = await post("call-notice", { phone: "9876500601", name: "Lakshmi Devi", key: k2 });
@@ -126,6 +127,16 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   is([/^Lakshmi garu/.test(toPatient("9876500601")[0][2]), /rendu sarlu call chesam/.test(toPatient("9876500601")[0][2])], [true, true], "by first name — found from the lead, the app did not send it — and saying why");
   const o3 = await post("outcome", { key: k2, outcome: "noanswer" });
   is([o3.body.nudged, toPatient("9876500601").length], [undefined, 1], "the third sends nothing more — still the one message");
+  // An Instagram lead has no number; its key carries the Instagram id, whose
+  // last ten digits can look like a mobile number. Two "no answer" marks on
+  // it must not WhatsApp a stranger.
+  const ts3 = Date.now() - 300000;
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: ts3, type: "instagram", name: "@insta_only", phone: "", src_id: "1784140009876543210", concern: "Acne" })]);
+  const k3 = `${ts3}|1784140009876543210`;
+  h.sent.length = 0;
+  await post("outcome", { key: k3, outcome: "noanswer" });
+  const o5 = await post("outcome", { key: k3, outcome: "noanswer" });
+  is([o5.code, o5.body.nudged, h.sent.filter((s) => s[0] === "wa" || s[0] === "tpl").length], [200, undefined, 0], "two 'no answer' marks on an Instagram lead without a number message nobody");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\ncall outcomes behave");
   process.exit(fails ? 1 : 0);

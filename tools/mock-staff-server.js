@@ -34,7 +34,10 @@ for (let i = 0; i < TOTAL; i++) {
     why: [["Eluru — 0 km, daggare", "raavadaniki ready", "entakalam nundo chepparu: 6 nelalu"], ["Bhimavaram — 60 km", "alochistunnaru"], ["price matrame adigaru"], ["patient kaadu (job / sales / wrong number)"], ["ee vaaram lo"]][i % 5],
     intent: ["book_now", "considering", "price_only", "not_patient", "considering"][i % 5],
     next: [{ kind: "call", text: "Ippude call cheyandi 🔥" }, { kind: "ask", text: "Adagandi: eppudu raagalaru?" }, { kind: "video", text: "330 km — video consultation offer cheyandi" }, { kind: "skip", text: "Patient kaadu — vadileyandi" }, { kind: "book", text: "Slot pettandi — Saturday evening" }][i % 5],
-    waiting: [42 * 60000, 5 * 3600000, 12 * 60000, 0, 26 * 3600000][i % 5],
+    // The real server only puts "waiting" on a lead nobody has touched (status
+    // new); every other status gets null. Every tenth new lead has waited five
+    // hours, so the over-an-hour alarm on the card can be seen here (9 Nov).
+    waiting: i % 5 === 0 ? (i % 10 === 5 ? 5 * 3600000 : 42 * 60000) : null,
     status: ["new", "contacted", "booked", "visited", "closed"][i % 5],
     notes: i % 4 === 0 ? [{ ts: ts + 600000, by: "Reception", text: "Called, asked to ring back" }] : [],
   });
@@ -328,7 +331,17 @@ http.createServer((req, res) => {
       ["Padma", 15, 30, 45, "9000000002", "Laser — face", "booked", false], ["Suresh", 17, 0, 30, "", "Hair fall", "booked", false],
       ["Meena", 18, 0, 60, "9000000003", "Chemical peel", "booked", true],
     ].map((r, i) => ({ id: "s" + i, name: r[0], ph: "98765432" + String(10 + i), atH: r[1], atM: r[2], mins: r[3], staff: r[4], staffName: (team.find((t) => t.phone === r[4]) || {}).name || "", concern: r[5], status: r[6], cf: r[7], room: r[5] === "Hydrafacial" ? "Hydrafacial" : r[5].startsWith("Laser") ? "Laser room" : "" }));
-    if (a === "week") return send(200, { ok: true, team, days: Array.from({ length: 7 }, (_, i) => ({ day: istDayS(Date.now() + i * 86400000), total: i ? 3 : global.mockSch.length, mine: 0 })) });
+    if (a === "week") {
+      // The real week carries "soon" (this week's rows) and "pending" (booked,
+      // not yet confirmed, oldest booking first) — the Confirm-pending strip at
+      // the top of the Appts tab is built from them (9 Nov).
+      // In the evening every one of today's rows is in the past, which would
+      // leave the strip empty whenever somebody looks after closing; a row
+      // whose time has gone is shown as tomorrow's so the strip has something.
+      const soon = global.mockSch.map((r) => { const a0 = r.at || at(r.atH, r.atM); const a1 = a0 > Date.now() ? a0 : a0 + 86400000; return Object.assign({}, r, { at: a1, day: istDayS(a1), time: tm(a1), ts: Date.now() - (3 + r.atH) * 600000, by: r.atH % 2 ? "AI agent" : "Sowmya" }); });
+      const pending = soon.filter((r) => r.status === "booked" && !r.cf && r.at > Date.now()).sort((x, y) => x.ts - y.ts);
+      return send(200, { ok: true, team, soon, pending, days: Array.from({ length: 7 }, (_, i) => ({ day: istDayS(Date.now() + i * 86400000), total: i ? 3 : global.mockSch.length, mine: 0, unconfirmed: i ? 1 : pending.length })) });
+    }
     if (a === "day") {
       const rows = global.mockSch.map((r) => Object.assign({}, r, { at: r.at || at(r.atH, r.atM), day, time: tm(r.at || at(r.atH, r.atM)) }));
       return send(200, { ok: true, day, rows, team, rooms: ["Consultation", "Laser room", "Hydrafacial", "Procedure room"],
@@ -340,6 +353,8 @@ http.createServer((req, res) => {
       let body = {}; try { body = JSON.parse(raw || "{}"); } catch (e) {}
       const r = global.mockSch.find((x) => x.id === body.id);
       if (a === "move" && r) { r.at = body.at; }
+      if (a === "confirm" && r) { r.cf = true; r.cfAt = Date.now(); r.cfBy = "Owner"; r.cfVia = "desk"; }
+      if (a === "status" && r) { r.status = body.status; }
       if (a === "assign" && r) { r.staff = body.staff; r.staffName = body.staffName; }
       return send(200, { ok: true });
     });

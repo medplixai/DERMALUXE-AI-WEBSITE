@@ -94,7 +94,8 @@ async function buildDigest(cfg, live) {
       if (a.at < now - 48 * 3600000) {
         if (live) {
           await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
-          if (!["done", "noshow", "cancelled"].includes(a.status)) a.status = "unmarked";
+          if (a.status === "arrived") { a.status = "done"; a.v = 1; }   // the desk saw them come — a visit, never "unmarked"
+          else if (!["done", "noshow", "cancelled"].includes(a.status)) a.status = "unmarked";
           a.doneAt = now;
           await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
         }

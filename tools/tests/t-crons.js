@@ -152,6 +152,7 @@ process.env.LEAD_NOTIFY_PHONES = "9989325777";
   h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500733", name: "Oma", at: now - 61 * 60000 })]);
   h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500734", name: "Padma", at: now - 49 * HOUR })]);
   h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500735", name: "Quasar", at: now - 2 * HOUR, status: "noshow", ns: 1 })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500736", name: "Arun", at: now - 4 * HOUR, status: "arrived" })]);
   await run(post); await run(post);
   is(to("9876500731").map((s) => s[2]), ["appointment_reminder"], "a patient two hours out is reminded — once, over two runs");
   is(to("9876500732").length, 0, "one who booked five minutes ago is not");
@@ -173,6 +174,12 @@ process.env.LEAD_NOTIFY_PHONES = "9989325777";
   is(h.sent.some((s) => s[0] === "wa" && s[1] === "9989325777" && s[2].includes("9876500734")), false, "and nobody is asked about a slot two days old");
   is([pushes("arrived?").some((p) => p[2].data.ph === "9876500735"), h.sent.some((s) => s[0] === "wa" && s[2].includes("9876500735"))], [false, false],
     "a row already marked missed is not asked about");
+  // The desk's one tap — "arrived" when the person walked in — is the visit
+  // record the clinic actually keeps; it must never end up "unmarked".
+  const arun = h.run(["LRANGE", "appt:done", "0", "-1"]).map((x) => JSON.parse(x)).find((x) => x.ph === "9876500736");
+  is([!!arun, arun && arun.status, arun && arun.v, h.run(["LRANGE", "appt:q", "0", "-1"]).some((x) => JSON.parse(x).ph === "9876500736")], [true, "done", 1, false],
+    "a row the desk marked 'arrived' is filed as a visit three hours after the slot — done, with the visit mark");
+  is(pushes("arrived?").some((p) => p[2].data.ph === "9876500736"), false, "and nobody is asked whether a person the desk saw arrive came");
 
   console.log("\n  — a broadcast draining over hours —");
   h.sent.length = 0;

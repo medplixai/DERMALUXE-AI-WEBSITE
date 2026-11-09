@@ -92,7 +92,7 @@ module.exports = async (req, res) => {
   // ---- Appointment reminders: ~2h-before nudge via template ---------------
   // (Same-day 9AM reminder lives in cron-digest; if that one already covered
   // a near appointment it sets r2 too, so patients never get double-pinged.)
-  let reminded = 0, lateAsked = 0, deskAsked = 0, unmarked = 0;
+  let reminded = 0, lateAsked = 0, deskAsked = 0, unmarked = 0, arrivedFiled = 0;
   try {
     const aq = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]);
     for (const raw of (aq.result || [])) {
@@ -100,6 +100,21 @@ module.exports = async (req, res) => {
       try { a = JSON.parse(raw); } catch (e) { a = null; }
       if (!a || !a.at || !a.ph) { await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {}); continue; }
       const open = !a.status || a.status === "booked";
+      // The desk tapped "arrived" when the person walked in and never came
+      // back to tap "done" — the usual way a visit is recorded. Three hours
+      // after the slot the visit is over: it is filed as a visit (done, v=1)
+      // so the next-morning care message goes and the agent's memory counts
+      // it. Without this the 48-hour rule below rewrote it to "unmarked" and
+      // the one visit the desk DID record was the one that got lost (review,
+      // 9 Nov).
+      if (a.status === "arrived" && a.at < now - 3 * HOUR_MS) {
+        await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
+        a.status = "done"; a.v = 1; a.doneAt = now;
+        await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
+        await guard.kvCommand(cfg, ["LTRIM", "appt:done", "0", "499"]).catch(() => {});
+        arrivedFiled++;
+        continue;
+      }
       // Two days past the slot the row leaves the day's list for the history.
       // Until 9 Nov 2026 this happened THREE HOURS after the slot, the row was
       // filed as a visit, and a team WhatsApp went out — 28 of 33 history
@@ -109,7 +124,8 @@ module.exports = async (req, res) => {
       // or cancelled goes across as it is.
       if (a.at < now - UNMARKED_AFTER_MS) {
         await guard.kvCommand(cfg, ["LREM", "appt:q", "1", raw]).catch(() => {});
-        if (!CLOSED.includes(a.status)) { a.status = "unmarked"; unmarked++; }
+        if (a.status === "arrived") { a.status = "done"; a.v = 1; }     // a recorded visit is never "unmarked"
+        else if (!CLOSED.includes(a.status)) { a.status = "unmarked"; unmarked++; }
         a.doneAt = now;
         await guard.kvCommand(cfg, ["LPUSH", "appt:done", JSON.stringify(a)]).catch(() => {});
         await guard.kvCommand(cfg, ["LTRIM", "appt:done", "0", "499"]).catch(() => {});

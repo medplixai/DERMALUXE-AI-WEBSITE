@@ -938,6 +938,11 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
               // Same slot re-confirmed mid-chat → keep the existing item so
               // its r9/r2 reminder flags survive; changed slot → replace.
               if (prev.at === at) { hadSame = true; continue; }
+              // A slot already in the past stays: since 9 Nov it waits on the
+              // day's list for the desk to say whether the person came, and a
+              // rebooking must not erase that record (the no-show would never
+              // be written anywhere).
+              if (Number(prev.at) < Date.now()) continue;
               await guard.kvCommand(cfg, ["LREM", "appt:q", "1", s]);
             }
           } catch (e) {}
@@ -1475,8 +1480,20 @@ module.exports = async (req, res) => {
       const pol = await require("./_prices.js").load(cfg);
       if (pol.mode !== "bands" && !acadLine) {
         const allow = new Set(pol.mode !== "none" && pol.consult ? [pol.consult] : []);
-        const cut = lint.stripTreatmentPrices(out.reply, { allow });
+        // The closing line names the consultation fee only when the policy
+        // has one, and never for a hair transplant chat — that assessment is
+        // the owner's own package offer and the brief says what it costs.
+        const ht = adLead === "hair transplant" || /transplant|graft|\bfue\b|\bdhi\b/i.test(String(out.reply || "") + " " + text);
+        const fee = !ht && pol.mode !== "none" && pol.consult ? pol.consult : 0;
+        const cut = lint.stripTreatmentPrices(out.reply, { allow, fee });
         if (cut.removed.length) { console.log("wa: price removed", digits.slice(-4), cut.removed.join(",")); out.reply = cut.reply; }
+        // The spoken reply is cut out of the text before the editor runs, so
+        // it needs the same block — or the patient hears the price the text
+        // no longer carries.
+        if (voiceScript) {
+          const vc = lint.stripTreatmentPrices(voiceScript, { allow, fee });
+          if (vc.removed.length) { console.log("wa: price removed (voice)", digits.slice(-4)); voiceScript = vc.reply; }
+        }
       }
     } catch (e) { console.error("wa: price block", e && e.message); }
   }

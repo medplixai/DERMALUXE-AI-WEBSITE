@@ -98,8 +98,12 @@ const lead = (o) => h.run(["RPUSH", "dl_leads", JSON.stringify(Object.assign({ t
   lead({ ts: now - 30 * HOUR, name: "Jaya", phone: "9876500826" });                                    // yesterday — the daily ladder's
   lead({ ts: now - 2 * HOUR, name: "Kiran", phone: "", type: "instagram", src_id: "ig-k" });            // no number to ring
   lead({ ts: now - 2 * HOUR, name: "Lata", phone: "9876500828" });                                     // said STOP
+  lead({ ts: now - 2 * HOUR, name: "Meena", phone: "9876500829" });                                    // the agent already holds a slot
+  lead({ ts: now - 2 * HOUR, name: "Nalini", phone: "9876500830" });                                   // the desk wrote a note, left it "new"
   h.run(["HSET", "dl_status", `${now - 2 * HOUR}|9876500824`, "contacted"]);
   h.run(["SADD", "optout", "9876500828"]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500829", name: "Meena", at: now + 20 * HOUR, ts: now - 2 * HOUR, by: "AI agent", cf: true, cfAt: now - HOUR })]);
+  h.run(["HSET", "dl_notes", `${now - 2 * HOUR}|9876500830`, JSON.stringify([{ ts: now - HOUR, by: "hemasri", text: "Call chesanu, repu malli" }])]);
   const s1 = await run(followup);
   is(s1.body.slaNags, 1, "one lead has waited an hour with no call");
   const sp = pushes("sla");
@@ -107,8 +111,8 @@ const lead = (o) => h.run(["RPUSH", "dl_leads", JSON.stringify(Object.assign({ t
   is(/1 lead ki 1 ganta daatina call ledu — Esha/.test(sp[0] ? sp[0][2].title : ""), true, "naming her: " + (sp[0] ? sp[0][2].title : ""));
   const st = (team()[0] || [])[2] || "";
   is([team().length, /Esha/.test(st), /9876500821/.test(st)], [1, true, true], "one team WhatsApp with her name and number");
-  is(["Farhan", "Gowri", "Hema", "Indira", "Jaya", "Kiran", "Lata"].filter((n) => new RegExp(n).test(st)), [],
-    "not a job seeker, an academy enquiry, one the desk called, one half an hour old, yesterday's, one with no number, or one who said STOP");
+  is(["Farhan", "Gowri", "Hema", "Indira", "Jaya", "Kiran", "Lata", "Meena", "Nalini"].filter((n) => new RegExp(n).test(st)), [],
+    "not a job seeker, an academy enquiry, one the desk called, one half an hour old, yesterday's, one with no number, one who said STOP, one the agent already slotted, or one the desk wrote a note on");
   h.sent.length = 0;
   const s2 = await run(followup);
   is([s2.body.slaNags, pushes("sla").length], [0, 0], "the next hour she is not named again — the Leads screen carries the red badge from here");
@@ -132,6 +136,11 @@ const lead = (o) => h.run(["RPUSH", "dl_leads", JSON.stringify(Object.assign({ t
   is([n2.sent, dms.length], [0, 0], "and never twice");
   const f4 = await run(followup);
   is(f4.body.igNudge && typeof f4.body.igNudge.sent === "number", true, "the hourly job runs it and reports the count: " + JSON.stringify(f4.body.igNudge));
+  h.run(["DEL", `ntf:ignudge:ig-q1`]); h.run(["DEL", `ntf:ignudge:fb-q1`]); dms.length = 0;
+  now = at(2, 0);
+  const f5 = await run(followup);
+  is([f5.body.igNudge && f5.body.igNudge.night, dms.length], [true, 0], "at 2 AM no DM leaves the clinic — the nudge waits for working hours");
+  now = at(14, 0);
 
   console.log("\n  — a slot nobody marked gets no 'how was it?' —");
   h.run(["DEL", "appt:done"]); h.sent.length = 0;

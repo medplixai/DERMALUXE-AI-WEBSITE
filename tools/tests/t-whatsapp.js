@@ -35,7 +35,9 @@ stub("_admin.js", {
 });
 stub("_hr.js", { handle: async () => null });
 stub("_clinic.js", { forwardLead: async () => ({ attempted: false }) });
-stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () => null, transcribe: async () => null });
+// What the agent would have SPOKEN, so the voice path can be checked too.
+const spoken = [];
+stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async (s) => { spoken.push(String(s)); return null; }, transcribe: async () => null });
 // Pushes to the staff phones, recorded as [capability, message].
 const pushes = [];
 stub("_push.js", { enabled: () => true, notifyCap: async (cfg, cap, msg) => { pushes.push([cap, msg]); return { ok: true, sent: 1 }; }, send: async () => ({ ok: true }) });
@@ -284,14 +286,27 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   // 7–8 Nov: the agent quoted the hair transplant package price in chat; the
   // daily review marked it down. A treatment price now never leaves the file.
   console.log("\n  — no treatment price leaves the chat —");
-  const CONSULT = require(path.join(API, "_lint.js")).CONSULT_LINE;
+  const lintMod = require(path.join(API, "_lint.js"));
+  const CONSULT = lintMod.CONSULT_LINE, NO_FEE = lintMod.consultLine(0);
   claude.push({ reply: "Hair transplant gurinchi cheppandi — entakalam nundi hair fall undi?", lead: null });
   await say("9876500023", "hair transplant kavali");
   claude.push({ reply: "FUE package ₹59,999 all-inclusive andi, 3,000 grafts varaku. Surgeon garu scalp chusi cheptaru. Assessment ki eppudu ravagalaru?", lead: null });
   await say("9876500023", "cost entha?");
   const priced = (lastText("9876500023") || {}).text || "";
-  is([/59,999/.test(priced), priced.endsWith(CONSULT), /Surgeon garu scalp chusi cheptaru/.test(priced)], [false, true, true],
-    "₹59,999 and its sentence are gone, the rest of the reply stays, and it ends with the consultation line");
+  is([/59,999/.test(priced), priced.endsWith(NO_FEE), /₹300/.test(priced), /Surgeon garu scalp chusi cheptaru/.test(priced)], [false, true, false, true],
+    "₹59,999 and its sentence are gone, the rest stays, and a hair transplant chat ends with the consultation line WITHOUT a ₹300 clause (the owner's HT assessment is its own offer)");
+  claude.push({ reply: "Pigmentation ki PICO laser sessions ₹18,000 avutayi andi. Eppudu ravagalaru?", lead: null });
+  await say("9876500026", "pigmentation laser cost?");
+  const pico = (lastText("9876500026") || {}).text || "";
+  is([/18,000/.test(pico), pico.includes(CONSULT)], [false, true], "any other treatment price is struck and the line names the ₹300 consultation (a first chat also carries the AI line after it)");
+  // The spoken reply is cut out of the text before the editor runs; the
+  // review of 9 Nov found the voice note could still say the price.
+  spoken.length = 0;
+  claude.push({ reply: "Package ₹59,999 andi, surgeon garu chustaru.\nVOICE_SCRIPT: Package yaabhai tommidi vela tommidi vandala tommidi rupayalu, ante ₹59,999 andi. Surgeon garu scalp chusi cheptaru.", lead: null });
+  await say("9876500027", "voice lo cheppandi, hair transplant cost entha?");
+  const spokenText = (lastText("9876500027") || {}).text || "";
+  is([spoken.length, /59,999/.test(spoken[0] || ""), /59,999/.test(spokenText), /Surgeon garu scalp chusi cheptaru/.test(spoken[0] || "")], [1, false, false, true],
+    "the voice note is spoken from a script with the price struck as well — the patient neither reads nor hears it");
   claude.push({ reply: "Consultation ₹300 matrame andi. Repu eppudu ravagalaru?", lead: null });
   await say("9876500023", "consultation fee?");
   const fee = (lastText("9876500023") || {}).text || "";

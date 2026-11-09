@@ -244,6 +244,17 @@ async function leadNameOf(cfg, key) {
   }
   return "";
 }
+// The lead's own number, from its row — never from the key. An Instagram
+// lead's key carries its 15-digit Instagram id in the phone's place, and the
+// last ten digits of that look enough like a mobile number to be messaged
+// (review, 9 Nov). Empty when the lead has no number.
+async function leadPhoneOf(cfg, key) {
+  const r = await guard.kvCommand(cfg, ["LRANGE", LEADS, "0", "399"]).catch(() => ({}));
+  for (const s of ((r && r.result) || [])) {
+    try { const l = JSON.parse(s); if (leadKey(l) === key) return /^[6-9]\d{9}$/.test(digits10(l.phone)) ? digits10(l.phone) : ""; } catch (e) {}
+  }
+  return "";
+}
 // Upstash answers HGETALL with a flat array, Postgres with an object.
 function hashOf(v) {
   const out = {};
@@ -766,7 +777,7 @@ module.exports = async (req, res) => {
     // lives a month; the message goes once a week per number, however many
     // more "no answer" marks follow.
     if (o === "noanswer") {
-      const ph = digits10((key.split("|")[1] || "")) || digits10(b.phone);
+      const ph = await leadPhoneOf(cfg, key);
       if (/^[6-9]\d{9}$/.test(ph)) {
         const n = Number((((await guard.kvCommand(cfg, ["INCR", `noans:${ph}`]).catch(() => ({}))) || {}).result) || 0);
         if (n === 1) await guard.kvCommand(cfg, ["EXPIRE", `noans:${ph}`, "2592000"]).catch(() => {});
@@ -803,7 +814,13 @@ module.exports = async (req, res) => {
     const nx = await guard.kvCommand(cfg, ["SET", `ntf:callhd:${phone}`, "1", "NX", "EX", "7200"]).catch(() => ({}));
     if (!nx || !nx.result) return json(res, 200, { ok: true, sent: false, why: "recent" });
     const first = clean(b.name, 40).split(" ")[0] || "Namaste";
-    const line = `${first} garu 🙏 DermaLuxe nunchi ${me.name} ippudu 99491 34666 nunchi call chestunnaru — call lift cheyandi. Convenient kakapothe reply lo mee time cheppandi 😊`;
+    // The call comes from the handset that tapped the button — the staff
+    // member's own number, which is what the patient will see ringing. Naming
+    // the clinic line instead promised a call from a number that never rang
+    // (review, 9 Nov).
+    const from = digits10(me.phone);
+    const fromFmt = /^\d{10}$/.test(from) ? `${from.slice(0, 5)} ${from.slice(5)}` : "";
+    const line = `${first} garu 🙏 DermaLuxe nunchi ${me.name} ippudu${fromFmt ? " " + fromFmt + " nunchi" : ""} call chestunnaru — teliyani number ayina lift cheyandi 😊 Convenient kakapothe reply lo mee time cheppandi.`;
     const open = await notify.windowOpen(cfg, phone);
     let sent = false;
     if (open) sent = !!(await notify.sendWa(phone, line).catch(() => false));

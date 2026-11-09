@@ -183,6 +183,16 @@ module.exports = async (req, res) => {
   try {
     if (deskHours) {
       const lr = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}));
+      // "Untouched" has to mean what the Leads screen means by it (staff.js
+      // waiting): nobody set a status, nobody wrote a note. Otherwise the push
+      // names a lead the screen shows no clock on, and the desk cannot find
+      // what it is being told off about. A patient who already holds a slot
+      // is the confirm nag's business, not this one's (review, 9 Nov).
+      const [stTs, notesH] = await Promise.all([
+        guard.kvCommand(cfg, ["HGETALL", "dl_status_ts"]).then((r) => guard.hashOf(r.result) || {}).catch(() => ({})),
+        guard.kvCommand(cfg, ["HGETALL", "dl_notes"]).then((r) => guard.hashOf(r.result) || {}).catch(() => ({})),
+      ]);
+      const touched = (k) => !!stTs[k] || (!!notesH[k] && notesH[k] !== "[]");
       const late = [];
       for (const raw of (lr.result || [])) {
         let l; try { l = JSON.parse(raw); } catch (e) { continue; }
@@ -191,7 +201,8 @@ module.exports = async (req, res) => {
         if (ph.length !== 10 || optSet.has(ph)) continue;
         const age = now - l.ts;
         if (age < 3600000 || age > 86400000) continue;
-        if ((deskStatus[leadKey(l)] || "new") !== "new") continue;
+        if ((deskStatus[leadKey(l)] || "new") !== "new" || touched(leadKey(l))) continue;
+        if (booked.has(ph) || (l.slot && l.date)) continue;
         const nx = await guard.kvCommand(cfg, ["SET", `ntf:sla:${leadKey(l)}`, "1", "NX", "EX", "86400"]).catch(() => ({}));
         if (!nx || !nx.result) continue;                                // this lead's hour has been told
         late.push(l);
@@ -351,7 +362,12 @@ module.exports = async (req, res) => {
         let a; try { a = JSON.parse(raw); } catch (e) { continue; }
         // ns = marked no-show (rebook nudge already sent); unmarked = nobody said they came
         if (!a || !a.ph || !a.at || a.fu || a.ns || a.status === "cancelled" || a.status === "noshow" || a.status === "unmarked") continue;
-        if (istDay(a.at) !== yday) continue;
+        // Yesterday's slot — or a visit the desk only got round to marking
+        // later (the row reaches the history when it is marked, not when the
+        // slot passes, since 9 Nov): anything filed in the last day whose slot
+        // is over counts, once, so a late mark still gets its "how was it?".
+        const filedLately = a.doneAt && now - a.doneAt < 86400000 && a.at < now && istDay(a.at) !== istDay(now);
+        if (istDay(a.at) !== yday && !filedLately) continue;
         const first = String(a.name || "").split(" ")[0] || "friend";
         const ok = await notify.sendWa(a.ph,
           `Hi ${first}! 🙏 Ninna mee DermaLuxe visit ela anipinchindi?\n\nTreatment/skin care lo emaina doubts unte ikkade adagandi — free ga reply chestam 💖`);
@@ -661,7 +677,9 @@ module.exports = async (req, res) => {
   // (9 Nov). A few hours after the chat went quiet, one DM asks for the
   // number again, once per conversation; the marker lives in instagram.js.
   let igNudge = null;
-  try { if (room("ig-nudge", 30000)) igNudge = await require("./instagram.js").nudgeQuiet(cfg, 10); } catch (e) { console.error("cron: ig nudge", e && e.message); }
+  // Inside clinic hours only: a DM from the clinic at 1 AM reads badly, and a
+  // number that arrives at 2 AM waits for the desk anyway.
+  try { if (!deskHours) igNudge = { sent: 0, checked: 0, night: true }; else if (room("ig-nudge", 30000)) igNudge = await require("./instagram.js").nudgeQuiet(cfg, 10); } catch (e) { console.error("cron: ig nudge", e && e.message); }
 
   // ---- sweep keys whose time has passed --------------------------------
   // Redis forgets an expired key by itself. Postgres does not, so once an

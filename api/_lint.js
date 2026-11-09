@@ -201,7 +201,13 @@ const PRICE_FLOOR = 500;
 const NUM = "\\d[\\d,]*(?:\\.\\d+)?";
 const AMOUNT = new RegExp(`(?:₹|\\brs\\.?|\\binr\\b)\\s*(${NUM})\\s*(k|lakhs?|lacs?)?\\b|\\b(${NUM})\\s*(k|lakhs?|lacs?|rupees|rupayalu|rupaayalu|rs\\.?|రూపాయలు)\\b`, "gi");
 const UNIT = { k: 1000, lakh: 100000, lakhs: 100000, lac: 100000, lacs: 100000 };
-const CONSULT_LINE = "Exact cost doctor consultation lo mee skin/hair chusaka cheptaru — consultation ₹300 matrame 🙏";
+// The line that replaces a struck price. The fee clause is the caller's call:
+// the owner's price policy may carry a different consultation fee or none,
+// and a hair transplant enquiry gets no fee clause at all (its assessment is
+// part of the owner's own package offer, and "₹300" beside it read as a
+// contradiction — review, 9 Nov).
+const consultLine = (fee) => "Exact cost doctor consultation lo mee skin/hair chusaka cheptaru" + (Number(fee) > 0 ? ` — consultation ₹${Number(fee)} matrame` : "") + " 🙏";
+const CONSULT_LINE = consultLine(300);
 function amountsIn(sentence) {
   const out = [];
   for (const m of String(sentence || "").matchAll(AMOUNT)) {
@@ -233,7 +239,9 @@ function stripTreatmentPrices(reply, opts) {
   }).filter((l) => l.trim());
   if (!removed.length) return { reply: String(reply || ""), removed };
   const kept = lines.join("\n").trim();
-  return { reply: (kept ? kept + "\n\n" : "") + CONSULT_LINE, removed: [...new Set(removed)] };
+  // opts.fee: the consultation fee to name (0 = no fee clause); the old
+  // callers that pass nothing keep the ₹300 line.
+  return { reply: (kept ? kept + "\n\n" : "") + (o.fee === undefined ? CONSULT_LINE : consultLine(o.fee)), removed: [...new Set(removed)] };
 }
 
 // Lint, rewrite if needed, and write the editor's log line. Returns the reply to send.
@@ -269,4 +277,4 @@ async function check(cfg, out, patientText, recent, opts) {
   return res.out;
 }
 
-module.exports = { lintReply, rewrite, check, cutMidWord, dropLabel, isMetaPrefill, asksToStop, ALLOWED_RUPEES, stripTreatmentPrices, amountsIn, CONSULT_LINE };
+module.exports = { lintReply, rewrite, check, cutMidWord, dropLabel, isMetaPrefill, asksToStop, ALLOWED_RUPEES, stripTreatmentPrices, amountsIn, CONSULT_LINE, consultLine };
