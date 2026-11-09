@@ -49,6 +49,8 @@ Last 3 weeks lo leads ekkadi nunchi (job enquiries teesesi):
 
 ### Ee week (leaks aapadam — kharchu ledu)
 
+**Status 9 Nov raatri:** 3–8 anni code lo ayyayi, staff app **1.66.0** lo unnayi (1.65.0 install cheyyakunda direct ga 1.66.0 install cheyyandi). Oka correction: automatic poster boosts already 20 Oct nunchi aagipoyayi (22 Sep–20 Oct madhya ₹7,200); ippudu default kuda "off" — Control panel lo meeru on cheyyakapothe okka rupayi kuda vellaadu. Clinic/academy home campaigns (₹100/day chero) Meta lo inka run avutunnayi — avi Ads tab lo leda Ads Manager lo meeru pause cheyyali (Meta token ee Mac lo ledu).
+
 | # | Em cheyyali | Evaru | Eppudu |
 |---|---|---|---|
 | 1 | Anthropic console lo auto-reload on cheyyandi (credits ayipothe agent mute avutundi) | Owner | ee roju |
