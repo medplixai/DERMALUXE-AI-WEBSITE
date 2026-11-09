@@ -78,6 +78,16 @@ const bodyOf = (what) => (calls.find((c) => c.what === what) || {}).body || {};
   // real Meta refusals and none of them stopped mattering.
   console.log("  — nothing is bought without a person —");
   is((await boost.run(cfg, post(0))).boosted, false, "run() does not boost: no cron spends money by itself");
+  // 9 Nov 2026, the owner: "boosts pause cheyyi". With nothing saved the
+  // switch reads off, and even a person's promote is refused until the owner
+  // turns it on in the Control panel.
+  is((await boost.load(cfg)).on, false, "with no boost:cfg saved, the boost switch is OFF");
+  seedImage(1);
+  const refused = await promoteOne(1);
+  is([refused.ok, /off lo undi/.test(refused.error || "")], [false, true], "promote while off: refused, and the message says to switch it on in the Control panel");
+  is(calls.length, 0, "and Meta was not called at all");
+  h.run(["SET", "boost:cfg", JSON.stringify({ on: true, by: "Owner", ts: Date.now() })]);
+  is((await boost.load(cfg)).on, true, "the owner's own tap turns it on");
 
   console.log("\n  — what a person's promote does —");
   seedImage(1);

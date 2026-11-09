@@ -31,7 +31,13 @@ const WA_LINK = "https://wa.me/919959134666";
 // wide fills the book with people who will never walk in. A six-week course
 // with a certificate at the end is worth the bus from Bhimavaram, so the
 // academy posters get the whole 80 km Meta allows around a point.
-const DEFAULTS = { on: true, rupees: 300, days: 3, km: 30, kmAcademy: 80, ageMin: 20, ageMax: 60, maxPerDay: 900 };
+// Off unless the owner switches it on. The daily boost ran 22 Sep – 20 Oct
+// 2026 (31 posters, ₹7,200) and in the whole of its last ten days not one
+// WhatsApp conversation arrived carrying its ad referral; the owner's own
+// Instagram promotions from 5 Nov brought 37 in five days. On 9 Nov the owner
+// said "boosts pause cheyyi" — so a missing boost:cfg now means off, and a
+// restart is a deliberate tap in the Control panel, never a default.
+const DEFAULTS = { on: false, rupees: 300, days: 3, km: 30, kmAcademy: 80, ageMin: 20, ageMax: 60, maxPerDay: 900 };
 // Meta will not run a lifetime budget that works out to less than about ₹95 a
 // day on this account (min_daily_budget_cents = 9491). ₹300 over 3 days is
 // ₹100 — just over. Stretch the same ₹300 over 5 days and Meta refuses the
