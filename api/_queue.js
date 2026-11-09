@@ -35,11 +35,21 @@ async function callers(cfg) {
 const hashOf = async (cfg, key) => guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", key]).catch(() => ({}))).result) || {};
 
 // Hand every unassigned A-grade lead to the caller with the fewest open ones.
+//
+// Reception first. The pool used to be everyone who may edit leads, so the
+// manager — on the staff list since the start, with the fewest open leads at
+// the time — collected them: on 9 November 257 of 289 leads still carried
+// her name, from before the reception login existed (6 November). The owner
+// wants reception (hemasri) as the default caller, so when any live reception
+// login exists the lead goes to the reception person with the fewest open
+// leads; only a clinic with no reception login falls back to the whole pool.
 async function assign(cfg, opts) {
-  const res = { assigned: 0, callers: 0 };
+  const res = { assigned: 0, callers: 0, reception: 0 };
   if (!cfg) return res;
-  const pool = await callers(cfg);
-  res.callers = pool.length;
+  const everyone = await callers(cfg);
+  const reception = everyone.filter((c) => c.role === "reception");
+  const pool = reception.length ? reception : everyone;
+  res.callers = pool.length; res.reception = reception.length;
   if (!pool.length) return res;
   const qualify = require("./_qualify.js");
   const rows = (((await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}))).result) || [])
@@ -162,7 +172,11 @@ async function alertOverdue(cfg) {
   try {
     const list = await callList(cfg, when);
     if (list) {
-      for (const to of String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",").map(ten).filter((x) => x.length === 10)) {
+      // The env numbers plus every live reception login (see notifyTargets):
+      // the call list is reception's work, and reception's phone never got it.
+      const envList = String(process.env.LEAD_NOTIFY_PHONES || "9989325777,9949134666").split(",").map(ten).filter((x) => x.length === 10);
+      const targets = notify.notifyTargets ? await notify.notifyTargets(cfg).catch(() => envList) : envList;
+      for (const to of targets) {
         if (await notify.teamSend(cfg, to, list).catch(() => false)) listed++;
       }
     }

@@ -235,6 +235,15 @@ async function resolveUser(cfg, phone, roles) {
 }
 
 const leadKey = (l) => `${l.ts}|${digits10(l.phone) || l.src_id || ""}`;
+// The name on a lead, from its key, for a message that addresses the patient
+// when the app did not send the name along. Recent leads only; "" if none.
+async function leadNameOf(cfg, key) {
+  const r = await guard.kvCommand(cfg, ["LRANGE", LEADS, "0", "399"]).catch(() => ({}));
+  for (const s of ((r && r.result) || [])) {
+    try { const l = JSON.parse(s); if (leadKey(l) === key) return String(l.name || "").trim(); } catch (e) {}
+  }
+  return "";
+}
 // Upstash answers HGETALL with a flat array, Postgres with an object.
 function hashOf(v) {
   const out = {};
@@ -748,7 +757,73 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["HSET", "dl_outcome", key, o]);
     if (fu) await guard.kvCommand(cfg, ["HSET", "dl_fu", key, fu]);
     else await guard.kvCommand(cfg, ["HDEL", "dl_fu", key]).catch(() => {});
-    return json(res, 200, { ok: true, status: OUTCOMES[o], outcome: o, fu, at });
+    const out = { ok: true, status: OUTCOMES[o], outcome: o, fu, at };
+    // Two unanswered calls and the desk stops ringing a number that does not
+    // pick up: 80 of 121 desk outcomes up to 9 November were "no answer", and
+    // the third call to a stranger's number goes the way of the first two.
+    // After the second, the patient gets one WhatsApp asking for a time that
+    // suits them, so the booking moves to a channel they do read. The count
+    // lives a month; the message goes once a week per number, however many
+    // more "no answer" marks follow.
+    if (o === "noanswer") {
+      const ph = digits10((key.split("|")[1] || "")) || digits10(b.phone);
+      if (/^[6-9]\d{9}$/.test(ph)) {
+        const n = Number((((await guard.kvCommand(cfg, ["INCR", `noans:${ph}`]).catch(() => ({}))) || {}).result) || 0);
+        if (n === 1) await guard.kvCommand(cfg, ["EXPIRE", `noans:${ph}`, "2592000"]).catch(() => {});
+        if (n === 2) {
+          const nx = await guard.kvCommand(cfg, ["SET", `ntf:noans:${ph}`, "1", "NX", "EX", "604800"]).catch(() => ({}));
+          if (nx && nx.result) {
+            const first = clean(b.name, 40).split(" ")[0] || (await leadNameOf(cfg, key)).split(" ")[0] || "Namaste";
+            const msg = `${first} garu, DermaLuxe nunchi rendu sarlu call chesam, lift avvaledu 🙏 Meeku convenient time ikkada cheppandi — WhatsApp lo ne slot book chestam 😊`;
+            let sent = false;
+            if (await notify.windowOpen(cfg, ph)) sent = !!(await notify.sendWa(ph, msg).catch(() => false));
+            else sent = !!(((await notify.sendWaTemplate(ph, "clinic_update", [first, msg.slice(0, 250)]).catch(() => ({}))) || {}).ok);
+            if (sent) {
+              out.nudged = true;
+              try { await require("./_inbox.js").log(cfg, ph, { dir: "out", text: msg, by: me.name }); } catch (e) {}
+            }
+          }
+        }
+      }
+    }
+    return json(res, 200, out);
+  }
+  // A WhatsApp a moment before the desk rings. Patients do not lift calls
+  // from a number they do not know — 80 of 121 desk outcomes up to 9 November
+  // were "no answer" — so every Call tap first sends the patient a line
+  // naming who is calling and from which number. Once per patient per two
+  // hours, however many times the button is tapped; the dialer is never held
+  // up for it (the app fires this in the background).
+  if (a === "call-notice") {
+    if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
+    const phone = digits10(b.phone);
+    if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit number ledu" });
+    const rlCn = await guard.rateLimit(cfg, `rl:cn:${me.phone}`, 120, 3600);
+    if (!rlCn.allowed) return json(res, 429, { error: "Konchem aagandi" });
+    const nx = await guard.kvCommand(cfg, ["SET", `ntf:callhd:${phone}`, "1", "NX", "EX", "7200"]).catch(() => ({}));
+    if (!nx || !nx.result) return json(res, 200, { ok: true, sent: false, why: "recent" });
+    const first = clean(b.name, 40).split(" ")[0] || "Namaste";
+    const line = `${first} garu 🙏 DermaLuxe nunchi ${me.name} ippudu 99491 34666 nunchi call chestunnaru — call lift cheyandi. Convenient kakapothe reply lo mee time cheppandi 😊`;
+    const open = await notify.windowOpen(cfg, phone);
+    let sent = false;
+    if (open) sent = !!(await notify.sendWa(phone, line).catch(() => false));
+    else sent = !!(((await notify.sendWaTemplate(phone, "clinic_update", [first, line.slice(0, 250)]).catch(() => ({}))) || {}).ok);
+    if (!sent) {
+      // Nothing reached them, so the next tap may try again.
+      await guard.kvCommand(cfg, ["DEL", `ntf:callhd:${phone}`]).catch(() => {});
+      return json(res, 200, { ok: true, sent: false, why: "failed", via: open ? "text" : "template" });
+    }
+    try { await require("./_inbox.js").log(cfg, phone, { dir: "out", text: line, by: me.name }); } catch (e) {}
+    // On the lead's card, in the same shape as a typed note, so the caller
+    // sees the heads-up went before the call.
+    if (key) {
+      const cur = await guard.kvCommand(cfg, ["HGET", NOTES, key]).catch(() => ({}));
+      let list = []; try { list = JSON.parse((cur && cur.result) || "[]"); } catch (e) { list = []; }
+      list.unshift({ ts: Date.now(), by: me.name, text: "📲 Call heads-up WhatsApp vellindi" });
+      list.sort((x, y) => (y.ts || 0) - (x.ts || 0));
+      await guard.kvCommand(cfg, ["HSET", NOTES, key, JSON.stringify(list.slice(0, 30))]).catch(() => {});
+    }
+    return json(res, 200, { ok: true, sent: true, via: open ? "text" : "template" });
   }
   // Location pin or the consultation payment QR, sent to the patient's
   // WhatsApp from the lead card (7 Nov: "share location, share QR for payment").

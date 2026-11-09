@@ -472,6 +472,18 @@ module.exports = async (req, res) => {
   const cur = Object.assign({}, found.a);
   if (!cur.id) cur.id = crypto.randomBytes(6).toString("hex");   // give legacy records one
 
+  // The desk's own "confirm call done". Until now a booking only became
+  // confirmed when the patient answered the agent's WhatsApp; the receptionist
+  // who rang them and heard "vastanu" had nowhere to record it, so in the week
+  // of 9 November five slots sat as "confirm kaledu" and nobody could tell
+  // which had been called. The row stays where it is; who confirmed and how
+  // is written beside the time.
+  if (a === "confirm") {
+    const next = Object.assign({}, cur, { cf: true, cfAt: Date.now(), cfBy: me.name, cfVia: "desk" });
+    await replace(cfg, found.raw, next);
+    return json(res, 200, { ok: true, appt: shape(next) });
+  }
+
   // move it, and tell the patient
   if (a === "move") {
     const at = Number(b.at);
