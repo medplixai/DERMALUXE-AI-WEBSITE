@@ -635,6 +635,10 @@
     .fi-days .btn{min-width:40px;justify-content:center}
     .wait{font-weight:600}
     .wait.warn{color:var(--hot)}.wait.bad{color:var(--bad)}
+    /* Confirm-pending strip at the top of Appts: the bookings nobody has rung yet */
+    .cfp{margin-bottom:12px}
+    .cfp .slot{border-left:2px solid var(--hot)}
+    .cfp .slot .when span{font-size:.76rem;white-space:nowrap}
     .gr{cursor:pointer}
     .brk{display:flex;justify-content:space-between;gap:10px;font-size:.86rem;padding:6px 0;border-bottom:1px solid var(--line)}
     .brk b{font-variant-numeric:tabular-nums}
@@ -823,6 +827,8 @@
     .nxt.call{background:var(--pk);color:var(--pk-ink)}
     .nxt.book{background:var(--gd);color:var(--gd-ink)}
     .lead.hot{border-left-color:#e0558a}.lead.warm{border-left-color:var(--primary)}
+    /* a new lead nobody has touched for an hour — red edge, whatever its heat */
+    .lead.late{border-left-color:var(--bad)}
     .badge.src{background:var(--gd);color:var(--gd-ink)}
     .countdown > div.on{outline-color:var(--blk)}
 
@@ -1055,6 +1061,7 @@
         </div>
       </section>
       <section id="t-appts" class="hide">
+        <div id="cfPend" class="hide"></div>
         <div class="daystrip" id="dayStrip"></div>
         <div class="countdown" id="schHead"><div class="skk"></div><div class="skk"></div></div>
         <div class="filters" style="margin-bottom:8px">
@@ -1412,9 +1419,12 @@
     // at one branch at a time; everyone else is pinned to theirs by the server.
     function branchQs() { var b = ""; try { b = localStorage.getItem("dl_branch") || ""; } catch (e) {} return b ? "&branch=" + encodeURIComponent(b) : ""; }
     function newCid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 10); }
-    function api(a, body, method) {
+    function api(a, body, method, keep) {
       var opt = { method: method || (body ? "POST" : "GET"), headers: {} };
       if (tok) opt.headers.Authorization = "Bearer " + tok;
+      // keepalive: a request that must outlive the page losing focus — the
+      // call heads-up fires as the dialer opens over the app.
+      if (keep) opt.keepalive = true;
       if (body) { opt.headers["Content-Type"] = "application/json"; opt.body = JSON.stringify(Object.assign({ a: a, cid: newCid() }, body)); }
       // Network failure and "the server answered with an error" are completely
       // different things, and the offline queue depends on telling them apart.
@@ -1634,7 +1644,10 @@
     function leadCard(l, compact) {
       var heat = l.heat || "", s = srcLabel(l);
       var notes = (l.notes || []).slice(0, 3).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
-      return '<article class="lead ' + esc(heat) + '" data-key="' + esc(l.key) + '">' +
+      // The owner's rule (9 Nov): a new lead is touched inside 15 minutes, and
+      // one left an hour is a red badge — first touch was averaging 39 hours.
+      var late = l.waiting != null && l.waiting > 3600000 && l.status !== "closed" && !!l.next && l.next.kind !== "skip" && l.next.kind !== "done";
+      return '<article class="lead ' + esc(heat) + (late ? " late" : "") + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + (l.lang === "hi" ? '<span class="lang">🗣 हिंदी</span>' : '') + (catOf(l) ? '<span class="cat ' + catOf(l) + '">' + ({ hair: "💇 Hair", skin: "💆 Skin", ht: "🌱 Hair transplant", academy: "🎓 Academy" }[catOf(l)]) + "</span>" : "") + '</h3><div class="meta">' + esc(dmyt(l.ts)) + ' · ' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
         '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
         '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc oc-' + esc(l.outcome) + '">' + esc(OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
@@ -1643,7 +1656,7 @@
         (l.grade ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +
           ((l.why || []).length ? (l.village || l.since || l.prefers ? '<br>' : '') + esc((l.why || []).slice(0, 3).join(" · ")) : '') + '</div>' : '') +
         (l.next && l.status !== "closed" ? '<div class="nxt ' + esc(l.next.kind) + '">' + esc(l.next.text) +
-          (l.waiting != null && l.next.kind !== "skip" && l.next.kind !== "done" ? ' <span class="wait' + (l.waiting > 3 * 3600000 ? " bad" : l.waiting > 30 * 60000 ? " warn" : "") + '">· ' + waitFor(l.waiting) + ' nundi waiting</span>' : "") + '</div>' : "") +
+          (l.waiting != null && l.next.kind !== "skip" && l.next.kind !== "done" ? ' <span class="wait' + (l.waiting > 3600000 ? " bad" : l.waiting > 15 * 60000 ? " warn" : "") + '">· ' + (l.waiting > 3600000 ? "🚨 1 ganta daatindi · " : "") + waitFor(l.waiting) + ' nundi waiting</span>' : "") + '</div>' : "") +
         (l.goal && l.goal.label ? '<div class="goalbox">🎯 <b>Goal:</b> ' + esc(l.goal.label) + (l.goal.next ? ' · <span class="meta">next: ' + esc(l.goal.next) + "</span>" : "") + "</div>" : "") +
         (l._rank ? '<div class="rankbox"><b>🎯 #' + l._rank + "</b> " + esc((l._why || []).join(" · ")) + (l._best ? ' <span class="best">⏰ ' + esc(l._best) + "</span>" : "") + "</div>" : "") +
         (l.script && (l.status === "new" || l.status === "contacted")
@@ -2169,6 +2182,7 @@
       setTimeout(function () { var on = document.querySelector("#dayStrip button.on"); if (on && on.scrollIntoView) on.scrollIntoView({ block: "nearest", inline: "center" }); }, 0);
       $("schNew").classList.toggle("hide", !state.allow("appts.edit"));
       paintDayPlan(d.plan);
+      renderCfPending();
 
       if (schShow === "tom" || schShow === "week") { renderSoon(); renderWait(d); return; }
       var rows = schMine ? d.rows.filter(function (r) { return r.staff === state.data.me.phone; }) : d.rows;
@@ -2176,6 +2190,12 @@
       $("schList").classList.toggle("hide", schShow === "none");
       $("schList").innerHTML = rows.length ? rows.map(function (r) {
         var canEdit = state.allow("appts.edit");
+        // An hour past the slot and still "booked": the desk is asked whether
+        // the patient came. Until 9 November 28 of 33 "done" appointments had
+        // closed themselves three hours after the slot, and nobody could say
+        // who had actually turned up. The server sets `ask` when it sends the
+        // "vacharu aa?" push; the clock here covers a row it has not reached.
+        var asked = r.status === "booked" && (!!r.ask || r.at < Date.now() - 3600000);
         return '<article class="slot ' + esc(r.status) + '">' +
           '<div class="when">' + esc(r.time) + "<span>" + r.mins + " min</span></div>" +
           '<div><div class="row1" style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap">' +
@@ -2185,19 +2205,23 @@
           (r.room ? " · " + esc(r.room) : "") + "</div></div>" +
           "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') +
           (r.pax > 1 ? ' <span class="chip" title="' + esc(r.with || "") + '">👥 ' + r.pax + " mandi</span>" : "") + (r.adv ? ' <span class="chip ok">💳 ₹' + r.adv + ' advance</span>' : "") + (r.lc && r.status === "booked" ? ' <span class="chip">vastunnara adigam</span>' : "") +
-          (r.status !== "booked" ? ' <span class="chip">' + esc(r.status) + "</span>" : "") + "</div></div>" +
+          (asked ? ' <span class="chip hot">vacharu aa?</span>' : "") +
+          (r.status !== "booked" ? ' <span class="chip">' + esc(SCH_ST[r.status] || r.status) + "</span>" : "") + "</div></div>" +
           apptDates(r) +
           ((r.risk || []).length ? '<div class="meta" style="margin-top:5px">' + r.risk.map(function (x) { return '<span class="chip hot">⚠️ ' + esc(x) + "</span>"; }).join(" ") + "</div>" : "") +
           (r.note ? '<div class="meta" style="margin-top:5px">📝 ' + esc(r.note) + "</div>" : "") +
           '<div class="acts">' +
           '<a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name) + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞</a>' +
           '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.ph) + '">💬</a>' +
-          (canEdit && r.status === "booked" ? '<button class="btn btn--sm" data-act="sch-arrived" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Vachharu</button>' : "") +
-          (canEdit && (r.status === "arrived" || r.status === "booked") ? '<button class="btn btn--sm" data-act="sch-done" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">🏁 Ayipoyindi</button>' : "") +
+          // Asked "vacharu aa?": two answers, nothing else to decide.
+          (canEdit && asked ? '<button class="btn btn--sm btn--gold" data-act="sch-came" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Vacharu</button>' +
+            '<button class="btn btn--sm" data-act="sch-noshow" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">❌ Raledu</button>' : "") +
+          (canEdit && !asked && r.status === "booked" ? '<button class="btn btn--sm" data-act="sch-arrived" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Vachharu</button>' : "") +
+          (canEdit && !asked && (r.status === "arrived" || r.status === "booked") ? '<button class="btn btn--sm" data-act="sch-done" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">🏁 Ayipoyindi</button>' : "") +
           // Somebody who did not turn up could only be recorded by texting the
           // WhatsApp admin command, so in practice they were left sitting in
           // the day for ever and never asked back.
-          (canEdit && r.status === "booked" && r.at < Date.now() ? '<button class="btn btn--sm" data-act="sch-noshow" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🚫 Raaledu</button>' : "") +
+          (canEdit && !asked && r.status === "booked" && r.at < Date.now() ? '<button class="btn btn--sm" data-act="sch-noshow" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🚫 Raaledu</button>' : "") +
           (canEdit ? '<button class="btn btn--sm" data-act="sch-assign" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">👩‍⚕️ Assign</button>' +
             '<button class="btn btn--sm" data-act="sch-move" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🕒 Marchandi</button>' +
             '<button class="btn btn--sm" data-act="sch-cancel" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">✖</button>' : "") +
@@ -2250,6 +2274,39 @@
               '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.ph) + '">💬</a></div></div></article>';
           }).join("") + "</div>";
       }).join("") : '<div class="empty">' + (schShow === "tom" ? "Repu appointments ledu." : "Ee vaaram inka appointments ledu.") + "</div>";
+    }
+    // A row that left the day on its own, 48 hours after the slot with nobody
+    // saying whether the patient came, is not a visit — the chip says so.
+    var SCH_ST = { unmarked: "mark cheyyaledu" };
+    // ---- confirm pending: the bookings nobody has rung yet ----------------
+    // The agent tells every patient "team call chesi confirm chestundi". In
+    // the week of 9 November five slots were waiting and one had had that
+    // call; the other four patients were waiting for a phone that never rang,
+    // and the "confirm kaledu" dot on the day strip was easy to miss. This is
+    // the list, at the top of the tab, oldest booking first — the one that
+    // has waited longest is the one to ring now.
+    function cfPending() {
+      var list = schWeek && Array.isArray(schWeek.pending) ? schWeek.pending
+        : ((schWeek && schWeek.soon) || []).filter(function (r) { return r.status === "booked" && !r.cf && r.at > Date.now(); });
+      return list.slice().sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+    }
+    function renderCfPending() {
+      var host = $("cfPend"); if (!host) return;
+      var rows = cfPending(), canEdit = state.allow("appts.edit");
+      host.classList.toggle("hide", !rows.length);
+      if (!rows.length) { host.innerHTML = ""; return; }
+      host.innerHTML = '<div class="grp cfp"><div class="grp-h"><h2>☎️ Confirm pending (' + rows.length + ') <span class="te" style="font-size:.85rem">· <span lang="te">కన్ఫర్మ్ కాల్ పెండింగ్</span></span></h2><i>Paata booking mundu</i></div>' +
+        rows.slice(0, 20).map(function (r) {
+          var dayLbl = new Date(r.day + "T00:00:00+05:30").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+          return '<article class="slot"><div class="when">' + esc(r.time) + "<span>" + esc(dayLbl) + "</span></div><div>" +
+            '<h3 data-act="pt-open" data-phone="' + esc(r.ph) + '" style="cursor:pointer">' + esc(r.name || r.label || "Patient") + ' <span class="meta">· ' + esc(r.ph) + "</span></h3>" +
+            '<div class="meta">' + esc(r.concern || "—") + (r.ts ? " · book ayi " + esc(waitFor(Date.now() - r.ts)) + (r.by ? " · " + esc(r.by) : "") : "") + "</div>" +
+            '<div class="acts">' +
+            (canEdit ? '<button class="btn btn--sm btn--gold" data-act="sch-confirm" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Confirm ayindi</button>' : "") +
+            '<a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name || "") + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞 Call</a>' +
+            '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.ph) + '">💬 WhatsApp</a>' +
+            "</div></div></article>";
+        }).join("") + (rows.length > 20 ? '<div class="meta">…inka ' + (rows.length - 20) + "</div>" : "") + "</div>";
     }
     // ---- the day as a grid: one column per doctor, drag to move ----------
     var schView = (function () { try { return localStorage.getItem("dl_schview") || "list"; } catch (e) { return "list"; } })();
@@ -5275,7 +5332,12 @@
       // Tapping a notification should land on the thing it is about.
       PN.addListener("pushNotificationActionPerformed", function (ev) {
         var d = (ev && ev.notification && ev.notification.data) || {};
+        // "arrived?" and "confirm" carry the slot's time: open that day, and
+        // refetch the week so the confirm-pending strip is current. A lead's
+        // "sla" push carries tab "leads" and lands there like any lead alert.
+        if (d.tab === "appts" && Number(d.at)) schDay = istDayOf(Number(d.at));
         if (d.tab) { hashDone = true; goTab(d.tab); }
+        if (d.tab === "appts") loadSchedule(true).catch(function () {});
         load(true).catch(function () {});
       });
       PN.addListener("pushNotificationReceived", function () { load(true).catch(function () {}); });
@@ -5589,6 +5651,19 @@
     var PEND = "dl_pending_call";
     function rememberCall(key, name, phone) {
       try { localStorage.setItem(PEND, JSON.stringify({ key: key, name: name, phone: phone, at: Date.now() })); } catch (e) {}
+    }
+    // Patients do not lift calls from numbers they do not know — 80 of 121
+    // desk outcomes up to 9 November were "no answer". Every Call tap first
+    // sends the patient a WhatsApp naming who is ringing and from which
+    // number. It never holds the dialer: the tel: link proceeds and this goes
+    // behind it, with keepalive so the page losing focus does not cancel it.
+    // The server sends one per patient per two hours, so the toast shows only
+    // when something actually went.
+    function callNotice(phone, name, key) {
+      if (!phone || !tok || !state.allow("leads.edit")) return;
+      api("call-notice", { phone: phone, name: name || "", key: key || "" }, "POST", true)
+        .then(function (j) { if (j && j.sent) toast("📲 Heads-up WhatsApp vellindi"); })
+        .catch(function () {});
     }
     function pendingCall() {
       try { var v = JSON.parse(localStorage.getItem(PEND) || "null"); return v && v.key ? v : null; } catch (e) { return null; }
@@ -6182,6 +6257,7 @@
         // let the tel: link do its thing, then ask about it on the way back
         rememberCall(el.dataset.key, el.dataset.name, el.dataset.phone);
         haptic();
+        callNotice(el.dataset.phone, el.dataset.name, el.dataset.key);
         // In a browser there is no "back from the dialer" moment to hook.
         if (!NATIVE) setTimeout(checkPendingCall, 6000);
         return;
@@ -6334,6 +6410,17 @@
       }
       if (el.dataset.act === "sch-day") { schDay = el.dataset.day; if (schShow === "tom" || schShow === "week") schShow = "all"; haptic(); loadSchedule(true); return; }
       if (el.dataset.act === "sch-arrived") { schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "arrived" }, "Vachharu ani mark chesamu"); return; }
+      // The slot is an hour past and nobody has said: "✅ Vacharu" closes it as
+      // done, "❌ Raledu" as a no-show (which also invites them to rebook).
+      if (el.dataset.act === "sch-came") { schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "done" }, "Vacharu ani mark chesam"); return; }
+      // The confirm call was made and the patient said they are coming.
+      if (el.dataset.act === "sch-confirm") {
+        el.disabled = true;
+        schapi("confirm", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at) })
+          .then(function () { toast("Confirm ayindi ani mark chesam ✅"); return loadSchedule(true); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "sch-done") {
         var dn = prompt("Em chesaru? (optional note)", "") || "";
         schSend("status", { id: el.dataset.id, ph: el.dataset.ph, at: Number(el.dataset.at), status: "done", note: dn }, "Ayipoyindi");

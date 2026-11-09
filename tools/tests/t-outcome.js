@@ -91,6 +91,42 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   const ramya = ((await call({ a: "data" }, null, OWNER)).body.leads || []).find((l) => l.name === "Ramya") || {};
   is(/Namaste Ramya garu/.test(ramya.script || ""), true, "and the lead card carries it");
 
+  console.log("\n  — a WhatsApp a moment before the call (owner, 9 Nov: 80 of 121 calls went unanswered) —");
+  const n = require(path.join(process.env.DL_API, "_notify.js"));   // the harness's stub, which staff.js also holds
+  h.run(["DEL", "dl_leads"]);
+  const ts2 = Date.now() - 600000;
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: ts2, type: "whatsapp", name: "Lakshmi Devi", phone: "9876500601", concern: "Hair fall" })]);
+  const k2 = `${ts2}|9876500601`;
+  const toPatient = (ph) => h.sent.filter((s) => s[0] === "wa" && s[1] === ph);
+  is((await post("call-notice", { phone: "123", name: "X" })).code, 400, "a bad number is refused");
+  h.sent.length = 0;
+  const c1 = await post("call-notice", { phone: "9876500601", name: "Lakshmi Devi", key: k2 });
+  is([c1.code, c1.body.sent, c1.body.via], [200, true, "text"], "inside the 24-hour window the heads-up goes as plain text");
+  const hd = toPatient("9876500601")[0] || [];
+  is([/^Lakshmi garu/.test(hd[2] || ""), /Owner/.test(hd[2] || ""), /99491 34666/.test(hd[2] || "")], [true, true, true], "addressed by first name, naming who is calling and from which number");
+  is((JSON.parse(h.run(["HGET", "dl_notes", k2]) || "[]")[0] || {}).text, "📲 Call heads-up WhatsApp vellindi", "and the lead card says it went");
+  h.sent.length = 0;
+  const c2 = await post("call-notice", { phone: "9876500601", name: "Lakshmi Devi", key: k2 });
+  is([c2.body.sent, c2.body.why, h.sent.length], [false, "recent", 0], "a second tap inside two hours sends nothing more");
+  const realOpen = n.windowOpen; n.windowOpen = async () => false;        // the patient has not written in 24 hours
+  const c3 = await post("call-notice", { phone: "9876500602", name: "Ravi Kumar" });
+  n.windowOpen = realOpen;
+  is([c3.code, c3.body.sent, c3.body.via], [200, true, "template"], "outside the window it goes as the approved clinic_update template");
+  is(h.sent.some((s) => s[0] === "tpl" && s[1] === "9876500602" && s[2] === "clinic_update" && s[3][0] === "Ravi"), true, "still addressed by first name");
+  h.run(["HSET", "staff:users", "9876500052", JSON.stringify({ name: "Accounts", role: "accounts" })]);
+  const ACCOUNTS = mk({ p: "9876500052", n: "Accounts", r: "accounts", e: 0, exp: Date.now() + 86400000 });
+  is((await call({ a: "call-notice" }, { a: "call-notice", phone: "9876500603", name: "Z" }, ACCOUNTS)).code, 403, "accounts, who cannot edit leads, cannot send one");
+
+  console.log("\n  — two unanswered calls, then the desk stops ringing and writes —");
+  h.sent.length = 0;
+  const o1 = await post("outcome", { key: k2, outcome: "noanswer" });
+  is([o1.code, o1.body.nudged, toPatient("9876500601").length], [200, undefined, 0], "the first 'no answer' sends the patient nothing");
+  const o2 = await post("outcome", { key: k2, outcome: "noanswer" });
+  is([o2.body.nudged, toPatient("9876500601").length], [true, 1], "the second sends one WhatsApp asking for a time that suits them");
+  is([/^Lakshmi garu/.test(toPatient("9876500601")[0][2]), /rendu sarlu call chesam/.test(toPatient("9876500601")[0][2])], [true, true], "by first name — found from the lead, the app did not send it — and saying why");
+  const o3 = await post("outcome", { key: k2, outcome: "noanswer" });
+  is([o3.body.nudged, toPatient("9876500601").length], [undefined, 1], "the third sends nothing more — still the one message");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\ncall outcomes behave");
   process.exit(fails ? 1 : 0);
 })();

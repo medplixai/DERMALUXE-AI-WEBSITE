@@ -273,12 +273,32 @@ async function aiFailed(resp) {
   return text;
 }
 
+// Who the desk alerts go to. The list used to be the LEAD_NOTIFY_PHONES env
+// var and nothing else: hemasri's reception login was added on 6 November and
+// not one lead alert had reached her phone, because nobody had edited an env
+// var on Vercel. Reception is who answers the clinic phone, so every live
+// reception login is on the list now, beside the env numbers. Distinct
+// ten-digit numbers; a login switched off is left out.
+const ten = (p) => String(p || "").replace(/\D/g, "").slice(-10);
+async function notifyTargets(cfg) {
+  const out = new Set(String(process.env.LEAD_NOTIFY_PHONES || DEFAULT_TO).split(",").map(ten).filter((x) => x.length === 10));
+  if (cfg) {
+    try {
+      const users = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "staff:users"])).result) || {};
+      for (const [phone, raw] of Object.entries(users)) {
+        let u = null; try { u = JSON.parse(raw); } catch (e) { u = null; }
+        if (u && !u.off && String(u.role || "") === "reception" && ten(phone).length === 10) out.add(ten(phone));
+      }
+    } catch (e) {}
+  }
+  return [...out];
+}
+
 async function leadAlert(cfg, lead) {
   const token = process.env.WA_CLOUD_TOKEN;
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
   if (!token || !phoneId || !lead || !lead.name) return;
-  const targets = String(process.env.LEAD_NOTIFY_PHONES || DEFAULT_TO)
-    .split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter(Boolean);
+  const targets = await notifyTargets(cfg);
   if (!targets.length) return;
 
   if (cfg && (lead.src_id || lead.phone)) {
@@ -315,6 +335,11 @@ async function leadAlert(cfg, lead) {
     lead.concern ? `💬 ${lead.concern}` : "",
     when ? `📅 ${when}` : "",
     lead.call_prep ? `📋 ${lead.call_prep}` : "",
+    // The agent tells the patient "team call chesi confirm chestundi". In the
+    // week of 9 November five slots were waiting and one had had that call,
+    // so a lead that already holds a slot says what the call is for, and by
+    // when (the owner's rule: 30 minutes, 9 AM to 9 PM).
+    (lead.slot_ts || lead.slot || lead.date) ? "☎️ 30 nimishallo call chesi slot confirm cheyandi" : "",
     "",
     "Anni leads: dermaluxe.ai/leads.html",
     "_(Reply *ok* — next alerts kuda ravadaniki)_",
@@ -385,4 +410,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, aiFailed, teamSend, markWindow, windowOpen, alertLine, sendWa, sendWaButtons, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
+module.exports = { leadAlert, notifyTargets, aiFailed, teamSend, markWindow, windowOpen, alertLine, sendWa, sendWaButtons, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
