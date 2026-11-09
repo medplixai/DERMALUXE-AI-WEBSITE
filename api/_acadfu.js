@@ -58,13 +58,13 @@ function line(rung, seatsLeft, now) {
   return `DermaLuxe Academy gurinchi meeru adigaru kada — phone lo 5 nimishalu maatladatama? Course ela untundi, placement ela untundi, mee prashnalu anni cheptam. Eppudu convenient ayithe cheppandi 🙏`;
 }
 
-// How many of the batch's seats are still open, from the one place that count
-// lives. Never guessed: with no store the rungs that name it say nothing.
+// How many of the batch's seats are still open — the students on the books
+// plus the owner's hand-typed count, worked out in _seats.js so this, the
+// dashboard and the agent all say the same number. Never guessed: with no
+// store the rungs that name it say nothing.
 async function seatsLeft(cfg) {
   if (!cfg) return 0;
-  const r = await guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({}));
-  const booked = Math.max(0, Math.min(docs.BATCH.seats, Number((r && r.result) || 0)));
-  return Math.max(0, docs.BATCH.seats - booked);
+  return require("./_seats.js").left(cfg);
 }
 
 // `opts.optout` and `opts.deskStatus` are the caller's own copies — cron-followup

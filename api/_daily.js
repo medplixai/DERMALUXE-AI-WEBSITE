@@ -135,8 +135,9 @@ const daysUntilIst = (targetMs, nowMs) =>
 async function academyState(cfg) {
   let booked = 0, forced = null;
   if (cfg) {
-    const [b, f] = await guard.kvPipeline(cfg, [["GET", "acad:booked"], ["GET", "acad:dp"]]).catch(() => [null, null]);
+    const [b, fr] = await Promise.all([require("./_seats.js").booked(cfg).catch(() => 0), guard.kvCommand(cfg, ["GET", "acad:dp"]).catch(() => ({}))]);
     booked = Math.max(0, Math.min(docs.BATCH.seats, Number(b) || 0));
+    const f = fr && fr.result;
     if (f === "0" || f === "1") forced = f;
   }
   const left = Math.max(0, docs.BATCH.seats - booked);

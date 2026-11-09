@@ -199,8 +199,12 @@ const hook = { token: "hook" };
   await h.call(ig, hook, batch(said("c3", "fan3", "address ekkada?"), said("c4", "fan4", "All the best 👏"), said("c5", "fan5", "Super")));
   is([claudeCalls, privates.length, publics.length], [3, 1, 3], "three comments in one delivery get three answers, not one");
   const cl = leads().filter((l) => l.type === "ig_comment");
-  is([cl.some((l) => l.name === "@fan3" && /address ekkada/.test(l.concern) && l.heat === "warm"), cl.some((l) => l.name === "@fan4" && l.heat === "cold"), cl.some((l) => l.name === "@fan5" && l.heat === "cold")], [true, true, true],
-    "every answered comment reaches the desk as a lead — a question warm, praise cold (owner, 7 Nov)");
+  is([cl.some((l) => l.name === "@fan3" && /address ekkada/.test(l.concern) && l.heat === "warm"), cl.some((l) => l.name === "@fan4"), cl.some((l) => l.name === "@fan5")], [true, false, false],
+    "a question reaches the desk as a warm lead; praise is answered but is not a lead (9 Nov: twelve of them sat in the list with nothing to do)");
+  claude.push({ dm: "Acne ki help chestam 🙏 number cheppandi", public_reply: "Details DM chesam 💬" }, { dm: "Thank you 😊", public_reply: "Thank you 🙏" });
+  await h.call(ig, hook, batch(said("c3b", "fan3b", "naku acne problem undi"), said("c3c", "fan3c", "@ram.09._ thanks Praveen")));
+  const cl2 = leads().filter((l) => l.type === "ig_comment");
+  is([cl2.some((l) => l.name === "@fan3b" && l.heat === "warm"), cl2.some((l) => l.name === "@fan3c")], [true, false], "a problem named without a question mark is a warm lead; a thank-you to a friend is not a lead");
   claude.push({ reply: "Acne ki baaga help chestam 🙏 Mee number cheppandi?", lead: { name: "", phone: "", concern: "Acne", heat: "warm" } });
   await h.call(ig, hook, igDm("ig-nophone", "acne undi"));
   const igNp = leads().filter((l) => l.src_id === "ig-nophone");
@@ -244,7 +248,7 @@ const hook = { token: "hook" };
   global.fetch = keepFetch; delete process.env.IG_LOGIN_TOKEN;
   const swl = leads().filter((l) => l.type === "ig_comment");
   is([sw.handled, swl.some((l) => l.name === "@asker" && l.heat === "warm"), swl.some((l) => l.name === "@fan" && l.heat === "cold"), swl.some((l) => l.name === "@done")],
-    [2, true, true, false], "old comments we never answered are answered and become leads — a question warm, praise cold — and one we already answered is left");
+    [2, true, false, false], "old comments we never answered are answered — the question becomes a lead, the praise does not — and one we already answered is left");
 
   dms.length = 0;
   claude.push({ reply: "Hi Ravi 🙏", lead: null }, { reply: "Hi Sita 🙏", lead: null });

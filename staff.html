@@ -622,6 +622,7 @@
     .nxt.book{background:#fbf3e3;color:var(--gold2,#7a5a22)}
     .nxt.video{background:#f5f3ff;color:#5b21b6}
     .nxt.skip,.nxt.done{background:var(--panel2);color:var(--muted)}
+    .nxt.ig{background:#fdf2f8;color:#9d174d}
     .wait{font-weight:600}
     .wait.warn{color:var(--hot)}.wait.bad{color:var(--bad)}
     .gr{cursor:pointer}
@@ -978,6 +979,7 @@
           <button data-seg="call" class="on">🔥 Ippude call<i id="segN0"></i></button>
           <button data-seg="today">Ee roju<i id="segN1"></i></button>
           <button data-seg="wait">⏳ Waiting<i id="segN4"></i></button>
+          <button data-seg="ig">📩 Insta / FB<i id="segN8"></i></button>
           <button data-seg="open">Book kaanivi<i id="segN2"></i></button>
           <button data-seg="booked">✅ Book ayinavi<i id="segN5"></i></button>
           <button data-seg="fu">📅 Follow-up<i id="segN6"></i></button>
@@ -1667,6 +1669,7 @@
       var head = seg === "call" ? "Ippudu call cheyyalsina A-grade leads levu 👍"
         : seg === "mine" ? "Mee peru meeda leads emi ledu 👍"
         : seg === "wait" ? "Prathi lead ni evaro okaru touch chesaru 👍"
+        : seg === "ig" ? "Number ivvani Instagram / Facebook enquiries levu 👍"
         : seg === "today" ? "Ee roju inka leads raaledu."
         : "Ee filter lo leads levu.";
       var go = [
@@ -1674,6 +1677,7 @@
         { seg: "open", n: counts[2], label: counts[2] + " inka book cheyyaledu" },
         { seg: "today", n: counts[1], label: counts[1] + " ee roju vachchayi" },
         { seg: "mine", n: counts[3], label: "🙋 " + counts[3] + " mee peru meeda" },
+        { seg: "ig", n: counts[8], label: "📩 " + counts[8] + " Instagram / FB lo — number inka raaledu" },
       ].filter(function (x) { return x.n && x.seg !== seg; });
       return '<div class="empty">' + esc(head) +
         (go.length ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center">' +
@@ -1834,9 +1838,14 @@
       var d = typeof v === "number" ? new Date(v) : new Date(v + "T00:00:00+05:30");
       return new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" }).format(d);
     }
+    // No number and nothing to dial: the Instagram or Facebook agent is talking
+    // to them, and the card joins the desk's lists when a number arrives. They
+    // have their own group so nothing is lost (owner, 7 Nov: every enquiry
+    // reaches the desk) without sitting in Waiting as if the desk were late.
+    function igOnly(l) { return !l.phone && (src(l) === "instagram" || src(l) === "facebook"); }
     // Nobody has touched this one yet.
     function untouched(l) {
-      return l.status === "new" && !(l.notes && l.notes.length) && !/^\s*academy/i.test(String(l.concern || ""));
+      return l.status === "new" && !(l.notes && l.notes.length) && !/^\s*academy/i.test(String(l.concern || "")) && !igOnly(l);
     }
     function untouchedAcad(l) { return l.status === "new" && !(l.notes && l.notes.length); }
     var callShowAll = false;
@@ -1924,7 +1933,7 @@
       var isFu = function (l) { return l.outcome === "followup" && (l.status === "new" || l.status === "contacted"); };
       var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length,
         base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length,
-        base.filter(isUntouched).length, base.filter(isBooked).length, base.filter(isFu).length, base.length];
+        base.filter(isUntouched).length, base.filter(isBooked).length, base.filter(isFu).length, base.length, base.filter(igOnly).length];
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
       var catBase = base.filter(function (l) { return l.type !== "job"; });
       ["skin", "hair", "ht"].forEach(function (c, i) {
@@ -1948,6 +1957,7 @@
         if (seg === "open" && !(l.status === "new" || l.status === "contacted")) return false;
         if (seg === "mine" && !isMine(l)) return false;
         if (seg === "wait" && !isUntouched(l)) return false;
+        if (seg === "ig" && !igOnly(l)) return false;
         if (seg === "booked" && !isBooked(l)) return false;
         if (seg === "fu" && !isFu(l)) return false;
         if (seg !== "fu" && l.ts < since) return false;
@@ -3831,8 +3841,14 @@
       return mnapi("closes").then(function (j) {
         $("cashHist").innerHTML = j.rows.length ? j.rows.slice(0, 7).map(function (c) {
           return '<div class="vrow"><b>' + esc(c.day) + " · " + rupee(c.counted) + (c.diff ? ' <span style="color:var(--bad)">(' + (c.diff > 0 ? "+" : "") + rupee(c.diff).replace("₹-", "−₹") + ")</span>" : " ✅") + "</b>" +
-            '<div class="meta">float ' + rupee(c.float) + " + cash " + rupee(c.cashIn) + " − kharchu " + rupee(c.spent) + " = " + rupee(c.expected) + " · " + esc(c.by) + (c.note ? " · " + esc(c.note) : "") + "</div></div>";
+            '<div class="meta">float ' + rupee(c.float) + " + cash " + rupee(c.cashIn) + " − kharchu " + rupee(c.spent) + " = " + rupee(c.expected) + " · " + esc(c.by) + (c.note ? " · " + esc(c.note) : "") +
+            (state.allow("money.bill") ? ' <button class="btn btn--sm" data-act="cash-undo" data-day="' + esc(c.day) + '" title="Ee close teeseyi">🗑 Teeseyi</button>' : "") + "</div></div>";
         }).join("") : "";
+        // What was taken back stays in view, faintly, with who took it back.
+        (j.undone || []).slice(0, 3).forEach(function (c) {
+          $("cashHist").insertAdjacentHTML("beforeend", '<div class="vrow" style="opacity:.6"><b>' + esc(c.day) + ' · <s>' + rupee(c.counted) + "</s> teesesaru</b>" +
+            '<div class="meta">' + esc((c.undone || {}).by || "") + " " + ago((c.undone || {}).at) + ((c.undone || {}).why ? " · " + esc(c.undone.why) : "") + " · mundu " + esc(c.by) + " close chesaru (teda " + (c.diff > 0 ? "+" : "") + rupee(c.diff).replace("₹-", "−₹") + ")</div></div>");
+        });
       }).catch(function () {});
     }
     if ($("ruleAdd")) $("ruleAdd").onclick = function () {
@@ -6159,6 +6175,14 @@
       if (el.dataset.act === "stk-head") { stkShow = el.dataset.k === "low" ? (stkShow === "low" ? "all" : "low") : (stkShow === "none" ? "all" : "none"); loadStock(); return; }
       if (el.dataset.act === "acad-f") { acadF = acadF === el.dataset.k ? "" : el.dataset.k; renderSeatBoard(); return; }
       if (el.dataset.act === "tile-appts") { goTab("appts"); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+      // A cash close entered by mistake: moved aside on the server, never
+      // deleted, and the owner is told (9 Nov: the ₹1/+₹2 trial on 8 Nov).
+      if (el.dataset.act === "cash-undo") {
+        if (!confirm("Ee cash close (" + el.dataset.day + ") teeseyala?\n\nLekka pakkana pettabadutundi, owner ki WhatsApp veltundi. Aa roju malli close cheyyochu.")) return;
+        el.disabled = true;
+        mnapi("close-undo", { day: el.dataset.day }).then(function () { toast("Cash close teesesam"); return loadMoney(); }).catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "tile-seats") {
         goTab("academy");
         setTimeout(function () { var s2 = $("seats"); if (s2) s2.scrollIntoView({ behavior: "smooth", block: "center" }); }, 300);

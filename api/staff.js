@@ -322,7 +322,13 @@ async function leadPage(cfg, offset, count) {
     // person has been waiting for somebody to do it.
     const rec = grades[ph];
     if (rec) Object.assign(base, qual.stamp(rec));
-    base.next = qual.nextAction(rec, base);
+    // No number yet and the enquiry came through Instagram or Facebook: the
+    // agent there is doing the asking, so the card says that instead of
+    // "Adagandi: …" and a waiting clock the desk cannot stop (9 Nov).
+    const social = !ph && /^(instagram|ig_comment|fb_comment|messenger)$/.test(String(l.type || ""));
+    base.next = social
+      ? { kind: "ig", text: `📩 ${/^(fb_comment|messenger)$/.test(String(l.type || "")) ? "Facebook" : "Instagram"} lo agent matladutondi — number vachaka ikkada call ki vastundi` }
+      : qual.nextAction(rec, base);
     // The same goal the agent is working to (owner, 7 Nov).
     try {
       const f = (rec && rec.facts) || {};
@@ -330,7 +336,7 @@ async function leadPage(cfg, offset, count) {
         status, outcome: base.outcome, booked: status === "booked", name: l.name, slot: l.slot || l.date });
     } catch (e) {}
     const touched = Number(stTs[k] || 0) || (n.length ? Math.max(...n.map((x) => Number(x.ts) || 0)) : 0);
-    if (status === "new" && !touched) base.waiting = Math.max(0, Date.now() - Number(l.ts || 0));
+    if (status === "new" && !touched && !social) base.waiting = Math.max(0, Date.now() - Number(l.ts || 0));
     // The last time anybody on the desk did anything with it — a call, a note,
     // a stage change. A lead someone wrote a note on was still "never called"
     // and came back on the call list every morning (8 Nov, point 1).
@@ -352,7 +358,7 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
   const [page, ar, bk, dp, q, rv, en, teamRaw] = await Promise.all([
     leadPage(cfg, 0, LEAD_PAGE),
     guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({})),
-    guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({})),
+    require("./_seats.js").booked(cfg).catch(() => 0),   // students on the books, not a typed number (9 Nov)
     guard.kvCommand(cfg, ["GET", "dp:today"]).catch(() => ({})),
     guard.kvCommand(cfg, ["LRANGE", "adm:queue", "0", "19"]).catch(() => ({})),
     guard.kvCommand(cfg, ["LRANGE", "rv:log", "0", "29"]).catch(() => ({})),
@@ -366,7 +372,7 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
     .filter((a) => a && a.at && a.at > now - 12 * 3600000 && a.at < now + 30 * 86400000)
     .filter(br.keep(sc))
     .sort((a, b) => a.at - b.at);
-  const booked = Math.max(0, Math.min(10, Number(bk.result || 0)));
+  const booked = Math.max(0, Math.min(10, Number(bk || 0)));
   const academy = leads.filter((l) => /^academy/i.test(String(l.concern || "")));
   let today = null; try { today = dp.result ? JSON.parse(dp.result) : null; } catch (e) {}
   let queue = (q.result || []).map((s) => { try { return JSON.parse(s); } catch (e) { return null; } }).filter(Boolean);

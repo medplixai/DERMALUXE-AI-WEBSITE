@@ -118,16 +118,21 @@ module.exports = async (req, res) => {
     return json(res, 200, { ok: true, rows, upi: !!process.env.UPI_VPA, razorpay: pay.rzpOn() });
   }
 
-  // The last fortnight of cash counts.
+  // The last fortnight of cash counts, and the ones taken back, so an undo
+  // is never invisible.
   if (a === "closes") {
-    const r = await guard.kvCommand(cfg, ["LRANGE", "cash:closes", "0", "13"]).catch(() => ({}));
+    const [r, ur] = await Promise.all([
+      guard.kvCommand(cfg, ["LRANGE", "cash:closes", "0", "13"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["LRANGE", "cash:undone", "0", "9"]).catch(() => ({})),
+    ]);
     const days = (r && r.result) || [];
     const rows = [];
     for (const d of days) {
       const c = parse(((await guard.kvCommand(cfg, ["GET", `cash:close:${d}`]).catch(() => ({}))) || {}).result || "", null);
       if (c) rows.push(c);
     }
-    return json(res, 200, { ok: true, rows });
+    const undone = ((ur && ur.result) || []).map((s) => parse(s, null)).filter(Boolean);
+    return json(res, 200, { ok: true, rows, undone });
   }
 
   // Everyone who still owes something, biggest first.
@@ -239,6 +244,29 @@ module.exports = async (req, res) => {
       }
     }
     return json(res, 200, { ok: true, close: rec });
+  }
+
+  // A cash close that should not have been — a trial of the screen, the
+  // wrong day. 8 Nov: the desk tried it with ₹1 and ₹1 and a "+₹2" sat in
+  // the history. Nothing is deleted: the count moves to cash:undone with who
+  // undid it and when, the day's slot is cleared so it can be closed
+  // properly, the audit says so, and the owner hears about it the way they
+  // hear about a difference.
+  if (a === "close-undo") {
+    const day = String(b.day || "");
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return json(res, 400, { error: "Roju ivvandi" });
+    const rec = parse(((await guard.kvCommand(cfg, ["GET", `cash:close:${day}`]).catch(() => ({}))) || {}).result || "", null);
+    if (!rec) return json(res, 404, { error: "Aa roju cash close ledu" });
+    const gone = Object.assign({}, rec, { undone: { by: me.name, at: Date.now(), why: clean(b.why, 160) } });
+    await guard.kvWrite(cfg, ["LPUSH", "cash:undone", JSON.stringify(gone)], "cash close undo");
+    await guard.kvCommand(cfg, ["LTRIM", "cash:undone", "0", "199"]).catch(() => {});
+    await guard.kvCommand(cfg, ["DEL", `cash:close:${day}`]);
+    await guard.kvCommand(cfg, ["LREM", "cash:closes", "0", day]).catch(() => {});
+    await audit(cfg, me, `cash close ${day} undone (was counted ₹${rec.counted}, diff ₹${rec.diff}, by ${rec.by})${gone.undone.why ? ": " + gone.undone.why : ""}`);
+    for (const ph of guard.ownerPhones()) {
+      await notify.sendWa(ph, `🧮 *Cash close ${day} teesesaru*\n\n${me.name} teesesaru. Undi: drawer ₹${Number(rec.counted).toLocaleString("en-IN")}, teda ₹${Number(rec.diff).toLocaleString("en-IN")} (${rec.by}).${gone.undone.why ? "\n📝 " + gone.undone.why : ""}\n\nAa roju malli close cheyyochu.`).catch(() => {});
+    }
+    return json(res, 200, { ok: true, day });
   }
 
   // A bill: what was done, and what it costs.

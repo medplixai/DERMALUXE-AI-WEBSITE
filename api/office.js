@@ -54,7 +54,7 @@ async function snapshot(cfg, me) {
     guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]).catch(() => ({})),
     hashAll(cfg, "dl_status"),
     guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "199"]).catch(() => ({})),
-    guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({})),
+    require("./_seats.js").booked(cfg).catch(() => 0),
     guard.kvCommand(cfg, ["GET", "dp:today"]).catch(() => ({})),
     guard.kvCommand(cfg, ["LRANGE", "rv:log", "0", "49"]).catch(() => ({})),
     guard.kvCommand(cfg, ["LRANGE", "acad:st:list", "0", "99"]).catch(() => ({})),
@@ -88,7 +88,7 @@ async function snapshot(cfg, me) {
     appts.slice(0, 15).forEach((a) => out.push(`   • ${fmt(a.at)} | ${a.name || "?"} | ${a.ph || ""} | ${a.concern || a.treatment || ""}`));
   }
   if (has(me, "academy.view")) {
-    const booked = Number(bk.result || 0);
+    const booked = Number(bk || 0);
     const ids = slr.result || [];
     const studs = [];
     for (const id of ids.slice(0, 60)) { const r = await guard.kvCommand(cfg, ["GET", `acad:st:${id}`]).catch(() => ({})); try { if (r.result) studs.push(JSON.parse(r.result)); } catch (e) {} }

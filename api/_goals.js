@@ -109,8 +109,7 @@ async function state(cfg, nowMs) {
   const out = { seats: null, appts: null, ts: now };
 
   if (g.seats > 0) {
-    const b = cfg ? await guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({})) : {};
-    const booked = Math.max(0, Math.min(docs.BATCH.seats, Number((b && b.result) || 0)));
+    const booked = cfg ? await require("./_seats.js").booked(cfg).catch(() => 0) : 0;
     const left = Math.max(0, g.seats - booked);
     const days = daysTo(g.seatsBy, now);
     out.seats = {

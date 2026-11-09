@@ -60,5 +60,29 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   const r2 = await M({ a: "rates" });
   is(r2.body.rates[0].price, 5500, "rate card saves");
 
+  // cash close, and taking one back
+  console.log("\n  — the drawer at closing —");
+  h.sent.length = 0;
+  const c1 = await M({ a: "close" }, { a: "close", counted: 1, float: 0, spent: 1, note: "" });
+  // today's cash in this run is whatever the bills above took in cash, so the
+  // arithmetic is checked, not a number typed here
+  is([c1.code, c1.body.close.expected, c1.body.close.diff], [200, c1.body.close.cashIn - 1, 1 - (c1.body.close.cashIn - 1)], "expected = float + today's cash − spent, and ₹1 in the drawer is the difference from that");
+  is(h.sent.some((m) => m[0] === "wa" && /Cash close/.test(String(m[2]))), true, "and the owner hears about the difference");
+  const cday = c1.body.close.day;
+  is((await M({ a: "closes" })).body.rows.map((r) => r.day), [cday], "it is in the history");
+  h.sent.length = 0;
+  const u0 = await M({ a: "close-undo" }, { a: "close-undo", day: "2020-01-01" });
+  is(u0.code, 404, "a day that was never closed cannot be undone");
+  const u1 = await M({ a: "close-undo" }, { a: "close-undo", day: cday, why: "trial entry" });
+  is(u1.code, 200, "the trial close is taken back");
+  const hist = (await M({ a: "closes" })).body;
+  is([hist.rows.length, hist.undone.length, hist.undone[0] && hist.undone[0].undone.by], [0, 1, "Owner"], "out of the live history, shown among the ones taken back with who did it");
+  is((await M({ a: "day" })).body.close, null, "the day is open to be closed properly");
+  is(h.sent.some((m) => m[0] === "wa" && /teesesaru/.test(String(m[2])) && /trial entry/.test(String(m[2]))), true, "the owner is told who took it back and why");
+  const kept = (h.run(["LRANGE", "cash:undone", "0", "9"]) || []).map((s) => JSON.parse(s));
+  is([kept.length, kept[0] && kept[0].day, kept[0] && kept[0].diff, kept[0] && kept[0].undone.why], [1, cday, c1.body.close.diff, "trial entry"], "nothing is deleted — the count is kept aside with who undid it");
+  const u2 = await M({ a: "close-undo" }, { a: "close-undo", day: cday });
+  is(u2.code, 404, "undoing it twice finds nothing the second time");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nmoney behaves");
 })();

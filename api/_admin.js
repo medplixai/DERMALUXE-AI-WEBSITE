@@ -840,9 +840,9 @@ async function handle(cfg, digits, text, photo, video) {
       if (!owner) return "🔒 Owner matrame.";
       await guard.kvCommand(cfg, ["SET", "acad:booked", String(Math.max(0, Math.min(10, Number(n))))]);
     }
-    const b = await guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({}));
     const { BATCH } = require("./_docs.js");   // batch dates and seats, written down once
-    const booked = Number(b.result || 0), left = Math.max(0, BATCH.seats - booked);
+    // students on the books or the typed count, whichever is more (_seats.js)
+    const booked = await require("./_seats.js").booked(cfg), left = Math.max(0, BATCH.seats - booked);
     const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "499"]).catch(() => ({}));
     const leads = (r.result || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((l) => l && /^academy/i.test(String(l.concern || "")));
     const paid = leads.filter((l) => /paid/i.test(String(l.concern || ""))).length;

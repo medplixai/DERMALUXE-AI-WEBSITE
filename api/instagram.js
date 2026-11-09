@@ -328,6 +328,18 @@ const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|d
 // The public fallback, when the model is unavailable or a private reply is refused.
 const COMMENT_WA = "Thank you 🙏 Details kosam WhatsApp cheyandi: 99591 34666";
 const COMMENT_ASKS = /(\?|price|cost|rate|charge|fee|entha|enta|book|appoint|slot|timing|treatment|doctor|consult|address|location|ekkad|yekkad|number|contact|whatsapp|details|info|ధర|ఎంత|ఎక్కడ|అడ్రస|టైమ్)/i;
+// A comment with nothing to follow up — "🔥🔥🔥", "All the best", "@friend
+// thanks" — is answered like any other, but it is not a lead: on 9 Nov twelve
+// of them sat in the desk's list with no number and nothing to do. A question,
+// a treatment or a problem named, or a few sentences of their own, still is.
+const COMMENT_CONCERN = /(acne|pimpl|hair\s*fall|hair\s*loss|hairfall|dandruff|pigment|dark\s*circle|dark\s*spot|scar|mole|wart|\btan\b|melasma|psoriasis|eczema|white\s*hair|grey\s*hair|gray\s*hair|bald|transplant|\bprp\b|\bgfc\b|laser|botox|filler|peel|facial|wrinkle|stretch\s*mark|allerg|itch|rash|fungal|mottim|macha|juttu|raalip|chundru|mudata|nallabad|చర్మ|మొటిమ|మచ్చ|జుట్టు|చుండ్రు|ముడత)/i;
+const COURTESY_WORD = /^(thanks?|thankyou|thank|you|u|tq|ty|tysm|all|the|best|wishes|congrats|congratulations|nice|super|superb|wow|great|good|awesome|amazing|beautiful|lovely|cute|cool|wonderful|excellent|fantastic|keep|it|up|well|done|luck|god|bless|proud|of|sir|madam|mam|garu|andi|bro|anna|akka|ji|dear|team|dermaluxe|ok|okay|hi|hello|hey|love|loved|so|very|one|semma|mass|vera|level|adiripoyindi|baagundi|bagundi|chala|ga|undi|happy|for|and|to|a|is|are|this|that|work|job|clinic|dr|pls|please|plz|see|watch|look|check|new|opening|grand|success|successful|wishing|many|more|congratulation)$/i;
+function isEnquiry(text) {
+  const t = String(text || "");
+  if (COMMENT_ASKS.test(t) || COMMENT_CONCERN.test(t)) return true;
+  const words = t.replace(/@[\w.]+/g, " ").replace(/#\w+/g, " ").replace(/[^\p{L}\p{N}\s]/gu, " ").split(/\s+/).filter((w) => w && !COURTESY_WORD.test(w));
+  return words.length >= 4;
+}
 // Faults a public comment reply may never carry; the rest of the DM lint (one
 // question, a next step) is about conversations, not one-line acknowledgements.
 const COMMENT_HARD = new Set(["price_quoted", "medicine", "diagnosis_guess", "reassurance", "internal_note"]);
@@ -401,7 +413,7 @@ async function storeCommentLead(cfg, username, fromId, text, permalink, kind) {
     mode: "", date: "", slot: "", skin_score: null, hair_score: null, skin_age: null, skin_type: "", treatments: [],
     page: permalink || (fb ? "facebook-comment" : "instagram-comment"),
     // A question is warm; a thank-you or an emoji is a cold lead the desk can still greet.
-    heat: COMMENT_ASKS.test(text) ? "warm" : "cold",
+    heat: COMMENT_ASKS.test(text) || COMMENT_CONCERN.test(text) ? "warm" : "cold",
     call_prep: `${fb ? "Facebook" : "Instagram"} comment — ${fb ? "Messenger" : "Instagram"} lo reply cheyyandi; number ivvamani adagandi.`,
     src_id: `${fb ? "fc" : "c"}:${fromId}`,
   };
@@ -443,11 +455,13 @@ async function handleComment(entry, v) {
     // The model busy or down: someone asking a question still hears where to
     // ask it. Praise and spam get nothing, as they would anyway.
     console.error("ig: comment ai error", e && e.message);
-    if (COMMENT_ASKS.test(text)) { await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id); await sendCommentReply(commentId, COMMENT_WA, cred); }
+    if (isEnquiry(text)) await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id);
+    if (COMMENT_ASKS.test(text)) await sendCommentReply(commentId, COMMENT_WA, cred);
     return;
   }
-  // Everything that is not spam is answered, and so is a lead (owner, 7 Nov).
-  if (out.dm || out.public_reply || COMMENT_ASKS.test(text)) await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id);
+  // Everything that is not spam is answered (owner, 7 Nov); what has something
+  // to follow up is a lead too (9 Nov — praise and emojis are not).
+  if ((out.dm || out.public_reply || COMMENT_ASKS.test(text)) && isEnquiry(text)) await storeCommentLead(cfg, username, fromId, text, v.media && v.media.id);
 
   // The same last check the DM agent's replies get. Comment replies skipped it
   // until 5 November 2026, and a public reply is read by everyone, not one person.
@@ -549,7 +563,7 @@ async function sweepFbComments(cfg, max) {
       if (out.dm && fresh) { try { await call(`/${pageId}/messages`, {}, { recipient: { comment_id: c.id }, message: { text: String(out.dm).slice(0, 1000) } }); dmOk = true; } catch (e) { console.error("fb: private reply", e.message); } }
       const pub = dmOk ? out.public_reply : (out.dm || out.public_reply ? (COMMENT_ASKS.test(c.message) ? COMMENT_WA : out.public_reply) : null);
       if (pub) { try { await call(`/${c.id}/comments`, {}, { message: String(pub).slice(0, 300) }); } catch (e) { console.error("fb: comment reply", e.message); } }
-      if (out.dm || out.public_reply || COMMENT_ASKS.test(c.message)) await storeCommentLead(cfg, from.name || "", from.id || c.id, c.message, p.permalink_url, "fb");
+      if ((out.dm || out.public_reply || COMMENT_ASKS.test(c.message)) && isEnquiry(c.message)) await storeCommentLead(cfg, from.name || "", from.id || c.id, c.message, p.permalink_url, "fb");
       if (++handled >= (max || 20)) return { ok: true, seen, handled, more: true };
     }
   }
@@ -781,4 +795,5 @@ async function handleMessage(req, m) {
 }
 
 module.exports.sweepIgComments = sweepIgComments;
+module.exports.isEnquiry = isEnquiry;
 module.exports.sweepFbComments = sweepFbComments;

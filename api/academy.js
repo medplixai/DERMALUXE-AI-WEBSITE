@@ -314,7 +314,9 @@ module.exports = async (req, res) => {
     const rows = Array.from(people.values()).map((p) => {
       const paid = Number(p.paid || 0);
       const dropped = p.studentStatus === "dropped" || p.leadStatus === "closed";
-      const stage = dropped ? "lost" : paid > 0 ? "reserved" : "enquiry";
+      // A student record the desk created holds a seat whether or not the fee
+      // has started coming in (9 Nov); an enquiry-only record does not.
+      const stage = dropped ? "lost" : (paid > 0 || (p.id && !["enquiry", "completed"].includes(String(p.studentStatus || "")))) ? "reserved" : "enquiry";
       const touched = p.lastNote ? p.lastNote.ts : (p.enquiredAt || p.createdAt || 0);
       return Object.assign({}, p, {
         stage,
@@ -327,13 +329,16 @@ module.exports = async (req, res) => {
     }).sort((a2, b2) => (b2.lastTouch || 0) - (a2.lastTouch || 0));
 
     const reserved = rows.filter((r) => r.stage === "reserved");
+    // The same number the Leads tile and the agent use: this board's reserved
+    // rows, or the owner's typed count if that says more.
+    const seatsBooked = Math.max(reserved.length, await require("./_seats.js").booked(cfg).catch(() => 0));
     const collected = reserved.reduce((n, r) => n + r.paid, 0);
     const pending = reserved.reduce((n, r) => n + r.balance, 0);
 
     return json(res, 200, {
       ok: true,
       rows,
-      seats: { total: 10, booked: reserved.length, left: Math.max(0, 10 - reserved.length) },
+      seats: { total: 10, booked: seatsBooked, left: Math.max(0, 10 - seatsBooked) },
       money: { collected, pending },
       counts: {
         reserved: reserved.length,

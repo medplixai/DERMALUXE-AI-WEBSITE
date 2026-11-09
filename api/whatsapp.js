@@ -702,9 +702,8 @@ async function academyCtx(cfg, hist, text) {
   try {
     const inConvo = ACADEMY_ASK.test(String(text || "")) || (hist || []).slice(-4).some((t) => ACADEMY_ASK.test(String(t.u || "")) || /academy/i.test(String(t.a || "")));
     if (!inConvo || !cfg) return "";
-    const b = await guard.kvCommand(cfg, ["GET", "acad:booked"]).catch(() => ({}));
     const seats = acadDocs.BATCH.seats;
-    const booked = Math.max(0, Math.min(seats, Number(b.result || 0))), left = seats - booked;
+    const booked = await require("./_seats.js").booked(cfg), left = seats - booked;
     const days = Math.max(0, Math.ceil((acadDocs.BATCH.offerEndMs - Date.now()) / 86400000));
     return `[ACADEMY SEATS STATUS: booked ${booked}/${seats}, seats left ${left}; launch offer ends ${acadDocs.BATCH.offerEnd} (${days} days left); batch starts ${acadDocs.BATCH.start}] `;
   } catch (e) { return ""; }
