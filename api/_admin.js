@@ -549,6 +549,30 @@ function promoParams(tpl, name, text, p2) {
   return [name, text]; // clinic_update
 }
 
+// Module level, not inside handle(): `const` has no hoisting, and the
+// "broadcast:" handler above the old position read INDUCEMENT_TEXT before
+// its line ran — every broadcast command threw a ReferenceError from 10 Oct
+// until the broadcast test of 9 Nov 2026 tripped over it.
+// NMC 8.1(x) forbids "discounts, limited-period offers, contests, coupons,
+// gifts, cashbacks, referral benefits, free procedures or similar
+// inducements" aimed at patients, and 10.1(iv) grades inducement for
+// patients and DIGITAL MASS SOLICITATION as a SERIOUS violation carrying
+// 6-12 months' suspension. flash_offer, festival_offer, new_service and
+// free_camp carry the inducement in the template body itself — "Flash
+// Offer", "slots limited", "FREE Skin & Hair Check-up Camp" — so no wording
+// the owner types can make a send of one lawful.
+//
+// These are the clinic's Meta-approved templates and its own marketing, so
+// nothing is deleted here: the send refuses and says which clause stopped
+// it. Reversing this is one constant, deliberately, so that turning the
+// machinery back on is a decision somebody makes rather than a default.
+const INDUCEMENT_TPL = new Set(["flash_offer", "festival_offer", "new_service", "free_camp"]);
+// Text the owner types which would turn even a factual template into an
+// inducement or manufactured scarcity.
+const INDUCEMENT_TEXT = /\boffer\b|\bdiscount\b|\bfree\b|\d{1,2}\s*%|\bcashback\b|\bcoupon\b|slots? limited|limited (period|time)|last chance|hurry|only today|\bgift\b/i;
+const inducementRefusal = (what) =>
+  `\u26d4 Idi pampalemu \u2014 *${what}*.\n\nNMC 8.1(x) prakaram patients ki offer, discount, free procedure, "slots limited" lanti vi pampakoodadhu; 10.1(iv) daanini *serious violation* (6-12 nelalu suspension) ga cheputundi.\n\nFactual information pampochu \u2014 clinic timings, kotha facility, oka service ippudu available ani. Academy (students ki) course fees veru, avi pampochu.`;
+
 // Distinct opted-in patient phones from the lead book (job applicants out,
 // optional concern/treatments segment filter).
 async function bcTargets(cfg, seg, opts) {
@@ -557,10 +581,28 @@ async function bcTargets(cfg, seg, opts) {
   const optSet = new Set(opt.result || []);
   // cold: enquiries 7–90 days old that never fixed a slot (the campaigns screen)
   const cold = !!(opts && opts.cold);
+  // old: people who have not written in a fortnight — the ones who do not
+  // know the clinic moved to Rama Mahal on 6 Nov 2026. Everyone who wrote in
+  // the last two weeks is already talking to the agent and needs no notice;
+  // job applicants and academy enquirers are not patients; anyone with a slot
+  // coming up already knows. Factual information only (NMC 8.1), by the
+  // owner's decision of 9 Nov 2026.
+  const old = !!(opts && opts.old);
   const booked = new Set();
   if (cold) for (const key of ["appt:q", "appt:done"]) {
     const q = await guard.kvCommand(cfg, ["LRANGE", key, "0", "299"]).catch(() => ({}));
     for (const s of (q.result || [])) { try { booked.add(String(JSON.parse(s).ph)); } catch (e) {} }
+  }
+  const upcoming = new Set();
+  if (old) {
+    const q = await guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({}));
+    for (const s of (q.result || [])) { try { const a = JSON.parse(s); if (a && a.at > Date.now() && a.status !== "cancelled") upcoming.add(String(a.ph || "").replace(/\D/g, "").slice(-10)); } catch (e) {} }
+  }
+  // The newest enquiry per number decides whether somebody is "old": a person
+  // who wrote in September and again yesterday is not.
+  const latest = new Map();
+  if (old) for (const s of (r.result || [])) {
+    try { const l = JSON.parse(s); const ph = String((l && l.phone) || "").replace(/\D/g, "").slice(-10); if (ph.length === 10) latest.set(ph, Math.max(latest.get(ph) || 0, Number(l.ts) || 0)); } catch (e) {}
   }
   const seen = new Set(); const targets = [];
   for (const s of (r.result || [])) {
@@ -569,6 +611,11 @@ async function bcTargets(cfg, seg, opts) {
     if (cold) {
       const age = Date.now() - (l.ts || 0);
       if (age < 7 * 86400000 || age > 90 * 86400000 || (l.slot && l.date) || booked.has(String(l.phone || "").replace(/\D/g, "").slice(-10))) continue;
+    }
+    if (old) {
+      const ph0 = String(l.phone || "").replace(/\D/g, "").slice(-10);
+      if (Date.now() - (latest.get(ph0) || 0) < 14 * 86400000 || upcoming.has(ph0)) continue;
+      if (require("./_acadfu.js").isAcademyLead(l)) continue;
     }
     if (seg) {
       const hay = (String(l.concern || "") + " " + (Array.isArray(l.treatments) ? l.treatments.join(" ") : "")).toLowerCase();
@@ -1632,7 +1679,7 @@ async function handle(cfg, digits, text, photo, video) {
   // skips STOP opt-outs, dedupes phones, excludes job applicants.
   if (/^broadcast$/i.test(t)) {
     if (!owner) return "🔒 Broadcast owner ki matrame.";
-    return "📣 *Broadcast — pata patients ki factual information*\n\nAndariki:\nbroadcast: Clinic Dasara roju kuda Mon-Sat 9 AM - 9 PM open\n\nOka segment ki matrame:\nbroadcast hair: Hair transplant consultations ki Saturday slots ippudu unnayi\n(hair / skin / laser / acne / bridal / acad)\n\n⚠️ Offer, discount, free, \"slots limited\" — ivi pampalemu (NMC 8.1(x), 10.1(iv)). Academy course fees students ki, avi pampochu.";
+    return "📣 *Broadcast — pata patients ki factual information*\n\nAndariki:\nbroadcast: Clinic Dasara roju kuda Mon-Sat 9 AM - 9 PM open\n\nOka segment ki matrame:\nbroadcast hair: Hair transplant consultations ki Saturday slots ippudu unnayi\n(hair / skin / laser / acne / bridal / acad)\n\nRendu vaaralu nunchi matladani paata patients ki matrame (kotha clinic lanti update ki):\nbroadcast old: Mana kotha clinic Rama Mahal lo 6 November nunchi open ayindi\n\n⚠️ Offer, discount, free, \"slots limited\" — ivi pampalemu (NMC 8.1(x), 10.1(iv)). Academy course fees students ki, avi pampochu.";
   }
   // broadcast: <offer>  — everyone;  broadcast hair: <offer> — only leads
   // whose concern/treatments mention that word (waste spend down, relevance up)
@@ -1645,8 +1692,11 @@ async function handle(cfg, digits, text, photo, video) {
     if (!/^acad/i.test(bm[1] || "") && INDUCEMENT_TEXT.test(bm[2] || "")) return inducementRefusal("ee text lo offer/discount/free undi");
     if (!cfg) return "Storage ledu.";
     const seg = (bm[1] || "").toLowerCase();
-    const targets = await bcTargets(cfg, seg);
+    // "broadcast old:" — the people who have not written in a fortnight,
+    // for a factual notice such as the move to Rama Mahal (owner, 9 Nov 2026).
+    const targets = seg === "old" ? await bcTargets(cfg, "", { old: true }) : await bcTargets(cfg, seg);
     if (!targets.length) {
+      if (seg === "old") return "Rendu vaaralu kante paata patients evaru leru — andaru ee madhya ne matladaru.";
       return seg
         ? `'${seg}' concern tho patients evaru dorakaledu.\nTry: broadcast hair: / broadcast skin: / broadcast laser: — leda andariki: broadcast: <offer>`
         : "Broadcast ki patients evaru leru inka — leads lo phone numbers unte veltundi.";
@@ -1668,26 +1718,6 @@ async function handle(cfg, digits, text, photo, video) {
       + "\n\n🌿 " + PROMO_DEFS.seasonal_tips.usage
       + "\n\nPreview vachaka *ok* antene veltundi · STOP patients auto-skip";
   }
-  // NMC 8.1(x) forbids "discounts, limited-period offers, contests, coupons,
-  // gifts, cashbacks, referral benefits, free procedures or similar
-  // inducements" aimed at patients, and 10.1(iv) grades inducement for
-  // patients and DIGITAL MASS SOLICITATION as a SERIOUS violation carrying
-  // 6-12 months' suspension. flash_offer, festival_offer, new_service and
-  // free_camp carry the inducement in the template body itself — "Flash
-  // Offer", "slots limited", "FREE Skin & Hair Check-up Camp" — so no wording
-  // the owner types can make a send of one lawful.
-  //
-  // These are the clinic's Meta-approved templates and its own marketing, so
-  // nothing is deleted here: the send refuses and says which clause stopped
-  // it. Reversing this is one constant, deliberately, so that turning the
-  // machinery back on is a decision somebody makes rather than a default.
-  const INDUCEMENT_TPL = new Set(["flash_offer", "festival_offer", "new_service", "free_camp"]);
-  // Text the owner types which would turn even a factual template into an
-  // inducement or manufactured scarcity.
-  const INDUCEMENT_TEXT = /\boffer\b|\bdiscount\b|\bfree\b|\d{1,2}\s*%|\bcashback\b|\bcoupon\b|slots? limited|limited (period|time)|last chance|hurry|only today|\bgift\b/i;
-  const inducementRefusal = (what) =>
-    `\u26d4 Idi pampalemu \u2014 *${what}*.\n\nNMC 8.1(x) prakaram patients ki offer, discount, free procedure, "slots limited" lanti vi pampakoodadhu; 10.1(iv) daanini *serious violation* (6-12 nelalu suspension) ga cheputundi.\n\nFactual information pampochu \u2014 clinic timings, kotha facility, oka service ippudu available ani. Academy (students ki) course fees veru, avi pampochu.`;
-
   const mkPromo = async (tpl, promoText, p2) => {
     if (!owner) return "🔒 Promo broadcasts owner ki matrame.";
     if (INDUCEMENT_TPL.has(tpl)) return inducementRefusal(tpl);
