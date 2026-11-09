@@ -87,7 +87,11 @@ const RULES = [
     // forbid them; that line is an instruction to a model, not ad copy.
     allow: /NEVER write|binds every word/ },
   { clause: "8.1(iii)", what: "patient counts and success rates",
-    re: /\d[\d,]*\s*(lakh|lac|lakhs)\+?\s*(happy|satisfied|patients|clients)|happy clients|సంతృప్త\s*క్లయింట్|\b\d{1,3}%\s*success/gi },
+    re: /\d[\d,]*\s*(lakh|lac|lakhs)\+?\s*(happy|satisfied|patients|clients)|\d[\d,]*\+?\s*(cases|procedures|surgeries)\s*(performed|done|completed)|happy clients|సంతృప్త\s*క్లయింట్|\b\d{1,3}%\s*success/gi,
+    // "1000+ cases performed" on Dr. Jaishree's card: told it is a patient
+    // count under 8.1(iii), the owner chose to publish it (9 Nov 2026). The
+    // one line is marked data-owner and named at the foot of every run.
+    allow: /data-owner="dr-jaishree-cases"/ },
   { clause: "8.1(ix)", what: "superiority claims — best / No.1 / leading / world-class",
     re: /\b(best|finest|No\.?\s*1|number one|unmatched|most trusted)\b|world[\s-]?class|five[\s-]?star|ఉత్తమ|బెస్ట్|ప్రపంచ\s*స్థాయి|ఫైవ్-స్టార్/gi,
     // "your best self" is about the patient, not a claim that this clinic beats
@@ -462,12 +466,14 @@ ok(/docs\.regLine\("nikhitha"\)/.test(read("api/_trust.js")), "3.2 Expl. III · 
 // named here on every run so the audit never reads as clean over it.
 const ownerOffer = files.filter((f) => /data-owner="ht-offer-2026-11"/.test(fs.readFileSync(f, "utf8"))).map((f) => path.relative(ROOT, f));
 if (ownerOffer.length) console.log("  !   8.1(x) · a free hair transplant consultation IS offered, by the owner's decision of 7 Nov 2026 (6 Nov – 6 Dec): " + ownerOffer.join(", "));
+const ownerCases = files.filter((f) => /data-owner="dr-jaishree-cases"/.test(fs.readFileSync(f, "utf8"))).map((f) => path.relative(ROOT, f));
+if (ownerCases.length) console.log("  !   8.1(iii) · \"1000+ cases performed\" IS published on the surgeon's card, by the owner's decision of 9 Nov 2026: " + ownerCases.join(", "));
 
 console.log("");
 // The runner prints only this last line, so it has to carry the exception.
 // "nothing a patient should not read" over a published before/after would be
 // the audit telling a comfortable lie once a week.
 console.log(bad ? `${bad} problem(s) — a patient can still read these`
-  : decided.length || ownerOffer.length ? "clean except what the owner decided to publish: " + [decided.length ? "the before/after photograph (8.1(v), 27 Oct)" : "", ownerOffer.length ? "a free hair transplant consultation (8.1(x), 7 Nov)" : ""].filter(Boolean).join(" and ")
+  : decided.length || ownerOffer.length || ownerCases.length ? "clean except what the owner decided to publish: " + [decided.length ? "the before/after photograph (8.1(v), 27 Oct)" : "", ownerOffer.length ? "a free hair transplant consultation (8.1(x), 7 Nov)" : "", ownerCases.length ? "the surgeon's case count (8.1(iii), 9 Nov)" : ""].filter(Boolean).join(", ")
   : "nothing a patient should not read");
 process.exit(bad ? 1 : 0);
