@@ -193,5 +193,47 @@ const tomorrow11 = () => {
   h.as(["leads.view"]);
   is((await S({ a: "day", day })).code, 403, "and somebody with no appointment permission sees nothing");
   h.as(["*"]);
+
+  // Why a booking is still unconfirmed, on the row itself (desk PDF 9 Nov,
+  // points 5 and 6): the desk's own record of the number comes first, then
+  // the confirm template, then how long the call has been owed.
+  console.log("\n  — why 'confirm kaledu' —");
+  h.run(["DEL", "appt:q"]);
+  const tmr = tomorrow11(), nowMs = Date.now();
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500081", name: "Aruna", at: tmr, ts: nowMs - 5 * 60000, by: "AI agent" })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500082", name: "Bhargavi", at: tmr, ts: nowMs - 3 * 3600000, by: "AI agent" })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500083", name: "Chaitra", at: tmr, ts: nowMs - 20 * 3600000, by: "AI agent", c1: true })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500084", name: "Deepa", at: tmr, ts: nowMs - 2 * 3600000, by: "AI agent" })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500085", name: "Esther", at: tmr, ts: nowMs - 2 * 3600000, by: "hemasri", cf: true, cfAt: nowMs - 3600000 })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500086", name: "Farida", at: tmr, ts: nowMs - 2 * 3600000, by: "AI agent" })]);
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500087", name: "Gita", at: tmr, by: "AI agent" })]);                    // an agent row from before 9 Nov: no booking time
+  h.run(["RPUSH", "appt:q", JSON.stringify({ ph: "9876500088", name: "Hema", at: tmr, ts: nowMs - 2 * 3600000, by: "AI agent" })]);
+  // The desk's outcome lives under the LEAD's key — the lead wrote three days
+  // ago, the agent booked two hours ago, the desk rang an hour ago. The
+  // ringing time is dl_status_ts, and that is what counts (review, 9 Nov).
+  const leadTs84 = nowMs - 3 * 86400000;
+  h.run(["HSET", "dl_outcome", `${leadTs84}|9876500084`, "noanswer"]);
+  h.run(["HSET", "dl_status_ts", `${leadTs84}|9876500084`, String(nowMs - 3600000)]);
+  h.run(["HSET", "dl_notes", `${nowMs - 3600000}|9876500086`, JSON.stringify([{ ts: nowMs - 1800000, by: "hemasri", text: "Call chesanu — repu confirm chestanu annaru" }])]);
+  // Gita: a "thinking" the desk recorded five months ago on an unrelated enquiry
+  h.run(["HSET", "dl_outcome", `${nowMs - 150 * 86400000}|9876500087`, "thinking"]);
+  h.run(["HSET", "dl_status_ts", `${nowMs - 150 * 86400000}|9876500087`, String(nowMs - 150 * 86400000)]);
+  // Hema: the desk rang BEFORE the agent booked — that call says nothing about this booking
+  h.run(["HSET", "dl_outcome", `${nowMs - 3 * 86400000}|9876500088`, "noanswer"]);
+  h.run(["HSET", "dl_status_ts", `${nowMs - 3 * 86400000}|9876500088`, String(nowMs - 5 * 3600000)]);
+  const wk2 = await S({ a: "week" });
+  const whyOf = (ph) => ((wk2.body.pending || []).find((r) => r.ph === ph) || {}).cfWhy || "";
+  is(/Ippude book ayindi/.test(whyOf("9876500081")), true, "booked five minutes ago: 'just booked — call'");
+  is(/Inka call cheyyaledu — book ayi 3 gantalu/.test(whyOf("9876500082")), true, "three hours and no call: says so, with the hours");
+  is(/Confirm message vellindi/.test(whyOf("9876500083")), true, "the day-before confirm template went and nobody answered it");
+  is(/Call chesaru — ettaledu/.test(whyOf("9876500084")), true, "the desk rang after the booking and nobody picked up — the desk's own record comes first, read by the time of the call, not of the enquiry");
+  is(/Call chesaru — confirm ani cheppaledu/.test(whyOf("9876500086")), true, "a call note without a confirmation reads as 'rang, not confirmed'");
+  is(/Inka confirm call cheyyaledu/.test(whyOf("9876500087")), true, "a row with no booking time does not borrow a five-month-old 'thinking' from another enquiry");
+  is(/Inka call cheyyaledu — book ayi 2 gantalu/.test(whyOf("9876500088")), true, "a call made before the booking says nothing about it");
+  is((wk2.body.pending || []).some((r) => r.ph === "9876500085"), false, "a confirmed row is not in the pending list at all");
+  const dayRows = (await S({ a: "day", day: dayOf(tmr) })).body.rows;
+  is((dayRows.find((r) => r.ph === "9876500085") || {}).cfWhy, "", "and carries no reason on the day list either");
+  is(/ettaledu/.test((dayRows.find((r) => r.ph === "9876500084") || {}).cfWhy || ""), true, "the day list carries the same reason as the week");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nappointments behave");
 })();

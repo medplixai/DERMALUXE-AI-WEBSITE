@@ -91,7 +91,9 @@ Last 3 weeks lo leads ekkadi nunchi (job enquiries teesesi):
 | First touch time | 39 h | < 1 h (9 AM–9 PM) |
 | Arrived / no-show marked | 1 of 33 | 100% |
 
-## 3b. Drafts — owner ok tarvata matrame veltayi
+## 3b. Drafts — owner ok ichcharu (9 Nov raatri: "ok drafts ok, paata leads ki message pampu")
+
+**Message (14):** `broadcast old:` command ready (code 25ba78e). Audience = 2 vaaralu nunchi matladani 80 mandi (job/academy/STOP/upcoming slot unnavaru kaadu), clinic_update template, 14-rojula touch guard. Owner mee admin phone nunchi clinic WhatsApp ki command pampi, preview chusi *ok* cheppali — mass message ki owner authorization ide. Test rastunte paata bug dorikindi: "broadcast:" command 10 Oct nunchi crash avutondi (INDUCEMENT_TEXT const order) — fix ayindi.
 
 **(14) Paata leads ki informational message** (clinic_update utility template, 1 sari, opt-out unna vallaki kaadu, job/academy leads ki kaadu). Promo kaadu, discount kaadu, doctor photo kaadu — NMC lo factual information matrame:
 
@@ -106,6 +108,15 @@ Last 3 weeks lo leads ekkadi nunchi (job enquiries teesesi):
 | 3 | Laser hair reduction — Eluru lo | Face, underarms, full body — doctor supervision lo laser hair reduction. Skin type chusi sessions plan. DermaLuxe by Medicare, Rama Mahal, Eluru. Slot kosam WhatsApp cheyandi. | WhatsApp ki message |
 
 Targeting: Eluru + 30 km, 20–55, all; budget ₹500/day total (3 ad sets ₹170 each) 14 rojulu trial; result metric = WhatsApp conversations → appointments (app lo ad_headline tho track avutundi).
+
+## 3c. Reception PDF (9 Nov raatri, 8 points) — anni 1.67.0 lo
+
+1–2, 7. Book / waitlist ki kotha sheet: peru, 10-digit number (anthe), calendar, time, concern — prompts poyayi; error sheet lone kanipistundi.
+3. Leads period filter (Today / 7 / 30) ippudu chips counts ni kuda marchutundi (list + counts okate rule); Anni count untundi.
+4. Kotha lead gender lo ఆడ / మగ.
+5–6. Confirm kaani prathi row kinda karanam: "Inka call cheyyaledu — book ayi 3 gantalu" / "Call chesaru — ettaledu" / "Confirm message vellindi, reply raaledu" / "Malli call cheyyamannaru" — day list, repu/ee vaaram lists, Confirm pending strip lo.
+8. Academy Vaddannaru cards lo "Reason: Not interested · Sowmya · 9 d ago".
+Ramesh screenshot (Instagram comment lead): idi design prakaram — number leni Insta/FB leads "📩 Insta / FB" group lo matrame untayi, Ippude call / Waiting lo raavu; agent DM lo number adugutundi, number vachaka normal flow lo vastundi. Desk em cheyyalsina avasaram ledu.
 
 ## 4. Owner nunchi kavalsinavi
 1. Anthropic auto-reload (meeru console lo; key chat lo paste cheyyoddu).

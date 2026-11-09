@@ -829,6 +829,7 @@
     .lead.hot{border-left-color:#e0558a}.lead.warm{border-left-color:var(--primary)}
     /* a new lead nobody has touched for an hour — red edge, whatever its heat */
     .lead.late{border-left-color:var(--bad)}
+    .cfwhy{color:var(--hot);margin-top:5px;font-weight:500}
     .badge.src{background:var(--gd);color:var(--gd-ink)}
     .countdown > div.on{outline-color:var(--blk)}
 
@@ -1953,6 +1954,11 @@
       // DermaLuxe and the academy apart (8 Nov, point 2): every group, count
       // and filter below works on one or the other, never both mixed.
       var base = acadMode ? acadPeople : clinicPeople;
+      // The period picker (Today / 7 / 30 days) narrowed the list but not the
+      // counts on the chips, so "Last 7 days" still said "Ippude call 31" over
+      // a list of six — the desk read it as the filter not working (9 Nov).
+      // Follow-ups keep their own date and are never cut by the period.
+      base = base.filter(function (l) { return l.ts >= since || (l.outcome === "followup" && (l.status === "new" || l.status === "contacted")); });
       var lm0 = $("lmN0"), lm1 = $("lmN1");
       if (lm0) lm0.textContent = clinicPeople.length ? String(clinicPeople.length) : "";
       if (lm1) lm1.textContent = acadPeople.length ? String(acadPeople.length) : "";
@@ -1978,7 +1984,7 @@
         var b = document.querySelector('#fchips [data-fq="' + f + '"]'); if (b) b.classList.toggle("on", fs === f);
       });
       ["a_enquiry", "a_waiting", "a_process", "a_paypend", "a_booked", "a_paid", "noanswer"].forEach(function (o, i) {
-        var n = acadPeople.filter(function (l) { return l.outcome === o; }).length;
+        var n = (acadMode ? base : acadPeople).filter(function (l) { return l.outcome === o; }).length;   // the period picker narrows these too
         var el = $("afN" + i); if (el) el.textContent = n ? " " + n : "";
         var b = document.querySelector('#afchips [data-fq="o:' + o + '"]'); if (b) b.classList.toggle("on", fs === "o:" + o);
       });
@@ -1991,7 +1997,7 @@
         if (seg === "ig" && !igOnly(l)) return false;
         if (seg === "booked" && !isBooked(l)) return false;
         if (seg === "fu" && !isFu(l)) return false;
-        if (seg !== "fu" && l.ts < since) return false;
+        if (seg !== "fu" && l.ts < since && !isFu(l)) return false;   // the same rule the chip counts use
         if (fs === "fu:due") { if (!fuDue(l)) return false; }
         else if (fs && fs.indexOf("o:") === 0) { if (l.outcome !== fs.slice(2)) return false; }
         else if (fs && l.status !== fs) return false;
@@ -2209,6 +2215,8 @@
           (r.status !== "booked" ? ' <span class="chip">' + esc(SCH_ST[r.status] || r.status) + "</span>" : "") + "</div></div>" +
           apptDates(r) +
           ((r.risk || []).length ? '<div class="meta" style="margin-top:5px">' + r.risk.map(function (x) { return '<span class="chip hot">⚠️ ' + esc(x) + "</span>"; }).join(" ") + "</div>" : "") +
+          // Why it is still unconfirmed, in one line (desk PDF 9 Nov, points 5 & 6).
+          (r.status === "booked" && !r.cf && r.cfWhy ? '<div class="meta cfwhy">❓ ' + esc(r.cfWhy) + "</div>" : "") +
           (r.note ? '<div class="meta" style="margin-top:5px">📝 ' + esc(r.note) + "</div>" : "") +
           '<div class="acts">' +
           '<a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name) + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞</a>' +
@@ -2270,6 +2278,7 @@
               '<div class="meta">' + esc(r.concern || "—") + (r.staffName ? " · 👩‍⚕️ " + esc(r.staffName) : "") + "</div></div>" +
               "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') + "</div></div>" +
               apptDates(r) +
+              (r.status === "booked" && !r.cf && r.cfWhy ? '<div class="meta cfwhy">❓ ' + esc(r.cfWhy) + "</div>" : "") +
               '<div class="acts"><a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name) + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞</a>' +
               '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.ph) + '">💬</a></div></div></article>';
           }).join("") + "</div>";
@@ -2301,6 +2310,7 @@
           return '<article class="slot"><div class="when">' + esc(r.time) + "<span>" + esc(dayLbl) + "</span></div><div>" +
             '<h3 data-act="pt-open" data-phone="' + esc(r.ph) + '" style="cursor:pointer">' + esc(r.name || r.label || "Patient") + ' <span class="meta">· ' + esc(r.ph) + "</span></h3>" +
             '<div class="meta">' + esc(r.concern || "—") + (r.ts ? " · book ayi " + esc(waitFor(Date.now() - r.ts)) + (r.by ? " · " + esc(r.by) : "") : "") + "</div>" +
+            (r.cfWhy ? '<div class="meta cfwhy">❓ ' + esc(r.cfWhy) + "</div>" : "") +
             '<div class="acts">' +
             (canEdit ? '<button class="btn btn--sm btn--gold" data-act="sch-confirm" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Confirm ayindi</button>' : "") +
             '<a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name || "") + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞 Call</a>' +
@@ -2433,6 +2443,9 @@
       if (hh > 23 || mm > 59) { toast("Time sarigga ledu"); return null; }
       return new Date(dayISO + "T" + String(hh).padStart(2, "0") + ":" + String(mm).padStart(2, "0") + ":00+05:30").getTime();
     }
+    // Resolves true when the change went through, false when it did not — the
+    // booking sheet keeps its fields open on false (review, 9 Nov: a 409
+    // answered "No" used to close the sheet and lose everything typed).
     function schSend(action, body, okMsg) {
       return schapi(action, body).then(function (j) {
         toast(okMsg);
@@ -2440,23 +2453,55 @@
         if (m.length && j.freed && confirm("Ee slot khali ayindi.\nWaitlist lo " + m.length + " mandhi unnaru: " + m.slice(0, 3).map(function (w) { return w.name; }).join(", ") + ".\n\nMundu " + m[0].name + " ki offer pampanaa?")) {
           schapi("wait-offer", { wid: m[0].id, at: j.freed.at }).then(function (o) { toast(m[0].name + " ki offer pampamu"); }).catch(function (x) { toast(x.message); });
         }
-        return loadSchedule(true);
+        return loadSchedule(true).then(function () { return true; }, function () { return true; });
       })
         .catch(function (e) {
           if (e.status === 409 && confirm(e.message + "\n\nAyina book cheyyala?")) {
-            return schapi(action, Object.assign({ force: true }, body)).then(function () { toast(okMsg); return loadSchedule(true); });
+            return schapi(action, Object.assign({ force: true }, body)).then(function () { toast(okMsg); return loadSchedule(true).then(function () { return true; }, function () { return true; }); })
+              .catch(function (x) { toast(x.message); return false; });
           }
           toast(e.message);
+          return false;
         });
     }
-    if ($("waitNew")) $("waitNew").onclick = function () {
-      var ph = askPhone("Waitlist — patient mobile number (10 digits)?"); if (!ph) return;
-      var nm = prompt("Peru?", "") || "";
-      var cn = prompt("Treatment / concern?", "") || "";
-      var dy = prompt("E roju kavali? (YYYY-MM-DD, khali ga vadilithe ye roju aina)", schDay) || "";
-      var wh = prompt("E time bagutundi? (ex: evening, 11-1) — optional", "") || "";
-      schapi("wait-add", { ph: ph, name: nm, concern: cn, day: dy.trim(), when: wh }).then(function () { toast("Waitlist lo pettamu"); return loadSchedule(true); }).catch(function (x) { toast(x.message); });
-    };
+    // One sheet for every quick booking — a free time, a person from the
+    // fill list, a tile. Reception asked (9 Nov PDF, points 1, 2 and 7) to see
+    // the name and number in front of them while they confirm, a calendar
+    // instead of a typed date, and a number box that takes ten digits and
+    // nothing else — the old prompt swallowed forty nines without a word.
+    var FIELD = 'class="inp" style="width:100%;margin:4px 0 10px"';
+    function bookSheet(pre) {
+      pre = pre || {};
+      var day = pre.day || schDay || istToday();
+      var time = pre.at ? new Date(pre.at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "Asia/Kolkata" }) : "";
+      var wrap = document.createElement("div"); wrap.className = "sheet open";
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>📅 Appointment book cheyandi <span class="te" style="font-size:.85rem">· <span lang="te">అపాయింట్‌మెంట్</span></span></h2>' +
+        '<div class="meta">Peru</div><input id="bkName" ' + FIELD + ' maxlength="60" value="' + esc(pre.name || "") + '" placeholder="Patient peru">' +
+        '<div class="meta">Mobile — 10 ankelu</div><input id="bkPhone" ' + FIELD + ' inputmode="numeric" maxlength="10" value="' + esc(pre.ph || "") + '" placeholder="98xxxxxxxx">' +
+        '<div style="display:flex;gap:10px"><div style="flex:1"><div class="meta">Roju</div><input id="bkDay" type="date" ' + FIELD + ' value="' + esc(day) + '" min="' + istToday() + '"></div>' +
+        '<div style="flex:1"><div class="meta">Time</div><input id="bkTime" type="time" step="900" ' + FIELD + ' value="' + esc(time) + '"></div></div>' +
+        '<div class="meta">Enduku — treatment / concern</div><input id="bkConcern" ' + FIELD + ' maxlength="80" value="' + esc(pre.concern || "") + '" placeholder="Hair fall, acne…">' +
+        '<div id="bkErr" class="meta" style="color:var(--bad);min-height:1.2em;font-weight:500"></div>' +
+        '<div class="acts" style="margin-top:6px"><button class="btn btn--gold" data-act="bk-save" style="flex:1">📅 Book</button><button class="btn" data-close="1">Cancel</button></div></div>';
+      wrap.addEventListener("click", function (ev) { if (ev.target.classList.contains("sheet-bg") || ev.target.closest("[data-close]")) wrap.remove(); });
+      document.body.appendChild(wrap);
+      setTimeout(function () { var f = wrap.querySelector(pre.ph ? "#bkTime" : "#bkPhone"); if (f) f.focus(); }, 50);
+    }
+    function waitSheet() {
+      var wrap = document.createElement("div"); wrap.className = "sheet open";
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>🕒 Waitlist lo pettandi</h2>' +
+        '<div class="meta">Peru</div><input id="wlName" ' + FIELD + ' maxlength="60" placeholder="Patient peru">' +
+        '<div class="meta">Mobile — 10 ankelu</div><input id="wlPhone" ' + FIELD + ' inputmode="numeric" maxlength="10" placeholder="98xxxxxxxx">' +
+        '<div class="meta">Treatment / concern</div><input id="wlConcern" ' + FIELD + ' maxlength="80">' +
+        '<div style="display:flex;gap:10px"><div style="flex:1"><div class="meta">E roju (khali = ye roju aina)</div><input id="wlDay" type="date" ' + FIELD + ' value="' + esc(schDay || "") + '" min="' + istToday() + '"></div>' +
+        '<div style="flex:1"><div class="meta">E time bagutundi</div><input id="wlWhen" ' + FIELD + ' maxlength="40" placeholder="evening, 11-1…"></div></div>' +
+        '<div id="wlErr" class="meta" style="color:var(--bad);min-height:1.2em;font-weight:500"></div>' +
+        '<div class="acts" style="margin-top:6px"><button class="btn btn--gold" data-act="wl-save" style="flex:1">🕒 Waitlist lo pettu</button><button class="btn" data-close="1">Cancel</button></div></div>';
+      wrap.addEventListener("click", function (ev) { if (ev.target.classList.contains("sheet-bg") || ev.target.closest("[data-close]")) wrap.remove(); });
+      document.body.appendChild(wrap);
+      setTimeout(function () { var f = wrap.querySelector("#wlName"); if (f) f.focus(); }, 50);
+    }
+    if ($("waitNew")) $("waitNew").onclick = function () { waitSheet(); };
     // ---- packages & recalls ---------------------------------------------
     function pkapi(a, body, qs) { return xcall("/api/package", a, body, qs); }
     function pkgLine(p) {
@@ -2620,7 +2665,7 @@
         '<input id="nlPhone" class="inp" placeholder="10-digit mobile *" inputmode="numeric" maxlength="10" style="width:100%;margin-bottom:8px" value="' + esc(p0.phone || "") + '" />' +
         '<div style="display:flex;gap:8px;margin-bottom:8px">' +
           '<input id="nlAge" class="inp" placeholder="Vayasu" inputmode="numeric" maxlength="3" style="flex:1" />' +
-          '<select id="nlGender" class="sel" style="flex:1.4"><option value="">Gender</option><option value="female">Aamma / Female</option><option value="male">Ayana / Male</option><option value="other">Other</option></select>' +
+          '<select id="nlGender" class="sel" style="flex:1.4"><option value="">Gender</option><option value="female">Aamma / Female · ఆడ</option><option value="male">Ayana / Male · మగ</option><option value="other">Other · ఇతర</option></select>' +
         "</div>" +
         '<select id="nlSrc" class="sel" style="width:100%;margin-bottom:8px">' +
           opts.map(function (o) { return '<option value="' + o[0] + '"' + (p0.src === o[0] ? " selected" : "") + ">" + o[1] + "</option>"; }).join("") + "</select>" +
@@ -4327,11 +4372,14 @@
         ? '<span class="chip ok">₹' + Number(r.paid).toLocaleString("en-IN") + " paid</span>" +
           (r.balance ? ' <span class="chip">balance ₹' + Number(r.balance).toLocaleString("en-IN") + "</span>" : "") +
           (r.onboarded ? ' <span class="chip ok">form ✓</span>' : ' <span class="chip hot">form pending</span>')
-        : r.stage === "lost" ? '<span class="chip">closed</span>'
+        : r.stage === "lost" ? '<span class="chip">🚫 ' + esc(r.outcome && OUT_LABEL[r.outcome] ? OUT_LABEL[r.outcome].replace(/^\S+\s/, "") : "closed") + "</span>"
         : (quiet ? '<span class="chip hot">' + r.quietDays + " rojulu silent</span>" : '<span class="chip">enquiry</span>');
       var last = r.lastNote
         ? '<div class="note"><b>' + esc(r.lastNote.by || "") + "</b> · " + ago(r.lastNote.ts) + " — " + esc(r.lastNote.text || "") + "</div>"
         : '<div class="meta" style="margin-top:6px">Inka note emi ledu.</div>';
+      // Why a closed enquiry was closed, who closed it and when (desk PDF 9 Nov, point 8).
+      if (r.stage === "lost") last = '<div class="meta cfwhy">Reason: ' + esc(r.outcome ? (OUT_LABEL[r.outcome] || r.outcome) : (r.studentStatus === "dropped" ? "Course nunchi vellipoyaru" : "Closed ani mark chesaru")) +
+        (r.closedBy ? " · " + esc(r.closedBy) : "") + (r.closedAt ? " · " + ago(r.closedAt) : "") + "</div>" + last;
       return '<article class="seat ' + (r.stage === "reserved" ? "done" : quiet ? "quiet" : "") + '" data-phone="' + esc(r.phone) + '">' +
         '<div class="row1"><div><h3>' + esc(r.name || "Enquiry") + ' <span class="meta">· ' + esc(r.phone) + (r.id ? " · " + esc(r.id) : "") + '</span></h3>' +
         '<div class="meta">' + esc(r.interest || (r.course ? ({ skin: "Skin Care", hair: "Hair Care", both: "Skin + Hair" }[r.course] || r.course) : "Academy")) +
@@ -6281,17 +6329,43 @@
       // booking, so neither is a dead end.
       if (el.dataset.act === "sch-slot") {
         var at3 = Number(el.dataset.at);
-        var ph3 = askPhone("Ee time ki evaru? Patient number (10 digits):");
-        if (!ph3) return;
-        var nm3 = prompt("Peru:", "") || "Patient";
-        var cn3 = prompt("Enduku? (treatment / concern)", "") || "";
-        schSend("create", { ph: ph3, name: nm3, concern: cn3, at: at3, mins: 30 }, "Book ayindi, patient ki cheppamu");
+        bookSheet({ at: at3, day: new Date(at3).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }) });
         return;
       }
       if (el.dataset.act === "sch-book") {
-        var at4 = askTime(schDay, "Eppudu? (e.g. 3:30 pm) — " + schDay);
-        if (!at4) return;
-        schSend("create", { ph: el.dataset.ph, name: el.dataset.name || "Patient", concern: el.dataset.why || "", at: at4, mins: 30 }, "Book ayindi, patient ki cheppamu");
+        bookSheet({ ph: el.dataset.ph, name: el.dataset.name || "", concern: el.dataset.why || "", day: schDay });
+        return;
+      }
+      // The booking sheet's own button: everything checked before anything is sent.
+      // The sheet's own error line, not a toast: the toast sits under the
+      // sheet (z-index 50 against 90) and the receptionist saw nothing happen.
+      if (el.dataset.act === "bk-save") {
+        var sh5 = el.closest(".sheet"); if (!sh5) return;
+        var err5 = function (msg, id) { var e5 = sh5.querySelector("#bkErr"); if (e5) e5.textContent = msg; var f5 = id && sh5.querySelector(id); if (f5) f5.focus(); };
+        var ph5 = String(sh5.querySelector("#bkPhone").value).replace(/\D/g, "");
+        if (ph5.length === 12 && ph5.indexOf("91") === 0) ph5 = ph5.slice(2);
+        if (!/^[6-9]\d{9}$/.test(ph5)) { err5("⚠️ Mobile 10 ankelu — 6/7/8/9 tho modalavvali", "#bkPhone"); return; }
+        var nm5 = sh5.querySelector("#bkName").value.trim(); if (!nm5) { err5("⚠️ Patient peru raayandi", "#bkName"); return; }
+        var dy5 = sh5.querySelector("#bkDay").value, tm5 = sh5.querySelector("#bkTime").value;
+        if (!dy5 || !tm5) { err5("⚠️ Roju & time select cheyandi", !dy5 ? "#bkDay" : "#bkTime"); return; }
+        var at5 = new Date(dy5 + "T" + tm5 + ":00+05:30").getTime();
+        if (!at5 || at5 < Date.now() - 600000) { err5("⚠️ Aa time already daatipoyindi", "#bkTime"); return; }
+        err5(""); el.disabled = true;
+        schSend("create", { ph: ph5, name: nm5, concern: sh5.querySelector("#bkConcern").value.trim(), at: at5, mins: 30 }, "Book ayindi, patient ki cheppamu")
+          .then(function (ok) { if (ok) sh5.remove(); else { el.disabled = false; err5("⚠️ Book avvaledu — paina message chudandi, marchi malli try cheyandi"); } });
+        return;
+      }
+      if (el.dataset.act === "wl-save") {
+        var sh6 = el.closest(".sheet"); if (!sh6) return;
+        var err6 = function (msg, id) { var e6 = sh6.querySelector("#wlErr"); if (e6) e6.textContent = msg; var f6 = id && sh6.querySelector(id); if (f6) f6.focus(); };
+        var ph6 = String(sh6.querySelector("#wlPhone").value).replace(/\D/g, "");
+        if (ph6.length === 12 && ph6.indexOf("91") === 0) ph6 = ph6.slice(2);
+        if (!/^[6-9]\d{9}$/.test(ph6)) { err6("⚠️ Mobile 10 ankelu — 6/7/8/9 tho modalavvali", "#wlPhone"); return; }
+        var nm6 = sh6.querySelector("#wlName").value.trim(); if (!nm6) { err6("⚠️ Patient peru raayandi", "#wlName"); return; }
+        err6(""); el.disabled = true;
+        schapi("wait-add", { ph: ph6, name: nm6, concern: sh6.querySelector("#wlConcern").value.trim(), day: sh6.querySelector("#wlDay").value || "", when: sh6.querySelector("#wlWhen").value.trim() })
+          .then(function () { toast("Waitlist lo pettamu"); sh6.remove(); return loadSchedule(true); })
+          .catch(function (x) { err6("⚠️ " + x.message); el.disabled = false; });
         return;
       }
       if (el.dataset.act === "call-all") { callShowAll = !callShowAll; renderLeads(); return; }

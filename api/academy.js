@@ -247,11 +247,17 @@ module.exports = async (req, res) => {
     const rlf = await guard.rateLimit(cfg, `rl:acf:${me.phone}`, 120, 3600);
     if (!rlf.allowed) return json(res, 429, { error: "Too many requests" });
 
-    const [sr, lr, st, nt] = await Promise.all([
+    const [sr, lr, st, nt, oc, sby, sts, su] = await Promise.all([
       guard.kvCommand(cfg, ["LRANGE", LIST, "0", "299"]).catch(() => ({})),
       guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "799"]).catch(() => ({})),
       guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({})),
       guard.kvCommand(cfg, ["HGETALL", "dl_notes"]).catch(() => ({})),
+      // Why an enquiry was closed, by whom and when — the desk asked to see
+      // the reason on every "Vaddannaru" card (9 Nov PDF, point 8).
+      guard.kvCommand(cfg, ["HGETALL", "dl_outcome"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["HGETALL", "dl_status_by"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["HGETALL", "dl_status_ts"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["HGETALL", "staff:users"]).catch(() => ({})),
     ]);
     const hash = (r) => {
       const a2 = (r && r.result) || {}, out = {};
@@ -259,7 +265,9 @@ module.exports = async (req, res) => {
       else Object.assign(out, a2);
       return out;
     };
-    const statuses = hash(st), notesBy = hash(nt);
+    const statuses = hash(st), notesBy = hash(nt), outcomes = hash(oc), statusBy = hash(sby), statusTs = hash(sts);
+    const users = hash(su);
+    const staffName = (ph) => { try { const u = JSON.parse(users[ph] || "null"); return (u && u.name) || ph || ""; } catch (e) { return ph || ""; } };
 
     const people = new Map();                       // phone → entry
     const put = (e) => {
@@ -284,6 +292,9 @@ module.exports = async (req, res) => {
         enquiredAt: l.ts, leadKey: key,
         leadStatus: statuses[key] || "new",
         lastNote: notes[0] ? { ts: notes[0].ts, by: notes[0].by, text: notes[0].text } : null,
+        outcome: outcomes[key] || "",
+        closedBy: statuses[key] === "closed" ? staffName(statusBy[key]) : "",
+        closedAt: statuses[key] === "closed" ? Number(statusTs[key]) || 0 : 0,
       });
     }
 

@@ -338,13 +338,23 @@ http.createServer((req, res) => {
       // In the evening every one of today's rows is in the past, which would
       // leave the strip empty whenever somebody looks after closing; a row
       // whose time has gone is shown as tomorrow's so the strip has something.
-      const soon = global.mockSch.map((r) => { const a0 = r.at || at(r.atH, r.atM); const a1 = a0 > Date.now() ? a0 : a0 + 86400000; return Object.assign({}, r, { at: a1, day: istDayS(a1), time: tm(a1), ts: Date.now() - (3 + r.atH) * 600000, by: r.atH % 2 ? "AI agent" : "Sowmya" }); });
+      const WHY2 = ["☎️ Inka call cheyyaledu — book ayi 3 gantalu", "📵 Call chesaru — ettaledu", "📩 Confirm message vellindi, patient reply raaledu"];
+      const soon = global.mockSch.map((r, i) => { const a0 = r.at || at(r.atH, r.atM); const a1 = a0 > Date.now() ? a0 : a0 + 86400000; return Object.assign({}, r, { at: a1, day: istDayS(a1), time: tm(a1), ts: Date.now() - (3 + r.atH) * 600000, by: r.atH % 2 ? "AI agent" : "Sowmya", cfWhy: r.status === "booked" && !r.cf ? WHY2[i % WHY2.length] : "" }); });
       const pending = soon.filter((r) => r.status === "booked" && !r.cf && r.at > Date.now()).sort((x, y) => x.ts - y.ts);
       return send(200, { ok: true, team, soon, pending, days: Array.from({ length: 7 }, (_, i) => ({ day: istDayS(Date.now() + i * 86400000), total: i ? 3 : global.mockSch.length, mine: 0, unconfirmed: i ? 1 : pending.length })) });
     }
+    // The reason a row is still unconfirmed, as the real server writes it.
+    const WHY = ["☎️ Inka call cheyyaledu — book ayi 3 gantalu", "📵 Call chesaru — ettaledu", "📩 Confirm message vellindi, patient reply raaledu", "🆕 Ippude book ayindi — call cheyandi"];
+    const whyOf = (r, i) => (r.status === "booked" && !r.cf ? WHY[i % WHY.length] : "");
     if (a === "day") {
-      const rows = global.mockSch.map((r) => Object.assign({}, r, { at: r.at || at(r.atH, r.atM), day, time: tm(r.at || at(r.atH, r.atM)) }));
-      return send(200, { ok: true, day, rows, team, rooms: ["Consultation", "Laser room", "Hydrafacial", "Procedure room"],
+      const rows = global.mockSch.map((r, i) => Object.assign({}, r, { at: r.at || at(r.atH, r.atM), day, time: tm(r.at || at(r.atH, r.atM)), cfWhy: whyOf(r, i) }));
+      // The day as a plan — free times and who could fill them — so the
+      // booking sheet can be opened from a free slot and from the fill list.
+      const freeAt = [11, 14, 16, 19].map((hh) => { const a1 = at(hh, 30) > Date.now() ? at(hh, 30) : at(hh, 30) + 86400000; return { at: a1, time: tm(a1) }; });
+      const plan = { slots: 24, per: 2, closed: false, over: false, used: 5, free: freeAt,
+        fill: [{ phone: "9876500771", name: "Prakash Naidu", kind: "lead", why: "A grade · Acne & scars", sub: "Eluru", urgent: true, said: "Contacted · 📵 Ettaledu" },
+               { phone: "9876500772", name: "Kanaka Durga", kind: "cycle", why: "Hydrafacial malli cheyinchukovali", sub: "4 rojulu late" }] };
+      return send(200, { ok: true, day, rows, team, plan, rooms: ["Consultation", "Laser room", "Hydrafacial", "Procedure room"],
         wait: [{ id: "w1", ph: "9876500777", name: "Bhavani", concern: "PICO laser", day, when: "evening", ts: Date.now() - 7200000, by: "Sowmya" }],
         counts: { total: rows.length, booked: 4, arrived: 1, done: 1, unconfirmed: 3 } });
     }
@@ -498,7 +508,8 @@ http.createServer((req, res) => {
         { phone: "9876500031", name: "Divya", course: "skin", stage: "enquiry", quietDays: 3, paid: 0, balance: 49999, lastTouch: Date.now() - 3 * 86400000 },
         { phone: "9876500033", name: "Swathi", course: "hair", stage: "enquiry", quietDays: 0, paid: 0, balance: 49999, lastTouch: Date.now() - 3600000 },
         { phone: "9876500032", name: "Rekha", course: "both", stage: "reserved", quietDays: null, paid: 9999, balance: 90000, lastTouch: Date.now() - 86400000 },
-        { phone: "9876500034", name: "Anusha", course: "skin", stage: "lost", quietDays: 9, paid: 0, balance: 0, lastTouch: Date.now() - 9 * 86400000 },
+        { phone: "9876500034", name: "Anusha", course: "skin", stage: "lost", quietDays: 9, paid: 0, balance: 0, lastTouch: Date.now() - 9 * 86400000,
+          outcome: "notinterested", closedBy: "Sowmya", closedAt: Date.now() - 9 * 86400000, lastNote: { ts: Date.now() - 9 * 86400000, by: "Sowmya", text: "Call — interest ledu" } },
       ] });
     if (a === "reopen") return send(200, { ok: true, url: "https://www.dermaluxe.ai/academy-join.html?t=xyz" });
     if (a === "pay") {

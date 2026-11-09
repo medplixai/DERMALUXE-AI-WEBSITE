@@ -221,11 +221,53 @@ const shape = (a) => ({
   // When it was booked and by whom, and when the patient confirmed — the
   // desk asked for these dates beside every appointment (8 Nov, point 5).
   ts: Number(a.ts) || 0, by: a.by || "", cfAt: Number(a.cfAt) || 0,
+  c1: !!a.c1,   // the day-before confirm template went out
   // Who confirmed and how (the patient over WhatsApp, or the desk after a
   // call), and when the cron asked the desk "vacharu aa?" for a slot that
   // has passed — so the screen can show the question instead of hiding the row.
   cfBy: a.cfBy || "", cfVia: a.cfVia || "", ask: Number(a.ask) || 0,
 });
+
+// Why a booking is still "confirm kaledu", in one line the receptionist can
+// act on (desk PDF, 9 Nov, points 5 and 6): the row's own flags, plus the last
+// thing the desk recorded against that number in the lead book.
+// phones: only the numbers on the queue are worth reading notes for — the
+// notes hash holds every lead's whole history and grows with the lead book.
+async function deskByPhone(cfg, phones) {
+  const out = {};
+  const want = phones instanceof Set ? phones : null;
+  const hashOf = async (k) => guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", k]).catch(() => ({}))).result) || {};
+  const [outcomes, statusTs, notes] = await Promise.all([hashOf("dl_outcome"), hashOf("dl_status_ts"), hashOf("dl_notes")]);
+  const put = (k, f) => { const [ts, ph] = String(k).split("|"); if (!/^\d{10}$/.test(ph || "") || (want && !want.has(ph))) return; const d = out[ph] = out[ph] || {}; f(d, Number(ts) || 0, k); };
+  // The outcome hash is keyed by the LEAD's time (when the person first
+  // wrote), not by when the desk rang; the ringing time is dl_status_ts
+  // under the same key. Comparing the lead's time to the booking hid every
+  // call made after the agent booked (review, 9 Nov).
+  for (const [k, v] of Object.entries(outcomes)) put(k, (d, keyTs, key) => { const at = Number(statusTs[key]) || keyTs; if (at >= (d.ots || 0)) { d.ots = at; d.outcome = v; } });
+  for (const [k, v] of Object.entries(notes)) put(k, (d) => {
+    let list = []; try { list = JSON.parse(v || "[]"); } catch (e) {}
+    for (const n of list) if (n && /\bcall\b/i.test(String(n.text || "")) && Number(n.ts) > (d.lastCall || 0)) d.lastCall = Number(n.ts);
+  });
+  return out;
+}
+function cfWhyOf(a, desk) {
+  if (a.cf || (a.status && a.status !== "booked")) return "";
+  const d = (desk || {})[digits10(a.ph)] || {};
+  const ageMin = a.ts ? Math.round((Date.now() - a.ts) / 60000) : null;
+  const since = (m) => m >= 1440 ? `${Math.round(m / 1440)} rojulu` : m >= 60 ? `${Math.round(m / 60)} gantalu` : `${m} nimishalu`;
+  // The desk's own record of this number comes first — it is what they did.
+  // It has to be from after the booking; a row with no booking time (agent
+  // rows written before 9 Nov) accepts only something from the last fortnight,
+  // never a five-month-old "thinking" from an unrelated enquiry.
+  const fresh = d.ots && (a.ts ? d.ots >= a.ts : Date.now() - d.ots < 14 * 86400000);
+  if (fresh && d.outcome === "noanswer") return "📵 Call chesaru — ettaledu" + (a.c1 ? " · confirm message ki kuda reply ledu" : "");
+  if (fresh && d.outcome === "callback") return "🔁 Malli call cheyyamannaru";
+  if (fresh && d.outcome === "thinking") return "🤔 Alochistunnaru annaru";
+  if (a.c1) return "📩 Confirm message vellindi, patient reply raaledu";
+  if (d.lastCall && a.ts && d.lastCall > a.ts) return "📞 Call chesaru — confirm ani cheppaledu";
+  if (ageMin === null) return "☎️ Inka confirm call cheyyaledu";
+  return ageMin > 45 ? `☎️ Inka call cheyyaledu — book ayi ${since(ageMin)}` : "🆕 Ippude book ayindi — call cheyandi";
+}
 
 async function replace(cfg, rawOld, next) {
   await guard.kvCommand(cfg, ["LREM", Q, "1", rawOld]).catch(() => {});
@@ -369,7 +411,9 @@ module.exports = async (req, res) => {
     const rl = await guard.rateLimit(cfg, `rl:sch:${me.phone}`, 300, 3600);
     if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
     const brs = require("./_branch.js"), sc = brs.scope(me, q);
-    const rows = (await readQ(cfg)).filter((r) => brs.keep(sc)(r.a)).map((r) => shape(r.a));
+    const shaped = (await readQ(cfg)).filter((r) => brs.keep(sc)(r.a)).map((r) => shape(r.a));
+    const desk = await deskByPhone(cfg, new Set(shaped.filter((s) => s.status === "booked" && !s.cf).map((s) => s.ph)));
+    const rows = shaped.map((s) => { s.cfWhy = cfWhyOf(s, desk); return s; });
 
     // who can be assigned an appointment
     const users = await guard.kvCommand(cfg, ["HGETALL", "staff:users"]).catch(() => ({}));
