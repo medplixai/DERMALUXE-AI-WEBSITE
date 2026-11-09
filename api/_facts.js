@@ -47,9 +47,9 @@ GRAND OPENING (people will ask about the invitation, the video and the posters)
 const HT_ENDS = Date.parse("2026-12-07T00:00:00+05:30");
 const HT_OFFER = `
 HAIR TRANSPLANT PACKAGE — 6 November to 6 December 2026 (owner)
-- FUE hair transplant package: *₹59,999 all-inclusive, up to 2,000 grafts* — FUE surgery and the medical expenses together. This is the one treatment price you MAY say; say it as exactly that. Valid for procedures booked 6 Nov – 6 Dec 2026.
+- FUE hair transplant package: *₹59,999 all-inclusive, up to 3,000 grafts* — FUE surgery and the medical expenses together. This is the one treatment price you MAY say; say it as exactly that. Valid for procedures booked 6 Nov – 6 Dec 2026.
 - NEVER call the hair transplant or the surgery "free" — not "surgery free", not "free hair transplant". The price is ₹59,999 all-inclusive.
-- The package includes UP TO 2,000 grafts (owner, 7 Nov). How many grafts this person needs, and whether a transplant suits them, are decided by the surgeon after examining the scalp; more than 2,000 grafts costs extra, and the surgeon tells them how much before anything is booked. Never promise that 2,000 will be enough for them.
+- The package includes UP TO 3,000 grafts (owner, 7 Nov). How many grafts this person needs, and whether a transplant suits them, are decided by the surgeon after examining the scalp. Grafts beyond 3,000 are *₹20 per graft* extra (owner, 9 Nov) — say this plainly if they ask about more grafts or the cost above 3,000 (e.g. 3,500 grafts = ₹59,999 + 500 × ₹20 = ₹69,999), and that the surgeon confirms the count at the assessment before anything is booked. Never promise that 3,000 will be enough for them.
 - Hair transplant consultation is FREE in these dates (other consultations stay ₹300). Say it only when the conversation is about hair transplant. [owner decision, data-owner="ht-offer-2026-11"]
 - Anyone asking about hair transplant, baldness or a receding hairline: recommend hair transplant and the package freely and warmly (owner, 7 Nov — "agent ni limit cheyyaku"), explain how FUE works, and move to booking the scalp assessment (name → concern → slot). Never invent scarcity ("few slots left") and never promise a result — the surgeon confirms suitability.
 - Calls for the package: 99491 34666 · WhatsApp: 99591 34666 · details page: www.dermaluxe.ai/hair-transplant-offer.html

@@ -14,6 +14,11 @@ const facts = require("./_facts.js");
 const ALLOWED_RUPEES = new Set([9999, 49999, 99999, 100000, 200000,
   // the hair transplant package, 6 Nov – 6 Dec 2026 (owner, 7 Nov)
   ...(Date.now() < Date.parse("2026-12-07T00:00:00+05:30") ? [59999] : [])]);
+// Beyond the package's 3,000 grafts the owner charges ₹20 a graft (9 Nov), so
+// an honest total for 3,500 grafts is ₹69,999 — the package plus a whole
+// number of ₹20s. Up to 3,000 extra grafts; anything else is still caught.
+const HT_PACKAGE = 59999, HT_PER_GRAFT = 20;
+const htTotal = (n) => Date.now() < Date.parse("2026-12-07T00:00:00+05:30") && n > HT_PACKAGE && n <= HT_PACKAGE + HT_PER_GRAFT * 3000 && (n - HT_PACKAGE) % HT_PER_GRAFT === 0;
 // Medicines and doses — never from a receptionist.
 const MEDICINE = /(\b\d+\s?(mg|ml|mcg)\b|\btablet(s)?\b|\bcapsule(s)?\b|\bointment\b|\bminoxidil\b|\bfinasteride\b|\bisotretinoin\b|\btretinoin\b|\bhydroquinone\b|\bketoconazole\b|\bclindamycin\b|\bbenzoyl\b|\badapalene\b|\bbetamethasone\b|\bclobetasol\b|\bfluconazole\b|\bterbinafine\b|\bazithromycin\b|\bdoxycycline\b|\bmetformin\b)/i;
 // Conditions the agent must not guess at in plain chat.
@@ -49,8 +54,8 @@ function lintReply(out, patientText, recent, opts) {
 
   // Prices: the site never quotes treatment prices; the academy's fees are published.
   const rupees = [...prose.matchAll(/₹\s?([\d,]{3,})|(?:rs\.?|inr)\s?([\d,]{3,})/gi)].map((m) => Number((m[1] || m[2]).replace(/,/g, ""))).filter((n) => n >= 100);
-  const odd = [...new Set(rupees.filter((n) => !ALLOWED_RUPEES.has(n) && !(o.allow && o.allow.has(n))))];
-  if (odd.length) faults.push({ code: "price_quoted", note: `₹${odd.join(", ₹")} cheppav — treatment prices eppudu cheppakudadu; "consultation lo doctor exact plan istaru" ani cheppi slot adugu (allowed: academy seat ₹9,999; launch ₹49,999 / ₹99,999; regular ₹1,00,000 / ₹2,00,000; hair transplant package ₹59,999 till 6 Dec)` });
+  const odd = [...new Set(rupees.filter((n) => !ALLOWED_RUPEES.has(n) && !htTotal(n) && !(o.allow && o.allow.has(n))))];
+  if (odd.length) faults.push({ code: "price_quoted", note: `₹${odd.join(", ₹")} cheppav — treatment prices eppudu cheppakudadu; "consultation lo doctor exact plan istaru" ani cheppi slot adugu (allowed: academy seat ₹9,999; launch ₹49,999 / ₹99,999; regular ₹1,00,000 / ₹2,00,000; hair transplant package ₹59,999 + ₹20 per graft beyond 3,000, till 6 Dec)` });
 
   if (MEDICINE.test(prose)) faults.push({ code: "medicine", note: "medicine peru / dose cheppav — receptionist medicines cheppadu; lifestyle tips matrame, medicines doctor consultation lo" });
 

@@ -77,13 +77,13 @@ const page = (W, H, tall) => `<!doctype html><html><head><meta charset="utf-8">
     <div class="photo"><img src="${photo}" alt=""><span class="lb l">BEFORE</span><span class="lb r">AFTER</span><div class="note">Stock photo — not a patient of this clinic. Results differ.</div></div>
     <div class="offer">
       <div class="ribbon">GRAND OPENING PACKAGE</div>
-      <div class="pkg">FUE HAIR TRANSPLANT</div><div class="grafts">UP TO 2,000 GRAFTS</div>
+      <div class="pkg">FUE HAIR TRANSPLANT</div><div class="grafts">UP TO 3,000 GRAFTS</div>
       <div class="amt">₹59,999</div>
       <div class="inc">All-inclusive — surgery + medical expenses</div>
       <div class="inc-te">సర్జరీ, మెడికల్ ఖర్చులు అన్నీ కలిపి</div>
       <div class="dates">6 NOVEMBER – 6 DECEMBER 2026</div>
       <div class="free" data-owner="ht-offer-2026-11">Hair transplant consultation FREE</div>
-      <div class="tc">T&amp;C apply · grafts needed &amp; suitability decided by the surgeon</div>
+      <div class="tc">T&amp;C apply · beyond 3,000 grafts ₹20 per graft · grafts needed &amp; suitability decided by the surgeon</div>
     </div>
   </div>
   <div class="benefits"><div>సహజమైన జుట్టు పెరుగుదల</div><div>నేచురల్ లుక్</div><div>శాశ్వత పరిష్కారం</div><div>మరింత ఆత్మవిశ్వాసం</div></div>

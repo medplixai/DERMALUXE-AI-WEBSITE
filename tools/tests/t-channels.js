@@ -78,8 +78,17 @@ const hook = { token: "hook" };
   Date.now = () => Date.parse("2026-12-07T00:30:00+05:30");
   const htOff = facts.clinicFacts("WhatsApp", "");
   Date.now = realNow;
-  is([/₹59,999 all-inclusive, up to 2,000 grafts/.test(htOn), /NEVER call the hair transplant or the surgery "free"/.test(htOn), /HAIR TRANSPLANT PACKAGE/.test(htOff)], [true, true, false],
+  is([/₹59,999 all-inclusive, up to 3,000 grafts/.test(htOn), /NEVER call the hair transplant or the surgery "free"/.test(htOn), /HAIR TRANSPLANT PACKAGE/.test(htOff)], [true, true, false],
     "the hair transplant package is known until 6 December, never as 'free', and gone the day after");
+  is(/₹20 per graft/.test(htOn), true, "and the agent knows grafts beyond 3,000 are ₹20 each (owner, 9 Nov)");
+  // The editor must let an honest total through — 3,500 grafts is ₹59,999 +
+  // 500 × ₹20 — and still catch a number that is not the package plus ₹20s.
+  Date.now = () => Date.parse("2026-11-20T10:00:00+05:30");
+  const htCodes = (r) => require(path.join(API, "_lint.js")).lintReply({ reply: r }, "3500 grafts kavali, cost entha?", [], {}).map((f) => f.code);
+  is([htCodes("3,500 grafts ki ₹59,999 + 500 × ₹20 = ₹69,999 andi. Surgeon garu scalp chusi exact count cheptaru. Assessment ki eppudu ravagalaru?").includes("price_quoted"),
+      htCodes("3,500 grafts ki ₹69,990 andi.").includes("price_quoted"), htCodes("Extra grafts ₹20 choppuna andi.").includes("price_quoted")], [false, true, false],
+    "a per-graft total the owner's rule produces passes the editor; a made-up figure near it is still caught; ₹20 itself is not a treatment price");
+  Date.now = realNow;
   const G = require(path.join(API, "_goal.js")).goalFor;
   is([G({ concern: "Hair transplant cost" }).key, G({ concern: "Acne", km: 330 }).key, G({ concern: "Academy course enquiry – Skin" }).key,
       G({ concern: "Hair fall", outcome: "notravel" }).key, G({ type: "job", concern: "Nursing" }).key, G({ concern: "Pigmentation", booked: true }).key, G({ concern: "Acne", km: 5 }).key],
