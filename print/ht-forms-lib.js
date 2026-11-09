@@ -106,7 +106,7 @@ const CSS = `
   .dense .heads svg { width: 160px; height: 174px; } .dense .heads { margin: 1mm 0 0; }`;
 
 const sheet = (pages, extra) => `<!doctype html><html><head><meta charset="utf-8">
-<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&display=block" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Jost:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;600;700&display=block" rel="stylesheet">
 <style>${CSS}${extra || ""}</style></head><body>${pages.join("")}</body></html>`;
 
 // pages: the HTML of each page(); out: the PDF path; extra: CSS a document

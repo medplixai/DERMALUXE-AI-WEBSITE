@@ -1,5 +1,5 @@
 {
- "generated": 1794222816677,
+ "generated": 1794224640807,
  "groups": [
   {
    "key": "forms",
@@ -34,17 +34,37 @@
      "bytes": 294659,
      "ext": "pdf",
      "kind": "pdf",
-     "mtime": 1794215312481
+     "mtime": 1794224603190
     },
     {
      "name": "ht-post-surgery.pdf",
      "title": "Post-surgery discharge instructions — patient handout",
      "te": "సర్జరీ తర్వాత సూచనలు",
      "path": "/files/forms/ht-post-surgery.pdf",
-     "bytes": 293004,
+     "bytes": 292707,
      "ext": "pdf",
      "kind": "pdf",
-     "mtime": 1794215313855
+     "mtime": 1794224605622
+    },
+    {
+     "name": "ht-pre-surgery-te.pdf",
+     "title": "Pre-surgery protocol — patient handout (Telugu)",
+     "te": "సర్జరీకి ముందు సూచనలు — తెలుగు",
+     "path": "/files/forms/ht-pre-surgery-te.pdf",
+     "bytes": 585099,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1794224607068
+    },
+    {
+     "name": "ht-post-surgery-te.pdf",
+     "title": "Post-surgery discharge instructions — patient handout (Telugu)",
+     "te": "సర్జరీ తర్వాత సూచనలు — తెలుగు",
+     "path": "/files/forms/ht-post-surgery-te.pdf",
+     "bytes": 558575,
+     "ext": "pdf",
+     "kind": "pdf",
+     "mtime": 1794224608452
     },
     {
      "name": "rx-qr-label.pdf",

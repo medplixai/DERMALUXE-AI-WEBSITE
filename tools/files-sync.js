@@ -23,6 +23,8 @@ const GROUPS = [
     ["print/ht-consultation-form.pdf", "ht-consultation-form.pdf", "Consultation form + treatment plan & cost (clinic & patient copy)", "కన్సల్టేషన్ ఫారం"],
     ["print/ht-pre-surgery.pdf", "ht-pre-surgery.pdf", "Pre-surgery protocol — patient handout", "సర్జరీకి ముందు సూచనలు"],
     ["print/ht-post-surgery.pdf", "ht-post-surgery.pdf", "Post-surgery discharge instructions — patient handout", "సర్జరీ తర్వాత సూచనలు"],
+    ["print/ht-pre-surgery-te.pdf", "ht-pre-surgery-te.pdf", "Pre-surgery protocol — patient handout (Telugu)", "సర్జరీకి ముందు సూచనలు — తెలుగు"],
+    ["print/ht-post-surgery-te.pdf", "ht-post-surgery-te.pdf", "Post-surgery discharge instructions — patient handout (Telugu)", "సర్జరీ తర్వాత సూచనలు — తెలుగు"],
     ["print/rx-qr-label.pdf", "rx-qr-label.pdf", "Prescription pad QR label (print sheet)", "ప్రిస్క్రిప్షన్ QR లేబుల్"],
     ["assets/academy/DermaLuxe-Academy-Course-Catalog.pdf", "academy-course-catalog.pdf", "Academy course catalogue", "అకాడమీ కోర్సు కేటలాగ్"],
   ] },
