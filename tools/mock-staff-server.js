@@ -502,12 +502,15 @@ http.createServer((req, res) => {
     // server never causes).
     if (a === "funnel") return send(200, { ok: true,
       seats: { total: 10, booked: 4, left: 6 }, money: { collected: 139996, pending: 159998 },
+      batch: { no: 2, start: "10 November 2026", startISO: "2026-11-10", seats: 10 },
       counts: { reserved: 4, enquiry: 2, lost: 1 },
       deadline: { offerDays: 11, batchDays: 31, offer: "15 Oct 2026", batch: "20 October 2026" },
       rows: [
         { phone: "9876500031", name: "Divya", course: "skin", stage: "enquiry", quietDays: 3, paid: 0, balance: 49999, lastTouch: Date.now() - 3 * 86400000 },
         { phone: "9876500033", name: "Swathi", course: "hair", stage: "enquiry", quietDays: 0, paid: 0, balance: 49999, lastTouch: Date.now() - 3600000 },
-        { phone: "9876500032", name: "Rekha", course: "both", stage: "reserved", quietDays: null, paid: 9999, balance: 90000, lastTouch: Date.now() - 86400000 },
+        { phone: "9876500032", name: "Rekha", course: "both", stage: "reserved", batch: 2, quietDays: null, paid: 9999, balance: 90000, lastTouch: Date.now() - 86400000 },
+        { phone: "9876500035", name: "Lalitha", course: "skin", stage: "enquiry", quietDays: 4, paid: 0, balance: 49999, lastTouch: Date.now() - 4 * 86400000,
+          outcome: "noanswer", lastNote: { ts: Date.now() - 4 * 86400000, by: "hemasri", text: "Call — ettaledu" } },
         { phone: "9876500034", name: "Anusha", course: "skin", stage: "lost", quietDays: 9, paid: 0, balance: 0, lastTouch: Date.now() - 9 * 86400000,
           outcome: "notinterested", closedBy: "Sowmya", closedAt: Date.now() - 9 * 86400000, lastNote: { ts: Date.now() - 9 * 86400000, by: "Sowmya", text: "Call — interest ledu" } },
       ] });

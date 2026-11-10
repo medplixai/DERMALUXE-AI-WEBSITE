@@ -443,8 +443,13 @@
        so they never showed. (".seat" used to be defined a second time as a
        square tile; that dead rule's aspect-ratio:1 made every row card as tall
        as it was wide, and has been removed — see wire-css.js.) */
-    .seats i{display:block;aspect-ratio:1;border-radius:10px;border:1px solid var(--line);background:var(--panel2)}
-    .seats i.on{background:var(--primary);border-color:var(--primary)}
+    .seats i{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:58px;padding:6px 3px;border-radius:10px;border:1px solid var(--line);background:var(--panel2);font-style:normal;text-align:center;line-height:1.15}
+    .seats i b{font-size:.9rem;font-weight:500}
+    /* Each box says what it is — a coloured square alone did not read as
+       "booked", and an empty one did not read as "waiting" (10 Nov, point 3). */
+    .seats i span{font-size:.75rem;color:var(--g3);line-height:1.1}
+    .seats i.on{background:var(--primary);border-color:var(--primary);color:#fff}
+    .seats i.on span{color:rgba(255,255,255,.85)}
     /* The Meta Ads block lays its figures out as .grid/.cell with dt/dd, and
        those had no style at all: the numbers ran together as plain lines. */
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px}
@@ -1138,7 +1143,11 @@
       <section id="t-academy" class="hide">
         <div class="countdown" id="acadCount"></div>
         <div class="box">
-          <h2>Batch seats · 10 Nov <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">సీట్లు</span></span></h2>
+          <!-- The batch number and date come from the funnel (_docs.BATCH), not
+               typed here: "Batch seats · 10 Nov" stayed on screen while the
+               batch itself moved, and with a second batch the desk could not
+               tell whose seats these were (owner PDF 10 Nov, point 2). -->
+          <h2 id="seatsHead">Batch seats <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">సీట్లు</span></span></h2>
           <div class="seats" id="seats"></div>
           <div id="seatMoney" class="meta" style="margin-top:8px"></div>
           <p style="margin-top:10px">Launch offer: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Seat reserve ₹9,999.</p>
@@ -2292,19 +2301,21 @@
     // the week of 9 November five slots were waiting and one had had that
     // call; the other four patients were waiting for a phone that never rang,
     // and the "confirm kaledu" dot on the day strip was easy to miss. This is
-    // the list, at the top of the tab, oldest booking first — the one that
-    // has waited longest is the one to ring now.
+    // the list, at the top of the tab, earliest appointment first — the slot
+    // that comes soonest is the one to ring now; between two on the same
+    // slot, the older booking (owner PDF 10 Nov, point 5: it was by booking
+    // time, so a Wednesday sat above a Tuesday).
     function cfPending() {
       var list = schWeek && Array.isArray(schWeek.pending) ? schWeek.pending
         : ((schWeek && schWeek.soon) || []).filter(function (r) { return r.status === "booked" && !r.cf && r.at > Date.now(); });
-      return list.slice().sort(function (a, b) { return (a.ts || 0) - (b.ts || 0); });
+      return list.slice().sort(function (a, b) { return ((a.at || 0) - (b.at || 0)) || ((a.ts || 0) - (b.ts || 0)); });
     }
     function renderCfPending() {
       var host = $("cfPend"); if (!host) return;
       var rows = cfPending(), canEdit = state.allow("appts.edit");
       host.classList.toggle("hide", !rows.length);
       if (!rows.length) { host.innerHTML = ""; return; }
-      host.innerHTML = '<div class="grp cfp"><div class="grp-h"><h2>☎️ Confirm pending (' + rows.length + ') <span class="te" style="font-size:.85rem">· <span lang="te">కన్ఫర్మ్ కాల్ పెండింగ్</span></span></h2><i>Paata booking mundu</i></div>' +
+      host.innerHTML = '<div class="grp cfp"><div class="grp-h"><h2>☎️ Pending for confirmation (' + rows.length + ') <span class="te" style="font-size:.85rem">· <span lang="te">కన్ఫర్మ్ కాల్ పెండింగ్</span></span></h2><i>Mundu date mundu</i></div>' +
         rows.slice(0, 20).map(function (r) {
           var dayLbl = new Date(r.day + "T00:00:00+05:30").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
           return '<article class="slot"><div class="when">' + esc(r.time) + "<span>" + esc(dayLbl) + "</span></div><div>" +
@@ -4369,7 +4380,8 @@
       var wa = "https://wa.me/91" + esc(r.phone);
       var quiet = r.stage === "enquiry" && r.quietDays !== null && r.quietDays >= 2;
       var chips = r.stage === "reserved"
-        ? '<span class="chip ok">₹' + Number(r.paid).toLocaleString("en-IN") + " paid</span>" +
+        ? (r.batch ? '<span class="chip">Batch #' + esc(r.batch) + "</span> " : "") +
+          '<span class="chip ok">₹' + Number(r.paid).toLocaleString("en-IN") + " paid</span>" +
           (r.balance ? ' <span class="chip">balance ₹' + Number(r.balance).toLocaleString("en-IN") + "</span>" : "") +
           (r.onboarded ? ' <span class="chip ok">form ✓</span>' : ' <span class="chip hot">form pending</span>')
         : r.stage === "lost" ? '<span class="chip">🚫 ' + esc(r.outcome && OUT_LABEL[r.outcome] ? OUT_LABEL[r.outcome].replace(/^\S+\s/, "") : "closed") + "</span>"
@@ -4418,8 +4430,14 @@
         "<div><b>" + d.seats.left + "</b><span>Seats migilayi</span></div>";
       // Each taken seat is a person — tap for who (7 Nov, point 6).
       var resv = d.rows.filter(function (r) { return r.stage === "reserved"; });
+      var bt = d.batch || {};
+      var btDay = bt.startISO ? new Date(bt.startISO + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : "";
+      if ($("seatsHead")) $("seatsHead").innerHTML = (bt.no ? "Batch #" + esc(bt.no) : "Batch seats") + (btDay ? " · " + esc(btDay) : "") +
+        ' <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">సీట్లు</span></span>';
       $("seats").innerHTML = Array.from({ length: d.seats.total }).map(function (_, i) {
-        return i < d.seats.booked ? '<i class="on" data-act="seat" data-idx="' + i + '" title="' + esc((resv[i] || {}).name || "") + '"></i>' : "<i></i>";
+        return i < d.seats.booked
+          ? '<i class="on" data-act="seat" data-idx="' + i + '" title="' + esc((resv[i] || {}).name || "") + '"><b>' + (i + 1) + "</b><span>Booked</span></i>"
+          : "<i><b>" + (i + 1) + "</b><span>Waiting for booking</span></i>";
       }).join("") ;
       var sl = $("seatList");
       if (!sl) { sl = document.createElement("div"); sl.id = "seatList"; sl.className = "seatlist"; $("seats").insertAdjacentElement("afterend", sl); }
@@ -4439,20 +4457,32 @@
           call.map(seatCard).join("") + "</div>"
         : '<div class="grp"><div class="grp-h"><h2>Ivala call cheyyali</h2><i>evaru pending ledu 👍</i></div></div>';
 
+      // The desk's own words for a call that went nowhere, read from the
+      // outcome the staff picked, or from the note when the outcome was never
+      // set — "Call — ettaledu" was typed by hand long before the picker.
+      var noteOf = function (r) { return String((r.lastNote && r.lastNote.text) || ""); };
+      var noAns = function (r) { return r.stage !== "reserved" && (r.outcome === "noanswer" || /ettaledu|ettatledu|not answering|no answer|etthaledu/i.test(noteOf(r))); };
+      var notInt = function (r) { return r.stage !== "reserved" && (r.outcome === "notinterested" || /not interested|interest ledu|vaddu\b|vaddannaru/i.test(noteOf(r))); };
       var groups = [
-        ["reserved", "Seat reserve ayinavi", d.counts.reserved],
-        ["enquiry", "Enquiries", d.counts.enquiry],
-        ["lost", "Vaddannaru", d.counts.lost],
-      ];
-      // One tap shows one group, another tap shows them all (7 Nov, point 12).
-      var chips = [["call", "📞 Ivala call cheyyali", call.length]].concat(groups);
+        ["reserved", "Seat reserve ayinavi", function (r) { return r.stage === "reserved"; }],
+        ["enquiry", "Enquiries", function (r) { return r.stage === "enquiry"; }],
+        // Two filters the desk asked for by name (10 Nov, point 4).
+        ["noans", "📵 Ettaledu", noAns],
+        ["notint", "🚫 Not interested", notInt],
+        ["lost", "Vaddannaru", function (r) { return r.stage === "lost"; }],
+      ].map(function (g) { return [g[0], g[1], d.rows.filter(g[2]).length, g[2]]; });
+      // "Anni" is a chip of its own: tapping the lit chip again to clear it
+      // was never discovered (10 Nov, point 1). One tap shows one group.
+      var chips = [["", "Anni", d.rows.length], ["call", "📞 Ivala call cheyyali", call.length]].concat(groups);
       $("acadToday").innerHTML = '<div class="fchips">' + chips.map(function (c) {
         return '<button data-act="acad-f" data-k="' + c[0] + '"' + (acadF === c[0] ? ' class="on"' : "") + ">" + esc(c[1]) + " " + (c[2] || 0) + "</button>";
       }).join("") + "</div>" + (acadF && acadF !== "call" ? "" : $("acadToday").innerHTML);
-      groups = groups.filter(function (g) { return !acadF || acadF === g[0]; });
+      // The three stage groups make the "Anni" board; the two outcome filters
+      // only show when asked for, since their rows already sit in a stage.
+      groups = groups.filter(function (g) { return acadF ? acadF === g[0] : (g[0] !== "noans" && g[0] !== "notint"); });
       if (acadF === "call") groups = [];
       $("acadBoard").innerHTML = groups.map(function (g) {
-        var rows = d.rows.filter(function (r) { return r.stage === g[0]; });
+        var rows = d.rows.filter(g[3]);
         if (!rows.length) return "";
         return '<div class="grp"><div class="grp-h"><h2>' + esc(g[1]) + "</h2><i>" + g[2] + "</i></div>" + rows.map(seatCard).join("") + "</div>";
       }).join("") || (acadF === "call" ? "" : '<div class="empty">Ee group lo evaru levu.</div>');
@@ -4666,11 +4696,34 @@
     // Everything the clinic has put out, and everything waiting to go. Until
     // now a published post existed only on Instagram — the app could not even
     // list what it had posted.
+    // What a post looks like, in full — the picture at phone width and the
+    // whole caption — without leaving the app. The list shows a 72px
+    // thumbnail and the first 120 characters, which is not enough to judge a
+    // post by (owner PDF 10 Nov, point 7).
+    var postsSeen = { queue: [], posted: [] };
+    function postPreview(p) {
+      if (!p) return;
+      var kind = p.kind === "story" ? "📸 Story" : p.kind === "reel" ? "🎬 Reel" : "🖼 Post";
+      var when = p.at ? "Post ayyindi " + fmtAt(p.at) : p.due ? "Veltundi " + fmtAt(p.due) : "";
+      var wrap = document.createElement("div");
+      wrap.className = "sheet open";
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div>' +
+        "<h2>" + kind + ' preview <span class="meta">· ' + esc(when) + (p.by ? " · " + esc(p.by) : "") + "</span></h2>" +
+        (p.imgId ? '<img src="' + ORIGIN + "/api/media?id=" + encodeURIComponent(p.imgId) + '" alt="" style="width:100%;max-height:52vh;object-fit:contain;border-radius:12px;background:var(--ink2);margin:8px 0" onerror="this.style.display=\'none\'" />' : "") +
+        '<p style="white-space:pre-wrap;font-size:.92rem;line-height:1.5">' + esc(p.caption || "") + "</p>" +
+        (p.at ? '<div class="meta" style="margin-top:6px">Instagram ✓' + (p.fb ? " · Facebook ✓" : ' · <span style="opacity:.7">Facebook ✗</span>') + "</div>" : "") +
+        '<div class="acts" style="margin-top:12px">' +
+        (p.link ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(p.link) + '">Instagram lo chudu ↗</a>' : "") +
+        '<button class="btn btn--sm btn--gold" data-close="1" style="flex:1">Close</button></div></div>';
+      wrap.addEventListener("click", function (e) { if (e.target.classList.contains("sheet-bg") || e.target.closest("[data-close]")) wrap.remove(); });
+      document.body.appendChild(wrap);
+    }
     function loadPosts() {
       var host = $("postBox"); if (!host) return;
       postapi("list").then(function (j) {
         var canPost = j.canPost;
-        var queue = (j.queue || []).map(function (it) {
+        postsSeen = { queue: j.queue || [], posted: j.posted || [] };
+        var queue = (j.queue || []).map(function (it, qi) {
           var late = it.due && it.due < Date.now() - 900000;
           return '<div class="vrow"><div style="display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start">' +
             // A picture that has expired keeps its space: hiding it outright let
@@ -4680,11 +4733,12 @@
             '<span class="meta">· ' + fmtAt(it.due) + (it.by ? " · " + esc(it.by) : "") + "</span>" +
             (late ? '<div class="meta" style="color:var(--hot)">Time dati poyindi — cron 10 nimishalaki okasari chustundi' + (it.tries ? " · " + it.tries + " sarlu try chesindi" : "") + "</div>" : "") +
             '<div class="meta" style="margin-top:4px">' + esc(String(it.caption || "").slice(0, 120)) + "</div>" +
-            (canPost ? '<div class="acts" style="margin-top:6px"><button class="btn btn--sm" data-act="post-cancel" data-img="' + esc(it.imgId) + '" style="color:var(--bad)">Teesey</button></div>' : "") +
+            '<div class="acts" style="margin-top:6px"><button class="btn btn--sm" data-act="post-prev" data-list="queue" data-i="' + qi + '">👁 Preview</button>' +
+            (canPost ? ' <button class="btn btn--sm" data-act="post-cancel" data-img="' + esc(it.imgId) + '" style="color:var(--bad)">Teesey</button>' : "") + "</div>" +
             "</div></div></div>";
         }).join("");
 
-        var posted = (j.posted || []).map(function (p) {
+        var posted = (j.posted || []).map(function (p, pi) {
           return '<div class="vrow"><div style="display:grid;grid-template-columns:72px 1fr;gap:10px;align-items:start">' +
             (p.imgId ? '<img class="qimg" loading="lazy" decoding="async" src="' + ORIGIN + '/api/media?id=' + esc(p.imgId) + '" alt="" onerror="this.style.visibility=\'hidden\'" />' : "<div></div>") +
             "<div><b>" + (p.kind === "story" ? "📸 Story" : p.kind === "reel" ? "🎬 Reel" : "🖼 Post") + "</b> " +
@@ -4698,6 +4752,7 @@
                 p.came + " vachcharu" + (p.revenue ? " · " + money0(p.revenue) : "") + "</div>"
               : '<div class="meta" style="margin-top:4px;opacity:.6">Inka evaru raaledu</div>') +
             '<div class="acts" style="margin-top:6px">' +
+            '<button class="btn btn--sm" data-act="post-prev" data-list="posted" data-i="' + pi + '">👁 Preview</button> ' +
             (p.link ? '<a class="btn btn--sm" target="_blank" rel="noopener" href="' + esc(p.link) + '">Instagram lo chudu ↗</a> ' : "") +
             (canPost && p.id ? '<button class="btn btn--sm" data-act="post-del" data-id="' + esc(p.id) + '" style="color:var(--bad)">Teesey</button>' : "") +
             "</div></div></div></div>";
@@ -4731,12 +4786,28 @@
           '<input id="npDay" class="inp" type="date" value="' + d + '" style="flex:1.2" />' +
           '<input id="npTime" class="inp" placeholder="6:00 pm" style="flex:1" /></div>' +
         '<div class="err" id="npErr"></div>' +
+        '<button class="btn btn--sm" id="npPrev" style="width:100%;margin-bottom:8px">👁 Preview — ela kanipistundo chudandi</button>' +
         '<button class="btn btn--gold btn--sm" id="npGo" style="width:100%">Pettandi</button>' +
         '<button class="btn btn--sm" id="npX" style="margin-top:8px;width:100%">Close</button></div>';
       document.body.appendChild(wrap);
       var close = function () { wrap.remove(); paintBack(); };
       wrap.querySelector(".sheet-bg").onclick = close;
       wrap.querySelector("#npX").onclick = close;
+      // See the post before it goes out: the picture and caption together,
+      // the way Instagram will show them (10 Nov, point 7).
+      wrap.querySelector("#npPrev").onclick = function () {
+        var err = wrap.querySelector("#npErr"); err.textContent = "";
+        if (!dataUrl) { err.textContent = "Mundu photo teeskondi"; return; }
+        var cap = (wrap.querySelector("#npCap").value || "").trim();
+        var pv = document.createElement("div");
+        pv.className = "sheet open";
+        pv.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>🖼 Post preview <span class="meta">· @dermaluxe.ai</span></h2>' +
+          '<img src="' + dataUrl + '" alt="" style="width:100%;max-height:52vh;object-fit:contain;border-radius:12px;background:var(--ink2);margin:8px 0" />' +
+          '<p style="white-space:pre-wrap;font-size:.92rem;line-height:1.5">' + (cap ? esc(cap) : '<span class="meta">Caption inka raayaledu.</span>') + "</p>" +
+          '<div class="acts" style="margin-top:12px"><button class="btn btn--sm btn--gold" data-close="1" style="flex:1">Sare, back</button></div></div>';
+        pv.addEventListener("click", function (e) { if (e.target.classList.contains("sheet-bg") || e.target.closest("[data-close]")) pv.remove(); });
+        document.body.appendChild(pv);
+      };
 
       var later = wrap.querySelector("#npLater");
       later.onchange = function () { wrap.querySelector("#npWhen").classList.toggle("hide", !later.checked); };
@@ -6957,6 +7028,7 @@
           .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "↻ Sync from Ads Manager"; });
         return;
       }
+      if (el.dataset.act === "post-prev") { postPreview((postsSeen[el.dataset.list] || [])[Number(el.dataset.i)]); return; }
       if (el.dataset.act === "post-cancel") {
         if (!confirm("Ee post ni queue nunchi teeseyyala?")) return;
         el.disabled = true;

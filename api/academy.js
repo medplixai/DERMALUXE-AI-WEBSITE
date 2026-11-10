@@ -308,6 +308,7 @@ module.exports = async (req, res) => {
       put({
         phone, name: s2.name, id: s2.id, course: s2.course, duration: s2.duration,
         fee: Number(s2.fee || 0), paid: Number(s2.paid || 0),
+        batch: s2.batch || null,                        // which batch the seat is in — shown on the card
         studentStatus: s2.status || "enrolled", onboarded: !!s2.onboarded,
         createdAt: s2.created || null,
         lastNote: n2 ? { ts: n2.ts, by: n2.by, text: n2.text } : undefined,
@@ -350,6 +351,9 @@ module.exports = async (req, res) => {
       ok: true,
       rows,
       seats: { total: docs.BATCH.seats, booked: seatsBooked, left: Math.max(0, docs.BATCH.seats - seatsBooked) },
+      // The batch this board is about, by number — so the heading can say
+      // "Batch #2 · 10 Nov" instead of a date typed into the page.
+      batch: { no: docs.BATCH.no, start: docs.BATCH.start, startISO: docs.BATCH.startISO, seats: docs.BATCH.seats },
       money: { collected, pending },
       counts: {
         reserved: reserved.length,

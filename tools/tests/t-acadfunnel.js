@@ -36,6 +36,17 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   const divya = (f.body.rows || []).find((r) => r.phone === "9876500062") || {};
   is([divya.stage, divya.outcome, divya.closedBy, divya.closedAt], ["enquiry", "", "", 0], "an open enquiry carries none of that");
 
+  // The batch has a number (owner PDF 10 Nov, point 2): the board's heading
+  // and every reserved seat say which batch, from _docs.BATCH, never typed.
+  const docs = require(require("path").join(process.env.DL_API || require("path").resolve("api"), "_docs.js"));
+  is([f.body.batch && f.body.batch.no, f.body.batch && f.body.batch.startISO, f.body.batch && f.body.batch.seats],
+    [docs.BATCH.no, docs.BATCH.startISO, docs.BATCH.seats], "the board names its batch by number, start date and seat count");
+  const add = await A({ a: "create" }, { a: "create", name: "Rama Lakshmi", phone: "9876500063", course: "skin", paid: 9999 });
+  is(add.code, 200, "a seat is reserved");
+  const f2 = await A({ a: "funnel" });
+  const rama = (f2.body.rows || []).find((r) => r.phone === "9876500063") || {};
+  is([rama.stage, rama.batch], ["reserved", docs.BATCH.no], "the reserved seat carries the batch number for its card");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe board explains itself");
   process.exit(fails ? 1 : 0);
 })();
