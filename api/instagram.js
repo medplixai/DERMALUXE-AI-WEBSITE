@@ -56,7 +56,8 @@ const MAPS_LINK = "https://maps.google.com/?q=16.7107,81.0952";
 
 // Instagram-specific behaviour: DMs don't reveal the phone number, so the
 // booking flow must collect it before a lead is complete.
-const IG_RULES = `- Booking flow: collect (1) name, (2) 10-digit mobile number, (3) concern/treatment, (4) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
+const IG_RULES = `- Booking flow: collect (1) name, (2) 10-digit mobile number, (3) which town or village they are from ("e ooru nunchi?"), (4) concern/treatment, (5) preferred day & time — one or two questions at a time. Clinic visit or video consultation both possible.
+- CONTACT DETAILS (owner, 10 Nov): the desk can only call a patient back with three things — their name, a 10-digit mobile number and their town/village. Once a patient has named a concern, every reply of yours that still lacks any of the three asks for the missing ones, warmly and in one line (e.g. "Mee peru, number, inka e ooru nunchi cheppandi — mana team call chesi slot confirm chestundi 😊"). Never ask for something they already gave. Put whatever they have given so far in "lead" — "village" may be "" until they say it.
 - Instagram doesn't show us the patient's phone number — a booking is complete ONLY when you also have their 10-digit mobile number. But the desk wants EVERY real enquiry on its list (owner, 7 Nov): fill "lead" as soon as a patient has told you a concern, even without name or phone — name may be "" and phone "" until they give them; keep collecting the missing bits in the reply. "lead" stays null for greetings with no concern, job seekers, influencers, promotions and spam.
 - WHATSAPP FIRST: our bookings, doctor slots, reminders and free AI skin & hair analysis all run on WhatsApp. Whenever the patient shows interest (treatment, booking, price question, photo check), (a) ask for their 10-digit mobile number so "mana team WhatsApp lo slot confirm chestundi", and (b) also give the direct link: "WhatsApp: 99591 34666 → wa.me/919959134666". Once a number is captured they automatically get a WhatsApp message from us — tell them to reply there.
 - Quick-reply taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here in the DM; "📱 WhatsApp lo" → give the wa.me link and ask for their 10-digit number (the code answers this one itself; if it reaches you, do the same).
@@ -65,7 +66,7 @@ const IG_RULES = `- Booking flow: collect (1) name, (2) 10-digit mobile number, 
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your dm reply>","lead":null}
 or when booking info is ready:
-{"reply":"...","lead":{"name":"...","phone":"<10 digits>","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","lang":"<hi if the chat is in Hindi, else blank>","call_prep":"<2 short Tenglish lines: what they want + call tip>"}}
+{"reply":"...","lead":{"name":"...","phone":"<10 digits>","village":"<town/village as they said it, blank until given>","concern":"...","date":"<if given>","slot":"<if given>","mode":"<Clinic Visit|Video|blank>","heat":"hot|warm|cold","lang":"<hi if the chat is in Hindi, else blank>","call_prep":"<2 short Tenglish lines: what they want + call tip>"}}
 Optionally add "send_location":true when the patient asks for the address/directions.`;
 
 const CLINIC_FACTS = facts.clinicFacts("Instagram", IG_RULES);
@@ -300,12 +301,30 @@ async function storeLead(cfg, leadInfo, igsid, igName, lastMsg) {
   // name or number: the Instagram name stands in, and the card says to answer
   // in the Instagram inbox until a number comes.
   if (!lead.concern && !lead.name) return;
+  const realName = !!lead.name;
   if (!lead.name) lead.name = igName ? `@${igName}` : "Instagram user";
   lead.src_id = igsid;
-  if (phone) Object.assign(lead, qualify.stamp(await qualify.read(cfg, phone)));
+  // The town the patient typed in the DM (owner, 10 Nov: name, number and
+  // village are what the desk needs to call back). With a number it is also
+  // written into the patient's qualifying record, so the WhatsApp agent that
+  // takes over does not ask "e ooru nunchi?" again — and the stamp below then
+  // carries it, with the distance. Without a number it rides on the lead row
+  // alone, which is still more than the desk had.
+  // The model fills "lead" from the latest turn, so a village said on Monday
+  // is blank in Tuesday's output; the conversation profile remembers it.
+  let prevP = null;
+  try { const p = cfg ? await guard.kvCommand(cfg, ["GET", `ig:p:${igsid}`]) : null; prevP = p && p.result ? JSON.parse(p.result) : null; } catch (e) {}
+  const dmVillage = (String(leadInfo.village || "").replace(/\s+/g, " ").trim() || (prevP && prevP.village) || "").slice(0, 40);
+  if (dmVillage) lead.village = dmVillage;
+  if (phone) {
+    const learned = { village: dmVillage || undefined, name: realName ? lead.name : undefined, problem: lead.concern || undefined };
+    const rec = (dmVillage || realName) ? await qualify.absorb(cfg, phone, learned, { channel: "instagram" }).catch(() => null) : null;
+    Object.assign(lead, qualify.stamp(rec || await qualify.read(cfg, phone)));
+    if (!lead.village && dmVillage) lead.village = dmVillage;
+  }
   try {
     if (cfg) await guard.kvCommand(cfg, ["SET", `ig:p:${igsid}`,
-      JSON.stringify({ name: lead.name, concern: lead.concern, ts: Date.now() }), "EX", String(PROFILE_TTL)]);
+      JSON.stringify({ name: lead.name, concern: lead.concern, village: lead.village || "", phone: phone || "", ts: Date.now() }), "EX", String(PROFILE_TTL)]);
   } catch (e) {}
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
@@ -331,8 +350,10 @@ const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|d
 // Where the booking really happens. Said the same way whether they tapped
 // the quick reply or the chat simply went quiet.
 const WA_LINK = "wa.me/919959134666";
-const WA_HANDOFF_DM = `WhatsApp lo direct ga book cheyochu 😊 ${WA_LINK}\n\nLeda mee 10-digit number ikkada pampithe mana team WhatsApp lo doctor slot confirm chestundi · మీ నంబర్ పంపితే WhatsApp లో స్లాట్ కన్ఫర్మ్ చేస్తాం`;
-const QUIET_NUDGE_DM = `Mee number ikkada pampithe mana team WhatsApp lo doctor slot confirm chestundi 😊 Leda direct ga WhatsApp: ${WA_LINK} · మీ నంబర్ పంపితే WhatsApp లో స్లాట్ కన్ఫర్మ్ చేస్తాం`;
+// Name, number and town — the three things the desk needs to call back
+// (owner, 10 Nov 2026).
+const WA_HANDOFF_DM = `WhatsApp lo direct ga book cheyochu 😊 ${WA_LINK}\n\nLeda mee peru, 10-digit number, inka e ooru nunchi ikkada pampithe mana team WhatsApp lo doctor slot confirm chestundi · మీ పేరు, నంబర్, ఊరు పంపితే WhatsApp లో స్లాట్ కన్ఫర్మ్ చేస్తాం`;
+const QUIET_NUDGE_DM = `Mee peru, number, inka e ooru nunchi ikkada pampithe mana team WhatsApp lo doctor slot confirm chestundi 😊 Leda direct ga WhatsApp: ${WA_LINK} · మీ పేరు, నంబర్, ఊరు పంపితే WhatsApp లో స్లాట్ కన్ఫర్మ్ చేస్తాం`;
 
 // ── The DM enquiries that never gave a number ──────────────────────────────
 // An Instagram or Messenger chat that named a concern but stopped without a
@@ -471,7 +492,7 @@ async function storeCommentLead(cfg, username, fromId, text, permalink, kind) {
     page: permalink || (fb ? "facebook-comment" : "instagram-comment"),
     // A question is warm; a thank-you or an emoji is a cold lead the desk can still greet.
     heat: COMMENT_ASKS.test(text) || COMMENT_CONCERN.test(text) || COMMENT_INTEREST.test(text) ? "warm" : "cold",
-    call_prep: `${fb ? "Facebook" : "Instagram"} comment — ${fb ? "Messenger" : "Instagram"} lo reply cheyyandi; number ivvamani adagandi.`,
+    call_prep: `${fb ? "Facebook" : "Instagram"} comment — ${fb ? "Messenger" : "Instagram"} lo reply cheyyandi; peru, number, ooru adagandi.`,
     src_id: `${fb ? "fc" : "c"}:${fromId}`,
   };
   try {
@@ -779,8 +800,9 @@ async function handleMessage(req, m) {
     } catch (e) {}
     igName = await fetchIgName(igsid, ptok);
   }
+  // What they already told us is named here so it is not asked for twice.
   let extraCtx = facts.nowIstCtx() + (profile && profile.name
-    ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
+    ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}${profile.village ? ", from: " + profile.village : ""}${profile.phone ? ", mobile number already given" : ""}] `
     : "");
   // The same goals the WhatsApp agent works to — book the consultation, the
   // academy seat, the transplant assessment — read from what they have said.
@@ -870,3 +892,6 @@ module.exports.sweepIgComments = sweepIgComments;
 module.exports.isEnquiry = isEnquiry;
 module.exports.sweepFbComments = sweepFbComments;
 module.exports.nudgeQuiet = nudgeQuiet;
+module.exports.storeLead = storeLead;   // for tools/tests/t-igcontact.js
+module.exports.IG_RULES = IG_RULES;
+module.exports.QUIET_NUDGE_DM = QUIET_NUDGE_DM;

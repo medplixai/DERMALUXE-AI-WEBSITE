@@ -111,6 +111,7 @@ stub("_notify.js", {
   sendWaImageLink: async (...a) => { sent.push(["img", ...a]); return true; },
   notifyOwner: async (...a) => { sent.push(["owner", ...a]); return { ok: true }; },
   waOwner: async (...a) => { sent.push(["owner", ...a]); return { ok: true }; },
+  waHandoff: async (cfg, lead, from) => { sent.push(["handoff", lead && lead.phone, from]); return { ok: true }; },   // Instagram → WhatsApp template
 });
 stub("_push.js", { enabled: () => false, notifyCap: async () => ({ ok: true }), send: async () => ({ ok: true }) });
 // The blob store is in memory, but the encryption is the real one — a

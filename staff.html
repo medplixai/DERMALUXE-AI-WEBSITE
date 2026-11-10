@@ -1654,7 +1654,7 @@
         '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc oc-' + esc(l.outcome) + '">' + esc(OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
         (l.lastCall || l.fu ? '<div class="fu-line"><span>🗓 Lead: <b>' + esc(dmy(l.ts)) + "</b></span>" + (l.lastCall ? "<span>📞 Call: <b>" + esc(dmy(l.lastCall)) + "</b></span>" : "") +
           (l.fu ? '<span>⏭ Next follow-up: <b style="color:' + (l.fu <= istToday() ? "var(--hot)" : "var(--text)") + '">' + esc(dmy(l.fu)) + "</b></span>" : "") + "</div>" : "") +
-        (l.grade ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +
+        ((l.grade || l.village) ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +
           ((l.why || []).length ? (l.village || l.since || l.prefers ? '<br>' : '') + esc((l.why || []).slice(0, 3).join(" · ")) : '') + '</div>' : '') +
         (l.next && l.status !== "closed" ? '<div class="nxt ' + esc(l.next.kind) + '">' + esc(l.next.text) +
           (l.waiting != null && l.next.kind !== "skip" && l.next.kind !== "done" ? ' <span class="wait' + (l.waiting > 3600000 ? " bad" : l.waiting > 15 * 60000 ? " warn" : "") + '">· ' + (l.waiting > 3600000 ? "🚨 1 ganta daatindi · " : "") + waitFor(l.waiting) + ' nundi waiting</span>' : "") + '</div>' : "") +
