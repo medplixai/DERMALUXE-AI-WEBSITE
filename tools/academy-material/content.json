@@ -1,0 +1,2821 @@
+{
+ "skin": [
+  {
+   "n": 1,
+   "title": "Welcome, clinic protocol & professional grooming",
+   "te": "స్వాగతం, క్లినిక్ ప్రోటోకాల్ & ప్రొఫెషనల్ గ్రూమింగ్",
+   "objectives": [
+    "Understand how a doctor-led aesthetic clinic runs, and your role in it",
+    "Learn the DermaLuxe hygiene, sterilisation and safety protocol",
+    "Present yourself like a clinic professional — uniform, hands, voice, body language"
+   ],
+   "theory": [
+    {
+     "h": "How an aesthetic clinic works",
+     "p": "A patient's journey is: enquiry (WhatsApp/walk-in) → consultation with the dermatologist → treatment plan → procedure → aftercare → follow-up. A therapist touches almost every step: you prepare the room and machine, position the client, assist or perform the procedure under supervision, explain aftercare and make the follow-up call. Your calm, clean, confident handling is what makes a client trust the clinic."
+    },
+    {
+     "h": "Hygiene & sterilisation",
+     "p": "Three levels: cleaning (soap + water removes visible dirt), disinfection (70% isopropyl alcohol or hospital-grade disinfectant on surfaces, trolleys, machine heads) and sterilisation (autoclave for metal instruments — comedone extractors, forceps). Gloves are single-use, changed between clients and after touching anything non-clinical. Hand hygiene before gloves and after removing them. Fresh linen and headband for every client. Needles and blades go straight to the sharps container — never re-cap."
+    },
+    {
+     "h": "Professional grooming",
+     "p": "You are selling skin and hair results — you must look the part. Clean pressed uniform, closed shoes, hair tied back, short filed nails without chipped polish, mild or no perfume, fresh breath, no heavy jewellery on hands. Greet every client standing, with their name. Phone stays out of the treatment room."
+    }
+   ],
+   "hands": [
+    "Tour of the clinic: reception, consultation room, treatment rooms, machine area, sterilisation zone",
+    "Practise hand hygiene: 6-step handwash, glove on/off without contamination",
+    "Set up a treatment trolley from scratch and have it checked",
+    "Practise greeting and seating a client (role play, 3 rounds)"
+   ],
+   "safety": [
+    "Never reuse a needle, blade or single-use tip",
+    "Disinfect machine handpieces between clients",
+    "Report any spill, breakage or skin injury to the senior immediately"
+   ],
+   "keys": [
+    "70% IPA for surfaces",
+    "Autoclave for metal instruments",
+    "Gloves: one client = one pair",
+    "Uniform + tied hair + short nails, every day"
+   ],
+   "homework": "Write down the full patient journey of your clinic in 6 steps, and list 5 things in your own grooming you will change from tomorrow.",
+   "tip_pdf": "First impression = 7 seconds. Clean hands and a warm 'Namaste, ch' win more trust than any certificate on the wall.",
+   "tip": "First impression = 7 seconds. Clean hands and a warm 'Namaste, chెప్పండి' win more trust than any certificate on the wall.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 2,
+   "title": "Skin anatomy & physiology",
+   "te": "చర్మ నిర్మాణం & పనితీరు",
+   "objectives": [
+    "Name the layers of skin and what each layer does",
+    "Understand barrier function, pH and why products sting or burn",
+    "Connect anatomy to treatment depth — why a peel or laser works where it does"
+   ],
+   "theory": [
+    {
+     "h": "The three layers",
+     "p": "Epidermis (top, ~0.1 mm) — the barrier, renews itself every 28 days; contains melanocytes that make pigment. Dermis (middle) — collagen, elastin, blood vessels, nerves, sweat and oil glands; this is where anti-ageing and scar treatments work. Hypodermis (fat) — cushioning and contour. Treatments are classified by how deep they reach: superficial (epidermis) = peels, Hydrafacial; medium (upper dermis) = MNRF, fractional laser; deep = surgical, HIFU (SMAS)."
+    },
+    {
+     "h": "Barrier, pH and TEWL",
+     "p": "The stratum corneum is bricks (dead cells) and mortar (lipids). Healthy skin pH is 4.5–5.5 — slightly acidic. Harsh soap, over-exfoliation or too many actives break the mortar, water escapes (trans-epidermal water loss) and skin becomes sensitive, red and reactive. A damaged barrier must be repaired BEFORE any peel or laser — otherwise you get burns and pigmentation."
+    },
+    {
+     "h": "Melanin & the sun",
+     "p": "Melanocytes sit in the basal layer and pass melanin to skin cells as an umbrella against UV. Indian skin (Fitzpatrick IV–V) has very reactive melanocytes: any inflammation — a pimple, a scratch, an aggressive peel — can trigger post-inflammatory hyperpigmentation (PIH). This single fact decides most of our settings and protocols."
+    }
+   ],
+   "hands": [
+    "Label a skin cross-section diagram from memory (2 attempts)",
+    "Feel and compare barrier quality on 3 volunteers: oily, dry, sensitised",
+    "Map treatment depth on the diagram: peel, Hydrafacial, MNRF, CO2, HIFU"
+   ],
+   "safety": [
+    "Never treat a skin with a broken barrier (stinging, redness, flaking) — repair first",
+    "Explain PIH risk to every Indian-skin client before any procedure"
+   ],
+   "keys": [
+    "Epidermis renews ~28 days",
+    "Skin pH 4.5–5.5",
+    "Fitzpatrick IV–V = high PIH risk",
+    "Repair barrier before any active treatment"
+   ],
+   "homework": "Draw the skin cross-section with the 3 layers and mark where a superficial peel, MNRF and HIFU act.",
+   "tip_pdf": "Clients don't want anatomy — they want to be understood. Learn to say it simply: 'Mee skin barrier weak ga undi, mundu repair chesi tarvata treatment chestam.'",
+   "tip": "Clients don't want anatomy — they want to be understood. Learn to say it simply: 'Mee skin barrier weak ga undi, mundu repair chesi tarvata treatment chestam.'",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 3,
+   "title": "Skin types, Fitzpatrick scale & skin analysis",
+   "te": "స్కిన్ టైప్స్, ఫిట్జ్‌ప్యాట్రిక్ & స్కిన్ అనాలిసిస్",
+   "objectives": [
+    "Classify any client's skin type and Fitzpatrick phototype correctly",
+    "Run a full skin analysis — visual, touch, dermoscope and AI",
+    "Record findings in a way the doctor can use"
+   ],
+   "theory": [
+    {
+     "h": "Skin types",
+     "p": "Oily (shiny T-zone and cheeks, large pores, acne-prone), dry (tight, flaky, fine lines), combination (oily T-zone, normal/dry cheeks), sensitive (reacts, burns, redness), normal. Type is not permanent — season, products, hormones and treatments change it. Always classify today's skin, not last month's."
+    },
+    {
+     "h": "Fitzpatrick phototype",
+     "p": "I–II very fair (burns, rarely tans), III light brown (sometimes burns), IV moderate brown — most South Indians, V dark brown, VI deeply pigmented. This decides laser energy, peel strength and PIH precautions. Higher type = lower energy, more passes, more cooling, longer gaps."
+    },
+    {
+     "h": "Analysis workflow",
+     "p": "Clean the face first (make-up distorts everything). Look under a good light at the T-zone, cheeks, jawline. Assess: oil, hydration, texture, pores, pigmentation, active acne, marks, scars, sensitivity, sun damage. Use a dermoscope for pigment pattern and a magnifier for comedones. AI skin analysis on the website gives scores you can show the client — it is a conversation tool, not a diagnosis."
+    }
+   ],
+   "hands": [
+    "Analyse 3 volunteers: write skin type, Fitzpatrick, 3 findings and 2 recommendations each",
+    "Take standard photos: front, left 45°, right 45° with fixed light and distance",
+    "Run the AI analysis and compare with your own reading"
+   ],
+   "safety": [
+    "Never diagnose a disease — describe what you see and refer to the dermatologist",
+    "Always ask about isotretinoin, recent peels/lasers, pregnancy and allergies"
+   ],
+   "keys": [
+    "Most Eluru clients: Fitzpatrick IV–V",
+    "Cleanse before analysing",
+    "Fixed light + distance for photos",
+    "AI scores = talking tool, not diagnosis"
+   ],
+   "homework": "Analyse 2 family members and write a full analysis card for each.",
+   "tip_pdf": "Photos are your proof. A client who sees Day 0 vs Day 30 side by side books the next package without being asked.",
+   "tip": "Photos are your proof. A client who sees Day 0 vs Day 30 side by side books the next package without being asked.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 4,
+   "title": "Consultation, consent, photography & records",
+   "te": "కన్సల్టేషన్, కన్సెంట్, ఫోటోలు & రికార్డులు",
+   "objectives": [
+    "Run a structured consultation that gets the real concern out",
+    "Take legally sound consent and honest before/after photos",
+    "Maintain client records the clinic can rely on"
+   ],
+   "theory": [
+    {
+     "h": "The consultation frame",
+     "p": "Open (name, what brings you today), explore (how long, what have you tried, what worries you most), history (medical, medication, allergies, previous procedures, pregnancy/breastfeeding), expectation (what result do you want, by when), explain (what is realistic, how many sessions, downtime), close (plan + next step). Never promise 100% clearance and never quote a price the doctor has not approved."
+    },
+    {
+     "h": "Consent",
+     "p": "Consent is informed: procedure name, expected benefit, number of sessions, possible side effects (redness, swelling, pigmentation, rarely burns/scarring), alternatives and aftercare, in a language the client reads. Signed and dated before the first session, with a fresh consent for any new procedure. Photo consent is separate — never post a client photo without a written, ticked permission."
+    },
+    {
+     "h": "Records",
+     "p": "One file per client: analysis card, consent, treatment log (date, area, machine, settings, reaction), products sold, photos, follow-up notes. Settings written down are what let you increase safely at the next session. 'I remember' is not a record."
+    }
+   ],
+   "hands": [
+    "Role play 3 consultations: acne teenager, melasma housewife, pre-wedding bride",
+    "Fill a consent form completely and get it checked for gaps",
+    "Photograph a volunteer at 3 angles and file them with the record"
+   ],
+   "safety": [
+    "No consent = no procedure. No exceptions.",
+    "Pregnancy, isotretinoin in last 6 months, active infection, keloid history → stop and ask the doctor"
+   ],
+   "keys": [
+    "Consent before every NEW procedure",
+    "Photo consent is separate",
+    "Log every setting you use",
+    "Never promise 100%"
+   ],
+   "homework": "Write a consultation script in Telugu and English for an acne client, 10 lines each.",
+   "tip_pdf": "Listen twice as much as you talk. The client's real worry (a wedding, a photo, a comment someone made) is what makes them come back.",
+   "tip": "Listen twice as much as you talk. The client's real worry (a wedding, a photo, a comment someone made) is what makes them come back.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 5,
+   "title": "Cleansing, exfoliation & the basic facial protocol",
+   "te": "క్లెన్సింగ్, ఎక్స్‌ఫోలియేషన్ & బేసిక్ ఫేషియల్",
+   "objectives": [
+    "Perform a complete, professional clinical facial start to finish",
+    "Choose the right cleanser and exfoliation for each skin type",
+    "Master hand movements, pressure and timing"
+   ],
+   "theory": [
+    {
+     "h": "Step order and why",
+     "p": "Double cleanse (oil/micellar then gel) → analyse → exfoliate (mechanical or enzymatic) → steam/softening if needed → extraction if indicated → treatment (mask/serum/device) → soothing → moisturiser → sunscreen. Order matters: actives on unclean skin do nothing, and extraction on unsoftened skin causes bruising and PIH."
+    },
+    {
+     "h": "Choosing exfoliation",
+     "p": "Mechanical scrubs: avoid on active acne and sensitive skin. Enzyme (papain, bromelain): gentle, good for sensitive. AHA (glycolic, lactic): dry, dull, pigmented. BHA (salicylic): oily, comedonal, acne. Frequency: oily 1–2 weekly, dry/sensitive every 10–15 days."
+    },
+    {
+     "h": "Hands and pressure",
+     "p": "Work in upward, outward strokes, both hands symmetrical, constant light pressure, never dragging the eye area. Keep one hand on the client at all times — it feels professional and safe. Room: clean linen, dim light, no phone, comfortable temperature, client's hair fully covered."
+    }
+   ],
+   "hands": [
+    "Full clinical facial on a partner, timed 45 minutes, with checklist",
+    "Practise the 8 classic massage movements on the face and neck",
+    "Set up and reset the room in under 5 minutes"
+   ],
+   "safety": [
+    "No steam on rosacea, active acne flare or very sensitive skin",
+    "Never extract without softening; stop after 2 failed attempts on one comedone"
+   ],
+   "keys": [
+    "Double cleanse always",
+    "Salicylic for oily, lactic for dry",
+    "Facial ~45 min",
+    "Sunscreen is part of the treatment"
+   ],
+   "homework": "Write your own 12-step facial protocol card and practise twice at home.",
+   "tip_pdf": "Your touch is the brand. Slow, confident, symmetrical hands make a 2,000 facial feel like 5,000.",
+   "tip": "Your touch is the brand. Slow, confident, symmetrical hands make a ₹2,000 facial feel like ₹5,000.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 6,
+   "title": "Product knowledge & home care counselling",
+   "te": "ప్రొడక్ట్ నాలెడ్జ్ & హోమ్ కేర్",
+   "objectives": [
+    "Know the main actives, what they do and who they suit",
+    "Build a simple AM/PM home routine for any client",
+    "Counsel without prescribing medicines"
+   ],
+   "theory": [
+    {
+     "h": "The core actives",
+     "p": "Vitamin C (morning, brightening, antioxidant), niacinamide (oil control, barrier, pigment, very well tolerated), hyaluronic acid (hydration), ceramides (barrier repair), AHA/BHA (exfoliation), retinoids (night, turnover, acne, ageing — start low, go slow), azelaic acid (acne + pigment, pregnancy friendly), sunscreen (the single most important product)."
+    },
+    {
+     "h": "Sunscreen counselling",
+     "p": "SPF 30–50 PA+++, applied 2 finger-lengths for face and neck, 15 minutes before going out, reapplied every 3–4 hours outdoors. Indoors near windows still needs it. Gel/matte for oily, cream for dry, tinted for pigmentation (visible light protection). Without sunscreen, every pigmentation treatment fails — say this in every consultation."
+    },
+    {
+     "h": "Building a routine",
+     "p": "AM: cleanser → (vitamin C or niacinamide) → moisturiser → sunscreen. PM: cleanser → treatment (retinoid or exfoliant, alternate nights) → moisturiser. Change ONE thing at a time, every 2 weeks. Never stack retinoid + strong acid on the same night for a beginner."
+    }
+   ],
+   "hands": [
+    "Build AM/PM routines for 3 profiles: oily acne teen, dry mature, melasma",
+    "Demonstrate the correct sunscreen quantity on a volunteer",
+    "Explain 3 products in simple Telugu to a partner"
+   ],
+   "safety": [
+    "Never name or suggest prescription medicines (retinoid strengths, antibiotics, steroids) — that is the doctor's job",
+    "Patch test any new active on clients with sensitive skin"
+   ],
+   "keys": [
+    "Sunscreen = non-negotiable",
+    "Niacinamide suits almost everyone",
+    "Retinoid at night, start twice a week",
+    "One change every 2 weeks"
+   ],
+   "homework": "Write a one-page home-care card in Telugu for a pigmentation client.",
+   "tip_pdf": "Sell routines, not bottles. A client who follows a simple 4-step routine gets results — and results sell the next package.",
+   "tip": "Sell routines, not bottles. A client who follows a simple 4-step routine gets results — and results sell the next package.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 7,
+   "title": "Chemical peel science — how peels really work",
+   "te": "కెమికల్ పీల్ సైన్స్",
+   "objectives": [
+    "Explain peel depth, pH and free acid value in your own words",
+    "Match peel type to concern and Fitzpatrick type",
+    "Set up a complete, safe peel station"
+   ],
+   "theory": [
+    {
+     "h": "What a peel does",
+     "p": "A controlled chemical injury removes dead and damaged cells and triggers repair — faster turnover, more collagen, more even pigment. Depth decides result and risk: very superficial (stratum corneum) = glow, minimal downtime; superficial (full epidermis) = pigmentation, acne; medium (papillary dermis) = scars, deeper lines — doctor territory in Indian skin."
+    },
+    {
+     "h": "pH, concentration and free acid",
+     "p": "A 30% glycolic peel at pH 3.5 is much gentler than 30% at pH 1.8. Free acid value tells you how much acid is actually active. Never judge a peel by percentage alone. Time on skin is your second dial — start with the shortest recommended time on a first session and build up."
+    },
+    {
+     "h": "Indian-skin rules",
+     "p": "Fitzpatrick IV–V: prefer superficial peels, prime the skin 2–4 weeks before with a gentle routine, avoid sun for 5 days after, use strict sunscreen, space sessions 3–4 weeks apart. Aggressive peels on dark skin cause PIH that takes months to clear and destroys the client's trust."
+    }
+   ],
+   "hands": [
+    "Identify 6 peel bottles: acid, %, pH, indication, neutraliser required or not",
+    "Set up a peel station: peel, neutraliser, fan, cold compress, timer, gauze, gloves",
+    "Do a patch test behind the ear on a volunteer and read it at 24 h"
+   ],
+   "safety": [
+    "Always have the neutraliser open and ready before the first drop of peel",
+    "Never peel over active infection, open wounds, or recent waxing/threading (48 h)"
+   ],
+   "keys": [
+    "Depth = result + risk",
+    "pH and free acid > percentage",
+    "Start with shortest time",
+    "3–4 weeks between sessions"
+   ],
+   "homework": "Make a peel comparison chart: glycolic, lactic, mandelic, salicylic, TCA — depth, indication, downtime.",
+   "tip_pdf": "Confidence in peels comes from preparation, not bravado. A prepared station is what lets you stay calm if skin frosts early.",
+   "tip": "Confidence in peels comes from preparation, not bravado. A prepared station is what lets you stay calm if skin frosts early.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 8,
+   "title": "Glycolic & lactic peels — hands-on",
+   "te": "గ్లైకోలిక్ & లాక్టిక్ పీల్స్ — ప్రాక్టికల్",
+   "objectives": [
+    "Perform a glycolic peel end to end under supervision",
+    "Recognise correct endpoints and when to stop early",
+    "Handle the post-peel 7 days confidently"
+   ],
+   "theory": [
+    {
+     "h": "Glycolic acid",
+     "p": "Smallest AHA molecule, penetrates fast — dull skin, mild pigmentation, fine lines, open pores. Typical clinic strengths 20–35% for beginners on Indian skin, 3–5 minutes, always neutralised (sodium bicarbonate solution or water depending on the brand). Expect mild stinging at 30–60 seconds and light erythema."
+    },
+    {
+     "h": "Lactic acid",
+     "p": "Larger molecule, slower and gentler, also hydrating — ideal for dry, sensitive or first-time clients and for the face + neck combination. 30–50%, 3–7 minutes. A very good 'trust builder' first peel before moving to stronger agents."
+    },
+    {
+     "h": "Endpoints and aftercare",
+     "p": "Stop at: even light pink, intense burning the client cannot tolerate, any white frosting (too deep for these peels), or blotchy erythema. Neutralise immediately, cold compress, soothing serum, moisturiser, sunscreen. Aftercare: no scrubs/actives/waxing for 5–7 days, no sun, no hot water, no picking flakes, sunscreen every 3–4 hours."
+    }
+   ],
+   "hands": [
+    "Observe the trainer do a full glycolic peel with commentary",
+    "Perform one glycolic peel on a live client under direct supervision",
+    "Write the post-peel instruction card and explain it to the client in Telugu"
+   ],
+   "safety": [
+    "Protect eyes, nostrils and lips with petroleum jelly before application",
+    "Neutraliser within arm's reach; stop the timer, not the conversation"
+   ],
+   "keys": [
+    "Glycolic 20–35%, 3–5 min",
+    "Lactic 30–50%, gentler",
+    "Frosting = too deep for AHA",
+    "Sunscreen every 3–4 h for a week"
+   ],
+   "homework": "Write the exact step list you followed today, with timings, from memory.",
+   "tip_pdf": "Tell the client what they will feel before they feel it. 'Konchem manta vastundi, 30 seconds lo taggutundi' prevents panic and builds trust.",
+   "tip": "Tell the client what they will feel before they feel it. 'Konchem manta vastundi, 30 seconds lo taggutundi' prevents panic and builds trust.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 9,
+   "title": "Salicylic & mandelic peels — oily and acne skin",
+   "te": "సాలిసిలిక్ & మాండెలిక్ పీల్స్",
+   "objectives": [
+    "Select and perform a salicylic peel for acne-prone skin",
+    "Use mandelic acid safely on sensitive and darker skin",
+    "Combine peel with an acne home-care plan"
+   ],
+   "theory": [
+    {
+     "h": "Salicylic acid (BHA)",
+     "p": "Oil-soluble, so it goes inside the pore — comedones, oily skin, active acne, back and chest acne. 20–30%, self-neutralising (it dries into a white pseudo-frost of crystals; that is NOT true frosting). 3–5 minutes. Mild anti-inflammatory and antibacterial action, so acne calms within days."
+    },
+    {
+     "h": "Mandelic acid",
+     "p": "Large molecule from bitter almonds — slow, even penetration, very low PIH risk, ideal for Fitzpatrick V, sensitive skin, rosacea-prone and first-timers with pigmentation + acne. Often 20–40%, well tolerated, can be repeated every 2–3 weeks."
+    },
+    {
+     "h": "Peel series planning",
+     "p": "Acne clients need a series: 4–6 sessions every 2–3 weeks, with home care (salicylic cleanser, niacinamide, non-comedogenic moisturiser, gel sunscreen) in between. Warn about a possible purge in weeks 1–2. Photographs at every session keep the client motivated."
+    }
+   ],
+   "hands": [
+    "Perform a salicylic peel on an oily/acne volunteer under supervision",
+    "Perform a mandelic peel and compare client sensation with yesterday's glycolic",
+    "Draw a 6-session plan with dates for an acne client"
+   ],
+   "safety": [
+    "Salicylic: avoid in aspirin allergy and in pregnancy",
+    "Never peel over inflamed, pustular, infected acne — treat the infection first (doctor)"
+   ],
+   "keys": [
+    "Salicylic = inside the pore",
+    "Salicylic pseudo-frost is normal",
+    "Mandelic = safest for dark skin",
+    "Acne peels: 4–6 sessions"
+   ],
+   "homework": "Prepare an acne client counselling script covering purge, sessions and home care.",
+   "tip_pdf": "Acne clients are emotional clients. Every session, show them one photo of improvement — it stops them from quitting in week 2.",
+   "tip": "Acne clients are emotional clients. Every session, show them one photo of improvement — it stops them from quitting in week 2.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 10,
+   "title": "TCA, combination peels & frosting endpoints",
+   "te": "TCA, కాంబినేషన్ పీల్స్ & ఫ్రాస్టింగ్",
+   "objectives": [
+    "Understand TCA and combination peels and your role in them",
+    "Read frosting levels correctly",
+    "Assist the doctor safely in a medium-depth procedure"
+   ],
+   "theory": [
+    {
+     "h": "TCA basics",
+     "p": "Trichloroacetic acid coagulates protein — the skin turns white (frosting). 10–15% is superficial; above that is medium depth and is performed by the dermatologist in Indian skin. Not neutralised — it self-limits, so time and number of coats decide depth. Used for deeper pigmentation, scars and for TCA CROSS on ice-pick scars."
+    },
+    {
+     "h": "Reading frosting",
+     "p": "Level I: speckled light frost with visible pink background (superficial). Level II: uniform white with pink showing through (epidermal/upper dermal). Level III: solid dense white (dermal — risk of scarring and PIH). In dark skin we stop at Level I–II. Learn to see frost appear and call it out loud during the procedure."
+    },
+    {
+     "h": "Combination peels",
+     "p": "Branded blends (e.g. Jessner-type, glycolic + retinoid, salicylic + mandelic) give a controlled, multi-acid action with predictable downtime. Follow the manufacturer protocol exactly — priming, coats, timing, neutralising. Combination peels are a good bridge between a simple AHA and a medium peel."
+    }
+   ],
+   "hands": [
+    "Observe a doctor-performed TCA or combination peel and log every step",
+    "Identify frosting levels from clinical photographs (10 images)",
+    "Prepare and check a medium-peel tray"
+   ],
+   "safety": [
+    "Never perform TCA above 15% yourself — assist only",
+    "Have the doctor in the room for any peel that frosts"
+   ],
+   "keys": [
+    "TCA is not neutralised",
+    "Level I–II frost only in dark skin",
+    "Follow brand protocol exactly",
+    "Downtime 5–7 days"
+   ],
+   "homework": "Make a frosting reference sheet with what you would do at each level.",
+   "tip_pdf": "The skill in peels is stopping early. Clients forgive a slow result; they never forgive a burn.",
+   "tip": "The skill in peels is stopping early. Clients forgive a slow result; they never forgive a burn.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 11,
+   "title": "Acne: types, grading & comedone extraction",
+   "te": "యాక్నే రకాలు, గ్రేడింగ్ & కమెడోన్ ఎక్స్‌ట్రాక్షన్",
+   "objectives": [
+    "Grade acne correctly and know what a therapist may and may not treat",
+    "Perform safe comedone extraction",
+    "Explain acne causes and triggers to a client"
+   ],
+   "theory": [
+    {
+     "h": "Why acne happens",
+     "p": "Four factors: excess sebum (hormones), blocked follicle (dead cells), C. acnes bacteria and inflammation. Triggers in our clients: humidity and sweat, oily hair products, helmet friction, comedogenic makeup, high-glycaemic and dairy diets, PCOS in women, stress and picking."
+    },
+    {
+     "h": "Grading",
+     "p": "Grade I: comedones only (blackheads/whiteheads). Grade II: papules and few pustules. Grade III: many pustules, nodules. Grade IV: nodulocystic, scarring. Therapists handle Grade I and mild II with facials, peels and extraction. Grade III–IV are medical — doctor consultation first, no aggressive handling."
+    },
+    {
+     "h": "Extraction technique",
+     "p": "Cleanse → soften (steam or warm compress 5–8 min, or enzyme) → sterile comedone extractor or gloved fingers with gauze → gentle even pressure around, never on top → release after 2 failed attempts → antiseptic → soothing mask → sunscreen. Never squeeze inflamed pustules or nodules: that is how scars and PIH are made."
+    }
+   ],
+   "hands": [
+    "Grade 6 clinical acne photographs",
+    "Extraction practice on a live client under supervision (comedones only)",
+    "Write an acne trigger checklist and use it in a role-play consultation"
+   ],
+   "safety": [
+    "No extraction on inflamed, pustular or cystic lesions",
+    "Stop if bleeding starts; never dig",
+    "Refer Grade III–IV and any scarring acne to the dermatologist"
+   ],
+   "keys": [
+    "4 causes: oil, block, bacteria, inflammation",
+    "Therapist = Grade I–mild II",
+    "Soften before extracting",
+    "2 attempts maximum per lesion"
+   ],
+   "homework": "List 10 acne triggers you can spot in a Eluru client's daily routine.",
+   "tip_pdf": "Teach clients the 'no picking' rule with a reason: 'Prathi sari picking chesthe oka mark ekkuva, 3 nelalu untundi.' Rules with reasons get followed.",
+   "tip": "Teach clients the 'no picking' rule with a reason: 'Prathi sari picking chesthe oka mark ekkuva, 3 nelalu untundi.' Rules with reasons get followed.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 12,
+   "title": "Acne marks & scars — protocols",
+   "te": "యాక్నే మార్క్స్ & స్కార్స్ ప్రోటోకాల్స్",
+   "objectives": [
+    "Tell the difference between a mark and a scar and set the right expectation",
+    "Plan a combination protocol for marks and for scars",
+    "Track and photograph progress over months"
+   ],
+   "theory": [
+    {
+     "h": "Marks vs scars",
+     "p": "PIH (brown marks) and PIE (red marks) are pigment and vessels — flat, they fade with time, peels, brightening and strict sun protection. Scars are a change in skin texture: ice-pick (deep narrow), boxcar (sharp edges), rolling (tethered waves), hypertrophic/keloid (raised). Texture never fades on its own — it needs collagen remodelling."
+    },
+    {
+     "h": "Protocols",
+     "p": "Marks: mandelic/salicylic/glycolic series + niacinamide + azelaic + sunscreen; 4–6 sessions; visible change in 6–8 weeks. Scars: MNRF or fractional CO2 (doctor), subcision for rolling, TCA CROSS for ice-pick, and peels only as a support. Realistic result: 50– 70% improvement over 4–6 sessions spread across 6 months — never promise 100%."
+    },
+    {
+     "h": "Consultation honesty",
+     "p": "Show the client the difference on their own face with a mirror and light. Explain months, not weeks. Photograph at every visit under fixed light. Clients who understand the timeline stay; clients who are promised miracles leave after session two."
+    }
+   ],
+   "hands": [
+    "Classify scars on 3 volunteers or photo sets",
+    "Write a 6-month plan for a Grade II acne client with marks and boxcar scars",
+    "Practise the mirror conversation: marks vs scars"
+   ],
+   "safety": [
+    "Active acne must be controlled before scar treatment",
+    "Keloid history → no aggressive resurfacing; refer to the doctor"
+   ],
+   "keys": [
+    "PIH/PIE = pigment, fades",
+    "Scars = texture, needs remodelling",
+    "50–70% over 6 months",
+    "Photograph every session"
+   ],
+   "homework": "Prepare a 'marks vs scars' explanation card in Telugu with two example photos.",
+   "tip_pdf": "Underpromise and over-deliver. If you say 60% and deliver 70%, you get a referral. Say 100% and you get a complaint.",
+   "tip": "Underpromise and over-deliver. If you say 60% and deliver 70%, you get a referral. Say 100% and you get a complaint.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 13,
+   "title": "Pigmentation science — melasma, PIH, tanning",
+   "te": "పిగ్మెంటేషన్ సైన్స్ — మెలాస్మా, PIH, టానింగ్",
+   "objectives": [
+    "Differentiate the common pigmentation patterns on Indian skin",
+    "Understand why melasma relapses and how to counsel for it",
+    "Build a pigmentation treatment plan with the doctor"
+   ],
+   "theory": [
+    {
+     "h": "Common patterns",
+     "p": "Melasma: symmetrical brown patches on cheeks, forehead, upper lip; hormone, heat and light driven; chronic and relapsing. PIH: brown marks after inflammation (acne, injury, waxing). Tan: diffuse darkening on exposed areas, reversible. Periorbital melanosis (dark circles): pigment + shadow + vessels + hollowness — treat only the right component. Freckles/lentigines: sun-induced spots."
+    },
+    {
+     "h": "Why melasma is different",
+     "p": "Melanocytes are hyperactive, there is vascularity and often a dermal component. It flares with sun, visible light, heat (cooking, travel), hormones (pregnancy, OCP), and aggressive treatment. Management is control, not cure: gentle peels, tranexamic-based protocols by the doctor, strict tinted sunscreen, heat avoidance and patience."
+    },
+    {
+     "h": "Building a plan",
+     "p": "Prime 2–4 weeks (barrier + sunscreen + brightening) → gentle peel series every 3–4 weeks → maintenance. Add PICO or Q-switched toning only under the dermatologist, with low fluence. Review at 8 weeks with photographs. Aggressive lasering of melasma in Indian skin makes it worse — this is the single biggest mistake in our market."
+    }
+   ],
+   "hands": [
+    "Identify pigmentation type on 5 clinical photos + 2 live clients",
+    "Use the dermoscope to see epidermal vs dermal pigment patterns",
+    "Draft a 3-month melasma plan and present it to the trainer"
+   ],
+   "safety": [
+    "Never promise permanent clearance of melasma",
+    "Any sudden, single, changing dark patch → doctor review (rule out other causes)"
+   ],
+   "keys": [
+    "Melasma = control, not cure",
+    "Heat and visible light matter, not just UV",
+    "Tinted sunscreen for melasma",
+    "Low and slow in Fitzpatrick IV–V"
+   ],
+   "homework": "Write a melasma counselling script covering relapse, sunscreen and realistic timelines.",
+   "tip_pdf": "Give melasma clients a 'flare plan' for summer and travel. Clients who feel supported through a flare stay for years.",
+   "tip": "Give melasma clients a 'flare plan' for summer and travel. Clients who feel supported through a flare stay for years.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 14,
+   "title": "Brightening protocols & sun protection counselling",
+   "te": "బ్రైటనింగ్ ప్రోటోకాల్స్ & సన్ ప్రొటెక్షన్",
+   "objectives": [
+    "Deliver a complete brightening facial/peel protocol",
+    "Counsel sun protection so the client actually follows it",
+    "Understand glutathione and other brightening add-ons and their limits"
+   ],
+   "theory": [
+    {
+     "h": "Brightening actives",
+     "p": "Vitamin C, arbutin, kojic acid, azelaic acid, niacinamide, tranexamic acid (topical), liquorice, retinoids. They work on different steps of melanin production, which is why combinations work better than a single hero product — but layering too many causes irritation and, in Indian skin, more pigment."
+    },
+    {
+     "h": "Clinic protocol",
+     "p": "Brightening facial: cleanse → gentle enzyme/AHA exfoliation → brightening mask/serum with light massage → soothing → sunscreen. Brightening peel series: mandelic or lactic, 4–6 sessions, 3 weeks apart, with home care. Expect visible glow immediately and real tone change in 6–8 weeks."
+    },
+    {
+     "h": "Sun protection that works",
+     "p": "Most clients under-apply. Teach the two-finger rule, reapplication every 3–4 hours, and physical measures: hat, scarf, umbrella, car window film, avoiding 11 am – 4 pm sun. For melasma, tinted (iron-oxide) sunscreen for visible light. Track compliance at every visit — ask them to show you their bottle."
+    }
+   ],
+   "hands": [
+    "Perform a full brightening facial on a live client",
+    "Teach sunscreen application to 3 people and check the quantity they apply",
+    "Compare 3 clinic sunscreens: texture, finish, suitability"
+   ],
+   "safety": [
+    "Glutathione injections/drips are medical — never recommend or administer on your own",
+    "Stop brightening actives if the skin becomes red, itchy or stings"
+   ],
+   "keys": [
+    "Combination > single active",
+    "Two-finger rule",
+    "Reapply every 3–4 h",
+    "Real tone change: 6–8 weeks"
+   ],
+   "homework": "Make a one-page sun-protection card in Telugu that a client can stick on their mirror.",
+   "tip_pdf": "Ask clients to send you a photo of their sunscreen bottle on WhatsApp. What gets checked gets done.",
+   "tip": "Ask clients to send you a photo of their sunscreen bottle on WhatsApp. What gets checked gets done.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 15,
+   "title": "Laser physics & laser safety",
+   "te": "లేజర్ ఫిజిక్స్ & సేఫ్టీ",
+   "objectives": [
+    "Explain wavelength, fluence, pulse width and spot size simply",
+    "Follow laser room safety like a professional",
+    "Prepare, check and shut down a laser machine correctly"
+   ],
+   "theory": [
+    {
+     "h": "Four dials",
+     "p": "Wavelength (nm) decides what the light is absorbed by and how deep it goes — 755 alexandrite, 808 diode (hair), 1064 Nd:YAG (deeper, safer in dark skin), 1320/1064 picosecond (pigment). Fluence (J/cm²) is energy per area — the power. Pulse width (ms) is how long the energy is delivered — longer is safer in dark skin. Spot size decides depth and speed."
+    },
+    {
+     "h": "Selective photothermolysis",
+     "p": "Choose a wavelength absorbed by the target (melanin in hair, pigment in a spot) more than by surroundings, and a pulse shorter than the target's cooling time. The target heats and is destroyed; the skin around it stays safe. In dark skin the epidermis also holds melanin — so we reduce fluence, lengthen pulse and cool aggressively."
+    },
+    {
+     "h": "Laser room safety",
+     "p": "Wavelength-specific goggles for client, operator and everyone in the room. Warning sign and closed door, no reflective jewellery, no flammable products (alcohol) on the skin, smoke evacuator for ablative work, machine on standby whenever not firing, foot pedal only under your own foot, test shot on a discreet area, documented settings for every session."
+    }
+   ],
+   "hands": [
+    "Identify the machines in the clinic: wavelength, indications, contraindications",
+    "Set up the laser room to safety standard and be audited",
+    "Do a test shot on a volunteer's discreet area with the trainer and observe reaction at 10 minutes"
+   ],
+   "safety": [
+    "Never fire without correct goggles on everyone",
+    "Never treat over tattoos, moles or recently tanned skin",
+    "Know where the emergency stop is on every machine"
+   ],
+   "keys": [
+    "1064 Nd:YAG safest in dark skin",
+    "Longer pulse = safer",
+    "Test shot always",
+    "Goggles for everyone in the room"
+   ],
+   "homework": "Write the safety checklist for your laser room, 12 points, and memorise it.",
+   "tip_pdf": "The operator who does a test shot every time never has a bad week. Shortcuts in laser are not speed — they are risk.",
+   "tip": "The operator who does a test shot every time never has a bad week. Shortcuts in laser are not speed — they are risk.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 16,
+   "title": "Diode laser hair removal — settings & technique",
+   "te": "డయోడ్ లేజర్ హెయిర్ రిమూవల్ — సెట్టింగ్స్ & టెక్నిక్",
+   "objectives": [
+    "Select safe starting parameters by Fitzpatrick type and body area",
+    "Perform correct handpiece technique with cooling",
+    "Counsel the client on the full session course"
+   ],
+   "theory": [
+    {
+     "h": "How it works",
+     "p": "808 nm diode light is absorbed by melanin in the hair shaft and follicle, heats it and damages the stem cells in the bulge. Only hair in the anagen (growing) phase responds — that is why 6–8 sessions, 4–6 weeks apart on the face and 6–8 weeks on the body, are needed. Grey, white and very fine vellus hair have no melanin and do not respond."
+    },
+    {
+     "h": "Choosing parameters",
+     "p": "In-motion mode: lower fluence, many passes, comfortable and safer for Fitzpatrick IV–V. Static mode: higher fluence, single pass, faster on coarse hair. Typical starting ranges — face 8–12 J/cm², underarms/bikini 10–14, arms/legs 12–16, always adjusted after a test shot. Higher Fitzpatrick → lower fluence, longer pulse, more cooling. Record every setting."
+    },
+    {
+     "h": "Preparation and technique",
+     "p": "Shave the area (never wax/thread for 4 weeks), clean, dry, mark the grid. Contact cooling at 0–5 °C, handpiece flat and full contact, overlap 10–15%, systematic grid so nothing is missed or double-treated. Ask about pain every pass. Endpoint: perifollicular erythema and mild oedema — that is success, not damage."
+    }
+   ],
+   "hands": [
+    "Test shot + full underarm treatment on a live client under supervision",
+    "Practise grid technique and overlap on a marked area",
+    "Record a complete treatment log with settings"
+   ],
+   "safety": [
+    "No LHR over tattoos, moles, active infection, recent tan, or on isotretinoin (6 months)",
+    "Stop immediately on grey-white change, blistering or severe pain",
+    "Goggles for everyone, every shot"
+   ],
+   "keys": [
+    "808 nm diode, 6–8 sessions",
+    "Shave, never wax, before session",
+    "Endpoint = perifollicular erythema",
+    "Fitz V: low fluence, long pulse, cool hard"
+   ],
+   "homework": "Make a parameter card for 6 body areas at Fitzpatrick IV and V.",
+   "tip_pdf": "Count your passes out loud. Systematic operators never leave a missed patch — and missed patches are the #1 LHR complaint.",
+   "tip": "Count your passes out loud. Systematic operators never leave a missed patch — and missed patches are the #1 LHR complaint.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 17,
+   "title": "LHR practical — face, body & special areas",
+   "te": "LHR ప్రాక్టికల్ — ఫేస్, బాడీ & స్పెషల్ ఏరియాలు",
+   "objectives": [
+    "Treat all common areas confidently with correct positioning and draping",
+    "Manage pain, anxiety and modesty professionally",
+    "Handle male clients, beard shaping and body work"
+   ],
+   "theory": [
+    {
+     "h": "Area-wise notes",
+     "p": "Upper lip and chin: fine hair, hormonal cause common (PCOS) — refer for evaluation; low fluence, protect lips and nostrils. Underarms: mark the pyramid, check for deodorant residue. Bikini: strict draping, chaperone, consent, lower fluence on thin skin. Legs and back: large areas, plan the grid and time. Beard shaping for men: mark with the client sitting, confirm the line twice."
+    },
+    {
+     "h": "Comfort and dignity",
+     "p": "Explain each step before touching. Expose only the area being treated. Use a modesty towel, keep the door locked, and have a female staff member present for intimate areas. Ask permission before repositioning a limb. Offer a break after painful passes."
+    },
+    {
+     "h": "Session course management",
+     "p": "Book the next session before the client leaves. Expect shedding at 7–14 days — tell them it looks like regrowth but is hair falling out. Between sessions: shaving allowed, no waxing/plucking/threading, sunscreen on exposed areas. Photograph hair density every 3 sessions."
+    }
+   ],
+   "hands": [
+    "Two supervised treatments: one facial area, one body area",
+    "Practise draping and positioning for a bikini/underarm case (on a mannequin or with consent)",
+    "Book and diary a 6-session course with dates"
+   ],
+   "safety": [
+    "No treatment on sunburnt or freshly tanned skin — wait 2–4 weeks",
+    "Cool the skin immediately if the client reports sharp, lasting pain"
+   ],
+   "keys": [
+    "Shedding at 7–14 days is normal",
+    "No waxing/threading during the course",
+    "Chaperone for intimate areas",
+    "Rebook before they leave"
+   ],
+   "homework": "Write the pre- and post-care instruction card for LHR in Telugu and English.",
+   "tip_pdf": "Modesty and consent are part of the treatment. A client who feels respected refers her sister, her mother and her friends.",
+   "tip": "Modesty and consent are part of the treatment. A client who feels respected refers her sister, her mother and her friends.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 18,
+   "title": "PICO / Q-switched — pigment & tattoo assist",
+   "te": "PICO / Q-స్విచ్డ్ — పిగ్మెంట్ & టాటూ",
+   "objectives": [
+    "Understand picosecond and Q-switched technology and their uses",
+    "Assist safely in pigment and tattoo sessions",
+    "Deliver correct aftercare and set expectations"
+   ],
+   "theory": [
+    {
+     "h": "Technology",
+     "p": "Q-switched (nanosecond) and picosecond lasers deliver energy so fast that pigment particles shatter photo-acoustically with minimal heat. Wavelengths: 1064 nm for deeper/darker targets and toning in dark skin, 532 nm for superficial red/brown, 694/755 for greens and blues in tattoos. Fragments are cleared by the body's immune cells over weeks."
+    },
+    {
+     "h": "Indications and limits",
+     "p": "Lentigines, freckles, Hori's naevus, tattoo removal, carbon toning, and cautious melasma toning at very low fluence by the dermatologist. Tattoos need 6–12 sessions 6–8 weeks apart; greens, blues and light colours are stubborn; amateur tattoos clear faster than professional ones. Never promise complete tattoo clearance."
+    },
+    {
+     "h": "Your role and aftercare",
+     "p": "Prepare the room and goggles, clean the area, apply numbing as per protocol and timing, assist during the session, cool after, apply antibiotic/soothing ointment per doctor, dress if needed. Aftercare: no picking, keep dry, sunscreen, no swimming/gym for 48 h, report any blister immediately."
+    }
+   ],
+   "hands": [
+    "Observe and assist a full pigment session start to finish",
+    "Set up a tattoo session tray and safety zone",
+    "Write the aftercare card and explain it to a client"
+   ],
+   "safety": [
+    "Immediate whitening is expected in tattoo work; blistering is not — report it",
+    "Never treat a mole; any changing mole goes to the doctor"
+   ],
+   "keys": [
+    "1064 nm safest in dark skin",
+    "Tattoo: 6–12 sessions",
+    "Do not promise 100% clearance",
+    "Strict sunscreen after every session"
+   ],
+   "homework": "Prepare an expectation-setting script for a tattoo removal enquiry.",
+   "tip_pdf": "Photograph tattoos with a ruler in frame. Objective progress shots stop arguments about 'kanipinchatledu'.",
+   "tip": "Photograph tattoos with a ruler in frame. Objective progress shots stop arguments about 'kanipinchatledu'.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 19,
+   "title": "Carbon laser facial (Hollywood peel)",
+   "te": "కార్బన్ లేజర్ ఫేషియల్",
+   "objectives": [
+    "Perform the carbon laser facial end to end",
+    "Understand who it suits and who it does not",
+    "Position it commercially as an event/glow treatment"
+   ],
+   "theory": [
+    {
+     "h": "How it works",
+     "p": "A medical carbon lotion is applied and settles into pores; the Q-switched/picosecond laser targets the carbon, which absorbs the energy and is blasted away with oil, debris and dead cells. The controlled heat also tightens pores and stimulates collagen slightly. Zero downtime, instant glow — the classic pre-event treatment."
+    },
+    {
+     "h": "Protocol",
+     "p": "Cleanse → apply carbon evenly, avoid eyes and lips → dry 5–10 minutes → goggles → pass 1 (low fluence, carbon removal) → pass 2 (toning) as per protocol → clean residue → soothing serum/mask → moisturiser → sunscreen. 30–40 minutes total. Series of 4–6 every 2–3 weeks for oily, large-pore skin."
+    },
+    {
+     "h": "Selling it right",
+     "p": "Best for oily skin, blackheads, dull tone, enlarged pores, and anyone with a function in 2–3 days. Not for very dry/sensitive skin, active inflamed acne or recent isotretinoin. Bundle it with a bridal or event package."
+    }
+   ],
+   "hands": [
+    "Perform a full carbon facial on a live client under supervision",
+    "Practise even carbon application (the most common mistake is a thick, patchy layer)",
+    "Write the treatment into the client record with settings"
+   ],
+   "safety": [
+    "Never let carbon enter the eyes — cover and goggle",
+    "Dry the carbon fully before firing"
+   ],
+   "keys": [
+    "Zero downtime, instant glow",
+    "Best for oily/large pores",
+    "4–6 sessions, 2–3 weeks apart",
+    "Perfect pre-event treatment"
+   ],
+   "homework": "Design a bridal glow package: which treatments, in what order, over 8 weeks.",
+   "tip_pdf": "Event treatments create urgency by themselves. Keep a 'function loading' calendar and remind clients 3 weeks before festivals and wedding season.",
+   "tip": "Event treatments create urgency by themselves. Keep a 'function loading' calendar and remind clients 3 weeks before festivals and wedding season.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 20,
+   "title": "Hydrafacial & medifacials",
+   "te": "హైడ్రాఫేషియల్ & మెడిఫేషియల్స్",
+   "objectives": [
+    "Run the complete Hydrafacial protocol with correct tips and serums",
+    "Choose boosters by skin concern",
+    "Maintain the machine correctly"
+   ],
+   "theory": [
+    {
+     "h": "The three steps",
+     "p": "Cleanse + peel (gentle glycolic/salicylic solution loosens dead cells), extract + hydrate (vortex vacuum lifts debris out of pores while delivering hydrating serum), fuse + protect (antioxidants, peptides, hyaluronic acid pushed in). Optional boosters and LED finish. Painless, no downtime, immediate plumping and glow."
+    },
+    {
+     "h": "Tips, serums and boosters",
+     "p": "Different tips for exfoliation, extraction and infusion; suction levels adjusted for sensitive areas (nose higher, cheeks lower). Boosters: brightening for pigment, clarifying for acne, hydrating for dry, anti-ageing peptides for mature skin. Neck and décolleté should be included — clients notice the line otherwise."
+    },
+    {
+     "h": "Machine care",
+     "p": "Prime the lines, check serum levels before the client arrives, dispose of single-use tips, flush and disinfect after every client, and log consumable usage. A badly maintained machine gives weak suction and a flat result — and clients feel the difference immediately."
+    }
+   ],
+   "hands": [
+    "Complete Hydrafacial on a live client, all three steps, 45 minutes",
+    "Change tips and serums correctly; flush the system after",
+    "Compare before/after pore photos on the analyser"
+   ],
+   "safety": [
+    "Avoid over-suction on thin skin around the eyes and on rosacea",
+    "Skip active inflamed acne areas; do not force extraction"
+   ],
+   "keys": [
+    "3 steps: cleanse-peel, extract-hydrate, fuse-protect",
+    "Include neck & décolleté",
+    "Single-use tips only",
+    "Monthly maintenance sessions"
+   ],
+   "homework": "Write a booster selection chart for 5 different client profiles.",
+   "tip_pdf": "Show clients the used-serum cup at the end. Seeing what came out of their pores sells the monthly package better than any brochure.",
+   "tip": "Show clients the used-serum cup at the end. Seeing what came out of their pores sells the monthly package better than any brochure.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 21,
+   "title": "MNRF & fractional CO2 assist — texture & scars",
+   "te": "MNRF & ఫ్రాక్షనల్ CO2 — టెక్స్చర్ & స్కార్స్",
+   "objectives": [
+    "Understand microneedling RF and fractional CO2 and their differences",
+    "Prepare, assist and manage the client through a resurfacing session",
+    "Deliver the full post-procedure care plan"
+   ],
+   "theory": [
+    {
+     "h": "MNRF",
+     "p": "Insulated microneedles deliver radiofrequency heat at a set depth in the dermis, creating controlled thermal zones without damaging the epidermis — this makes it relatively safe in dark skin. Uses: acne scars, open pores, texture, mild laxity, stretch marks. 3–4 sessions, 4–6 weeks apart. Downtime 1–2 days of redness and grid marks."
+    },
+    {
+     "h": "Fractional CO2",
+     "p": "Ablative laser vaporises microcolumns of skin, leaving untreated skin in between to heal fast. Strongest resurfacing option for scars and texture, but highest PIH risk in Fitzpatrick IV–V — conservative settings, priming, and strict post-care are essential. Downtime 5–7 days of redness, bronzing and peeling."
+    },
+    {
+     "h": "Your role",
+     "p": "Numbing cream 45–60 minutes before with correct occlusion and timing, clean removal, set up smoke evacuator and cooling, assist during the pass, ice after, apply barrier ointment, and give the aftercare kit. Follow-up call at 24 h and 72 h is where complications are caught early."
+    }
+   ],
+   "hands": [
+    "Assist a full MNRF session and document depths and passes",
+    "Apply and time numbing cream correctly on a volunteer",
+    "Write the 7-day post-resurfacing care plan"
+   ],
+   "safety": [
+    "Confirm no active infection, isotretinoin in 6 months, or keloid tendency",
+    "Any sign of infection (pain, pus, spreading redness) → doctor the same day"
+   ],
+   "keys": [
+    "MNRF: safer in dark skin, 3–4 sessions",
+    "CO2: strongest, highest PIH risk",
+    "Numbing 45–60 min",
+    "24 h and 72 h follow-up calls"
+   ],
+   "homework": "Prepare the aftercare kit list and instruction card for a CO2 client.",
+   "tip_pdf": "The follow-up call is a clinical tool, not politeness. Catching one infection early protects a client, your reputation and the clinic.",
+   "tip": "The follow-up call is a clinical tool, not politeness. Catching one infection early protects a client, your reputation and the clinic.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 22,
+   "title": "Anti-ageing basics — Botox, fillers, threads, HIFU",
+   "te": "యాంటీ-ఏజింగ్ బేసిక్స్",
+   "objectives": [
+    "Explain each anti-ageing option accurately to a client",
+    "Assist the doctor correctly in injectable procedures",
+    "Know your boundary — what a therapist must never do"
+   ],
+   "theory": [
+    {
+     "h": "What ageing looks like",
+     "p": "Static and dynamic lines, volume loss (temples, cheeks, under-eye), skin laxity, jowls, texture and pigment change. Each needs a different tool: dynamic lines → botulinum toxin; volume → fillers; laxity → HIFU/RF/threads; texture/pigment → lasers and peels. A good plan combines two or three."
+    },
+    {
+     "h": "The procedures",
+     "p": "Botulinum toxin: relaxes muscle, effect in 3–5 days, full at 2 weeks, lasts 4–6 months. Fillers: hyaluronic acid gel, instant volume, 9–18 months, reversible. Threads: PDO lifting + collagen, 12–18 months. HIFU: focused ultrasound to the SMAS, one session, lift builds over 2–3 months, lasts 12–18 months."
+    },
+    {
+     "h": "Your role and boundary",
+     "p": "You prepare: numbing, cleansing, marking assistance, tray set-up (sterile), ice, documentation and aftercare instructions. You NEVER inject. Aftercare: no lying down 4 h, no rubbing, no gym or heat for 24–48 h, no facial for 2 weeks after fillers; report asymmetry, blanching or severe pain immediately — vascular occlusion is an emergency."
+    }
+   ],
+   "hands": [
+    "Set up a sterile injectable tray and be audited",
+    "Observe a doctor-led session and write the full step log",
+    "Practise the aftercare explanation for toxin and filler"
+   ],
+   "safety": [
+    "Never inject anything — this is medical practice",
+    "Blanching, severe pain or vision change after filler = emergency, doctor immediately"
+   ],
+   "keys": [
+    "Toxin: 3–5 days onset, 4–6 months",
+    "Fillers: instant, reversible",
+    "HIFU: one session, builds 2–3 months",
+    "Therapists assist, never inject"
+   ],
+   "homework": "Write a comparison card: toxin vs filler vs threads vs HIFU — result, onset, duration, downtime.",
+   "tip_pdf": "Clients ask therapists what they would never ask a doctor. Know these answers cold — you are the bridge that converts a consultation.",
+   "tip": "Clients ask therapists what they would never ask a doctor. Know these answers cold — you are the bridge that converts a consultation.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 23,
+   "title": "Mesotherapy, glutathione & skin boosters — assist",
+   "te": "మెసోథెరపీ, గ్లూటాథియోన్ & స్కిన్ బూస్టర్స్",
+   "objectives": [
+    "Understand mesotherapy and skin boosters and their realistic results",
+    "Prepare and assist these sessions safely",
+    "Counsel honestly about IV brightening"
+   ],
+   "theory": [
+    {
+     "h": "Mesotherapy",
+     "p": "Micro-injections of vitamins, amino acids, antioxidants and hyaluronic acid into the superficial dermis for hydration, glow and mild pigment improvement. 4–6 sessions, 2–3 weeks apart. Mild redness and tiny bumps for a few hours. Often combined with a facial or peel series."
+    },
+    {
+     "h": "Skin boosters",
+     "p": "Injectable stabilised hyaluronic acid (not a volumiser) for deep hydration, fine-line softening and skin quality — face, neck, hands. 2–3 sessions a month apart, then 6-monthly maintenance. Good for brides and for dehydrated, dull mature skin."
+    },
+    {
+     "h": "Glutathione — the honest version",
+     "p": "Glutathione is an antioxidant. Oral and topical use is cosmetic support. IV glutathione is a medical procedure with real risks and no guaranteed permanent whitening; it is never promised or administered by a therapist, and results fade without maintenance and sun protection. Counsel clients away from unrealistic 'permanent fairness' expectations — refer them to the doctor for a safe plan."
+    }
+   ],
+   "hands": [
+    "Prepare a sterile mesotherapy tray and assist one session",
+    "Write realistic expectation scripts for glutathione enquiries",
+    "Document a 6-session mesotherapy plan"
+   ],
+   "safety": [
+    "Sterile technique at all times; single-use needles",
+    "No IV procedures by therapists, ever",
+    "Report any allergic reaction (swelling, itching, breathlessness) immediately"
+   ],
+   "keys": [
+    "Meso: 4–6 sessions, 2–3 weeks apart",
+    "Boosters = hydration, not volume",
+    "IV glutathione = medical, never promised",
+    "Maintenance + sunscreen or results fade"
+   ],
+   "homework": "Write the 'fairness expectation' conversation you will use, in Telugu, in under 8 lines.",
+   "tip_pdf": "Being the professional who says 'idi permanent kaadu' builds more long-term revenue than the one who oversells and loses the client in 3 months.",
+   "tip": "Being the professional who says 'idi permanent kaadu' builds more long-term revenue than the one who oversells and loses the client in 3 months.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 24,
+   "title": "Complications, emergencies & how to handle them",
+   "te": "కాంప్లికేషన్స్ & ఎమర్జెన్సీ మేనేజ్‌మెంట్",
+   "objectives": [
+    "Recognise the common complications early",
+    "Act correctly in the first 10 minutes",
+    "Document and escalate professionally"
+   ],
+   "theory": [
+    {
+     "h": "Common complications",
+     "p": "Burns (peel/laser too deep or overlapping), blistering, PIH, hypopigmentation, persistent erythema, contact dermatitis, acne flare/purge, infection (bacterial or herpes reactivation), bruising and swelling after injectables, and the rare but critical vascular occlusion with fillers."
+    },
+    {
+     "h": "First response",
+     "p": "Stop the procedure. Cool with saline-soaked gauze or a cold pack (never ice directly on a burn). Do not apply random creams. Call the doctor immediately. Take photographs. Keep the client calm — your tone decides whether this becomes a complaint or a managed event. Never argue or blame."
+    },
+    {
+     "h": "Prevention and documentation",
+     "p": "90% of complications are prevented by: correct history, patch/test shots, conservative settings, single-pass discipline, correct timing and the client actually following aftercare. Document every session's settings and every complication in the record, with photos and the doctor's instructions. Follow up daily until resolved."
+    }
+   ],
+   "hands": [
+    "Simulate three scenarios: peel burn, laser blister, allergic reaction — act out the first 10 minutes",
+    "Locate the emergency kit, doctor's number and escalation chart",
+    "Write an incident report for a simulated complication"
+   ],
+   "safety": [
+    "Never hide a complication — early escalation saves skin and reputation",
+    "Anaphylaxis signs (breathlessness, facial swelling) = emergency, call for help immediately"
+   ],
+   "keys": [
+    "Stop → cool → call doctor → photograph",
+    "No random creams on a burn",
+    "Document everything",
+    "Daily follow-up until resolved"
+   ],
+   "homework": "Memorise the escalation chart and write it out from memory.",
+   "tip_pdf": "Clients remember how you behaved when something went wrong far longer than a perfect result. Calm, honest, present — that is the whole job.",
+   "tip": "Clients remember how you behaved when something went wrong far longer than a perfect result. Calm, honest, present — that is the whole job.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 25,
+   "title": "Treatment planning, packages & case studies",
+   "te": "ట్రీట్‌మెంట్ ప్లానింగ్, ప్యాకేజీలు & కేస్ స్టడీస్",
+   "objectives": [
+    "Build a complete, staged treatment plan for a real client",
+    "Combine treatments safely with correct gaps",
+    "Present a package the client understands and accepts"
+   ],
+   "theory": [
+    {
+     "h": "Planning framework",
+     "p": "Assess → prioritise (what bothers the client most AND what must be treated first clinically) → prime → active phase → maintenance. Example acne + marks + scars: control acne (8 weeks) → treat marks (peels, 6 weeks) → treat scars (MNRF, 4 sessions) → maintenance facials + home care. Never run all three at once."
+    },
+    {
+     "h": "Safe combinations and gaps",
+     "p": "Peel and LHR: 7 days apart. Peel and MNRF: 2 weeks. Facial and peel: same day only if the facial is gentle. Toxin and facial: 2 weeks. Never two resurfacing procedures in the same fortnight. Write the calendar down for the client."
+    },
+    {
+     "h": "Presenting a package",
+     "p": "Show the plan on paper with dates and expected milestones. Explain what happens if they skip sessions. Give one recommended plan and one lighter alternative — two options convert better than five. Let the doctor approve any pricing."
+    }
+   ],
+   "hands": [
+    "Build 3 full plans from real client files (acne, melasma, bridal)",
+    "Present one plan to the trainer as if to a client",
+    "Draw the 8-week calendar for each plan"
+   ],
+   "safety": [
+    "Every plan must be approved by the dermatologist before it is promised",
+    "Re-assess at every session — plans change with the skin"
+   ],
+   "keys": [
+    "Prioritise clinically, not emotionally",
+    "Respect treatment gaps",
+    "Give 2 options, not 5",
+    "Milestones keep clients in the plan"
+   ],
+   "homework": "Write a complete 12-week bridal plan with dates, treatments and home care.",
+   "tip_pdf": "A written plan with dates is the single strongest retention tool in aesthetics. Clients follow calendars; they forget conversations.",
+   "tip": "A written plan with dates is the single strongest retention tool in aesthetics. Clients follow calendars; they forget conversations.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 26,
+   "title": "Client communication, objections & retention",
+   "te": "క్లయింట్ కమ్యూనికేషన్ & రిటెన్షన్",
+   "objectives": [
+    "Handle the five most common objections confidently",
+    "Communicate realistic expectations without losing the sale",
+    "Build a retention system that runs on its own"
+   ],
+   "theory": [
+    {
+     "h": "The five objections",
+     "p": "'Price ekkuva' → break into sessions and compare with monthly spends; show the plan value. 'Time ledu' → offer evening/Saturday slots and shorter protocols. 'Pain untunda?' → explain numbing, cooling, and the honest sensation. 'Results permanent aa?' → be honest about maintenance. 'Alochisthanu' → agree, then book a provisional slot and send the plan on WhatsApp."
+    },
+    {
+     "h": "Expectation setting",
+     "p": "Always state: number of sessions, time to first visible change, realistic percentage improvement, downtime, and what happens without home care. Write it down. A client who hears 'six sessions, first change in six weeks, 60–70%' is a happy client at session three. A client who heard 'don't worry' is a complaint."
+    },
+    {
+     "h": "Retention system",
+     "p": "Rebook before they leave. Send aftercare on WhatsApp the same evening. Follow-up call at 48 hours. Reminder 3 days before the next session. Progress photos every 3 sessions. Birthday and festival messages. A 'we miss you' message at 60 days of no visit. All of this is automated in our WhatsApp agent — your job is to feed it accurate data."
+    }
+   ],
+   "hands": [
+    "Role-play all five objections, twice each, with feedback",
+    "Write your own expectation-setting paragraph and memorise it",
+    "Practise a 48-hour follow-up call script"
+   ],
+   "safety": [
+    "Never counter an objection with a medical promise",
+    "Never discount below the clinic's approved price to close a sale"
+   ],
+   "keys": [
+    "Rebook before they leave",
+    "48-hour follow-up call",
+    "Progress photos every 3 sessions",
+    "Write expectations down"
+   ],
+   "homework": "Record yourself answering the five objections on your phone and listen back.",
+   "tip_pdf": "The most profitable sentence in a clinic is: 'Next session ki e roju convenient?' — asked before the client stands up.",
+   "tip": "The most profitable sentence in a clinic is: 'Next session ki e roju convenient?' — asked before the client stands up.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 27,
+   "title": "Clinic operations, WhatsApp flow & aftercare system",
+   "te": "క్లినిక్ ఆపరేషన్స్ & WhatsApp ఫ్లో",
+   "objectives": [
+    "Run the day: bookings, slots, room turnover, stock",
+    "Work with the WhatsApp AI agent and the staff dashboard",
+    "Close the day with clean records and follow-ups done"
+   ],
+   "theory": [
+    {
+     "h": "The clinic day",
+     "p": "Open: switch on and check machines, prime consumables, review the day's appointments and prepare files. During: keep to slot times, turn the room over in 5–7 minutes, log every treatment as it happens. Close: sterilise, restock, reconcile the day's records, list tomorrow's confirmations, report low stock."
+    },
+    {
+     "h": "WhatsApp agent and dashboard",
+     "p": "Our AI assistant answers 24×7, books slots, sends reminders, aftercare and follow-ups, and creates a lead card with a 'call prep' note. Staff open dermaluxe.ai/staff.html, see hot leads first, call from the dashboard, set status (new → contacted → booked → visited) and write a call note after every conversation. If it is not in the dashboard, it did not happen."
+    },
+    {
+     "h": "Stock and machine care",
+     "p": "Track consumables (tips, serums, peels, gloves, needles) weekly with minimum levels. Log machine service dates and calibration. A missing consumable at 6 pm costs a client, not just a sale."
+    }
+   ],
+   "hands": [
+    "Run a mock clinic day: 4 appointments, one walk-in, one complaint",
+    "Use the staff dashboard: update statuses, add call notes for 5 leads",
+    "Do a stock count and write the indent"
+   ],
+   "safety": [
+    "Never double-book a laser slot — rushed laser work causes injuries",
+    "Confirm identity and consent before every procedure"
+   ],
+   "keys": [
+    "Room turnover: 5–7 min",
+    "Log as you go, not at night",
+    "Dashboard note after every call",
+    "Weekly stock count"
+   ],
+   "homework": "Write your ideal clinic opening and closing checklists (10 points each).",
+   "tip_pdf": "Clinics do not lose money on treatments — they lose it on no-shows, missed follow-ups and empty evening slots. Fix those three and you are valuable anywhere.",
+   "tip": "Clinics do not lose money on treatments — they lose it on no-shows, missed follow-ups and empty evening slots. Fix those three and you are valuable anywhere.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 28,
+   "title": "Revision + full live-client day",
+   "te": "రివిజన్ + లైవ్ క్లయింట్ డే",
+   "objectives": [
+    "Work a full day as the clinic therapist under observation",
+    "Handle real clients start to finish without prompting",
+    "Identify your own remaining weak areas"
+   ],
+   "theory": [
+    {
+     "h": "How today works",
+     "p": "You are rostered like a working therapist: your own clients, your own room, your own records. The trainer observes and intervenes only for safety. Every procedure must include consultation, consent check, analysis, procedure, aftercare explanation, record entry and rebooking."
+    },
+    {
+     "h": "What is being assessed",
+     "p": "Hygiene and set-up, client handling and language, technical technique, parameter choice and justification, safety discipline, aftercare counselling, documentation, and time management. You will get written feedback on each."
+    },
+    {
+     "h": "Self-review",
+     "p": "After each client, note one thing that went well and one to fix. This habit — quick, honest self-review — is what separates a 2-year therapist from a 10-year one."
+    }
+   ],
+   "hands": [
+    "Minimum 3 full client journeys today (facial/peel, LHR, device treatment)",
+    "Complete records for each and submit for review",
+    "Write your self-review after each client"
+   ],
+   "safety": [
+    "Ask for the trainer before any parameter you are unsure about",
+    "Never rush to finish a client before a break"
+   ],
+   "keys": [
+    "Full journey every time",
+    "Records submitted same day",
+    "One win + one fix per client"
+   ],
+   "homework": "List your three weakest areas and the exact drill you will do for each before the exam.",
+   "tip_pdf": "Tomorrow's employer will not ask your marks. They will ask: can you run a room alone? Today is your rehearsal for that answer.",
+   "tip": "Tomorrow's employer will not ask your marks. They will ask: can you run a room alone? Today is your rehearsal for that answer.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 29,
+   "title": "Mock practical, viva prep & portfolio",
+   "te": "మాక్ ప్రాక్టికల్, వైవా ప్రిపరేషన్ & పోర్ట్‌ఫోలియో",
+   "objectives": [
+    "Complete a full mock practical under exam conditions",
+    "Answer viva questions clearly and confidently",
+    "Assemble a professional portfolio for job interviews"
+   ],
+   "theory": [
+    {
+     "h": "Exam format",
+     "p": "Practical (60%): set-up and hygiene, consultation and consent, one assigned procedure performed fully, aftercare and documentation. Viva (40%): skin anatomy, Fitzpatrick and safety, peel and laser parameters, complication management, and a case-plan question. Pass mark 70%."
+    },
+    {
+     "h": "Viva technique",
+     "p": "Answer in structure: what it is → how it works → who it suits → contraindications → parameters → aftercare. If you don't know, say 'Idi naaku ఖచ్చితంగా teliyadu, doctor ni confirm chestanu' — honesty scores better than a wrong confident answer, and it is exactly what we want in the clinic."
+    },
+    {
+     "h": "Portfolio",
+     "p": "Assemble: certificate, before/after photo sets (with consent), your treatment logs, the protocols you wrote, a one-page CV and a short self-introduction video. Employers in aesthetics hire on demonstrated hands, not degrees."
+    }
+   ],
+   "hands": [
+    "Full mock practical under exam conditions with scoring",
+    "Rapid-fire viva: 25 questions with the trainer",
+    "Build your portfolio folder and CV draft"
+   ],
+   "safety": [
+    "Exam or not, safety failures are an automatic fail — goggles, consent, hygiene"
+   ],
+   "keys": [
+    "Practical 60% + viva 40%, pass 70%",
+    "Structure every viva answer",
+    "Honesty > guessing",
+    "Portfolio = photos + logs + CV"
+   ],
+   "homework": "Finish your CV and record a 60-second self-introduction in Telugu and English.",
+   "tip_pdf": "Bring your portfolio to the interview on your phone AND printed. The therapist who can show 10 before/afters is hired before the one who talks.",
+   "tip": "Bring your portfolio to the interview on your phone AND printed. The therapist who can show 10 before/afters is hired before the one who talks.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 30,
+   "title": "Final practical exam, viva & career guidance",
+   "te": "ఫైనల్ ప్రాక్టికల్, వైవా & కెరీర్ గైడెన్స్",
+   "objectives": [
+    "Pass the final practical and viva",
+    "Receive your certificate and portfolio feedback",
+    "Plan your next 6 months in the aesthetics industry"
+   ],
+   "theory": [
+    {
+     "h": "Today's schedule",
+     "p": "Morning: practical exam (assigned procedure, full journey, scored live). Afternoon: viva. Evening: results, certificate presentation, group photo, and placement discussion for eligible trainees."
+    },
+    {
+     "h": "Career paths",
+     "p": "Aesthetic therapist in a doctor-led clinic (our own clinics hire first from each batch), laser technician, clinic manager, product trainer with an aesthetic brand, or your own studio in partnership with a dermatologist. Salary grows with proven hands and retained clients, not with time served."
+    },
+    {
+     "h": "The next 6 months",
+     "p": "Keep learning one new skill a month. Keep photographing your work. Keep a settings diary. Ask for the difficult cases. Stay connected to the academy group — we share new protocols, machine updates and job openings there. Refresher sessions are open to all alumni."
+    }
+   ],
+   "hands": [
+    "Final practical exam (scored)",
+    "Final viva (scored)",
+    "Certificate presentation and portfolio review"
+   ],
+   "safety": [
+    "Carry the safety discipline you learned here into every clinic you work in — it is the profession's core"
+   ],
+   "keys": [
+    "Pass mark 70%",
+    "Certificate + internship letter (2-month course)",
+    "Alumni group for jobs and updates",
+    "Priority hiring at our locations"
+   ],
+   "homework": "Write your 6-month goal: role, skill, income and one measurable target.",
+   "tip_pdf": "You are now responsible for someone's skin and confidence. Stay humble, stay clean, keep asking questions — that is what makes a professional the clinic cannot replace.",
+   "tip": "You are now responsible for someone's skin and confidence. Stay humble, stay clean, keep asking questions — that is what makes a professional the clinic cannot replace.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  }
+ ],
+ "hair": [
+  {
+   "n": 1,
+   "title": "Welcome, clinic protocol & professional grooming",
+   "te": "స్వాగతం, క్లినిక్ ప్రోటోకాల్ & ప్రొఫెషనల్ గ్రూమింగ్",
+   "objectives": [
+    "Understand how a trichology clinic runs and your role in it",
+    "Learn hygiene, sterilisation and biomedical waste rules",
+    "Present yourself as a clinic professional"
+   ],
+   "theory": [
+    {
+     "h": "The hair patient journey",
+     "p": "Enquiry → consultation with the dermatologist → scalp analysis → diagnosis and plan → procedures (PRP/GFC/meso/scalp treatments) → home care → monthly review with photographs. Hair patients are anxious and have usually tried five things before you. Your calm explanation of WHY previous things failed is what converts them."
+    },
+    {
+     "h": "Hygiene & biomedical waste",
+     "p": "Hair procedures involve blood (PRP) and needles — so protocol is stricter than skin. Hand hygiene, gloves for every client, surface disinfection with 70% IPA, autoclave for metal instruments. Biomedical waste segregation: red bag (contaminated plastic — syringes without needles, tubes), white/blue puncture-proof container (needles, sharps), yellow (blood-soaked gauze). Never recap a needle."
+    },
+    {
+     "h": "Professional grooming",
+     "p": "Your own hair and scalp are your advertisement. Clean tied hair, clean nails, pressed uniform, closed shoes, no strong perfume. Learn to speak about hair loss without ever making a client feel ashamed — no 'tala meeda emi ledu' jokes, ever."
+    }
+   ],
+   "hands": [
+    "Clinic tour: consultation, procedure room, centrifuge area, sterilisation, waste zone",
+    "Practise 6-step handwash, glove technique, waste segregation with dummy items",
+    "Set up a PRP trolley and have it audited"
+   ],
+   "safety": [
+    "Sharps go straight into the puncture-proof container",
+    "Any needle-stick injury: wash, do not squeeze, report immediately, follow protocol"
+   ],
+   "keys": [
+    "Red / yellow / sharps segregation",
+    "Autoclave metal instruments",
+    "Never recap needles",
+    "Hair clients are anxious — be gentle"
+   ],
+   "homework": "Write the biomedical waste chart from memory and stick it above your trolley.",
+   "tip_pdf": "Never laugh at, or joke about, hair loss — not even with colleagues. One overheard comment loses a client forever.",
+   "tip": "Never laugh at, or joke about, hair loss — not even with colleagues. One overheard comment loses a client forever.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 2,
+   "title": "Hair anatomy & the hair growth cycle",
+   "te": "హెయిర్ నిర్మాణం & గ్రోత్ సైకిల్",
+   "objectives": [
+    "Describe the hair follicle structure and each part's function",
+    "Explain anagen, catagen and telogen simply to a client",
+    "Link the cycle to why treatments take months"
+   ],
+   "theory": [
+    {
+     "h": "Follicle structure",
+     "p": "Bulb (matrix cells that divide fastest in the body), dermal papilla (blood supply and growth signalling — the real target of PRP and GFC), bulge (stem cells), sebaceous gland, arrector pili muscle, and the shaft with cuticle, cortex and medulla. Damage to the papilla area = miniaturisation; damage to the bulge = permanent loss."
+    },
+    {
+     "h": "The cycle",
+     "p": "Anagen (growing) 2–7 years — normally 85–90% of hairs; catagen (transition) 2–3 weeks; telogen (resting/shedding) 3 months — normally 10–15%. Losing 50–100 hairs a day is normal. In telogen effluvium the telogen share jumps to 20–50% and shedding becomes dramatic 2–3 months AFTER the trigger (fever, surgery, delivery, crash diet, COVID, severe stress)."
+    },
+    {
+     "h": "Why results take months",
+     "p": "A treatment started today can only act on follicles entering anagen. Visible new growth takes 3 months; thickness improvement 4– 6 months; full assessment at 9–12 months. Every hair client must be told this in the first consultation, or they will quit at week 6 and blame the clinic."
+    }
+   ],
+   "hands": [
+    "Label a follicle diagram from memory",
+    "Explain the hair cycle to a partner in Telugu in 90 seconds",
+    "Do a pull test on 3 volunteers and record the result"
+   ],
+   "safety": [
+    "Sudden patchy loss, scaling, pain or scarring → doctor review the same day"
+   ],
+   "keys": [
+    "85–90% anagen is normal",
+    "50–100 hairs/day is normal",
+    "TE shows 2–3 months after the trigger",
+    "New growth visible at 3 months"
+   ],
+   "homework": "Draw the hair cycle with timelines and write the 3-month rule in your own words.",
+   "tip_pdf": "Draw the cycle on paper for the client. People who can see why it takes 3 months stop panicking and stay in treatment.",
+   "tip": "Draw the cycle on paper for the client. People who can see why it takes 3 months stop panicking and stay in treatment.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 3,
+   "title": "Types of hair loss — pattern, diffuse, patchy",
+   "te": "హెయిర్ లాస్ రకాలు",
+   "objectives": [
+    "Recognise the main hair-loss patterns",
+    "Know which are therapist-treatable and which are strictly medical",
+    "Ask the right history questions"
+   ],
+   "theory": [
+    {
+     "h": "Androgenetic alopecia",
+     "p": "Male pattern: temporal recession and vertex thinning — Norwood I–VII. Female pattern: widening central parting with a preserved frontal line — Ludwig I–III. Driven by DHT sensitivity and genetics; progressive without treatment. Responds well to combined medical + procedural care (PRP/GFC/meso) started early."
+    },
+    {
+     "h": "Telogen effluvium and nutritional loss",
+     "p": "Diffuse shedding all over, 2–3 months after a trigger; positive pull test; usually self-limiting in 6 months once the trigger is fixed. Check for anaemia, thyroid disease, vitamin D and B12 deficiency, PCOS, crash dieting, post-partum and post-fever states — all doctor-ordered investigations."
+    },
+    {
+     "h": "Patchy and scarring loss",
+     "p": "Alopecia areata: sudden smooth round patches, exclamation-mark hairs — autoimmune, medical treatment. Tinea capitis: scaling, broken hair, itching, often children — fungal, medical. Scarring alopecias (lichen planopilaris, frontal fibrosing): loss of follicular openings, redness, scaling — urgent doctor referral, no procedures. Traction alopecia: from tight hairstyles, reversible if caught early."
+    }
+   ],
+   "hands": [
+    "Classify 8 clinical photos by pattern (Norwood/Ludwig where relevant)",
+    "Take a full hair history from a volunteer using the clinic form",
+    "Identify red-flag findings from a list of 10 case snippets"
+   ],
+   "safety": [
+    "No PRP, GFC or meso on undiagnosed patchy loss, scaling scalp or scarring alopecia",
+    "Children with patchy loss → always doctor first"
+   ],
+   "keys": [
+    "Norwood (M) / Ludwig (F)",
+    "TE: diffuse, trigger 2–3 months back",
+    "Loss of follicular openings = scarring, refer",
+    "Traction loss is preventable"
+   ],
+   "homework": "Make a one-page red-flag list that means 'stop and call the doctor'.",
+   "tip_pdf": "Ask every woman about her last delivery, thyroid report and diet. Half of female diffuse loss in our clinic is nutritional or hormonal, not genetic.",
+   "tip": "Ask every woman about her last delivery, thyroid report and diet. Half of female diffuse loss in our clinic is nutritional or hormonal, not genetic.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 4,
+   "title": "Scalp conditions — dandruff, seborrhoea, psoriasis, fungal",
+   "te": "స్కాల్ప్ కండిషన్స్",
+   "objectives": [
+    "Differentiate the common scalp conditions on sight",
+    "Plan a scalp treatment that supports the doctor's medical plan",
+    "Counsel washing frequency and home care correctly"
+   ],
+   "theory": [
+    {
+     "h": "Dandruff & seborrhoeic dermatitis",
+     "p": "Malassezia yeast + oil + individual sensitivity → white/yellow greasy flakes, itching, redness. Seborrhoeic dermatitis is the inflamed end of the same spectrum and may also affect eyebrows, nose folds and chest. Chronic and relapsing: control, not cure. Flares with stress, cold weather, oily hair products and infrequent washing."
+    },
+    {
+     "h": "Psoriasis vs fungal",
+     "p": "Scalp psoriasis: thick silvery well-defined plaques, may extend past the hairline, often with nail pitting — medical. Tinea capitis: scaling with broken hairs, black dots, sometimes boggy swelling (kerion), itchy, contagious, common in children — medical, antifungal by mouth. Never treat either with cosmetic scalp therapy alone."
+    },
+    {
+     "h": "Washing and home care",
+     "p": "The biggest myth in our region: 'washing causes hair fall'. Oily, flaky scalps need washing every 1–2 days with the right shampoo. Medicated shampoos (ketoconazole, zinc pyrithione, selenium sulphide, salicylic) must be left on the scalp for 3–5 minutes. Heavy overnight oiling worsens dandruff — advise oil for 1–2 hours before wash, if at all."
+    }
+   ],
+   "hands": [
+    "Examine 4 volunteers' scalps with magnification and classify findings",
+    "Demonstrate correct medicated-shampoo application and contact time",
+    "Write a home-care plan for an oily, dandruff-prone client"
+   ],
+   "safety": [
+    "Contagious scalp infection → no shared towels or tools; sterilise everything",
+    "Do not perform scalp peels or PRP over active infection"
+   ],
+   "keys": [
+    "Malassezia + oil + sensitivity",
+    "Medicated shampoo contact 3–5 min",
+    "Wash more, not less, for dandruff",
+    "Psoriasis & tinea = medical"
+   ],
+   "homework": "Write the 'washing does not cause hair fall' explanation in Telugu, 6 lines.",
+   "tip_pdf": "Correcting the washing myth in the first consultation immediately marks you as the professional who actually knows hair.",
+   "tip": "Correcting the washing myth in the first consultation immediately marks you as the professional who actually knows hair.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 5,
+   "title": "Scalp & hair analysis — trichoscopy and documentation",
+   "te": "స్కాల్ప్ & హెయిర్ అనాలిసిస్",
+   "objectives": [
+    "Perform a complete scalp examination and trichoscopy",
+    "Document density, miniaturisation and scalp condition",
+    "Take standard photographs a doctor can compare"
+   ],
+   "theory": [
+    {
+     "h": "Examination sequence",
+     "p": "History → look at the parting width, hairline, vertex and temples → pull test (grasp 50–60 hairs, gentle traction; more than 6 hairs is positive) → look at the scalp itself (scaling, redness, pustules, follicular openings) → trichoscopy → photographs. Always compare left and right, and affected vs unaffected."
+    },
+    {
+     "h": "Trichoscopy basics",
+     "p": "Look for: hair diameter diversity (>20% = miniaturisation, classic AGA), yellow dots (empty follicles), black dots and exclamation marks (alopecia areata), perifollicular scaling and erythema (inflammation), and loss of follicular openings (scarring — refer). Save images with the client's file."
+    },
+    {
+     "h": "Standard photographs",
+     "p": "Fixed distance, same light, same angles every visit: frontal hairline, mid-scalp parting, vertex from above, both temples. Use a parting comb and the same background. These photos are the only honest measure of progress in 3 months — and they are the single best sales tool for continuing treatment."
+    }
+   ],
+   "hands": [
+    "Full scalp analysis with trichoscopy on 2 volunteers with written findings",
+    "Photograph all 5 standard views and file them",
+    "Perform and interpret a pull test"
+   ],
+   "safety": [
+    "Never call a diagnosis — describe findings and route to the doctor",
+    "Disinfect the dermoscope lens between clients"
+   ],
+   "keys": [
+    "Pull test >6 hairs = positive",
+    "Diameter diversity >20% = AGA",
+    "Loss of openings = scarring, refer",
+    "Same 5 photo views every visit"
+   ],
+   "homework": "Create your own scalp analysis card template and fill it for one family member.",
+   "tip_pdf": "Take the Day-0 photos before you say anything about results. Without them you have nothing to show at month three.",
+   "tip": "Take the Day-0 photos before you say anything about results. Without them you have nothing to show at month three.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 6,
+   "title": "Consultation, consent, nutrition & lifestyle counselling",
+   "te": "కన్సల్టేషన్, కన్సెంట్ & న్యూట్రిషన్",
+   "objectives": [
+    "Run a full hair consultation that uncovers the real cause",
+    "Take proper consent for blood-based procedures",
+    "Give practical nutrition and lifestyle guidance without prescribing"
+   ],
+   "theory": [
+    {
+     "h": "Consultation structure",
+     "p": "Onset and duration → pattern (diffuse/patchy/pattern) → shedding vs thinning → triggers (illness, delivery, surgery, diet, stress, COVID) → family history → medical history (thyroid, anaemia, PCOS, autoimmune) → medications → previous treatments and why they stopped → hair practices (oiling, colouring, straightening, tight styles) → expectations. Write it all down."
+    },
+    {
+     "h": "Consent for PRP/GFC",
+     "p": "Blood-based procedures need specific informed consent: procedure, that their own blood is drawn and processed, expected 3–6 sessions, realistic outcome (reduced shedding first, then density), possible side effects (pain, swelling, headache, bruising, rare infection), and the need for maintenance. Signed, dated, with photo consent separate."
+    },
+    {
+     "h": "Nutrition & lifestyle",
+     "p": "Practical, non-prescription advice: adequate protein at every meal (dal, eggs, paneer, chicken, curd), iron-rich foods with vitamin C, no crash diets, 7–8 hours of sleep, stress management, scalp-friendly hairstyles (no tight ponytails or braids), heat protection, and no daily chemical straightening. Deficiencies are confirmed and corrected by the doctor with reports — never sell supplements on your own."
+    }
+   ],
+   "hands": [
+    "Take 2 full hair histories using the clinic form and present them",
+    "Complete a PRP consent form and check it for gaps",
+    "Build a 7-day protein-focused diet suggestion sheet"
+   ],
+   "safety": [
+    "Never advise stopping or starting any prescribed medicine",
+    "Refer for blood tests through the doctor, not on your own initiative"
+   ],
+   "keys": [
+    "History finds the cause more often than the machine",
+    "Separate consent for blood procedures",
+    "Protein + iron + sleep",
+    "No supplement selling by therapists"
+   ],
+   "homework": "Write a hair-consultation script in Telugu covering all 10 history points.",
+   "tip_pdf": "The client who feels fully questioned trusts the plan. Ten minutes of good history beats ten minutes of machine talk.",
+   "tip": "The client who feels fully questioned trusts the plan. Ten minutes of good history beats ten minutes of machine talk.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 7,
+   "title": "Scalp cleansing & detox protocols",
+   "te": "స్కాల్ప్ క్లెన్సింగ్ & డీటాక్స్",
+   "objectives": [
+    "Perform a professional scalp cleansing and detox treatment",
+    "Select products by scalp type",
+    "Handle the wash station and client comfort correctly"
+   ],
+   "theory": [
+    {
+     "h": "Why detox",
+     "p": "Product build-up, hard water minerals, oil, sweat and pollution block follicular openings and worsen dandruff and itching. A scalp detox clears this, improves the penetration of later treatments (serums, PRP, meso) and gives immediate relief from itch — which is why it is often the first session in any hair package."
+    },
+    {
+     "h": "Protocol",
+     "p": "Analyse → section the scalp in 4 quadrants → apply detox/clarifying solution with a nozzle applicator along partings → gentle massage 5–8 minutes, fingertips only, never nails → optional steam or warm towel 5 minutes → thorough wash with the correct shampoo, two lathers → conditioner on lengths only, never on the scalp for oily types → towel dry → serum → dry with cool air."
+    },
+    {
+     "h": "Products by scalp type",
+     "p": "Oily/dandruff: salicylic or ketoconazole-based clarifying. Dry/sensitive: mild, sulphate-free, soothing (aloe, panthenol). Post-chemical (colour/straightening): protein + moisture balance. Always do this AFTER analysis, never before — cleansing removes the evidence you need to see."
+    }
+   ],
+   "hands": [
+    "Full scalp detox on a live client, 45 minutes",
+    "Practise sectioning and nozzle application on a mannequin",
+    "Wash-station drill: client positioning, water temperature, eye and ear protection"
+   ],
+   "safety": [
+    "Water temperature lukewarm, never hot — hot water worsens shedding and irritation",
+    "Never use nails on the scalp; never scrub an inflamed scalp"
+   ],
+   "keys": [
+    "Analyse before you wash",
+    "4-quadrant sectioning",
+    "Fingertips, not nails",
+    "Conditioner on lengths only"
+   ],
+   "homework": "Write your own 10-step scalp detox protocol card.",
+   "tip_pdf": "A great scalp massage is the most re-booked service in any hair clinic. Practise pressure and rhythm until it is genuinely relaxing.",
+   "tip": "A great scalp massage is the most re-booked service in any hair clinic. Practise pressure and rhythm until it is genuinely relaxing.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 8,
+   "title": "Anti-dandruff treatment protocol",
+   "te": "యాంటీ-డాండ్రఫ్ ట్రీట్‌మెంట్",
+   "objectives": [
+    "Deliver a complete clinic anti-dandruff protocol",
+    "Build a 6-week home plan that prevents relapse",
+    "Know when dandruff is actually something else"
+   ],
+   "theory": [
+    {
+     "h": "Clinic protocol",
+     "p": "Analysis → gentle de-scaling (salicylic or urea-based lotion, 10–15 minutes under steam/cap) → medicated shampoo wash with 3–5 minute contact → anti-fungal/anti-inflammatory scalp serum → light massage → cool dry. Weekly for 4 weeks, then every 2– 3 weeks for maintenance."
+    },
+    {
+     "h": "Home plan",
+     "p": "Medicated shampoo 2–3 times a week (rotate actives to avoid resistance), normal mild shampoo in between, no heavy overnight oiling, wash within 1–2 hours if oil is applied, wash after workouts, clean pillow covers and combs weekly, and no sharing of combs or towels. Warn that flakes will return if they stop — this is control, not cure."
+    },
+    {
+     "h": "When it is not dandruff",
+     "p": "Thick silvery plaques (psoriasis), broken hairs with black dots (tinea), pustules and pain (folliculitis), or scaling with hair loss and lost follicular openings (scarring alopecia) are all medical. Cosmetic treatment alone will fail and delay real care — route them to the dermatologist."
+    }
+   ],
+   "hands": [
+    "Perform a full anti-dandruff treatment on a live client",
+    "Write a 6-week home plan with shampoo rotation",
+    "Examine 3 scalps and decide: cosmetic or refer"
+   ],
+   "safety": [
+    "Do not de-scale over open, bleeding or inflamed skin",
+    "Stop and refer if there are pustules, pain or spreading redness"
+   ],
+   "keys": [
+    "Contact time 3–5 minutes",
+    "Rotate actives",
+    "Control, not cure",
+    "Clean combs and pillow covers"
+   ],
+   "homework": "Design a shampoo rotation calendar for one month for a severe dandruff client.",
+   "tip_pdf": "Give dandruff clients a written 6-week calendar. Relapse usually happens because they stop the moment flakes disappear.",
+   "tip": "Give dandruff clients a written 6-week calendar. Relapse usually happens because they stop the moment flakes disappear.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 9,
+   "title": "Scalp peels, exfoliation & hair spa treatments",
+   "te": "స్కాల్ప్ పీల్స్ & హెయిర్ స్పా",
+   "objectives": [
+    "Perform scalp exfoliation and hair spa treatments safely",
+    "Choose between treatments based on scalp and hair condition",
+    "Add measurable value with a structured spa protocol"
+   ],
+   "theory": [
+    {
+     "h": "Scalp peels",
+     "p": "Low-strength salicylic, lactic or glycolic solutions applied along partings loosen keratin build-up and clear follicular openings. 3–7 minutes, mild tingling, neutralise/wash as per brand. Excellent before a PRP or meso series. Contraindicated on inflamed, infected or freshly coloured scalp (wait 7 days)."
+    },
+    {
+     "h": "Hair spa",
+     "p": "Cleanse → mask/ampoule as per hair condition (protein for chemically damaged, moisture for dry frizzy, balancing for oily roots) → steam 10 minutes → scalp and shoulder massage → wash → serum → blow dry cool. 60 minutes, monthly. This is your retention service: relaxing, visible shine, and an easy monthly booking."
+    },
+    {
+     "h": "Sequencing with medical work",
+     "p": "Scalp peel and PRP: peel at least 3 days before, never same day. Hair spa after PRP: wait 48–72 hours. Colour/chemical services: 7 days away from any clinical scalp procedure. Write the sequence into the client's calendar."
+    }
+   ],
+   "hands": [
+    "Perform one scalp peel and one full hair spa on live clients",
+    "Select masks correctly for 4 different hair conditions",
+    "Draw a 4-week calendar combining spa, peel and PRP"
+   ],
+   "safety": [
+    "No scalp peel within 7 days of colouring, straightening or smoothing",
+    "Protect the face, ears and neck; never let peel run into the eyes"
+   ],
+   "keys": [
+    "Peel 3 days before PRP",
+    "Spa 48–72 h after PRP",
+    "Protein vs moisture masks",
+    "Monthly spa = retention"
+   ],
+   "homework": "Write mask-selection notes for 5 hair types you see most in Eluru.",
+   "tip_pdf": "Hair spa is where you learn a client's real routine — they talk during the massage. Note what they say; it changes the plan.",
+   "tip": "Hair spa is where you learn a client's real routine — they talk during the massage. Note what they say; it changes the plan.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 10,
+   "title": "Hair fall protocols — men & women",
+   "te": "హెయిర్ ఫాల్ ప్రోటోకాల్స్ — పురుషులు & మహిళలు",
+   "objectives": [
+    "Build a staged hair-fall plan alongside the doctor's medical plan",
+    "Adapt the approach for male pattern vs female diffuse loss",
+    "Set honest milestone expectations"
+   ],
+   "theory": [
+    {
+     "h": "Staged plan",
+     "p": "Stage 1 (0–4 weeks): investigations by the doctor, scalp health correction (dandruff/seborrhoea), nutrition and hair-practice correction, Day-0 photos. Stage 2 (1–4 months): procedures — PRP or GFC monthly ×4, meso in between if advised, plus the doctor's topical/oral plan. Stage 3 (4–12 months): maintenance every 2–3 months, 3-monthly photo reviews."
+    },
+    {
+     "h": "Male pattern specifics",
+     "p": "Norwood grading, earlier intervention gives far better results, vertex responds better than the frontal hairline, and realistic outcome is arresting loss plus 15–30% density gain — not a new hairline. Clients wanting a hairline restored need a hair transplant consultation, which is a separate surgical service."
+    },
+    {
+     "h": "Female specifics",
+     "p": "Always rule out anaemia, thyroid, PCOS, post-partum and crash dieting with the doctor first. Women often have both diffuse shedding and pattern thinning together. Counsel on traction: tight ponytails, braids, extensions and daily heat. Results measured at the parting width and vertex photos."
+    }
+   ],
+   "hands": [
+    "Build full plans for one male Norwood III and one female Ludwig II case",
+    "Present the milestone timeline to a partner as if to a client",
+    "Practise the 'no new hairline' conversation"
+   ],
+   "safety": [
+    "Do not start procedures before the doctor's investigations are back",
+    "Sudden severe shedding with scalp symptoms → doctor, not procedures"
+   ],
+   "keys": [
+    "Photos at Day 0, month 3, 6, 12",
+    "Arrest first, density second",
+    "Early treatment = better results",
+    "Transplant is a separate conversation"
+   ],
+   "homework": "Write a 12-month treatment calendar for a Norwood III client.",
+   "tip_pdf": "Always state the goal as 'shedding taggadam mundu, density tarvata'. Clients who understand the order stay through month two when nothing looks different yet.",
+   "tip": "Always state the goal as 'shedding taggadam mundu, density tarvata'. Clients who understand the order stay through month two when nothing looks different yet.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 11,
+   "title": "Blood & platelets — the science behind PRP",
+   "te": "బ్లడ్ & ప్లేట్‌లెట్స్ — PRP సైన్స్",
+   "objectives": [
+    "Explain what PRP is and how it stimulates hair growth",
+    "Understand blood components and what the centrifuge separates",
+    "Prepare the theory you need before touching a tube"
+   ],
+   "theory": [
+    {
+     "h": "Blood components",
+     "p": "Whole blood = plasma (55%), buffy coat (platelets + white cells) and red cells (45%). Spinning separates them by density. Platelet-rich plasma is plasma with platelets concentrated 3–6× above baseline. Platelets contain alpha granules full of growth factors — PDGF, VEGF, EGF, IGF-1, TGF-β."
+    },
+    {
+     "h": "How it works on hair",
+     "p": "Injected around the follicles, the growth factors increase dermal papilla cell activity and blood supply, prolong anagen, and reduce miniaturisation. Effect: less shedding by 4–6 weeks, visible new growth by 3 months, density improvement by 5–6 months. It supports — it does not replace — the doctor's medical therapy, and it cannot regrow follicles that are already scarred."
+    },
+    {
+     "h": "Tubes and activation",
+     "p": "PRP tubes contain an anticoagulant (ACD-A or sodium citrate) and often a separating gel. Handle gently — rough shaking damages platelets. Some protocols activate with calcium chloride; many hair protocols use non-activated PRP. Always follow the doctor's chosen protocol exactly, including spin speed and time."
+    }
+   ],
+   "hands": [
+    "Identify tube types, anticoagulants and their uses",
+    "Watch a full spin and identify the layers in the tube",
+    "Write the clinic's exact PRP protocol from observation"
+   ],
+   "safety": [
+    "Never use a tube past its expiry or with a broken seal",
+    "Label every tube with the client's name immediately after draw — no exceptions"
+   ],
+   "keys": [
+    "Platelets concentrated 3–6×",
+    "Growth factors: PDGF, VEGF, IGF-1",
+    "Shedding reduces by 4–6 weeks",
+    "Follow the clinic's spin protocol exactly"
+   ],
+   "homework": "Draw a labelled tube after centrifugation and write which layer is used.",
+   "tip_pdf": "One mislabelled tube can mean someone else's blood in a client. Label at the chair, in front of the client, every single time.",
+   "tip": "One mislabelled tube can mean someone else's blood in a client. Label at the chair, in front of the client, every single time.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 12,
+   "title": "Phlebotomy assist & sample handling",
+   "te": "బ్లడ్ డ్రా అసిస్ట్ & శాంపిల్ హ్యాండ్లింగ్",
+   "objectives": [
+    "Assist a venepuncture safely and confidently",
+    "Handle, label and transport samples correctly",
+    "Manage a client who is anxious or faints"
+   ],
+   "theory": [
+    {
+     "h": "Preparation",
+     "p": "Confirm identity and consent, check the client has eaten and hydrated, seat them comfortably with the arm supported, apply the tourniquet 4 finger-widths above the elbow for no more than one minute, select the median cubital vein, clean with 70% alcohol in one outward spiral and let it dry fully."
+    },
+    {
+     "h": "During and after",
+     "p": "The doctor or trained phlebotomist draws; you support the client, hold the tray, hand over tubes in the correct order, and invert gently 5–8 times immediately (never shake). After: release tourniquet before needle withdrawal, firm pressure with dry gauze 2–3 minutes, no bending of the elbow, tape, and observe for 5 minutes."
+    },
+    {
+     "h": "Vasovagal episodes",
+     "p": "Pale, sweating, nausea, ringing in ears, yawning — act at the first sign: stop, lay the client flat, raise the legs, loosen tight clothing, cool cloth, fluids when alert, never leave them alone, call the doctor. Most faints happen in young, anxious, fasting clients — prevention is food, water and conversation."
+    }
+   ],
+   "hands": [
+    "Assist 2 supervised draws: set-up, tube order, inversion, pressure, disposal",
+    "Practise tourniquet application and vein identification on colleagues (no needles)",
+    "Simulate and manage a vasovagal episode"
+   ],
+   "safety": [
+    "Never attempt a venepuncture yourself unless certified and permitted",
+    "Needle-stick injury: wash with soap and water, do not squeeze, report immediately"
+   ],
+   "keys": [
+    "Tourniquet ≤ 1 minute",
+    "Invert 5–8 times, never shake",
+    "Pressure 2–3 minutes, no bending",
+    "Faint: flat + legs up + call doctor"
+   ],
+   "homework": "Write the step-by-step draw assist checklist and the faint protocol.",
+   "tip_pdf": "Keep talking to the client through the draw and make sure they never watch the needle. Distraction prevents more faints than anything else.",
+   "tip": "Keep talking to the client through the draw and make sure they never watch the needle. Distraction prevents more faints than anything else.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 13,
+   "title": "Centrifuge protocol & PRP preparation",
+   "te": "సెంట్రిఫ్యూజ్ & PRP ప్రిపరేషన్",
+   "objectives": [
+    "Operate the centrifuge correctly and safely",
+    "Prepare PRP to the clinic's exact protocol",
+    "Maintain sterility from tube to syringe"
+   ],
+   "theory": [
+    {
+     "h": "Centrifuge basics",
+     "p": "Always balance: tubes of equal weight opposite each other; add a water-filled balance tube if you have an odd number. Close the lid, set speed and time exactly as protocol, never open before it stops completely. Typical single-spin hair PRP: around 1500 rpm for 8–10 minutes, or the brand's stated protocol — never improvise."
+    },
+    {
+     "h": "Separating the PRP",
+     "p": "After the spin: plasma on top, buffy coat line, red cells at the bottom. Using a sterile syringe and long needle or the kit's transfer device, draw the plasma just above the buffy coat, including the buffy layer as per protocol, without disturbing the red cells. Aim for the volume the doctor asked for; typical scalp session 4–6 ml."
+    },
+    {
+     "h": "Sterility chain",
+     "p": "Sanitise and glove, work on a sterile draped tray, open kits without touching inner surfaces, never leave a prepared syringe uncovered, use it within the protocol time window, and label with the client's name. Discard immediately if there is any doubt about contamination — a scalp infection is far more expensive than a kit."
+    }
+   ],
+   "hands": [
+    "Balance and run the centrifuge 3 times with dummy tubes",
+    "Prepare PRP under supervision from a real draw and have the volume checked",
+    "Set up and break down a sterile tray, audited"
+   ],
+   "safety": [
+    "Never open a running centrifuge; never run unbalanced",
+    "One client = one kit; never share or reuse anything"
+   ],
+   "keys": [
+    "Balance every spin",
+    "Follow brand rpm and time exactly",
+    "Typical scalp dose 4–6 ml",
+    "Label and use within the time window"
+   ],
+   "homework": "Write the centrifuge SOP for your clinic including balancing and cleaning.",
+   "tip_pdf": "Photograph your prepared syringe next to the labelled tube for the record. It takes five seconds and settles any future question.",
+   "tip": "Photograph your prepared syringe next to the labelled tube for the record. It takes five seconds and settles any future question.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 14,
+   "title": "Scalp anaesthesia, injection technique & assisting",
+   "te": "స్కాల్ప్ నంబింగ్ & ఇంజెక్షన్ టెక్నిక్",
+   "objectives": [
+    "Prepare the scalp and manage comfort for injections",
+    "Understand the injection pattern, depth and dose",
+    "Assist the doctor smoothly through the session"
+   ],
+   "theory": [
+    {
+     "h": "Comfort options",
+     "p": "Topical numbing cream (lidocaine-prilocaine) applied 30–45 minutes before under occlusion on the marked area, removed and cleaned fully before injection; ice or cold air during; vibration device as distraction; and, for sensitive clients, a doctor-administered ring block. Explain the sensation honestly — pressure and brief pricks, not sharp cutting."
+    },
+    {
+     "h": "Pattern, depth and dose",
+     "p": "Injections in a grid roughly 1 cm apart across the thinning zone, depth in the dermis (about 4–6 mm) at a 45–90° angle, small aliquots (0.05–0.1 ml) per point, covering the whole affected area plus a 1 cm margin. A typical session uses 4–6 ml over 60– 100 points. The doctor injects; you mark, hand over, count and document."
+    },
+    {
+     "h": "Your role during the session",
+     "p": "Client positioning, hair sectioning and clipping, antiseptic prep, marking the grid, handing syringes, gauze for spot bleeding, counting points, watching the client's face and vitals, and keeping the tray sterile. Speak to the client through it — a narrated session feels half as long."
+    }
+   ],
+   "hands": [
+    "Apply and time numbing cream correctly on a volunteer",
+    "Section, mark and prep a scalp grid ready for injection",
+    "Assist one full PRP session end to end and log it"
+   ],
+   "safety": [
+    "Never exceed the recommended area or amount of numbing cream — lidocaine toxicity is real",
+    "Stop and call the doctor for severe pain, dizziness or palpitations"
+   ],
+   "keys": [
+    "Numbing 30–45 min under occlusion",
+    "Grid 1 cm apart, 4–6 mm deep",
+    "0.05–0.1 ml per point",
+    "4–6 ml per scalp session"
+   ],
+   "homework": "Draw the injection grid for a Ludwig II female pattern case and count the points.",
+   "tip_pdf": "Count the points out loud with the doctor. It keeps the pattern even and shows the client the session is being done thoroughly.",
+   "tip": "Count the points out loud with the doctor. It keeps the pattern even and shows the client the session is being done thoroughly.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 15,
+   "title": "PRP practical on live clients",
+   "te": "PRP ప్రాక్టికల్ — లైవ్ క్లయింట్స్",
+   "objectives": [
+    "Run a complete PRP session as the assisting therapist",
+    "Manage the room, the client and the record without prompting",
+    "Handle common reactions confidently"
+   ],
+   "theory": [
+    {
+     "h": "Session flow",
+     "p": "Confirm identity, consent and photos → history check (any illness, new medication, recent alcohol) → set-up and sterile tray → draw and spin → numbing → prep and marking → injection with the doctor → post-procedure care → aftercare counselling → record and rebook. Total 45–60 minutes."
+    },
+    {
+     "h": "Immediate reactions",
+     "p": "Expected: pinpoint bleeding, mild swelling, tightness, mild headache for a few hours, tenderness for 1–2 days. Not expected: severe pain, spreading redness, pus, fever — these are reported to the doctor. Manage the expected ones with cold compress (not ice directly), paracetamol only if the doctor advises, and reassurance."
+    },
+    {
+     "h": "Aftercare",
+     "p": "No head wash for 24 hours, no oil, no colouring for a week, no gym/sauna/swimming for 48 hours, no alcohol that day, sleep with a clean pillow cover, avoid direct sun. Normal shampoo after 24 hours. Next session in 4 weeks. Send the aftercare on WhatsApp the same evening and call at 24 hours."
+    }
+   ],
+   "hands": [
+    "Assist 2 complete PRP sessions with minimal prompting",
+    "Write both records fully and rebook both clients",
+    "Deliver the aftercare counselling in Telugu, unaided"
+   ],
+   "safety": [
+    "Any fever, spreading redness or pus after PRP = doctor the same day",
+    "Never proceed if the client is unwell, fasting-weak or has had recent fever"
+   ],
+   "keys": [
+    "45–60 minutes per session",
+    "No head wash 24 h",
+    "Next session in 4 weeks",
+    "Aftercare on WhatsApp the same evening"
+   ],
+   "homework": "Write the full PRP session SOP from arrival to rebooking, from memory.",
+   "tip_pdf": "Clients judge PRP by how organised the room felt, not by the syringe. Smooth, sterile, narrated — that is the whole experience.",
+   "tip": "Clients judge PRP by how organised the room felt, not by the syringe. Smooth, sterile, narrated — that is the whole experience.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 16,
+   "title": "GFC therapy — science, preparation & practical",
+   "te": "GFC థెరపీ — సైన్స్ & ప్రాక్టికల్",
+   "objectives": [
+    "Explain GFC and how it differs from PRP",
+    "Prepare GFC exactly as per kit protocol",
+    "Counsel the client on choosing between PRP and GFC"
+   ],
+   "theory": [
+    {
+     "h": "What GFC is",
+     "p": "Growth Factor Concentrate is prepared from the client's own blood using a kit that activates platelets and then removes the cells, giving a pure, cell-free concentrate of growth factors at a higher and more consistent concentration than standard PRP. Preparation takes longer (activation + incubation + spin) and uses a branded kit."
+    },
+    {
+     "h": "PRP vs GFC",
+     "p": "PRP: lower cost, faster preparation, well-established, results depend on the client's platelet quality. GFC: higher and standardised growth factor concentration, often less discomfort, usually fewer sessions (3–4), higher cost. Both need maintenance. The doctor chooses based on grade of loss, budget and response — you explain the difference honestly, never push the costlier one."
+    },
+    {
+     "h": "Preparation discipline",
+     "p": "Kit protocols differ by brand: draw volume, activator, incubation time and temperature, spin speed and time. Deviating from any of these wastes the kit and the client's money. Read the insert every time until it is second nature, and keep one printed copy on the trolley."
+    }
+   ],
+   "hands": [
+    "Prepare GFC under supervision, following the kit insert step by step",
+    "Compare PRP and GFC preparation times and outputs in writing",
+    "Explain PRP vs GFC to a partner in 2 minutes"
+   ],
+   "safety": [
+    "Incubation time and temperature are not flexible — follow the insert",
+    "Discard any kit whose seal is broken or whose expiry has passed"
+   ],
+   "keys": [
+    "GFC = cell-free growth factors",
+    "Usually 3–4 sessions",
+    "Follow the kit insert exactly",
+    "Doctor decides PRP vs GFC"
+   ],
+   "homework": "Write a side-by-side PRP vs GFC comparison card you could hand a client.",
+   "tip_pdf": "When a client asks 'edi better?', answer with their grade and goal, not with price. Honest guidance sells the right treatment, and the right treatment gives results.",
+   "tip": "When a client asks 'edi better?', answer with their grade and goal, not with price. Honest guidance sells the right treatment, and the right treatment gives results.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 17,
+   "title": "Hair mesotherapy — cocktails & technique",
+   "te": "హెయిర్ మెసోథెరపీ",
+   "objectives": [
+    "Understand mesotherapy cocktails and their role in a hair plan",
+    "Assist a mesotherapy session correctly",
+    "Combine meso with PRP/GFC in a sensible calendar"
+   ],
+   "theory": [
+    {
+     "h": "What goes in",
+     "p": "Ready-made ampoules combining vitamins (biotin, B-complex), amino acids, peptides, hyaluronic acid, trace minerals (zinc, copper peptides) and sometimes plant extracts. Delivered superficially into the scalp to improve the follicular environment, circulation and hair shaft quality. It is supportive therapy — it does not replace PRP/GFC or the doctor's medical plan."
+    },
+    {
+     "h": "Technique",
+     "p": "Micro-injections 0.05 ml per point, 1 cm grid, very superficial (2–4 mm), using a 30–32 G needle or a meso gun/dermapen with adjustable depth. Session 20–30 minutes. Typical course: 6–8 sessions, weekly or fortnightly, then monthly maintenance. Mild redness and pinpoint bleeding settle within hours."
+    },
+    {
+     "h": "Calendar with other treatments",
+     "p": "Common pattern: PRP/GFC monthly, meso in the alternate fortnight, scalp treatments between, home care daily. Never do meso and PRP on the same day. Keep 7 days from any chemical service, and pause everything if the scalp is inflamed."
+    }
+   ],
+   "hands": [
+    "Assist one full mesotherapy session and document it",
+    "Practise grid marking and depth setting on a mannequin",
+    "Build a 3-month combined PRP + meso calendar"
+   ],
+   "safety": [
+    "Check allergies before any cocktail; stop at the first sign of a reaction",
+    "Single-use needles and cartridges only"
+   ],
+   "keys": [
+    "Superficial, 2–4 mm",
+    "6–8 sessions then maintenance",
+    "Never same day as PRP",
+    "Supportive, not a replacement"
+   ],
+   "homework": "Write the contents and purpose of your clinic's meso ampoule in simple client language.",
+   "tip_pdf": "Explain meso as 'follicle ki food', PRP as 'follicle ki signal'. Simple images make clients accept combination plans.",
+   "tip": "Explain meso as 'follicle ki food', PRP as 'follicle ki signal'. Simple images make clients accept combination plans.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 18,
+   "title": "Microneedling, derma roller & LLLT for scalp",
+   "te": "మైక్రోనీడ్లింగ్, డెర్మా రోలర్ & LLLT",
+   "objectives": [
+    "Use scalp microneedling correctly and safely",
+    "Explain LLLT and home devices honestly",
+    "Advise on home derma roller use without causing harm"
+   ],
+   "theory": [
+    {
+     "h": "Scalp microneedling",
+     "p": "Controlled micro-injury with a dermapen or roller (0.5–1.5 mm on scalp) stimulates growth factors and wound-healing signals, and improves absorption of topical therapies. Evidence is best when combined with the doctor's topical plan. In clinic: 1.0–1.5 mm, every 3–4 weeks. Immediate pinpoint bleeding and redness are expected."
+    },
+    {
+     "h": "LLLT",
+     "p": "Low-level laser therapy (caps, combs, in-clinic panels) at 650–670 nm is thought to stimulate follicular mitochondria. Results are modest, slow (4–6 months) and only with consistent use 3× weekly. Honest positioning: an add-on for compliance-driven clients, not a standalone solution. Never promise regrowth from a cap alone."
+    },
+    {
+     "h": "Home devices",
+     "p": "If the doctor approves home rolling: 0.5 mm maximum, once a week, on a clean scalp, device sterilised in 70% alcohol before and after, replaced every 8–10 uses, never on active infection or inflamed scalp, and no topical applied immediately after unless advised. Most home damage comes from daily rolling with dirty, blunt needles."
+    }
+   ],
+   "hands": [
+    "Perform supervised scalp microneedling on a live client",
+    "Demonstrate correct home roller technique and sterilisation",
+    "Explain LLLT honestly to a client asking about a laser cap"
+   ],
+   "safety": [
+    "No microneedling over active infection, inflamed scalp or scarring alopecia",
+    "Never share a roller between clients — single client, single device"
+   ],
+   "keys": [
+    "Clinic 1.0–1.5 mm, every 3–4 weeks",
+    "Home 0.5 mm, weekly, sterile",
+    "LLLT: modest, 4–6 months, 3× weekly",
+    "Combination beats any single tool"
+   ],
+   "homework": "Write the home derma roller do's and don'ts card in Telugu.",
+   "tip_pdf": "Clients buy gadgets online and damage their scalp. Being the person who teaches safe use keeps them in your clinic instead of on the internet.",
+   "tip": "Clients buy gadgets online and damage their scalp. Being the person who teaches safe use keeps them in your clinic instead of on the internet.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 19,
+   "title": "Combination protocols & treatment course design",
+   "te": "కాంబినేషన్ ప్రోటోకాల్స్ & కోర్సు డిజైన్",
+   "objectives": [
+    "Design a complete 6-month hair programme",
+    "Sequence procedures safely with correct gaps",
+    "Present the programme so the client commits to it"
+   ],
+   "theory": [
+    {
+     "h": "Designing the programme",
+     "p": "Month 0: investigations, scalp correction, photos, home care start. Months 1–4: PRP or GFC monthly, meso or microneedling in between, doctor's topicals daily. Months 5–6: reduce to every 6–8 weeks, review photos at month 3 and month 6, adjust. Beyond: maintenance every 2–3 months, permanently for pattern loss."
+    },
+    {
+     "h": "Gap rules",
+     "p": "PRP and meso: not the same day, 2 weeks apart is ideal. Microneedling and PRP: 2 weeks apart. Scalp peel: 3+ days before any injection. Colour/chemical: 7 days either side. Hair spa: 48–72 hours after injections. Write the whole calendar with dates on one page for the client."
+    },
+    {
+     "h": "Commitment conversation",
+     "p": "Show the calendar, the cost per month, and the month-3 and month-6 photo checkpoints. Explain what happens if sessions are skipped — the follicle cycle does not wait. Offer package pricing approved by the doctor and rebook the next two sessions before they leave."
+    }
+   ],
+   "hands": [
+    "Design 3 full programmes: male Norwood II, female post-partum TE, female Ludwig II",
+    "Present one to the trainer as a client-facing plan with dates",
+    "Check each plan against the gap rules"
+   ],
+   "safety": [
+    "Every programme needs the doctor's approval before it is offered",
+    "Pause the programme for infection, fever, pregnancy or any new medical issue"
+   ],
+   "keys": [
+    "Month 3 and month 6 photo checkpoints",
+    "Never PRP + meso the same day",
+    "Maintenance is permanent in AGA",
+    "Book two sessions ahead"
+   ],
+   "homework": "Draw a 6-month calendar for a male Norwood III client with exact dates.",
+   "tip_pdf": "Hair programmes fail on attendance, not on science. The clinic that books, reminds and follows up wins on results.",
+   "tip": "Hair programmes fail on attendance, not on science. The clinic that books, reminds and follows up wins on results.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 20,
+   "title": "Complications, infection control & emergencies",
+   "te": "కాంప్లికేషన్స్ & ఎమర్జెన్సీ",
+   "objectives": [
+    "Prevent the complications specific to hair procedures",
+    "Respond correctly in the first minutes",
+    "Document and escalate professionally"
+   ],
+   "theory": [
+    {
+     "h": "What can go wrong",
+     "p": "Vasovagal faint during draw or injection; bruising and swelling (especially forehead swelling after frontal injections, appearing next morning); severe headache; folliculitis; infection at injection sites; allergic reaction to numbing cream or meso cocktail; needle-stick injury to staff; and rarely, worsening shedding for 2–4 weeks after the first session."
+    },
+    {
+     "h": "First response",
+     "p": "Faint: flat, legs up, loosen clothing, monitor, call doctor. Swelling: cold compress, reassure, head elevated while sleeping, resolves in 2–3 days. Suspected infection (pain, pus, fever, spreading redness): doctor the same day, photograph, do not start any cream yourself. Allergic reaction (itching, hives, breathlessness): stop, call for help immediately, follow emergency protocol."
+    },
+    {
+     "h": "Prevention",
+     "p": "Full history and allergy check, sterile technique end to end, correct numbing amount, well-fed hydrated client, correct depth, and honest pre-counselling about swelling and temporary shedding. Documentation of every session's details is what lets the doctor decide quickly when something is off."
+    }
+   ],
+   "hands": [
+    "Simulate faint, forehead swelling and suspected infection scenarios",
+    "Locate the emergency kit and rehearse the escalation chain",
+    "Write an incident report for a simulated event"
+   ],
+   "safety": [
+    "Never treat a febrile or unwell client",
+    "Needle-stick: wash, report, follow protocol immediately — do not hide it"
+   ],
+   "keys": [
+    "Forehead swelling: next morning, 2–3 days",
+    "Temporary shedding can occur — pre-counsel it",
+    "Infection = doctor same day",
+    "Document everything, photograph everything"
+   ],
+   "homework": "Write the emergency escalation chart for your clinic and memorise it.",
+   "tip_pdf": "Pre-counselling is complication management. A client warned about forehead swelling calls you calmly; one who was not, posts a review.",
+   "tip": "Pre-counselling is complication management. A client warned about forehead swelling calls you calmly; one who was not, posts a review.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 21,
+   "title": "Case studies & treatment planning workshop",
+   "te": "కేస్ స్టడీస్ & ప్లానింగ్ వర్క్‌షాప్",
+   "objectives": [
+    "Work through real anonymised cases end to end",
+    "Defend your plan with reasons",
+    "Learn from the trainer's corrections"
+   ],
+   "theory": [
+    {
+     "h": "How to read a case",
+     "p": "Age and sex → pattern and duration → trigger → medical and family history → previous treatments → scalp findings and trichoscopy → photos → doctor's diagnosis. Then: what must be corrected first, what procedures, what home care, what timeline, what checkpoints."
+    },
+    {
+     "h": "Common traps",
+     "p": "Starting injections before treating a dandruff/seborrhoea flare; ignoring anaemia or thyroid; promising density to a Norwood V; treating a scarring alopecia cosmetically; and not photographing Day 0. Each of these turns a good clinical outcome into an unhappy client."
+    },
+    {
+     "h": "Presenting to the doctor",
+     "p": "Two sentences of history, key findings, your proposed plan, and your question. Doctors value a therapist who presents crisply — it is how you earn responsibility and higher-value work in any clinic."
+    }
+   ],
+   "hands": [
+    "Work through 5 real anonymised case files in pairs",
+    "Present 2 plans to the trainer and take corrections",
+    "Rewrite one plan after feedback"
+   ],
+   "safety": [
+    "When findings do not match the plan, stop and ask — never proceed on assumption"
+   ],
+   "keys": [
+    "Correct the scalp before injecting",
+    "Rule out anaemia/thyroid/PCOS",
+    "Day-0 photos always",
+    "Present crisply to the doctor"
+   ],
+   "homework": "Write up one case fully as if for the clinic file, including your plan and rationale.",
+   "tip_pdf": "Keep a personal case book from day one of your job. In two years it becomes the portfolio that gets you a senior role.",
+   "tip": "Keep a personal case book from day one of your job. In two years it becomes the portfolio that gets you a senior role.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 22,
+   "title": "Client communication, expectations & retention",
+   "te": "క్లయింట్ కమ్యూనికేషన్ & రిటెన్షన్",
+   "objectives": [
+    "Set honest expectations that keep clients in treatment",
+    "Handle the common hair-client objections",
+    "Run the retention system"
+   ],
+   "theory": [
+    {
+     "h": "Expectation script",
+     "p": "'Mundu shedding taggutundi — 4 to 6 weeks lo. Kotha hair 3 nelalaki kanipistundi. Density 5–6 nelalaki. Mana goal: loss ni aapadam, taruvata density penchadam. Pattern loss ki maintenance permanent ga kavali.' Say it, write it, and photograph Day 0 in the same visit."
+    },
+    {
+     "h": "Objections",
+     "p": "'PRP cheyinchukunte hair vastunda?' → explain arrest-then-density. 'Chala costly' → break into monthly cost, compare with repeated product spending. 'Nenu oil raasukovacha?' → explain timing. 'Friend ki pani cheyaledu' → explain that grade, cause and compliance differ. 'Transplant better kada?' → explain candidacy honestly and route to consultation."
+    },
+    {
+     "h": "Retention",
+     "p": "Rebook before they leave. WhatsApp aftercare the same evening. 24-hour call after injections. Reminder 3 days before the next session. Photo review at month 3 shown side by side. Win-back message if they miss two months. Our WhatsApp agent runs most of this — you keep the data accurate."
+    }
+   ],
+   "hands": [
+    "Role-play 5 objections, twice each",
+    "Deliver the full expectation script in Telugu unaided",
+    "Practise a month-3 photo review conversation"
+   ],
+   "safety": [
+    "Never promise regrowth on scarred or long-lost areas",
+    "Never compare one client's results with another's"
+   ],
+   "keys": [
+    "Shedding 4–6 weeks, growth 3 months, density 5–6 months",
+    "Rebook before leaving",
+    "Month-3 photo review",
+    "Maintenance is permanent in AGA"
+   ],
+   "homework": "Record yourself giving the expectation script and listen back twice.",
+   "tip_pdf": "Show the month-3 comparison on a big screen, not a phone. Clients who can see the difference buy the maintenance plan without hesitation.",
+   "tip": "Show the month-3 comparison on a big screen, not a phone. Clients who can see the difference buy the maintenance plan without hesitation.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 23,
+   "title": "Clinic operations, WhatsApp flow & documentation",
+   "te": "క్లినిక్ ఆపరేషన్స్ & WhatsApp ఫ్లో",
+   "objectives": [
+    "Run a hair clinic day efficiently",
+    "Use the WhatsApp agent and staff dashboard correctly",
+    "Keep documentation a doctor can rely on"
+   ],
+   "theory": [
+    {
+     "h": "The day",
+     "p": "Open: check centrifuge, stock of kits/tubes/needles, autoclave load, review today's cases and pull files. During: keep slot discipline (PRP needs 60 minutes, not 30), log as you go. Close: sterilise, segregate waste, restock, reconcile records, confirm tomorrow, report low stock — especially PRP/GFC kits, which cannot be improvised."
+    },
+    {
+     "h": "WhatsApp agent + dashboard",
+     "p": "The AI assistant handles enquiries 24×7, books, reminds, sends aftercare and follow-ups, and creates lead cards with call-prep notes. Staff use dermaluxe.ai/staff.html: hot leads first, call, set status, write a note. For academy students there is also a daily material and tips flow — the same system that is teaching you now."
+    },
+    {
+     "h": "Documentation",
+     "p": "Every session: date, procedure, kit lot number, volume, points, doctor, reactions, aftercare given, next date, photos. Lot numbers matter — if a batch is recalled or a reaction is reported, you must be able to trace it."
+    }
+   ],
+   "hands": [
+    "Run a mock day with 3 PRP cases and 2 consultations",
+    "Update 5 leads on the staff dashboard with call notes",
+    "Do a stock count including kits and tubes, and write the indent"
+   ],
+   "safety": [
+    "Never start a PRP list without confirming kit stock and expiry dates",
+    "Never double-book injection slots"
+   ],
+   "keys": [
+    "PRP slot = 60 minutes",
+    "Record lot numbers",
+    "Log as you go",
+    "Weekly stock and expiry check"
+   ],
+   "homework": "Write opening and closing checklists for a hair clinic day.",
+   "tip_pdf": "Expiry-check the kit box in front of the client. It looks professional and it protects you.",
+   "tip": "Expiry-check the kit box in front of the client. It looks professional and it protects you.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 24,
+   "title": "Revision + full live-client day",
+   "te": "రివిజన్ + లైవ్ క్లయింట్ డే",
+   "objectives": [
+    "Work a full day as the clinic hair therapist under observation",
+    "Handle every step without prompting",
+    "Find your own remaining gaps before the exam"
+   ],
+   "theory": [
+    {
+     "h": "Today's format",
+     "p": "You are rostered as the therapist: your clients, your room, your records. The trainer observes and steps in only for safety. Each client must get the full journey — consultation check, consent, analysis, procedure, aftercare, record, rebooking."
+    },
+    {
+     "h": "Assessment points",
+     "p": "Sterile technique, centrifuge and preparation accuracy, client handling and language, documentation, aftercare counselling, time management, and how you ask for help when unsure."
+    },
+    {
+     "h": "Self-review",
+     "p": "After every client, write one strength and one fix. Bring this list to tomorrow's mock exam so your practice is targeted, not random."
+    }
+   ],
+   "hands": [
+    "Minimum 3 complete client journeys (one PRP/GFC, one scalp treatment, one consultation)",
+    "Full records for each, submitted for review",
+    "Written self-review after each client"
+   ],
+   "safety": [
+    "Call the trainer before any step you are not sure about — that is a strength, not a weakness"
+   ],
+   "keys": [
+    "Full journey every time",
+    "Records same day",
+    "One strength + one fix per client"
+   ],
+   "homework": "List your three weakest areas and the drill for each before tomorrow.",
+   "tip_pdf": "The habit of self-review after every client is what makes a therapist senior in two years instead of six.",
+   "tip": "The habit of self-review after every client is what makes a therapist senior in two years instead of six.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 25,
+   "title": "Mock practical, viva prep & portfolio",
+   "te": "మాక్ ప్రాక్టికల్, వైవా & పోర్ట్‌ఫోలియో",
+   "objectives": [
+    "Complete a full mock practical under exam conditions",
+    "Answer viva questions with structure",
+    "Assemble your professional portfolio"
+   ],
+   "theory": [
+    {
+     "h": "Exam format",
+     "p": "Practical (60%): hygiene and set-up, consultation and consent, assigned procedure (PRP preparation and assist, scalp treatment, or analysis and planning), aftercare and documentation. Viva (40%): hair cycle, loss patterns, PRP/GFC science, protocols and complications, plus one case plan. Pass 70%."
+    },
+    {
+     "h": "Viva structure",
+     "p": "What it is → how it works → who it suits → contraindications → protocol numbers → aftercare. If unsure: 'Idi doctor ni confirm chesi cheptanu.' That answer is safe in an exam and correct in a clinic."
+    },
+    {
+     "h": "Portfolio",
+     "p": "Certificate, consented before/after photo sets, session logs, protocols you have written, CV and a 60-second self-introduction. For hair roles, employers especially want to see that you can prepare PRP/GFC correctly and keep records."
+    }
+   ],
+   "hands": [
+    "Full mock practical under exam conditions",
+    "25-question rapid viva",
+    "Assemble the portfolio folder and CV draft"
+   ],
+   "safety": [
+    "Any breach of sterility or consent in the exam is an automatic fail"
+   ],
+   "keys": [
+    "Practical 60% + viva 40%, pass 70%",
+    "Structure every answer",
+    "Portfolio: photos + logs + CV",
+    "Honesty beats guessing"
+   ],
+   "homework": "Finish your CV and record your 60-second introduction in Telugu and English.",
+   "tip_pdf": "Photograph your own prepared PRP syringes through the course (no client data). It is the most convincing page in a hair therapist's portfolio.",
+   "tip": "Photograph your own prepared PRP syringes through the course (no client data). It is the most convincing page in a hair therapist's portfolio.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 26,
+   "title": "Advanced session: combination clinics & upselling ethically",
+   "te": "అడ్వాన్స్‌డ్ సెషన్ — కాంబినేషన్ & ఎథికల్ అప్‌సెల్లింగ్",
+   "objectives": [
+    "Combine hair and skin services in one client journey",
+    "Upsell ethically — only what the client actually needs",
+    "Build monthly recurring revenue for the clinic"
+   ],
+   "theory": [
+    {
+     "h": "Natural combinations",
+     "p": "Hair fall client with dandruff → add scalp treatment series. Bride with hair thinning → hair programme + bridal skin package aligned to the wedding date. Post-partum client → TE programme + pigmentation care. PCOS client → hair, acne and unwanted facial hair (LHR) together, coordinated with the doctor."
+    },
+    {
+     "h": "Ethical upselling",
+     "p": "Rule one: recommend only what the findings justify. Rule two: always give the client the option to start with the essential and add later. Rule three: never use fear. A therapist who says 'idi ippudu avasaram ledu' is trusted for years and sells far more over time than one who pushes packages."
+    },
+    {
+     "h": "Recurring revenue",
+     "p": "Maintenance PRP/GFC every 2–3 months, monthly hair spa, quarterly scalp detox, and home-care refills are the backbone of a clinic's steady income. Set reminders for refills — a client who runs out of shampoo often stops the whole routine."
+    }
+   ],
+   "hands": [
+    "Build combined journeys for 3 real profiles",
+    "Practise an ethical upsell conversation and a 'not needed now' conversation",
+    "Design a refill reminder schedule"
+   ],
+   "safety": [
+    "Never bundle a medical decision into a package — the doctor decides treatment, not the offer"
+   ],
+   "keys": [
+    "Recommend from findings, never fear",
+    "Essential first, add later",
+    "Maintenance + refills = steady revenue",
+    "Coordinate with the doctor"
+   ],
+   "homework": "Write a combined 3-month plan for a PCOS client covering hair, skin and LHR.",
+   "tip_pdf": "The sentence 'idi meeku ippudu avasaram ledu' is the most profitable thing you will ever say. Trust compounds.",
+   "tip": "The sentence 'idi meeku ippudu avasaram ledu' is the most profitable thing you will ever say. Trust compounds.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 27,
+   "title": "Hair transplant awareness & referral (observation only)",
+   "te": "హెయిర్ ట్రాన్స్‌ప్లాంట్ అవేర్‌నెస్ & రెఫరల్",
+   "objectives": [
+    "Explain transplant options accurately at a counselling level",
+    "Identify who is and is not a candidate",
+    "Refer correctly without over-promising"
+   ],
+   "theory": [
+    {
+     "h": "The basics",
+     "p": "Follicles from the permanent (DHT-resistant) donor area at the back and sides are moved to thinning areas. FUE extracts follicles individually; DHI implants with a pen for dense, precise placement. Day procedure under local anaesthesia, new growth from 3–4 months, full result 9–12 months, permanent because the moved follicles keep their donor character."
+    },
+    {
+     "h": "Candidacy",
+     "p": "Good candidates: stable pattern loss with a good donor area, realistic goals, medically fit. Poor candidates: very young with rapidly progressing loss, poor donor density, active scarring alopecia, uncontrolled medical conditions, or unrealistic expectations. Medical therapy must continue after a transplant — otherwise the untransplanted native hair keeps thinning."
+    },
+    {
+     "h": "Your role",
+     "p": "Explain honestly, answer basic questions, show the clinic's own consented results, and book a surgeon consultation. Never quote graft numbers or prices yourself, never promise density, and never disparage a client's previous transplant elsewhere."
+    }
+   ],
+   "hands": [
+    "Observe a consultation or procedure if scheduled; otherwise study case documentation",
+    "Practise a transplant counselling conversation",
+    "List 6 candidacy questions you would ask before referring"
+   ],
+   "safety": [
+    "Never advise stopping medical therapy after a transplant",
+    "Any post-transplant pain, pus or fever → surgeon immediately"
+   ],
+   "keys": [
+    "FUE vs DHI",
+    "Growth 3–4 months, full 9–12 months",
+    "Medical therapy continues after transplant",
+    "Therapists counsel, surgeons decide grafts"
+   ],
+   "homework": "Write a one-page transplant FAQ in Telugu for the front desk.",
+   "tip_pdf": "Clients ask about transplant when they are losing hope in medical care. Answer honestly — the honest answer usually keeps them in the clinic.",
+   "tip": "Clients ask about transplant when they are losing hope in medical care. Answer honestly — the honest answer usually keeps them in the clinic.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 28,
+   "title": "Records, photography review & progress reporting",
+   "te": "రికార్డులు, ఫోటో రివ్యూ & ప్రోగ్రెస్ రిపోర్టింగ్",
+   "objectives": [
+    "Produce a professional 3-month progress report",
+    "Review photographs objectively",
+    "Use the report as a clinical and retention tool"
+   ],
+   "theory": [
+    {
+     "h": "What a progress report contains",
+     "p": "Client ID, start date, diagnosis, sessions done with dates, home care compliance, Day-0 vs current photos in the same five views, trichoscopy comparison, pull test change, client's own rating, therapist's observation, doctor's note, and the plan for the next quarter."
+    },
+    {
+     "h": "Reviewing photos honestly",
+     "p": "Same views, same light, same parting, same camera distance. Look at density at the parting, vertex coverage, hairline stability and miniaturisation. If there is no change, say so and investigate why — compliance, diagnosis, deficiency, or the need to escalate. Manipulating angles or lighting destroys trust permanently."
+    },
+    {
+     "h": "Using the report",
+     "p": "Deliver the report in a scheduled 15-minute review appointment, not in the corridor. Clients who see a structured report continue treatment; clients who get a casual 'baguntundi' quietly drift away."
+    }
+   ],
+   "hands": [
+    "Prepare two full progress reports from real files",
+    "Conduct a mock review appointment with the trainer as client",
+    "Audit 5 photo sets for view and lighting consistency"
+   ],
+   "safety": [
+    "Never edit or filter clinical photographs",
+    "Photo use for marketing requires separate written consent every time"
+   ],
+   "keys": [
+    "Same 5 views every visit",
+    "Month-3 structured review",
+    "No change = investigate, do not hide",
+    "Never filter clinical photos"
+   ],
+   "homework": "Build your own progress report template and fill it for one case.",
+   "tip_pdf": "Book the month-3 review at the first visit. An appointment in the diary is what makes the review actually happen.",
+   "tip": "Book the month-3 review at the first visit. An appointment in the diary is what makes the review actually happen.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 29,
+   "title": "Final revision & exam readiness",
+   "te": "ఫైనల్ రివిజన్ & ఎగ్జామ్ ప్రిపరేషన్",
+   "objectives": [
+    "Close every remaining knowledge and skill gap",
+    "Rehearse the complete practical flow twice",
+    "Be exam-ready and clinic-ready"
+   ],
+   "theory": [
+    {
+     "h": "Revision map",
+     "p": "Hair cycle and loss patterns → scalp conditions → analysis and documentation → scalp treatments → PRP science, preparation and assist → GFC → meso and microneedling → combination planning → complications → communication and operations. Rate yourself 1–5 on each and drill the lowest three."
+    },
+    {
+     "h": "The numbers to know cold",
+     "p": "50–100 hairs/day normal; 85–90% anagen; pull test >6 hairs positive; PRP 4–6 ml, 1 cm grid, 4–6 mm depth, monthly ×4; GFC 3–4 sessions; meso 6–8 sessions; microneedling 1.0–1.5 mm clinic / 0.5 mm home; shedding down 4–6 weeks, growth 3 months, density 5–6 months; no head wash 24 h."
+    },
+    {
+     "h": "Exam-day discipline",
+     "p": "Arrive early, uniform ready, nails and hair in order, know where everything is in the room, read the case sheet fully before you start, verbalise your safety checks, and never skip consent."
+    }
+   ],
+   "hands": [
+    "Two full practical rehearsals under time pressure",
+    "Rapid-fire numbers quiz, 30 questions",
+    "Final portfolio check with the trainer"
+   ],
+   "safety": [
+    "If you are unsure in the exam, say what you would do and who you would ask — that is a correct clinical answer"
+   ],
+   "keys": [
+    "Know the numbers cold",
+    "Verbalise safety checks",
+    "Consent before everything",
+    "Drill your three weakest areas"
+   ],
+   "homework": "Self-rate all 10 revision areas and drill the lowest three tonight.",
+   "tip_pdf": "Confidence on exam day comes from rehearsal, not revision. Do the flow with your hands twice more than you read it.",
+   "tip": "Confidence on exam day comes from rehearsal, not revision. Do the flow with your hands twice more than you read it.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  },
+  {
+   "n": 30,
+   "title": "Final practical exam, viva & career guidance",
+   "te": "ఫైనల్ ప్రాక్టికల్, వైవా & కెరీర్ గైడెన్స్",
+   "objectives": [
+    "Pass the final practical and viva",
+    "Receive your certificate and portfolio feedback",
+    "Plan your next 6 months in the hair-care industry"
+   ],
+   "theory": [
+    {
+     "h": "Today",
+     "p": "Morning: practical exam — full client journey with an assigned procedure, scored live. Afternoon: viva. Evening: results, certificate presentation, group photo and placement discussion for eligible trainees."
+    },
+    {
+     "h": "Career paths",
+     "p": "Hair therapist or trichology assistant in a doctor-led clinic (our clinics hire from each batch first), PRP/GFC specialist therapist, clinic manager, brand trainer for hair-care companies, or transplant team assistant with further training. Skill in preparation and documentation is what gets you promoted."
+    },
+    {
+     "h": "Next 6 months",
+     "p": "One new skill a month, a personal case book, consented photo sets, a settings and protocol diary, and continued learning through the alumni group. Refresher sessions and new-protocol updates are open to all DermaLuxe Academy alumni."
+    }
+   ],
+   "hands": [
+    "Final practical exam (scored)",
+    "Final viva (scored)",
+    "Certificate presentation and portfolio review"
+   ],
+   "safety": [
+    "Carry the sterility and documentation discipline you learned here into every clinic — hair procedures involve blood, and shortcuts are never acceptable"
+   ],
+   "keys": [
+    "Pass mark 70%",
+    "Certificate + internship letter (2-month course)",
+    "Alumni group for updates and jobs",
+    "Priority hiring at our locations"
+   ],
+   "homework": "Write your 6-month goal: role, skill, income and one measurable target.",
+   "tip_pdf": "You now handle people's blood and their confidence. Stay sterile, stay honest, keep asking questions — that is a career, not a job.",
+   "tip": "You now handle people's blood and their confidence. Stay sterile, stay honest, keep asking questions — that is a career, not a job.",
+   "selfcheck": [
+    "Did I follow hygiene and consent for every client today?",
+    "Which step did I need help with — and what will I drill tonight?",
+    "Did I write my records and settings before leaving?"
+   ]
+  }
+ ]
+}
