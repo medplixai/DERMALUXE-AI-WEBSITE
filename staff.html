@@ -90,8 +90,8 @@
     .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
     .filters input,.filters select{background:var(--panel);border:1px solid var(--line);border-radius:100px;padding:8px 12px;font-size:.88rem;outline:none}
     .filters input{flex:1;min-width:140px}
-    .list{display:grid;gap:8px;padding-bottom:40px}
-    .lead{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 12px 10px;display:grid;gap:8px}
+    .list{display:grid;gap:12px;padding-bottom:40px}
+    .lead{background:var(--panel);border:1.5px solid var(--line2);box-shadow:0 1px 4px rgba(0,0,0,.07);border-radius:var(--r);padding:12px 12px 10px;display:grid;gap:8px}
     .lead.hot{border-left:3px solid var(--hot)}
     .lead.warm{border-left:3px solid var(--warm)}
     .lead.cold{border-left:3px solid var(--cold)}
@@ -241,7 +241,11 @@
     .oc{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:100px;border:1px solid var(--line);color:var(--g2);margin-left:6px}
     .fu-due{margin:0 0 10px;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .seatlist{margin-top:10px;display:grid;gap:6px}
-    .seatlist div{font-size:.82rem;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer}
+    .seatlist .batch{border:1px solid var(--line);border-radius:12px;padding:10px}
+    .seatlist .batch.cur{border-color:var(--g4)}
+    .seatlist .batch .grp-h{margin-bottom:6px}
+    .seatlist .batch h3{font-family:var(--sans);font-weight:700;font-size:1rem;color:var(--g1)}
+    .seatlist .batch > div[data-act]{font-size:.82rem;padding:8px 10px;border:1px solid var(--line);border-radius:10px;cursor:pointer;margin-top:6px}
     .seats i.on{cursor:pointer}
     .pwbox{position:relative}
     .pwbox .pweye{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:1rem;cursor:pointer;padding:6px;color:var(--muted)}
@@ -879,7 +883,9 @@
     body{background:radial-gradient(120% 60% at 100% 0%,#fdeef4 0%,rgba(253,238,244,0) 55%),radial-gradient(90% 50% at 0% 100%,#f8efdc 0%,rgba(248,239,220,0) 60%),#f5f4f6}
     #login{background:transparent}
     .card,.box,.lead,.slot,.sheet-in{background:var(--gl-card);border-color:rgba(214,206,190,.55);box-shadow:var(--gl-edge),var(--gl-drop)}
-    .lead{transition:transform .18s ease,box-shadow .18s ease}
+    /* A line the eye can find between one lead and the next (11 Nov, point 4):
+       the glass hairline above was too faint on the desk's monitor. */
+    .lead{border-color:rgba(122,90,34,.38);transition:transform .18s ease,box-shadow .18s ease}
     @media (hover:hover){.lead:hover{transform:translateY(-1px);box-shadow:var(--gl-edge),0 16px 32px -16px rgba(18,18,18,.28),0 2px 4px -2px rgba(18,18,18,.08)}}
     /* the four tiles: pastel lacquer with a shine across the top half */
     .stat{position:relative;overflow:hidden;box-shadow:var(--gl-edge),var(--gl-drop)}
@@ -1618,13 +1624,18 @@
       var firstTab = document.querySelector(".tab:not(.hide)");
       if (firstTab && !document.querySelector(".tab.on:not(.hide)")) firstTab.click();
       var dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
-      var today = d.leads.filter(function (l) { return l.ts >= dayStart.getTime(); }).length;
+      // People, not rows: the tile said "4" over a list of three because one
+      // person had enquired twice that morning (11 Nov, point 4).
+      var today = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime(); }).length;
       // The tile and the "Ippude call" group used to count different things —
       // the tile went by the agent's old hot/warm guess, the group by the
       // grade — so the screen could say "2 to call" over an empty list.
       var hot = groupPeople(d.leads).filter(needsCall).length;   // people, not rows
       var todayDone = d.leads.filter(function (l) { return l.ts >= dayStart.getTime() && (l.lastCall || l.status !== "new"); }).length;
-      $("sTodayDone").textContent = todayDone ? "✓ " + todayDone + " call ayyayi" : "";
+      // The tile counts clinic and academy together; the Leads list shows one
+      // side at a time. Say the split, or "4" over a list of three looks wrong.
+      var acadToday = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime() && catOf(l) === "academy"; }).length;
+      $("sTodayDone").textContent = [todayDone ? "✓ " + todayDone + " call ayyayi" : "", acadToday ? (today - acadToday) + " clinic · " + acadToday + " academy" : ""].filter(Boolean).join(" · ");
       $("sToday").textContent = today; $("sHot").textContent = hot; $("sAppt").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("sSeats").textContent = d.academy.booked + "/10";
       $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
@@ -1963,6 +1974,13 @@
       // DermaLuxe and the academy apart (8 Nov, point 2): every group, count
       // and filter below works on one or the other, never both mixed.
       var base = acadMode ? acadPeople : clinicPeople;
+      // How many each period holds, on the picker itself — "Last 7 days (10)"
+      // — so the desk sees the count before choosing (11 Nov, point 3).
+      Array.from($("fDays").options).forEach(function (o) {
+        if (!o.dataset.label) o.dataset.label = o.textContent;
+        var from = Number(o.value) === 1 ? t00.getTime() : Number(o.value) >= 365 ? 0 : Date.now() - Number(o.value) * 86400000;
+        o.textContent = o.dataset.label + " (" + base.filter(function (l) { return l.ts >= from; }).length + ")";
+      });
       // The period picker (Today / 7 / 30 days) narrowed the list but not the
       // counts on the chips, so "Last 7 days" still said "Ippude call 31" over
       // a list of six — the desk read it as the filter not working (9 Nov).
@@ -4425,8 +4443,14 @@
       if (!funnel) return;
       var d = funnel;
       $("acadCount").className = "countdown" + (d.deadline.offerDays <= 20 ? " urgent" : "");
+      // "0 rojulu — offer 10 Nov" the day after the offer closed read like a
+      // broken counter; the desk wanted it to say the offer has ended (11 Nov,
+      // point 2). The same for the batch once its day has come.
+      var offerOver = !(d.deadline.offerDays > 0);
       $("acadCount").innerHTML =
-        "<div><b>" + d.deadline.offerDays + "</b><span>Rojulu — offer " + esc(d.deadline.offer) + "</span></div>" +
+        (offerOver
+          ? '<div><b style="font-size:1.1rem;color:var(--bad)">Offer end ayindi</b><span>' + esc(d.deadline.offer) + " varaku undindi</span></div>"
+          : "<div><b>" + d.deadline.offerDays + "</b><span>Rojulu — offer " + esc(d.deadline.offer) + "</span></div>") +
         "<div><b>" + d.seats.left + "</b><span>Seats migilayi</span></div>";
       // Each taken seat is a person — tap for who (7 Nov, point 6).
       var resv = d.rows.filter(function (r) { return r.stage === "reserved"; });
@@ -4441,13 +4465,29 @@
       }).join("") ;
       var sl = $("seatList");
       if (!sl) { sl = document.createElement("div"); sl.id = "seatList"; sl.className = "seatlist"; $("seats").insertAdjacentElement("afterend", sl); }
-      sl.innerHTML = resv.map(function (r, i) {
-        return '<div data-act="seat" data-idx="' + i + '">🎓 <b>' + (i + 1) + ". " + esc(r.name || r.phone) + "</b> · " + esc({ skin: "Skin", hair: "Hair", both: "Skin + Hair" }[r.course] || r.course || "") +
-          ' · Paid <b style="color:var(--ok)">₹' + Number(r.paid || 0).toLocaleString("en-IN") + "</b>" + (r.balance ? ' · Balance <b style="color:var(--warm)">₹' + Number(r.balance).toLocaleString("en-IN") + "</b>" : "") + "</div>";
+      // Every batch with its own students (11 Nov, point 1). A student
+      // admitted for Batch #1 sat under the "Batch #2" heading with nothing
+      // saying which batch was whose. Tap a student for the full card.
+      var byBatch = {};
+      resv.forEach(function (r) { var k = r.batch ? String(r.batch) : String(bt.no || "?"); (byBatch[k] = byBatch[k] || []).push(r); });
+      if (bt.no && !byBatch[String(bt.no)]) byBatch[String(bt.no)] = [];
+      var fmtDay = function (iso) { return iso ? new Date(iso + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : ""; };
+      sl.innerHTML = Object.keys(byBatch).sort(function (a, b) { return Number(a) - Number(b); }).map(function (k) {
+        var rows = byBatch[k], cur = String(bt.no) === k;
+        var day = cur ? fmtDay(bt.startISO) : fmtDay((rows.filter(function (r) { return r.startISO; })[0] || {}).startISO);
+        return '<div class="batch' + (cur ? " cur" : "") + '"><div class="grp-h"><h3>Batch #' + esc(k) + (day ? " · " + esc(day) : "") + "</h3><i>" +
+          (cur ? "ippati batch · " : "") + (rows.length ? rows.length + " student" + (rows.length > 1 ? "s" : "") : "inka evaru ledu") + "</i></div>" +
+          rows.map(function (r) {
+            return '<div data-act="seat" data-idx="' + resv.indexOf(r) + '">🎓 <b>' + esc(r.name || r.phone) + "</b>" + (r.id ? ' <span class="meta">' + esc(r.id) + "</span>" : "") +
+              " · " + esc({ skin: "Skin", hair: "Hair", both: "Skin + Hair" }[r.course] || r.course || "") + (r.duration ? " · " + esc(r.duration) : "") +
+              ' · Paid <b style="color:var(--ok)">₹' + Number(r.paid || 0).toLocaleString("en-IN") + "</b>" +
+              (r.balance ? ' · Balance <b style="color:var(--warm)">₹' + Number(r.balance).toLocaleString("en-IN") + "</b>" : " · fully paid ✓") +
+              (r.onboarded ? " · form ✓" : " · form inka ledu") + "</div>";
+          }).join("") + "</div>";
       }).join("");
       $("seatMoney").innerHTML = "Collected <b style=\"color:var(--ok);font-weight:500\">₹" + Number(d.money.collected).toLocaleString("en-IN") +
         '</b> · Balance pending <b style="color:var(--warm);font-weight:500">₹' + Number(d.money.pending).toLocaleString("en-IN") + "</b>" +
-        " · " + d.counts.enquiry + " enquiries · batch " + d.deadline.batchDays + " rojullo";
+        " · " + d.counts.enquiry + " enquiries · " + (d.deadline.batchDays > 0 ? "batch " + d.deadline.batchDays + " rojullo" : "batch modalayindi");
 
       // who has gone quiet — the actual job of this screen
       var call = d.rows.filter(function (r) { return r.stage === "enquiry" && r.quietDays !== null && r.quietDays >= 2; })

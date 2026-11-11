@@ -309,6 +309,7 @@ module.exports = async (req, res) => {
         phone, name: s2.name, id: s2.id, course: s2.course, duration: s2.duration,
         fee: Number(s2.fee || 0), paid: Number(s2.paid || 0),
         batch: s2.batch || null,                        // which batch the seat is in — shown on the card
+        startISO: s2.startISO || null,                  // and when that batch starts — the board lists batches by it (11 Nov, point 1)
         studentStatus: s2.status || "enrolled", onboarded: !!s2.onboarded,
         createdAt: s2.created || null,
         lastNote: n2 ? { ts: n2.ts, by: n2.by, text: n2.text } : undefined,
