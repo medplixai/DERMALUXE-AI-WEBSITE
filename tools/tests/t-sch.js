@@ -74,6 +74,11 @@ const tomorrow11 = () => {
   is(dn.body.moved, "done", "a finished appointment is filed away");
   const after = await S({ a: "assign" }, { a: "assign", id, staff: "9876500061" });
   is(after.code, 404, "and cannot be edited afterwards");
+  // Filed away, but not gone from the day: the Vachinavi box (11 Nov, point 4).
+  const dayCame = await S({ a: "day", day });
+  is(dayCame.body.counts.came, 1, "the day says one patient came");
+  is(dayCame.body.came.some((r) => r.id === id && r.filed === true && r.status === "done"), true, "and lists the filed visit, marked as filed");
+  is(dayCame.body.rows.some((r) => r.id === id), false, "while the expected list no longer has it");
 
   // cancelling
   const c2 = await S({ a: "create" }, { a: "create", ph: "9876500076", name: "Z", at: at + 4 * 3600000 });
@@ -107,7 +112,7 @@ const tomorrow11 = () => {
   is([pend.includes("9876500103"), pend.includes("9876500104")], [false, false], "a confirmed booking is not on it, nor one whose time has passed");
   is(wk.body.pending.every((r) => r.status === "booked" && !r.cf && r.at > Date.now()), true, "every row on it is a live booking nobody has confirmed");
   const umaRow = (await S({ a: "day", day: dOf(dayAfterAt) })).body.rows.find((r) => r.ph === "9876500101");
-  is(umaRow.risk.some((x) => /confirm call pending — \d+ nimishalu/.test(x)), true, "booked five hours ago and nobody rang: the row says so, with the minutes — " + umaRow.risk.join(" / "));
+  is(umaRow.risk.some((x) => /confirm call pending — 5 gantalu( \d+ nimisha)?/.test(x)), true, "booked five hours ago and nobody rang: the row says so, in hours, not 300 minutes — " + umaRow.risk.join(" / "));
   const vaniBefore = (await S({ a: "day", day: dOf(dayAfterAt) })).body.rows.find((r) => r.ph === "9876500102");
   is(vaniBefore.risk.some((x) => /confirm call pending/.test(x)), true, "an hour is past the forty-five minutes the desk gets");
   const cfm = await S({ a: "confirm" }, { a: "confirm", ph: "9876500101", at: dayAfterAt });

@@ -55,6 +55,26 @@ const bearer = (t) => ({ authorization: "Bearer " + t });
   const me1 = await call({ a: "data" }, null, bearer(okTok));
   is(me1.code, 200, "a properly signed token works");
   is(me1.body.me.role, "owner", "and says who it is");
+  // The "Dr tho ayina appts" tile (owner PDF 11 Nov, point 2): visits of the
+  // last 30 days, from appt:done AND appt:q, deduped, with whether a doctor
+  // saw them — never a no-show, a cancellation or an unmarked slot.
+  const H = 3600000, D = 86400000, kv = require("./harness.js");
+  kv.run(["HSET", "staff:users", "9876500201", JSON.stringify({ name: "Dr. Nikhitha", role: "doctor" }), "9876500202", JSON.stringify({ name: "Latha", role: "therapist" })]);
+  const rec = (o) => JSON.stringify(Object.assign({ ph: "9876500301", name: "P", concern: "acne" }, o));
+  kv.run(["LPUSH", "appt:done", rec({ id: "v1", at: now - 2 * D, status: "done", v: 1, staff: "9876500201", staffName: "Dr. Nikhitha" })]);
+  kv.run(["LPUSH", "appt:done", rec({ id: "v2", ph: "9876500302", at: now - 3 * D, status: "done", v: 1, staff: "9876500202", staffName: "Latha" })]);
+  kv.run(["LPUSH", "appt:done", rec({ id: "v3", ph: "9876500303", at: now - 4 * D, status: "noshow", ns: 1 })]);
+  kv.run(["LPUSH", "appt:done", rec({ id: "v4", ph: "9876500304", at: now - 5 * D, status: "unmarked" })]);
+  kv.run(["LPUSH", "appt:done", rec({ id: "v8", ph: "9876500308", at: now - 7 * D, status: "unmarked", v: 1, staff: "9876500201" })]);   // filed unmarked, then WhatsApp "arrived" set v
+  kv.run(["LPUSH", "appt:done", rec({ id: "v5", ph: "9876500305", at: now - 6 * D, status: "cancelled" })]);
+  kv.run(["LPUSH", "appt:done", rec({ id: "v6", ph: "9876500306", at: now - 40 * D, status: "done", v: 1, staff: "9876500201" })]);
+  kv.run(["LPUSH", "appt:q", rec({ id: "v7", ph: "9876500307", at: now - 2 * H, status: "arrived", arrived: now - 2 * H, staff: "9876500201", staffName: "Dr. Nikhitha" })]);
+  kv.run(["LPUSH", "appt:q", rec({ id: "v1", at: now - 2 * D, status: "done", v: 1, staff: "9876500201" })]);   // the same visit twice, as a race could leave it
+  const me2 = (await call({ a: "data" }, null, bearer(okTok))).body;
+  const ids = (me2.apptsDone || []).map((a) => a.id);
+  is(ids, ["v7", "v1", "v2", "v8"], "the tile's list: the arrived one, the two done ones, and the unmarked slot later confirmed by WhatsApp, newest first — no no-show, no unmarked-without-v, no cancelled, nothing older than 30 days, and v1 only once");
+  is((me2.apptsDone || []).map((a) => a.doc), [true, true, false, true], "the doctor's three are 'with Dr'; the therapist's is not");
+  is((me2.apptsDone || [])[0].staffName, "Dr. Nikhitha", "with the doctor's name on the row");
 
   const expired = mk({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: now - 1000 });
   is((await call({ a: "data" }, null, bearer(expired))).code, 401, "an expired token is refused");

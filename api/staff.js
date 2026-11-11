@@ -95,8 +95,10 @@ const BUILTIN_ROLES = {
     caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","academy.view","academy.edit","academy.seats","academy.money","academy.docs","academy.material","academy.certify","money.view","money.bill","money.expense","reports.view","stock.view","stock.edit","attend.manage","consent.take","posts.view","posts.toggle","reviews.view","ai.use","msg.send","team.manage","files.view"] },
   doctor:    { label: "Doctor",    te: "డాక్టర్",     note: "Consultations + academy training. Money/settings ledu.",
     caps: ["inbox.view","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use","msg.send","files.view"] },
-  reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count.",
-    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.seats","money.view","money.bill","posts.view","ai.use","msg.send","files.view"] },
+  // academy.edit from 11 Nov (owner PDF, point 7): the front desk takes the
+  // ₹9,999 advance and was looking at an Add-student form with no Add button.
+  reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count, student add.",
+    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.seats","academy.edit","money.view","money.bill","posts.view","ai.use","msg.send","files.view"] },
   accounts:  { label: "Accounts",  te: "అకౌంట్స్",    note: "Fees, receipts, documents. Leads edit cheyaleru.",
     caps: ["leads.view","appts.view","academy.view","academy.money","academy.docs","money.view","money.bill","money.expense","reports.view","stock.view","reviews.view","ai.use","files.view"] },
   therapist: { label: "Therapist", te: "థెరపిస్ట్",   note: "Treatments chese vaaru — chudatam matrame.",
@@ -376,7 +378,7 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
   const caps0 = effCaps(roles, me), may = (c) => caps0.includes("*") || caps0.includes(c);
   // The team list used to be fetched after everything else, one more wait for
   // something nothing else depended on. It goes with the rest.
-  const [page, ar, bk, dp, q, rv, en, teamRaw] = await Promise.all([
+  const [page, ar, bk, dp, q, rv, en, teamRaw, doneRaw, usersAll] = await Promise.all([
     leadPage(cfg, 0, LEAD_PAGE),
     guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({})),
     require("./_seats.js").booked(cfg).catch(() => 0),   // students on the books, not a typed number (9 Nov)
@@ -385,6 +387,10 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
     guard.kvCommand(cfg, ["LRANGE", "rv:log", "0", "29"]).catch(() => ({})),
     guard.kvCommand(cfg, ["GET", "dp:enabled"]).catch(() => ({})),
     may("team.manage") ? users(cfg).catch(() => ({})) : Promise.resolve(null),
+    // Visits that happened: a row marked "Vacharu" leaves appt:q for
+    // appt:done, so a tile counted from appts alone would always say 0.
+    may("appts.view") ? guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "499"]).catch(() => ({})) : Promise.resolve({}),   // the whole kept list (LTRIM 0 499)
+    may("appts.view") ? users(cfg).catch(() => ({})) : Promise.resolve({}),
   ]);
   if (sc) page.leads = page.leads.filter(br.keep(sc));
   const leads = page.leads;
@@ -393,6 +399,28 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
     .filter((a) => a && a.at && a.at > now - 12 * 3600000 && a.at < now + 30 * 86400000)
     .filter(br.keep(sc))
     .sort((a, b) => a.at - b.at);
+  // Appointments that really happened in the last 30 days, with whom (owner
+  // PDF 11 Nov, point 2: "successfully completed appointments with Dr", as a
+  // tile). The rule is the weekly report's: v=1, or status done/arrived, and
+  // never a no-show, a cancellation or an "unmarked" slot the digest filed.
+  // "With Dr" is the assigned person's role — doctor, or the owner, who is
+  // the clinic's dermatologist — or a name that starts with Dr.
+  const isDoc = (ph) => { const u = (usersAll || {})[ph]; return !!u && (u.role === "doctor" || u.role === "owner" || /^dr\.?\s/i.test(String(u.name || ""))); };
+  const seenDone = new Set(), apptsDone = [];
+  for (const raw of ((doneRaw && doneRaw.result) || []).concat(ar.result || [])) {
+    let a = null; try { a = JSON.parse(raw); } catch (e) { continue; }
+    if (!a || !a.at || a.at < now - 30 * 86400000 || a.at > now + 3600000 || !br.keep(sc)(a)) continue;
+    // v=1 wins over the status: the WhatsApp "arrived <number>" command sets
+    // only v on a slot the digest had already filed as "unmarked".
+    const st0 = String(a.status || "");
+    const came = !a.ns && st0 !== "noshow" && st0 !== "cancelled" && (a.v || st0 === "done" || st0 === "arrived");
+    if (!came) continue;
+    const ph = String(a.ph || "").replace(/\D/g, "").slice(-10), sph = String(a.staff || "").replace(/\D/g, "").slice(-10);
+    const k = ph + ":" + a.at; if (seenDone.has(k)) continue; seenDone.add(k);
+    apptsDone.push({ id: a.id || "", ph, name: a.name || a.label || "Patient", at: a.at, concern: a.concern || a.treatment || "",
+      staffName: a.staffName || ((usersAll || {})[sph] || {}).name || "", doc: !!sph && isDoc(sph), status: a.status === "arrived" ? "arrived" : "done" });
+  }
+  apptsDone.sort((a, b) => b.at - a.at);
   const booked = Math.max(0, Math.min(10, Number(bk || 0)));
   const academy = leads.filter((l) => /^academy/i.test(String(l.concern || "")));
   let today = null; try { today = dp.result ? JSON.parse(dp.result) : null; } catch (e) {}
@@ -402,13 +430,13 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
   const caps = caps0, allow = may;
   if (!allow("leads.view")) { leads.length = 0; page.leadsTotal = 0; page.more = false; }
   if (!allow("reviews.view")) reviews.length = 0;
-  if (!allow("appts.view")) appts.length = 0;
+  if (!allow("appts.view")) { appts.length = 0; apptsDone.length = 0; }
   // Academy and the post queue used to go out to every logged-in user.
   if (!allow("academy.view")) academy.length = 0;
   const seePosts = allow("posts.view");
   if (!seePosts) { today = null; queue.length = 0; }
   const rk = roleOf(me.role, roles);
-  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, leadsTotal: page.leadsTotal, leadsMore: page.more, leadPage: LEAD_PAGE, statuses: STATUSES, appts, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now,
+  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, leadsTotal: page.leadsTotal, leadsMore: page.more, leadPage: LEAD_PAGE, statuses: STATUSES, appts, apptsDone, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now,
     branches: br.multi() ? br.list() : undefined, branch: sc || undefined };
 }
 

@@ -9,14 +9,23 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
 
 const seats = h.load("_seats");
 const cfg = { kind: "pg" };
-const student = (id, extra) => { h.run(["SET", `acad:st:${id}`, JSON.stringify(Object.assign({ id, name: id, phone: "98765" + id.slice(-5).padStart(5, "0"), status: "active", batch: 1, fee: 49999, paid: 0 }, extra || {}))]); h.run(["LPUSH", "acad:st:list", id]); };
+const student = (id, extra) => { h.run(["SET", `acad:st:${id}`, JSON.stringify(Object.assign({ id, name: id, phone: "98765" + id.slice(-5).padStart(5, "0"), status: "active", batch: docs.BATCH.no, fee: 49999, paid: 0 }, extra || {}))]); h.run(["LPUSH", "acad:st:list", id]); };
 
 (async () => {
   console.log("SEATS — the students on the books, not a typed number\n");
   is([await seats.booked(cfg), await seats.left(cfg)], [0, docs.BATCH.seats], "nothing on the books, every seat open");
 
-  student("DLA-1001", { paid: 9999, batch: 1 });
-  is(await seats.booked(cfg), 1, "a student the desk added holds a seat — whatever batch number her record carries");
+  // 11 Nov 2026 (owner PDF, point 5): a seat belongs to ONE batch. Rama is
+  // Batch #1; the Batch #2 board must not show her seat as taken.
+  student("DLA-1000", { paid: 9999, batch: docs.BATCH.no - 1 });
+  is(await seats.booked(cfg), 0, "a Batch #" + (docs.BATCH.no - 1) + " student does not take a Batch #" + docs.BATCH.no + " seat");
+  student("DLA-1001", { paid: 9999 });
+  is(await seats.booked(cfg), 1, "a student the desk added for this batch holds a seat");
+  student("DLA-1007", { paid: 9999, batch: undefined });
+  h.run(["SET", "acad:st:DLA-1007", JSON.stringify({ id: "DLA-1007", name: "old record", phone: "9876500007", status: "active", fee: 49999, paid: 9999 })]);
+  is(await seats.booked(cfg), 2, "a record from before batches were numbered counts for the current one");
+  h.run(["DEL", "acad:st:DLA-1007"]);
+  is(await seats.booked(cfg), 1, "(cleared)");
   student("DLA-1002", { status: "enrolled", paid: 0 });
   is(await seats.booked(cfg), 2, "a student still to pay holds one too — the desk created her on purpose");
   student("DLA-1003", { status: "dropped", paid: 9999 });

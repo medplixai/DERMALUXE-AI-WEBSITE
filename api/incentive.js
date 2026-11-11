@@ -27,7 +27,11 @@ async function rules(cfg) {
   const v = parse((r && r.result) || "", null) || {};
   return { roles: v.roles || {}, people: v.people || {} };
 }
-const clean3 = (x) => ({ collectPct: num(x && x.collectPct, 50), treatPct: num(x && x.treatPct, 50), perConv: num(x && x.perConv, 5000) });
+// The three rates, plus a monthly visit target the owner sets beside them
+// (11 Nov, point 9). The target is shown on the person's tile, not paid; it
+// lives with the rates so there is one save, one key and one audit line.
+// 0 = no target.
+const clean3 = (x) => ({ collectPct: num(x && x.collectPct, 50), treatPct: num(x && x.treatPct, 50), perConv: num(x && x.perConv, 5000), visitTarget: Math.round(num(x && x.visitTarget, 500)) });
 const rateFor = (R, phone, role) => clean3(R.people[phone] || R.roles[role] || {});
 
 async function report(cfg, month) {
@@ -35,7 +39,7 @@ async function report(cfg, month) {
   const team = Object.keys(users).map((ph) => { const u = parse(users[ph], {}) || {}; return { phone: ph, name: u.name || ph, role: u.role || "staff" }; });
   for (const ph of guard.ownerPhones()) if (!team.find((t) => t.phone === ph)) team.push({ phone: ph, name: "Owner", role: "owner" });
   const row = {};
-  for (const t of team) row[t.phone] = Object.assign({}, t, { collected: 0, treated: 0, conversions: 0 });
+  for (const t of team) row[t.phone] = Object.assign({}, t, { collected: 0, treated: 0, conversions: 0, visits: 0 });
 
   const days = expense.daysOfMonth(month), inMonth = new Set(days);
   const lists = await guard.kvPipeline(cfg, days.map((d) => ["LRANGE", `bill:day:${d}`, "0", "299"])).catch(() => []);
@@ -55,6 +59,9 @@ async function report(cfg, month) {
     if (!["booked", "visited"].includes(st[k])) continue;
     if (!inMonth.has(money.istDay(Number(ts[k]) || 0))) continue;
     if (row[by[k]]) row[by[k]].conversions++;
+    // The visit is what counts toward the target — a booking can still fall
+    // through. Credited to whoever moved the lead to "visited".
+    if (st[k] === "visited" && row[by[k]]) row[by[k]].visits++;
   }
   const R = await rules(cfg);
   const out = Object.values(row).map((r) => {
@@ -82,7 +89,7 @@ module.exports = async (req, res) => {
     const r = await report(cfg, month);
     if (owner) return json(res, 200, { ok: true, month, rows: r.rows, rules: r.rules, owner: true,
       total: r.rows.reduce((n, x) => n + x.amount, 0) });
-    const mine = r.rows.find((x) => x.phone === me.phone) || { phone: me.phone, name: me.name, collected: 0, treated: 0, conversions: 0, amount: 0, rate: clean3({}) };
+    const mine = r.rows.find((x) => x.phone === me.phone) || { phone: me.phone, name: me.name, collected: 0, treated: 0, conversions: 0, visits: 0, amount: 0, rate: clean3({}) };
     return json(res, 200, { ok: true, month, rows: [mine], owner: false });
   }
 

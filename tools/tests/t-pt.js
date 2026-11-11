@@ -23,6 +23,16 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   const l = await PT({ a: "list" });
   is(l.body.total, 1, "one patient");
   is(l.body.repeats, 1, "and she counts as somebody who came back");
+  // A day on the calendar (11 Nov, point 6): by the last time she was in touch, in Eluru time.
+  const istDay = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
+  const lastDay = istDay(leads[1].ts);
+  const onDay = await PT({ a: "list", from: lastDay, to: lastDay });
+  is([onDay.body.total, onDay.body.all], [1, 1], "the day she last wrote finds her, and 'all' still says how many there are in all");
+  const otherDay = await PT({ a: "list", from: istDay(leads[1].ts - 3 * 86400000) });
+  is([otherDay.body.total, otherDay.body.all], [0, 1], "three days earlier finds nobody — her first enquiry is not her last");
+  const span = await PT({ a: "list", from: istDay(leads[1].ts - 6 * 86400000), to: istDay(Date.now()) });
+  is(span.body.total, 1, "a run of days takes her in");
+  is((await PT({ a: "list", from: "yesterday" })).body.total, 1, "a date that is not a date is ignored, not an error");
 
   // notes
   await PT({ a: "note" }, { a: "note", phone: ph, text: "Allergic to lidocaine" });

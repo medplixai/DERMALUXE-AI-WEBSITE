@@ -41,6 +41,10 @@ for (let i = 0; i < TOTAL; i++) {
     status: ["new", "contacted", "booked", "visited", "closed"][i % 5],
     notes: i % 4 === 0 ? [{ ts: ts + 600000, by: "Reception", text: "Called, asked to ring back" }] : [],
   });
+  // Every seventh lead was rung and nobody picked up, as the real server
+  // marks it (outcome noanswer, status contacted) — spread over weeks so the
+  // "paata date paina" order of the Not-answering filter can be seen (11 Nov).
+  if (i % 7 === 1) Object.assign(leads[leads.length - 1], { outcome: "noanswer", status: "contacted", lastCall: ts + 3600000, notes: [{ ts: ts + 3600000, by: "hemasri", text: "Call — ettaledu" }] });
 }
 const trim = (l) => Object.assign({}, l, {
   message: l.message.length > 300 ? l.message.slice(0, 300) + "…" : l.message,
@@ -87,7 +91,17 @@ function data() {
     leads: p.leads, leadsTotal: p.leadsTotal, leadsMore: p.more, leadPage: PAGE,
     statuses: ["new", "contacted", "booked", "visited", "closed"],
     appts: [{ ph: "9876543210", name: "Sita 1", at: Date.now() + 3600000, concern: "acne", id: "x1" }],
-    academy: { booked: 4, left: 6, leads: p.leads.filter((l) => /^academy/i.test(l.concern)) },
+    // Visits of the last 30 days, as api/staff.js sends them (11 Nov, point 2):
+    // three with a doctor, one with a therapist, one nobody was assigned to.
+    apptsDone: [
+      { id: "d1", ph: "9876543215", name: "Kiran", at: Date.now() - 2 * 3600000, concern: "Acne follow-up", staffName: "Dr. Nikhitha", doc: true, status: "done" },
+      { id: "d2", ph: "9876543211", name: "Ravi Teja", at: Date.now() - 86400000, concern: "PRP", staffName: "Dr. Sai Divija", doc: true, status: "done" },
+      { id: "d3", ph: "9876543214", name: "Padma", at: Date.now() - 3 * 86400000, concern: "Laser — face", staffName: "Dr. Nikhitha", doc: true, status: "done" },
+      { id: "d4", ph: "9876543216", name: "Meena", at: Date.now() - 2 * 86400000, concern: "Chemical peel", staffName: "Latha (therapist)", doc: false, status: "done" },
+      { id: "d5", ph: "9876543217", name: "Suresh", at: Date.now() - 5 * 86400000, concern: "Hair fall", staffName: "", doc: false, status: "done" },
+    ],
+    // Only the current batch's students (Rekha); Rama is Batch #1 (11 Nov, point 5).
+    academy: { booked: 1, left: 9, leads: p.leads.filter((l) => /^academy/i.test(l.concern)) },
     today: null, queue: [], dailyOn: true, reviews: [], team: {}, owners: ["9010427777"], ts: Date.now(),
   };
 }
@@ -347,16 +361,30 @@ http.createServer((req, res) => {
     const WHY = ["☎️ Inka call cheyyaledu — book ayi 3 gantalu", "📵 Call chesaru — ettaledu", "📩 Confirm message vellindi, patient reply raaledu", "🆕 Ippude book ayindi — call cheyandi"];
     const whyOf = (r, i) => (r.status === "booked" && !r.cf ? WHY[i % WHY.length] : "");
     if (a === "day") {
-      const rows = global.mockSch.map((r, i) => Object.assign({}, r, { at: r.at || at(r.atH, r.atM), day, time: tm(r.at || at(r.atH, r.atM)), cfWhy: whyOf(r, i) }));
+      // The confirm-call chip, worded as api/schedule.js words it (11 Nov,
+      // point 3): booked 50 min, 5 h and 44 h 41 min ago, so every form shows.
+      const sinceWords = (min) => { const n = (v, o, m) => v + " " + (v === 1 ? o : m); if (min < 60) return n(min, "nimisham", "nimishalu");
+        const hh = Math.floor(min / 60), mm = min % 60; if (hh < 24) return n(hh, "ganta", "gantalu") + (mm ? " " + n(mm, "nimisham", "nimishalu") : "");
+        const dd = Math.floor(hh / 24), h2 = hh % 24; return n(dd, "roju", "rojulu") + (h2 ? " " + n(h2, "ganta", "gantalu") : ""); };
+      const AGE = [50, 300, 2681, 90];
+      const rows = global.mockSch.filter((r) => !r.filed).map((r, i) => { const since = AGE[i % AGE.length];
+        return Object.assign({}, r, { at: r.at || at(r.atH, r.atM), day, time: tm(r.at || at(r.atH, r.atM)), cfWhy: whyOf(r, i), ts: Date.now() - since * 60000,
+          risk: r.status === "booked" && !r.cf ? ["confirm call pending — " + sinceWords(since)] : [] }); });
+      // Who came today (11 Nov, point 4): arrived/done rows still on the sheet,
+      // plus the ones "Vacharu" filed away — the real server reads appt:done.
+      const came = global.mockSch.filter((r) => r.status === "arrived" || r.status === "done").map((r) => Object.assign({}, r, { at: r.at || at(r.atH, r.atM), day, time: tm(r.at || at(r.atH, r.atM)), filed: !!r.filed }))
+        .concat([{ id: "f1", name: "Swathi", ph: "9876543299", at: at(9, 30), day, time: tm(at(9, 30)), mins: 30, staff: "9000000001", staffName: "Dr. Nikhitha", concern: "Consultation", status: "done", cf: true, filed: true }])
+        .sort((x, y) => x.at - y.at);
       // The day as a plan — free times and who could fill them — so the
       // booking sheet can be opened from a free slot and from the fill list.
       const freeAt = [11, 14, 16, 19].map((hh) => { const a1 = at(hh, 30) > Date.now() ? at(hh, 30) : at(hh, 30) + 86400000; return { at: a1, time: tm(a1) }; });
       const plan = { slots: 24, per: 2, closed: false, over: false, used: 5, free: freeAt,
         fill: [{ phone: "9876500771", name: "Prakash Naidu", kind: "lead", why: "A grade · Acne & scars", sub: "Eluru", urgent: true, said: "Contacted · 📵 Ettaledu" },
                { phone: "9876500772", name: "Kanaka Durga", kind: "cycle", why: "Hydrafacial malli cheyinchukovali", sub: "4 rojulu late" }] };
-      return send(200, { ok: true, day, rows, team, plan, rooms: ["Consultation", "Laser room", "Hydrafacial", "Procedure room"],
+      return send(200, { ok: true, day, rows, came, team, plan, rooms: ["Consultation", "Laser room", "Hydrafacial", "Procedure room"],
         wait: [{ id: "w1", ph: "9876500777", name: "Bhavani", concern: "PICO laser", day, when: "evening", ts: Date.now() - 7200000, by: "Sowmya" }],
-        counts: { total: rows.length, booked: 4, arrived: 1, done: 1, unconfirmed: 3 } });
+        counts: { total: rows.length, booked: rows.filter((r) => r.status === "booked").length, arrived: rows.filter((r) => r.status === "arrived").length,
+          done: rows.filter((r) => r.status === "done").length, unconfirmed: rows.filter((r) => r.status === "booked" && !r.cf).length, came: came.length } });
     }
     let raw = ""; req.on("data", (c) => { raw += c; });
     return req.on("end", () => {
@@ -364,7 +392,8 @@ http.createServer((req, res) => {
       const r = global.mockSch.find((x) => x.id === body.id);
       if (a === "move" && r) { r.at = body.at; }
       if (a === "confirm" && r) { r.cf = true; r.cfAt = Date.now(); r.cfBy = "Owner"; r.cfVia = "desk"; }
-      if (a === "status" && r) { r.status = body.status; }
+      // As the real server does: done / noshow leaves the sheet for appt:done.
+      if (a === "status" && r) { r.status = body.status; if (body.status === "done" || body.status === "noshow") r.filed = true; }
       if (a === "assign" && r) { r.staff = body.staff; r.staffName = body.staffName; }
       return send(200, { ok: true });
     });
@@ -501,9 +530,9 @@ http.createServer((req, res) => {
     // reads deadline.offerDays; without it the tab shows an error the real
     // server never causes).
     if (a === "funnel") return send(200, { ok: true,
-      seats: { total: 10, booked: 4, left: 6 }, money: { collected: 139996, pending: 159998 },
+      seats: { total: 10, booked: 1, left: 9 }, money: { collected: 19998, pending: 130000 },
       batch: { no: 2, start: "10 November 2026", startISO: "2026-11-10", seats: 10 },
-      counts: { reserved: 4, enquiry: 2, lost: 1 },
+      counts: { reserved: 2, enquiry: 3, lost: 1 },
       deadline: { offerDays: 0, batchDays: 0, offer: "10 Nov 2026", batch: "10 November 2026" },
       rows: [
         { phone: "9876500031", name: "Divya", course: "skin", stage: "enquiry", quietDays: 3, paid: 0, balance: 49999, lastTouch: Date.now() - 3 * 86400000 },
@@ -536,12 +565,26 @@ http.createServer((req, res) => {
       spent: { bills: 2, billed: 32000, paid: 24000, due: 8000 },
       chat: { count: 14, human: null, last: [{ dir: "in", text: "Repu appointment ki vastanu", ts: Date.now() - 3600000 }, { dir: "out", by: "ai", text: "Super 🙏 Repu 11 AM, see you!", ts: Date.now() - 3500000 }] },
     }, mockStage);
-    if (a === "list") return send(200, { ok: true,
-      rows: [Object.assign(p(), { stageLabel: mockStage.stage ? ({consult:"Consultation",plan:"Plan ichcharu",procedure:"Procedure nadustundi",course:"Course ayipoyindi",review:"Review / maintenance",declined:"Vaddannaru"})[mockStage.stage] : "", visits: 3, last: Date.now() - 86400000, concern: "acne" })],
-      total: 1, repeats: 1,
-      stages: [["consult","Consultation"],["plan","Plan ichcharu"],["procedure","Procedure nadustundi"],["course","Course ayipoyindi"],["review","Review / maintenance"],["declined","Vaddannaru"]]
-        .map(([key,label]) => ({ key, label, count: mockStage.stage === key ? 1 : 0 })),
-      stageless: mockStage.stage ? 0 : 1 });
+    if (a === "list") {
+      // Eight people over several days, so the date chips and the day
+      // headings can be seen (11 Nov, point 6); q / from / to as the server.
+      const istDayP = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
+      const H = 3600000, D = 86400000;
+      const ppl = [["Sita Rani", "9876543210", "acne", 3, 13 * 60000], ["Lucky", "6301670316", "Facial hair removal — laser", 1, 3 * H], ["Durga Kola", "7095087771", "Skin consultation (reschedule)", 3, D],
+        ["Kiran", "7306667703", "Hair fall — PRP/GFC", 2, D + 2 * H], ["Phanindra", "8106186218", "Appointment cancelled", 2, 3 * D], ["Abbadasani Spandana", "7981387392", "Nursing staff — fresher", 1, 6 * D],
+        ["Allhamdulillah", "7997269386", "Face laser hair removal", 2, 12 * D], ["Sowmya K", "9440012345", "Pigmentation", 1, 40 * D]];
+      let rows = ppl.map((x, i) => Object.assign(p(), { name: x[0], phone: x[1], concern: x[2], visits: x[3], repeat: x[3] > 1, everBooked: i % 2 === 0, last: Date.now() - x[4], first: Date.now() - x[4] - 30 * D,
+        stage: i ? "" : mockStage.stage || "", stageAt: 0,
+        stageLabel: !i && mockStage.stage ? ({consult:"Consultation",plan:"Plan ichcharu",procedure:"Procedure nadustundi",course:"Course ayipoyindi",review:"Review / maintenance",declined:"Vaddannaru"})[mockStage.stage] : "" }));
+      const term = (u.searchParams.get("q") || "").toLowerCase(), from = u.searchParams.get("from") || "", to = u.searchParams.get("to") || from;
+      if (term) rows = rows.filter((r) => (r.name + r.phone + r.concern).toLowerCase().includes(term));
+      const all = rows.length;   // after the search, before the days — as api/patient.js counts it
+      if (/^\d{4}-\d{2}-\d{2}$/.test(from)) rows = rows.filter((r) => { const d = istDayP(r.last); return d >= from && d <= to; });
+      return send(200, { ok: true, rows, total: rows.length, all, repeats: rows.filter((r) => r.repeat).length,
+        stages: [["consult","Consultation"],["plan","Plan ichcharu"],["procedure","Procedure nadustundi"],["course","Course ayipoyindi"],["review","Review / maintenance"],["declined","Vaddannaru"]]
+          .map(([key,label]) => ({ key, label, count: rows.filter((r) => r.stage === key).length })),
+        stageless: rows.filter((r) => !r.stage).length });
+    }
     if (a === "stage") {
       let body = ""; req.on("data", (c) => (body += c));
       return req.on("end", () => {
@@ -562,6 +605,24 @@ http.createServer((req, res) => {
     const col = id[0] === "a" ? "#b45309" : id[0] === "b" ? "#d97706" : "#fbbf24";
     res.writeHead(200, { "Content-Type": "image/svg+xml" });
     return res.end(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="400"><rect width="300" height="400" fill="${col}"/><text x="150" y="210" font-size="40" text-anchor="middle" fill="#fff" font-family="sans-serif">${id[0] === "a" ? "BEFORE" : id[0] === "b" ? "MID" : "AFTER"}</text></svg>`);
+  }
+  if (u.pathname === "/api/files") {  // files-mock: the real files/manifest.json, as api/files.js returns it (11 Nov, point 8)
+    const a = u.searchParams.get("a") || "list";
+    if (a === "list") { const mf = JSON.parse(fs.readFileSync(path.join(ROOT, "files/manifest.json"), "utf8"));
+      return send(200, { ok: true, generated: mf.generated, groups: mf.groups, material: { tracks: [{ key: "skin", title: "Skin track" }, { key: "hair", title: "Hair track" }], days: 30, books: [{ key: "full", title: "30-day study material — skin & hair" }] }, posters: false }); }
+    if (a === "mlink") return send(200, { ok: true, url: "/files/forms/ht-consent-form.pdf", expiresIn: 900 });
+  }
+  if (u.pathname === "/api/incentive") {  // incentive-mock: same shape as api/incentive.js report (11 Nov, point 9)
+    const month = new Date(Date.now() + 19800000).toISOString().slice(0, 7);
+    const rate = (c, t, pc, v) => ({ collectPct: c, treatPct: t, perConv: pc, visitTarget: v });
+    const rows = [
+      { phone: "9876500051", name: "Sowmya", role: "reception", collected: 84000, treated: 0, conversions: 8, visits: 6, rate: rate(1, 0, 50, 20), amount: 1240 },
+      { phone: "9876500053", name: "Kiran", role: "doctor", collected: 0, treated: 62000, conversions: 0, visits: 0, rate: rate(0, 5, 0, 0), amount: 3100 },
+      { phone: "9876500052", name: "Latha", role: "therapist", collected: 0, treated: 18000, conversions: 2, visits: 1, rate: rate(0, 3, 50, 10), amount: 640 }];
+    if (req.method === "POST") return send(200, { ok: true, rules: { roles: {}, people: {} } });
+    // ?incstaff=1 on the page URL shows a colleague's own tile (the mock user is the owner, and the real API hides the tile from the owner).
+    if (/incstaff=1/.test(req.headers.referer || "")) return send(200, { ok: true, month, owner: false, rows: [rows[0]] });
+    return send(200, { ok: true, month, owner: true, rows, rules: { roles: { reception: rate(1, 0, 50, 20), doctor: rate(0, 5, 0, 0), therapist: rate(0, 3, 50, 10) }, people: {} }, total: rows.reduce((n, x) => n + x.amount, 0) });
   }
   if (u.pathname.startsWith("/api/")) return send(200, { ok: true, rows: [], photos: [], days: [], team: [] });
 

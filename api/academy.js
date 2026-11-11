@@ -342,9 +342,13 @@ module.exports = async (req, res) => {
     }).sort((a2, b2) => (b2.lastTouch || 0) - (a2.lastTouch || 0));
 
     const reserved = rows.filter((r) => r.stage === "reserved");
-    // The same number the Leads tile and the agent use: this board's reserved
-    // rows, or the owner's typed count if that says more.
-    const seatsBooked = Math.max(reserved.length, await require("./_seats.js").booked(cfg).catch(() => 0));
+    // The same number the Leads tile and the agent use: THIS batch's reserved
+    // rows, or the owner's typed count if that says more. A Batch #1 student
+    // still shows under her own batch below; she does not take a Batch #2
+    // seat (11 Nov, point 5). Money and the enquiry counts stay all-batch.
+    const seatsMod = require("./_seats.js");
+    const reservedNow = reserved.filter(seatsMod.inBatch);
+    const seatsBooked = Math.max(reservedNow.length, await seatsMod.booked(cfg).catch(() => 0));
     const collected = reserved.reduce((n, r) => n + r.paid, 0);
     const pending = reserved.reduce((n, r) => n + r.balance, 0);
 

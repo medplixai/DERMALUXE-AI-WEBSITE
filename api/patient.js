@@ -230,6 +230,17 @@ module.exports = async (req, res) => {
       rows = rows.filter((r) => (r.name || "").toLowerCase().includes(term) ||
         r.phone.includes(term) || (r.concern || "").toLowerCase().includes(term));
     }
+    // A day, or a run of days, by the last time the person was in touch —
+    // the desk wanted "who came on the 9th" (11 Nov, point 6). It has to run
+    // here, before the 200-row cap, or a date three months back finds nobody.
+    // Days are Eluru days: a phone set to another zone must not move a
+    // patient across midnight.
+    const istDayOf = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts || 0));
+    const dayRe = /^\d{4}-\d{2}-\d{2}$/;
+    const from = dayRe.test(String(q.from || b.from || "")) ? String(q.from || b.from) : "";
+    const to = dayRe.test(String(q.to || b.to || "")) ? String(q.to || b.to) : from;
+    const allRows = rows.length;
+    if (from) rows = rows.filter((r) => { const d = istDayOf(r.last); return d >= from && d <= to; });
     rows.sort((a2, b2) => b2.last - a2.last);
     const shown = rows.slice(0, 200);
     // The treatment stage lives on the patient record, not on the enquiries
@@ -247,6 +258,8 @@ module.exports = async (req, res) => {
       ok: true,
       rows: shown,
       total: rows.length,
+      all: allRows,              // before the date filter — the sidebar badge must not shrink when a day is picked
+      from: from || undefined, to: from ? to : undefined,
       repeats: rows.filter((r) => r.repeat).length,
       stages: STAGES.map((k) => ({ key: k, label: STAGE_TE[k], count: shown.filter((r) => r.stage === k).length })),
       stageless: shown.filter((r) => !r.stage).length,

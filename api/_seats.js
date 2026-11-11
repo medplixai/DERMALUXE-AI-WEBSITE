@@ -12,11 +12,16 @@ const docs = require("./_docs.js");
 
 // A student who is enrolled or active holds a seat, paid or still owing —
 // the desk created that record on purpose. An "enquiry" record is somebody
-// who only asked; "completed" and "dropped" have left. The batch number on
-// the record is not consulted: the one student on the books on 9 Nov was
-// still marked batch 1 while the batch she is joining is 2, and a seat is a
-// person, not a label.
+// who only asked; "completed" and "dropped" have left.
 const holdsSeat = (s) => !!s && !["dropped", "enquiry", "completed"].includes(String(s.status || ""));
+// ...and holds it in ONE batch. On 9 Nov the batch number was ignored on
+// purpose (the one student was still marked batch 1 while joining batch 2).
+// On 11 Nov the owner read the board the other way: "Batch #2 · 10 Nov" showed
+// seat 1 Booked, the seat opened Rama, and Rama is Batch #1 — so Batch #2 has
+// nobody. A record with no batch number is from before batches were numbered
+// and counts for the current one. Moving a student is one tap on the Students
+// tab ("Batch N ki marchu").
+const inBatch = (s) => !!s && (s.batch == null || s.batch === "" || Number(s.batch) === docs.BATCH.no);
 
 async function fromStudents(cfg) {
   const ids = (((await guard.kvCommand(cfg, ["LRANGE", "acad:st:list", "0", "299"]).catch(() => ({}))) || {}).result) || [];
@@ -25,7 +30,7 @@ async function fromStudents(cfg) {
   let n = 0;
   for (const v of ((r && r.result) || [])) {
     let s = null; try { s = v ? JSON.parse(v) : null; } catch (e) {}
-    if (holdsSeat(s)) n++;
+    if (holdsSeat(s) && inBatch(s)) n++;
   }
   return n;
 }
@@ -42,4 +47,4 @@ async function booked(cfg) {
 
 async function left(cfg) { return Math.max(0, docs.BATCH.seats - (await booked(cfg))); }
 
-module.exports = { booked, left, fromStudents, holdsSeat };
+module.exports = { booked, left, fromStudents, holdsSeat, inBatch };

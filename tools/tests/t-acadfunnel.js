@@ -46,6 +46,15 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   const f2 = await A({ a: "funnel" });
   const rama = (f2.body.rows || []).find((r) => r.phone === "9876500063") || {};
   is([rama.stage, rama.batch], ["reserved", docs.BATCH.no], "the reserved seat carries the batch number for its card");
+  is(f2.body.seats.booked, 1, "and takes one of this batch's seats");
+  // A student of the batch before (11 Nov, point 5): still on the board, in
+  // her own batch, but not in this batch's seat count.
+  h.run(["SET", "acad:st:DLA-0900", JSON.stringify({ id: "DLA-0900", name: "Old Batch Girl", phone: "9876500064", course: "hair", status: "active", batch: docs.BATCH.no - 1, startISO: "2026-10-20", fee: 49999, paid: 9999 })]);
+  h.run(["LPUSH", "acad:st:list", "DLA-0900"]);
+  const f3 = await A({ a: "funnel" });
+  const old = (f3.body.rows || []).find((r) => r.phone === "9876500064") || {};
+  is([old.stage, old.batch, old.startISO], ["reserved", docs.BATCH.no - 1, "2026-10-20"], "the Batch #" + (docs.BATCH.no - 1) + " student is listed as reserved, with her batch and its date");
+  is([f3.body.seats.booked, f3.body.counts.reserved], [1, 2], "but Batch #" + docs.BATCH.no + " still has one seat taken; the reserved count is for both batches");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe board explains itself");
   process.exit(fails ? 1 : 0);

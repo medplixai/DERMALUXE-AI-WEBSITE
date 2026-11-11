@@ -62,7 +62,10 @@
     header.top img{height:38px}
     .who{font-size:.85rem;color:var(--muted);text-align:right;line-height:1.2}
     .who b{color:var(--g1);font-weight:500;display:block}
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}
+    .stats{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin:14px 0}
+    .donelist{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin:0 0 14px}
+    .donelist .grp-h{align-items:center}
+    .dl-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:.9rem}
     .stat{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 10px}
     .plan{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px;margin-top:12px}
     .plan-load{display:flex;align-items:center;gap:10px;font-size:.86rem;color:var(--muted);flex-wrap:wrap}
@@ -235,6 +238,7 @@
     .netbar.stale:not(:empty){text-align:right;background:none;border:0;padding:0 4px;margin:-6px 0 2px;font-size:.75rem}
     /* the four tiles belong to the Leads screen only (7 Nov, point 18) */
     body[data-tab]:not([data-tab="leads"]) .stats{display:none}
+    body[data-tab]:not([data-tab="leads"]) .donelist{display:none}
     .stat small{display:block;font-size:.75rem;color:var(--ok);margin-top:2px}
     .fu-line{font-size:.76rem;color:var(--muted2);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 10px}
     .fu-line b{color:var(--text);font-weight:500}
@@ -253,6 +257,7 @@
     .fchips button{font-size:.78rem;padding:5px 11px;border-radius:100px;border:1px solid var(--line);background:var(--panel);color:var(--muted);cursor:pointer}
     .fchips button.on{border-color:var(--primary);color:var(--accent-fg);background:var(--accent-bg)}
     .countdown > div[data-act]{cursor:pointer}
+    #schHead > div:first-child{grid-column:1/-1}
     .countdown > div.on{outline:2px solid var(--primary);outline-offset:-2px;border-radius:12px}
     .cat{display:inline-block;font-size:.75rem;padding:1px 7px;border-radius:100px;margin-left:6px;background:#e0f2fe;color:#075985}
     .cat.hair{background:#fce7f3;color:#9d174d}
@@ -336,7 +341,7 @@
     .switch input:checked{background:var(--primary)}
     .switch input::after{content:"";position:absolute;top:3px;left:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:.2s}
     .switch input:checked::after{left:19px}
-    @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.seats{grid-template-columns:repeat(5,1fr)}}
+    @media (max-width:640px){.stats{grid-template-columns:repeat(2,1fr)}.stats .stat:nth-child(5){grid-column:1/-1}.seats{grid-template-columns:repeat(5,1fr)}}
       .pv-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
     .pv-bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
     .pv-bar select{flex:1 1 220px;min-width:0}.pv-bar input{flex:2 1 260px;min-width:0}
@@ -793,6 +798,7 @@
     .stats .stat:nth-child(2){background:var(--peach);border-color:var(--peach2)}
     .stats .stat:nth-child(3){background:var(--sky);border-color:var(--sky2)}
     .stats .stat:nth-child(4){background:var(--lav);border-color:var(--lav2)}
+    .stats .stat:nth-child(5){background:var(--mint);border-color:var(--mint2)}
     .stats .stat b{color:var(--blk)}
     .stats .stat:hover{border-color:var(--primary)}
     .stat small{color:var(--mint-ink);font-weight:500}
@@ -896,6 +902,7 @@
     .stats .stat:nth-child(2){background:linear-gradient(160deg,#fff3ea 0%,var(--peach) 55%,#f8d2bb 100%)}
     .stats .stat:nth-child(3){background:linear-gradient(160deg,#f1f8fe 0%,var(--sky) 55%,#c9e1f5 100%)}
     .stats .stat:nth-child(4){background:linear-gradient(160deg,#f6f2fd 0%,var(--lav) 55%,#d9cdf4 100%)}
+    .stats .stat:nth-child(5){background:linear-gradient(160deg,#eefaf3 0%,var(--mint) 55%,#c3e9d2 100%)}
     .countdown{border-radius:16px;overflow:hidden;box-shadow:var(--gl-drop)}
     .countdown div{background:var(--gl-card);box-shadow:var(--gl-edge)}
     /* buttons: a lit top edge, a pressed state you can feel */
@@ -990,7 +997,11 @@
         <div class="stat" data-act="seg-go" data-seg="call" role="button" tabindex="0"><b id="sHot"></b><span>🔥 Ippude call</span></div>
         <div class="stat" data-act="tile-appts" role="button" tabindex="0"><b id="sAppt"></b><span>Upcoming appts</span></div>
         <div class="stat" data-act="tile-seats" role="button" tabindex="0"><b id="sSeats"></b><span>Academy seats</span></div>
+        <!-- Appointments that really happened, with the doctor (owner PDF 11 Nov,
+             point 2). Tap: the list opens under the tiles; tap again: it closes. -->
+        <div class="stat" data-act="tile-done" role="button" tabindex="0" aria-expanded="false"><b id="sDone"></b><span>✅ Dr tho ayina appts</span><small id="sDoneSub"></small></div>
       </div>
+      <div id="doneList" class="donelist hide" aria-live="polite"></div>
 
       <section id="t-leads">
         <div class="filters">
@@ -1089,7 +1100,10 @@
         <div class="grp"><div class="grp-h"><h2>Next sitting due <span class="te" style="font-size:.85rem">· <span lang="te">రీకాల్</span></span></h2><i id="dueCount"></i></div><div id="dueList"><div class="sk"><div></div><div></div></div></div></div>
       </section>
       <section id="t-patients" class="hide">
-        <div class="filters"><input id="ptQ" placeholder="Peru leda number tho vetakandi" /></div>
+        <!-- A day, or a run of days (owner PDF 11 Nov, point 6). "Chivari sari" is
+             the last time the person was in touch, and the list groups by that day. -->
+        <div class="filters"><input id="ptQ" placeholder="Peru leda number tho vetakandi" /><input id="ptDay" type="date" aria-label="Roju" style="flex:none;width:160px" /></div>
+        <div class="seg" id="ptWhen" role="tablist" aria-label="Eppudu" style="margin-bottom:10px"><button type="button" data-act="pt-when" data-w="today">Ee roju</button><button type="button" data-act="pt-when" data-w="yday">Ninna</button><button type="button" data-act="pt-when" data-w="week">Ee vaaram</button><button type="button" data-act="pt-when" data-w="all" class="on">Anni</button></div>
         <div class="meta" id="ptStat" style="margin-bottom:8px"></div>
         <div id="ptList"><div class="sk"><div></div><div></div><div></div><div></div><div></div></div></div>
       </section>
@@ -1164,7 +1178,11 @@
         <div id="acadBoard"><div class="sk"><div></div><div></div><div></div><div></div></div></div>
       </section>
       <section id="t-students" class="hide">
-        <div class="box"><h2>Add student <span class="te" style="font-size:.9rem;color:var(--g3)">· <span lang="te">స్టూడెంట్</span> add</span></h2>
+        <!-- The whole box hides for a role without academy.edit, not just its
+             button: reception stood at a form with name, phone and amount and no
+             way to submit it (owner PDF 11 Nov, point 7). -->
+        <div class="box hide" id="stAddNo"><p>Kotha student add cheyyadam mee role ki ledu — Owner / Manager ki cheppandi. <span class="te"><span lang="te">స్టూడెంట్ యాడ్ చేయడానికి owner ని అడగండి</span>.</span></p></div>
+        <div class="box" id="stAddBox"><h2>Add student <span class="te" style="font-size:.9rem;color:var(--g3)">· <span lang="te">స్టూడెంట్</span> add</span></h2>
           <p>Advance ₹9,999 vachaka ikkada add cheyandi — onboarding form link + receipt WhatsApp lo veltayi.</p>
           <div class="noteform" style="margin-top:10px;flex-wrap:wrap">
             <input id="stName" placeholder="Full name" style="min-width:150px" />
@@ -1638,6 +1656,11 @@
       $("sTodayDone").textContent = [todayDone ? "✓ " + todayDone + " call ayyayi" : "", acadToday ? (today - acadToday) + " clinic · " + acadToday + " academy" : ""].filter(Boolean).join(" · ");
       $("sToday").textContent = today; $("sHot").textContent = hot; $("sAppt").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("sSeats").textContent = d.academy.booked + "/10";
+      // Visits that happened in the last 30 days, with the doctor. An older
+      // cached payload has no apptsDone, hence the guard.
+      var dn = (d.apptsDone || []), dnDoc = dn.filter(function (a) { return a.doc; });
+      if ($("sDone")) { $("sDone").textContent = dnDoc.length; $("sDoneSub").textContent = "gata 30 rojulu" + (dn.length > dnDoc.length ? " · +" + (dn.length - dnDoc.length) + " doctor assign ledu" : ""); }
+      if ($("doneList") && !$("doneList").classList.contains("hide")) drawDone();
       $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
       $("nAppts").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("nAcad").textContent = d.academy.leads.length;
@@ -1656,6 +1679,7 @@
         if (dl) dl.classList.toggle("hide", !allow("posts.view"));
       }
       // buttons follow the powers, so nobody clicks something that will 403
+      if ($("stAddBox")) { $("stAddBox").classList.toggle("hide", !allow("academy.edit")); $("stAddNo").classList.toggle("hide", allow("academy.edit")); }
       [["stAdd", "academy.edit"]].forEach(function (p) {
         var el = $(p[0]); if (el) el.classList.toggle("hide", !allow(p[1]));
       });
@@ -1734,6 +1758,16 @@
       return '<div class="empty">' + esc(head) +
         (go.length ? '<div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center">' +
           go.map(function (x) { return '<button class="btn btn--sm" data-act="seg-go" data-seg="' + x.seg + '">' + esc(x.label) + "</button>"; }).join("") + "</div>" : "") + "</div>";
+    }
+    // The same words the server's confirm-call chip uses (11 Nov, point 3):
+    // two units, floored — "1 roju 20 gantalu", never "2 rojulu" for 44 hours.
+    function sinceWords(ms) {
+      var min = Math.max(0, Math.floor(ms / 60000)), n = function (v, one, many) { return v + " " + (v === 1 ? one : many); };
+      if (min < 60) return n(min, "nimisham", "nimishalu");
+      var h = Math.floor(min / 60), m = min % 60;
+      if (h < 24) return n(h, "ganta", "gantalu") + (m ? " " + n(m, "nimisham", "nimishalu") : "");
+      var d = Math.floor(h / 24), hh = h % 24;
+      return n(d, "roju", "rojulu") + (hh ? " " + n(hh, "ganta", "gantalu") : "");
     }
     function waitFor(ms) {
       var m = Math.round(ms / 60000);
@@ -1939,6 +1973,24 @@
       if (h >= 19 || h < 7) return "Saayantram 6–8 (raatri message chesaru)";
       return "";
     }
+    // The list under the "Dr tho ayina appts" tile (owner PDF 11 Nov, point
+    // 2): every visit of the last 30 days, newest first, who saw them. Rows
+    // nobody was assigned to come last, said so, so the count never looks
+    // short for a reason the desk cannot see.
+    function drawDone() {
+      var box = $("doneList"); if (!box) return;
+      var all = ((state.data || {}).apptsDone || []), withDoc = all.filter(function (a) { return a.doc; }), noDoc = all.filter(function (a) { return !a.doc; });
+      var when = function (a) { return new Date(a.at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" }); };
+      var row = function (a) {
+        return '<div class="dl-row"><span><b>' + esc(a.name) + "</b>" + (a.concern ? ' <span class="meta">· ' + esc(String(a.concern).slice(0, 60)) + "</span>" : "") +
+          '<br><span class="meta">' + esc(when(a)) + (a.staffName ? " · 👩‍⚕️ " + esc(a.staffName) : " · doctor assign cheyyaledu") + (a.status === "arrived" ? " · lopala unnaru" : "") + "</span></span>" +
+          (a.ph ? '<a class="btn btn--sm btn--call" href="tel:+91' + esc(a.ph) + '">📞</a>' : "") + "</div>";
+      };
+      box.innerHTML = '<div class="grp-h"><h2>✅ Dr tho ayina appointments</h2><i>gata 30 rojulu · ' + withDoc.length + "</i>" +
+        '<button class="btn btn--sm" data-act="tile-done" style="margin-left:auto">Close ✕</button></div>' +
+        (withDoc.length ? withDoc.map(row).join("") : '<div class="empty">Inka Dr tho ayina appointments levu — Appointments lo ✅ Vacharu + 👩‍⚕️ Assign chesaka ikkada kanipistayi.</div>') +
+        (noDoc.length ? '<div class="meta" style="margin:10px 0 4px">Vacharu kani doctor assign cheyyaledu — ' + noDoc.length + "</div>" + noDoc.map(row).join("") : "");
+    }
     // One line on top: the day so far, and anything burning (owner, 7 Nov).
     function summaryBar(people, all) {
       var t0 = dayStartMs();
@@ -2037,6 +2089,10 @@
       }).sort(function (a, b) {
         if (seg === "wait") return (a.ts || 0) - (b.ts || 0);          // longest wait first
         if (seg === "fu") return String(a.fu || "").localeCompare(String(b.fu || ""));   // soonest follow-up first
+        // Ettanivi: paata date paina, kotthavi kindaki — the oldest unanswered
+        // lead gets rung first (owner PDF 11 Nov, point 1). The call list
+        // keeps its own priority order.
+        if (fs === "o:noanswer" && seg !== "call") return (a.ts || 0) - (b.ts || 0);
         if (seg !== "call") return b.ts - a.ts;                                 // 7 Nov: recent to old
         var sa = a.status === "new" || a.status === "contacted" ? 0 : 1, sb = b.status === "new" || b.status === "contacted" ? 0 : 1;
         if (sa !== sb) return sa - sb;
@@ -2195,9 +2251,10 @@
       // error body — used to throw here. That was survivable while this only
       // ran inside a promise, but the day view is now painted straight from a
       // tap when the data is still fresh, and an exception there escapes.
-      var d = Object.assign({ rows: [], counts: {}, team: [] }, schData);
-      d.counts = Object.assign({ total: 0, booked: 0, arrived: 0, done: 0, unconfirmed: 0 }, d.counts || {});
+      var d = Object.assign({ rows: [], came: [], counts: {}, team: [] }, schData);
+      d.counts = Object.assign({ total: 0, booked: 0, arrived: 0, done: 0, unconfirmed: 0, came: 0 }, d.counts || {});
       if (!Array.isArray(d.rows)) d.rows = [];
+      if (!Array.isArray(d.came)) d.came = [];
       $("dayStrip").innerHTML = (schWeek ? schWeek.days : []).map(function (w) {
         var dt = new Date(w.day + "T00:00:00+05:30");
         return '<button data-act="sch-day" data-day="' + esc(w.day) + '"' + (w.day === schDay ? ' class="on"' : "") + ">" +
@@ -2209,6 +2266,9 @@
       // to see only those, again for all (7 Nov, point 4).
       $("schHead").innerHTML = '<div data-act="sch-head" data-k="all"' + (schShow === "all" ? ' class="on"' : "") + "><b>" + d.counts.total + "</b><span>Ee roju " + (schShow === "none" ? "▸" : "▾") + "</span></div>" +
         '<div data-act="sch-head" data-k="unconf"' + (schShow === "unconf" ? ' class="on"' : "") + "><b>" + d.counts.unconfirmed + "</b><span>Confirm avvanivi</span></div>" +
+        // Who actually came today — Vacharu / Vachharu tapped, including the
+        // ones the server has already filed away (owner PDF 11 Nov, point 4).
+        '<div data-act="sch-head" data-k="came"' + (schShow === "came" ? ' class="on"' : "") + "><b>" + d.counts.came + "</b><span>✅ Vachinavi " + (schShow === "came" ? "▾" : "▸") + "</span></div>" +
         // Tomorrow and the rest of the week open as lists too (8 Nov, point 4).
         '<div data-act="sch-head" data-k="tom"' + (schShow === "tom" ? ' class="on"' : "") + "><b>" + soonOf("tom").length + "</b><span>Repu " + (schShow === "tom" ? "▾" : "▸") + "</span></div>" +
         '<div data-act="sch-head" data-k="week"' + (schShow === "week" ? ' class="on"' : "") + "><b>" + soonOf("week").length + "</b><span>Ee vaaram " + (schShow === "week" ? "▾" : "▸") + "</span></div>";
@@ -2218,7 +2278,8 @@
       renderCfPending();
 
       if (schShow === "tom" || schShow === "week") { renderSoon(); renderWait(d); return; }
-      var rows = schMine ? d.rows.filter(function (r) { return r.staff === state.data.me.phone; }) : d.rows;
+      var src = schShow === "came" ? d.came : d.rows;
+      var rows = schMine ? src.filter(function (r) { return r.staff === state.data.me.phone; }) : src;
       if (schShow === "unconf") rows = rows.filter(function (r) { return r.status === "booked" && !r.cf; });
       $("schList").classList.toggle("hide", schShow === "none");
       $("schList").innerHTML = rows.length ? rows.map(function (r) {
@@ -2236,7 +2297,7 @@
           '<div class="meta">' + esc(r.concern || "—") +
           (r.staffName ? " · 👩‍⚕️ " + esc(r.staffName) : ' · <span style="color:var(--hot)">doctor assign cheyyaledu</span>') +
           (r.room ? " · " + esc(r.room) : "") + "</div></div>" +
-          "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') +
+          "<div>" + (r.status === "done" || r.status === "arrived" ? "" : r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') +
           (r.pax > 1 ? ' <span class="chip" title="' + esc(r.with || "") + '">👥 ' + r.pax + " mandi</span>" : "") + (r.adv ? ' <span class="chip ok">💳 ₹' + r.adv + ' advance</span>' : "") + (r.lc && r.status === "booked" ? ' <span class="chip">vastunnara adigam</span>' : "") +
           (asked ? ' <span class="chip hot">vacharu aa?</span>' : "") +
           (r.status !== "booked" ? ' <span class="chip">' + esc(SCH_ST[r.status] || r.status) + "</span>" : "") + "</div></div>" +
@@ -2257,15 +2318,20 @@
           // WhatsApp admin command, so in practice they were left sitting in
           // the day for ever and never asked back.
           (canEdit && !asked && r.status === "booked" && r.at < Date.now() ? '<button class="btn btn--sm" data-act="sch-noshow" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🚫 Raaledu</button>' : "") +
-          (canEdit ? '<button class="btn btn--sm" data-act="sch-assign" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">👩‍⚕️ Assign</button>' +
+          // A filed visit (already in appt:done) cannot be assigned, moved or
+          // cancelled — the server only finds rows still in the queue.
+          (canEdit && !r.filed ? '<button class="btn btn--sm" data-act="sch-assign" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">👩‍⚕️ Assign</button>' +
             '<button class="btn btn--sm" data-act="sch-move" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🕒 Marchandi</button>' +
             '<button class="btn btn--sm" data-act="sch-cancel" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">✖</button>' : "") +
           "</div></div></article>";
-      }).join("") : '<div class="empty">' + (schMine ? "Mee peru meeda ee roju emi ledu." : "Ee roju appointments ledu.") + "</div>";
-      $("schList").classList.toggle("hide", schView === "grid" || schShow === "none");
-      $("schGrid").classList.toggle("hide", schView !== "grid");
-      $("svList").classList.toggle("on", schView !== "grid"); $("svGrid").classList.toggle("on", schView === "grid");
-      if (schView === "grid") renderGrid(d, rows);
+      }).join("") : '<div class="empty">' + (schShow === "came" ? "Ee roju inka evaru raaledu — ✅ Vacharu nokkaka ikkada kanipistaru." : schMine ? "Mee peru meeda ee roju emi ledu." : "Ee roju appointments ledu.") + "</div>";
+      // The Vachinavi list stays a list: the grid drags rows, and a filed row
+      // cannot be moved (the server only finds rows still in the queue).
+      var gridOn = schView === "grid" && schShow !== "came";
+      $("schList").classList.toggle("hide", gridOn || schShow === "none");
+      $("schGrid").classList.toggle("hide", !gridOn);
+      $("svList").classList.toggle("on", !gridOn); $("svGrid").classList.toggle("on", gridOn);
+      if (gridOn) renderGrid(d, rows);
       renderWait(d);
     }
     // The dates the desk asked for beside every appointment (8 Nov, point 5):
@@ -2303,7 +2369,7 @@
             return '<article class="slot ' + esc(r.status) + '"><div class="when">' + esc(r.time) + "<span>" + r.mins + " min</span></div><div>" +
               '<div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><div><h3 data-act="pt-open" data-phone="' + esc(r.ph) + '" style="cursor:pointer">' + esc(r.name) + ' <span class="meta">· ' + esc(r.ph) + "</span></h3>" +
               '<div class="meta">' + esc(r.concern || "—") + (r.staffName ? " · 👩‍⚕️ " + esc(r.staffName) : "") + "</div></div>" +
-              "<div>" + (r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') + "</div></div>" +
+              "<div>" + (r.status === "done" || r.status === "arrived" ? "" : r.cf ? '<span class="chip ok">confirmed</span>' : '<span class="chip hot">confirm kaledu</span>') + "</div></div>" +
               apptDates(r) +
               (r.status === "booked" && !r.cf && r.cfWhy ? '<div class="meta cfwhy">❓ ' + esc(r.cfWhy) + "</div>" : "") +
               '<div class="acts"><a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name) + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞</a>' +
@@ -2313,7 +2379,7 @@
     }
     // A row that left the day on its own, 48 hours after the slot with nobody
     // saying whether the patient came, is not a visit — the chip says so.
-    var SCH_ST = { unmarked: "mark cheyyaledu" };
+    var SCH_ST = { unmarked: "mark cheyyaledu", done: "vacharu ✅", arrived: "lopala unnaru" };
     // ---- confirm pending: the bookings nobody has rung yet ----------------
     // The agent tells every patient "team call chesi confirm chestundi". In
     // the week of 9 November five slots were waiting and one had had that
@@ -2338,7 +2404,7 @@
           var dayLbl = new Date(r.day + "T00:00:00+05:30").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
           return '<article class="slot"><div class="when">' + esc(r.time) + "<span>" + esc(dayLbl) + "</span></div><div>" +
             '<h3 data-act="pt-open" data-phone="' + esc(r.ph) + '" style="cursor:pointer">' + esc(r.name || r.label || "Patient") + ' <span class="meta">· ' + esc(r.ph) + "</span></h3>" +
-            '<div class="meta">' + esc(r.concern || "—") + (r.ts ? " · book ayi " + esc(waitFor(Date.now() - r.ts)) + (r.by ? " · " + esc(r.by) : "") : "") + "</div>" +
+            '<div class="meta">' + esc(r.concern || "—") + (r.ts ? " · book ayi " + esc(sinceWords(Date.now() - r.ts)) + (r.by ? " · " + esc(r.by) : "") : "") + "</div>" +
             (r.cfWhy ? '<div class="meta cfwhy">❓ ' + esc(r.cfWhy) + "</div>" : "") +
             '<div class="acts">' +
             (canEdit ? '<button class="btn btn--sm btn--gold" data-act="sch-confirm" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Confirm ayindi</button>' : "") +
@@ -3758,13 +3824,18 @@
     function fsize(b) { return b >= 1048576 ? (b / 1048576).toFixed(1) + " MB" : Math.max(1, Math.round(b / 1024)) + " KB"; }
     function fileCard(it) {
       var url = ORIGIN + it.path;
+      // A link pasted into WhatsApp has to work on somebody else's phone. On
+      // the website ORIGIN is "", so the old "Link" copied "/files/forms/…pdf"
+      // — nothing outside this page (owner PDF 11 Nov, point 8). /files/* is
+      // plain static and public, so the share link always names the site.
+      var share = "https://www.dermaluxe.ai" + it.path;
       var th = it.kind === "image" ? '<img src="' + esc(url) + '" alt="" loading="lazy" decoding="async">' : it.kind === "video" ? "🎬" : it.kind === "pdf" ? "📄" : "📎";
       return '<div class="fi" data-q="' + esc((it.title + " " + it.name + " " + (it.te || "")).toLowerCase()) + '"><div class="fi-th">' + th + '</div>' +
         '<h4>' + esc(it.title) + '</h4>' + (it.te ? '<div class="te" lang="te">' + esc(it.te) + '</div>' : '') +
         '<div class="meta">' + esc(String(it.ext || "").toUpperCase()) + ' · ' + fsize(it.bytes) + '</div>' +
         '<div class="acts"><a class="btn btn--sm" href="' + esc(url) + '" target="_blank" rel="noopener">👁 Open</a>' +
         '<a class="btn btn--sm btn--gold" href="' + esc(url) + '" download="' + esc(it.name) + '" target="_blank" rel="noopener">⬇ Download</a>' +
-        '<button class="btn btn--sm" data-act="fi-copy" data-url="' + esc(url) + '">🔗 Link</button></div></div>';
+        '<button class="btn btn--sm" data-act="fi-copy" data-url="' + esc(share) + '">🔗 URL copy</button></div></div>';
     }
     function renderFiles() {
       var d = filesData; if (!d || !$("fiList")) return;
@@ -3856,6 +3927,17 @@
       if (r.conversions) bits.push(r.conversions + " leads book/visit" + (r.rate.perConv ? " × " + rupee(r.rate.perConv) : ""));
       return bits.join(" · ") || "Ee nela inka emi ledu";
     }
+    // The owner's monthly visit target for this person (owner PDF 11 Nov,
+    // point 9), set beside the rates on Numbers > Staff incentives. 0 = no
+    // target, nothing shown. The bar goes green once the month's pace is met:
+    // on the 15th, half the target.
+    function incTarget(r) {
+      var t = Number((r.rate && r.rate.visitTarget) || 0); if (!t) return "";
+      var v = Number(r.visits || 0), left = Math.max(0, t - v);
+      var now = new Date(), dim = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+      var pace = Math.floor(t * now.getDate() / dim);
+      return '<div style="margin-top:8px"><b>Visits ' + v + " / " + t + '</b> <span class="meta">· ee nela target · ' + (left ? "inka " + left + " kavali" : "target ayipoyindi ✅") + (v < t && v < pace ? " · ippatiki " + pace + " undali" : "") + "</span>" + goalBar(v, t, v >= t || v >= pace) + "</div>";
+    }
     function loadMyInc() {
       var host = $("incMine"); if (!host) return;
       incapi("report").then(function (j) {
@@ -3864,7 +3946,7 @@
         host.classList.remove("hide");
         host.innerHTML = '<h2>Mee incentive — ee nela <span class="te" style="font-size:.85rem;color:var(--g3)">· ప్రోత్సాహకం</span></h2>' +
           '<div style="font-size:1.6rem;font-weight:700;margin:4px 0">' + rupee(r.amount) + "</div>" +
-          '<p class="meta">' + esc(incLine(r)) + "</p>";
+          '<p class="meta">' + esc(incLine(r)) + "</p>" + incTarget(r);
       }).catch(function () { host.classList.add("hide"); });
     }
     function loadIncBoard() {
@@ -3876,15 +3958,17 @@
         host.innerHTML = '<div class="box"><h2>Staff incentives — ' + esc(j.month) + ' <span class="te" style="font-size:.85rem;color:var(--g3)">· ప్రోత్సాహకాలు</span></h2>' +
           '<p class="meta">Collection = vaallu raasina bills lo ee nela vachina dabbu. Treatment = bill lo "chesinavaru" ani vaalla peru unna treatments. Leads = vaallu booked/visited ki marchina enquiries. Mottam ' + rupee(j.total) + ".</p>" +
           j.rows.map(function (r) {
-            return '<div class="pnl-row"><span><b style="font-weight:600">' + esc(r.name) + '</b> <span class="meta">· ' + esc(r.role) + '</span><br><span class="meta">' + esc(incLine(r)) + "</span></span><span><b>" + rupee(r.amount) + "</b></span></div>";
+            return '<div class="pnl-row"><span><b style="font-weight:600">' + esc(r.name) + '</b> <span class="meta">· ' + esc(r.role) + '</span><br><span class="meta">' + esc(incLine(r)) + "</span>" + incTarget(r) + "</span><span><b>" + rupee(r.amount) + "</b></span></div>";
           }).join("") +
           '<h3 style="font-size:.9rem;margin:14px 0 6px">Rates (role-wise)</h3>' +
-          '<div style="overflow-x:auto"><table class="inc-rates" style="width:100%;border-collapse:collapse;font-size:.84rem"><tr><th style="text-align:left">Role</th><th>Collection %</th><th>Treatment %</th><th>₹ / lead</th></tr>' +
+          '<p class="meta">Visits target = nelaki entha mandi patients clinic ki raavali (0 = target ledu). Vaalla Attendance tab lo "Visits 6 / 20" ani kanipistundi.</p>' +
+          '<div style="overflow-x:auto"><table class="inc-rates" style="width:100%;border-collapse:collapse;font-size:.84rem"><tr><th style="text-align:left">Role</th><th>Collection %</th><th>Treatment %</th><th>₹ / lead</th><th>Visits target / nela</th></tr>' +
           Object.keys(roles).filter(function (r) { return r !== "owner"; }).map(function (rl) {
             var x = R.roles[rl] || {};
             return '<tr data-role="' + esc(rl) + '"><td>' + esc(rl) + '</td><td><input data-k="collectPct" inputmode="decimal" value="' + (x.collectPct || 0) + '" style="width:70px" aria-label="Collection percent"></td>' +
               '<td><input data-k="treatPct" inputmode="decimal" value="' + (x.treatPct || 0) + '" style="width:70px" aria-label="Treatment percent"></td>' +
-              '<td><input data-k="perConv" inputmode="numeric" value="' + (x.perConv || 0) + '" style="width:80px" aria-label="Rupees per lead"></td></tr>';
+              '<td><input data-k="perConv" inputmode="numeric" value="' + (x.perConv || 0) + '" style="width:80px" aria-label="Rupees per lead"></td>' +
+              '<td><input data-k="visitTarget" inputmode="numeric" value="' + (x.visitTarget || 0) + '" style="width:70px" aria-label="Visit target per month"></td></tr>';
           }).join("") + "</table></div>" +
           '<button class="btn btn--sm btn--gold" data-act="inc-save" style="margin-top:8px">Rates save cheyyi</button></div>';
         host._people = R.people || {};
@@ -4189,26 +4273,53 @@
     // taken months apart sit next to each other.
     function ptapi(a, body, qs) { return xcall("/api/patient", a, body, qs); }
     var ptRows = [], ptOpen = null;
+    // Which days the Patients list shows (owner PDF 11 Nov, point 6): a day
+    // picked on the calendar wins; otherwise the chip. Eluru days, so a phone
+    // set to another zone does not move a patient across midnight.
+    var ptWhen = "all";
+    function ptRange() {
+      var pick = $("ptDay") && $("ptDay").value;
+      if (pick) return { from: pick, to: pick };
+      var today = istToday();
+      if (ptWhen === "today") return { from: today, to: today };
+      if (ptWhen === "yday") { var y = istDayOf(Date.now() - 86400000); return { from: y, to: y }; }
+      if (ptWhen === "week") return { from: istDayOf(Date.now() - 6 * 86400000), to: today };   // the last seven days
+      return null;
+    }
+    function ptDayHead(day) {
+      if (day === istToday()) return "Ee roju";
+      if (day === istDayOf(Date.now() - 86400000)) return "Ninna";
+      return new Date(day + "T00:00:00+05:30").toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+    }
     function loadPatients() {
-      var q = ($("ptQ").value || "").trim();
-      return ptapi("list", null, q ? "&q=" + encodeURIComponent(q) : "").then(function (j) {
+      var q = ($("ptQ").value || "").trim(), rg = ptRange();
+      return ptapi("list", null, (q ? "&q=" + encodeURIComponent(q) : "") + (rg ? "&from=" + rg.from + "&to=" + rg.to : "")).then(function (j) {
         ptRows = j.rows || [];
-        $("nPt").textContent = j.total || 0;
+        // The server filtered before its 200-row cap; this is the safety net.
+        if (rg) ptRows = ptRows.filter(function (r) { var d = istDayOf(r.last || 0); return d >= rg.from && d <= rg.to; });
+        $("nPt").textContent = (rg ? j.all : j.total) || 0;
         // The stage is the point of the whole thing, so it goes where it can be
         // seen without opening anybody: the header counts, and each row.
         var set = (j.stages || []).filter(function (x) { return x.count; });
-        $("ptStat").innerHTML = j.total + " patients · " + j.repeats + " malli vachina vaaru" +
+        // With a day picked every count here is for those days; the total of
+        // everybody is said once, as "mottam".
+        $("ptStat").innerHTML = (rg ? ptRows.length + " ee rojullo (mottam " + j.all + " patients)" : j.total + " patients") + " · " + j.repeats + " malli vachina vaaru" +
           (set.length ? " · " + set.map(function (x) { return x.count + " " + esc(x.label); }).join(" · ") : "") +
           (j.stageless ? ' · <span style="color:var(--g3)">' + j.stageless + " ki stage pettaledu</span>" : "");
         ptRows.sort(function (a, b) { return (b.last || 0) - (a.last || 0); });   // recent to old (7 Nov)
-        $("ptList").innerHTML = ptRows.length ? ptRows.map(function (r) {
+        // One heading per day, newest day first (11 Nov, point 6).
+        var byDay = {}, order = [];
+        ptRows.forEach(function (r) { var d = istDayOf(r.last || 0); if (!byDay[d]) { byDay[d] = []; order.push(d); } byDay[d].push(r); });
+        $("ptList").innerHTML = ptRows.length ? order.map(function (day) {
+          return '<div class="grp-h" style="margin:14px 0 6px"><h2 style="font-size:1rem">' + esc(ptDayHead(day)) + "</h2><i>" + byDay[day].length + "</i></div>" + byDay[day].map(function (r) {
           return '<article class="ptrow" data-act="pt-open" data-phone="' + esc(r.phone) + '">' +
             '<div class="row1"><h3>' + esc(r.name) + ' <span class="meta">· ' + esc(r.phone) + "</span></h3>" +
             "<div>" + (r.stageLabel ? '<span class="chip ok">' + esc(r.stageLabel) + "</span> " : "") +
             (r.repeat ? '<span class="chip">' + r.visits + " sarlu</span> " : "") +
             (r.everBooked ? '<span class="chip ok">visited</span>' : "") + "</div></div>" +
             '<div class="meta">' + esc(String(r.concern || "").slice(0, 70)) + " · chivari sari " + esc(dmyt(r.last)) + " (" + ago(r.last) + ")</div></article>";
-        }).join("") : '<div class="empty">Evaru dorakaledu.</div>';
+          }).join("");
+        }).join("") : '<div class="empty">' + (rg ? "Aa roju evaru raaledu." : "Evaru dorakaledu.") + "</div>";
         syncBadges();
       }).catch(function (e) { $("ptList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
@@ -4458,9 +4569,17 @@
       var btDay = bt.startISO ? new Date(bt.startISO + "T00:00:00+05:30").toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : "";
       if ($("seatsHead")) $("seatsHead").innerHTML = (bt.no ? "Batch #" + esc(bt.no) : "Batch seats") + (btDay ? " · " + esc(btDay) : "") +
         ' <span class="te" style="font-size:.85rem;color:var(--g3)">· <span lang="te">సీట్లు</span></span>';
+      // Seat n of THIS batch is a student of this batch (owner PDF 11 Nov,
+      // point 5): seat 1 of Batch #2 used to open the Batch #1 student. The
+      // same rule as the server's seat count and the batch list below; a
+      // record with no batch number counts as the current one. data-idx stays
+      // an index into every reserved row, which is what the tap handler reads.
+      var cur = resv.filter(function (r) { return !r.batch || String(r.batch) === String(bt.no); });
       $("seats").innerHTML = Array.from({ length: d.seats.total }).map(function (_, i) {
+        var p = cur[i];
         return i < d.seats.booked
-          ? '<i class="on" data-act="seat" data-idx="' + i + '" title="' + esc((resv[i] || {}).name || "") + '"><b>' + (i + 1) + "</b><span>Booked</span></i>"
+          ? (p ? '<i class="on" data-act="seat" data-idx="' + resv.indexOf(p) + '" title="' + esc(p.name || "") + '"><b>' + (i + 1) + "</b><span>Booked</span></i>"
+               : '<i class="on" title="App bayata reserve chesaru"><b>' + (i + 1) + "</b><span>Booked</span></i>")
           : "<i><b>" + (i + 1) + "</b><span>Waiting for booking</span></i>";
       }).join("") ;
       var sl = $("seatList");
@@ -6305,6 +6424,11 @@
       schSend("create", { ph: ph2, name: nm5, concern: cn, at: at2, mins: mn6 }, "Book ayindi, patient ki cheppamu");
     };
     if ($("ptQ")) { var ptT; $("ptQ").addEventListener("input", function () { clearTimeout(ptT); ptT = setTimeout(loadPatients, 260); }); }
+    if ($("ptDay")) $("ptDay").addEventListener("change", function () {
+      // A picked day switches the chips off; clearing it lights "Anni" again.
+      document.querySelectorAll("#ptWhen button").forEach(function (b) { b.classList.toggle("on", !$("ptDay").value && b.dataset.w === ptWhen); });
+      loadPatients();
+    });
     // A status picked while "Ippude call" was on showed nothing — that group is
     // already only new/contacted A's (7 Nov, "filters not working"). Picking a
     // filter now looks across every lead.
@@ -6514,16 +6638,30 @@
       if (el.dataset.act === "stk-head") { stkShow = el.dataset.k === "low" ? (stkShow === "low" ? "all" : "low") : (stkShow === "none" ? "all" : "none"); loadStock(); return; }
       if (el.dataset.act === "acad-f") { acadF = acadF === el.dataset.k ? "" : el.dataset.k; renderSeatBoard(); return; }
       if (el.dataset.act === "tile-appts") { goTab("appts"); window.scrollTo({ top: 0, behavior: "smooth" }); return; }
+      // Tap the tile: the list of visits opens under the tiles; tap again: it
+      // closes (owner PDF 11 Nov, point 2). The list's own close button is
+      // the same action.
+      if (el.dataset.act === "tile-done") {
+        var dl = $("doneList"), opening = dl.classList.contains("hide");
+        dl.classList.toggle("hide", !opening);
+        var tl = document.querySelector('.stat[data-act="tile-done"]'); if (tl) tl.setAttribute("aria-expanded", String(opening));
+        if (opening) { drawDone(); dl.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
+        return;
+      }
+      if (el.dataset.act === "pt-when") {
+        ptWhen = el.dataset.w; if ($("ptDay")) $("ptDay").value = "";
+        document.querySelectorAll("#ptWhen button").forEach(function (b) { b.classList.toggle("on", b === el); });
+        loadPatients(); return;
+      }
       // A cash close entered by mistake: moved aside on the server, never
       // deleted, and the owner is told (9 Nov: the ₹1/+₹2 trial on 8 Nov).
       // The file library: copy a link, or open a study-material PDF through a
       // link minted for this person (the window opens first, or the browser
       // calls it a popup and blocks it).
-      if (el.dataset.act === "fi-copy") {
-        var fu = el.dataset.url;
-        (navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(fu) : Promise.reject()).then(function () { toast("Link copy ayindi"); }, function () { prompt("Link:", fu); });
-        return;
-      }
+      // Through copyText: the Android WebView and a plain-http page refuse
+      // clipboard.writeText, and copyText then shows the link to copy by hand
+      // instead of claiming it was copied.
+      if (el.dataset.act === "fi-copy") { copyText(el.dataset.url, "URL copy ayindi — WhatsApp lo paste cheyandi"); return; }
       if (el.dataset.act === "fi-mat") {
         var mw = window.open("", "_blank");
         el.disabled = true;

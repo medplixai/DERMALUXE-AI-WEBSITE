@@ -184,6 +184,18 @@ function spread(list, n) {
 // Only what the row does not already say. "confirm kaledu" and "doctor
 // assign cheyyaledu" are on every row already; repeating them as warnings
 // made three chips out of one fact and hid the one that matters.
+// "2681 nimishalu" made the owner do the sum in his head (11 Nov, point 3).
+// Say it the way the desk says it out loud: rojulu + gantalu, or gantalu +
+// nimishalu — two units, because three do not fit on a chip. Floor, not
+// round: 44 h 41 min is "1 roju 20 gantalu", not "2 rojulu".
+function sinceWords(min) {
+  const n = (v, one, many) => v + " " + (v === 1 ? one : many);
+  if (min < 60) return n(min, "nimisham", "nimishalu");
+  const h = Math.floor(min / 60), m = min % 60;
+  if (h < 24) return n(h, "ganta", "gantalu") + (m ? " " + n(m, "nimisham", "nimishalu") : "");
+  const d = Math.floor(h / 24), hh = h % 24;
+  return n(d, "roju", "rojulu") + (hh ? " " + n(hh, "ganta", "gantalu") : "");
+}
 function riskOf(a, noShowsBy) {
   const out = [];
   const hrs = (a.at - Date.now()) / 3600000;
@@ -191,7 +203,7 @@ function riskOf(a, noShowsBy) {
   // patient was told "team call chesi confirm chestundi", and when that call
   // does not come they do not come either (owner's diagnosis, 9 Nov).
   const sinceMin = a.ts ? Math.floor((Date.now() - a.ts) / MIN) : 0;
-  if (a.status === "booked" && !a.cf && a.ts && sinceMin >= CONFIRM_AFTER_MIN) out.push(`confirm call pending — ${sinceMin} nimishalu`);
+  if (a.status === "booked" && !a.cf && a.ts && sinceMin >= CONFIRM_AFTER_MIN) out.push(`confirm call pending — ${sinceWords(sinceMin)}`);
   if (a.status === "booked" && !a.cf && hrs > 0 && hrs < 24) out.push("konni gantallo — confirm cheyyandi");
   const n = noShowsBy[digits10(a.ph)] || 0;
   if (n) out.push(`mundu ${n} sari${n > 1 ? "lu" : ""} raaledu`);
@@ -426,13 +438,27 @@ module.exports = async (req, res) => {
       const day = /^\d{4}-\d{2}-\d{2}$/.test(String(q.day || "")) ? String(q.day) : istDay(Date.now());
       let list = rows.filter((r) => r.day === day).sort((x, y) => x.at - y.at);
       const mine = list.filter((r) => r.staff === me.phone);
+      // "Vacharu" moves a row out of appt:q into appt:done, so the day's list
+      // never showed the people who actually came — the desk could only see
+      // who was still expected. Read the filed ones for this day back (11 Nov,
+      // point 4). Not "unmarked" (the digest files never-marked slots there),
+      // not no-shows, not cancelled: only visits.
+      const dq = await guard.kvCommand(cfg, ["LRANGE", DONE, "0", "499"]).catch(() => ({}));   // the whole kept list
+      const filedIds = new Set(list.map((r) => r.id).filter(Boolean));
+      // v=1 wins over the status: the WhatsApp "arrived <number>" command sets
+      // only v on a slot the digest had already filed as "unmarked".
+      const isVisit = (a2) => { const st0 = String(a2.status || ""); return !a2.ns && st0 !== "noshow" && st0 !== "cancelled" && (a2.v || st0 === "done" || st0 === "arrived"); };
+      const filed = (((dq && dq.result) || [])).map((x) => parse(x, null))
+        .filter((a2) => a2 && a2.at && brs.keep(sc)(a2) && istDay(a2.at) === day && isVisit(a2))
+        .filter((a2) => !(a2.id && filedIds.has(a2.id)))
+        .map((a2) => Object.assign(shape(a2), { filed: true }));
+      const came = list.filter((r) => r.status === "arrived" || r.status === "done").concat(filed).sort((x, y) => x.at - y.at);
       // How full the day is, which times are free, and who is worth ringing
       // to fill them — with what could go wrong on the ones already booked.
       let plan = null;
       try {
         const cap = await freeSlots(cfg, day, list);
         const noShowsBy = {};
-        const dq = await guard.kvCommand(cfg, ["LRANGE", DONE, "0", "299"]).catch(() => ({}));
         for (const x of (((dq && dq.result) || []))) {
           const a2 = parse(x, null);
           if (a2 && (a2.ns || a2.status === "noshow")) noShowsBy[digits10(a2.ph)] = (noShowsBy[digits10(a2.ph)] || 0) + 1;
@@ -452,10 +478,12 @@ module.exports = async (req, res) => {
       } catch (e) { console.error("schedule: plan", e && e.message); }
       return json(res, 200, {
         ok: true, day, rows: list, mine: mine.length, team, plan,
+        came,
         rooms: await rooms(cfg),
         wait: (await waitlist(cfg)).map(({ raw, ...w }) => w),
         counts: {
           total: list.length,
+          came: came.length,
           booked: list.filter((r) => r.status === "booked").length,
           arrived: list.filter((r) => r.status === "arrived").length,
           done: list.filter((r) => r.status === "done").length,
