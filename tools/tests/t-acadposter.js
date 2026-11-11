@@ -21,7 +21,12 @@ const restore = () => { Date.now = REAL_NOW; };
 // launch offer — one of them was testing "after the offer closes" on a day the
 // offer was still running, and said nothing.
 const dayAt = (iso, plusDays) => new Date(Date.parse(iso + "T10:00:00+05:30") + plusDays * 86400000).toISOString();
-const DURING = dayAt(docs.BATCH.offerEndISO, -12);    // offer open, batch ahead, 12 days of it left
+// Twelve days before whichever comes first. On 11 Nov 2026 the owner extended
+// the offer to 10 Dec while Batch 2 kept its 10 Nov date, so the offer now
+// outlives the batch's start — "offer open AND batch ahead" is twelve days
+// before the batch, not before the offer.
+const FIRST_ISO = docs.BATCH.offerEndMs <= docs.BATCH.startMs ? docs.BATCH.offerEndISO : docs.BATCH.startISO;
+const DURING = dayAt(FIRST_ISO, -12);    // offer open, batch ahead
 // The owner set the launch offer to run to the day the batch opens (10 Nov
 // 2026), so "the offer has closed but the batch has not started" is a state
 // that can no longer happen. When a future batch does leave a gap, this picks
@@ -41,7 +46,7 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   // they stop testing what they say — so that is checked first, out loud.
   is(AFTER_OFFER === null || (Date.parse(AFTER_OFFER) > docs.BATCH.offerEndMs && Date.parse(AFTER_OFFER) < docs.BATCH.startMs), true,
     AFTER_OFFER ? "there is room between the offer closing and the batch starting to test the gap"
-                : "the offer runs to the day the batch opens, so there is no gap to test");
+                : "the offer runs to the day the batch opens, or past it, so there is no gap to test");
   is(Date.parse(DURING) < docs.BATCH.offerEndMs, true, "and the 'offer open' moment really is inside it");
   is(daily.ACADEMY_TOPICS.length, 5, "five posters, one per reason somebody does not sign up");
   is(new Set(keys).size, 5, "all with their own key");
@@ -52,10 +57,10 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   const st = await daily.academyState({ kind: "pg" });
   is(st.on, true, "seats left and the batch ahead: it runs");
   is(st.left, 7, "seven of ten left");
-  is(st.offerDays, 12, "twelve days of launch price left — counted by the calendar, not by dividing a duration");
-  // Also worked out, for the same reason: a number typed here goes stale the
-  // moment either date moves.
+  // Worked out, not typed: a number written here goes stale the moment either
+  // date moves.
   const daysBetween = (a, b) => Math.round((Date.parse(b + "T00:00:00+05:30") - Date.parse(a.slice(0, 10) + "T00:00:00+05:30")) / 86400000);
+  is(st.offerDays, daysBetween(DURING, docs.BATCH.offerEndISO), `${daysBetween(DURING, docs.BATCH.offerEndISO)} days of launch price left — counted by the calendar, not by dividing a duration`);
   is(st.batchDays, daysBetween(DURING, docs.BATCH.startISO), `and ${daysBetween(DURING, docs.BATCH.startISO)} to the batch`);
   const t1 = await daily.academyTopic({ kind: "pg" });
   is(!!t1 && keys.includes(t1.key), true, "and a poster comes back");
