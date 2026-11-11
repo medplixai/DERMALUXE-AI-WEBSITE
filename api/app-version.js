@@ -4,13 +4,13 @@
 // Public on purpose: it carries a version number and a download link, nothing
 // else, and the app has to reach it before anyone has logged in.
 const LATEST = {
-  version: "1.69.0",
-  versionCode: 79,
+  version: "1.70.0",
+  versionCode: 80,
   // Below this, the app is too old to trust — it nags until they update.
   minVersionCode: 6,
   url: "https://www.dermaluxe.ai/assets/app/DermaLuxe-Staff.apk",
   page: "https://www.dermaluxe.ai/staff-app.html",
-  notes: "Academy: 'Anni' chip, heading lo Batch #2 · date, seat boxes lo Booked / Waiting for booking, kotha Ettaledu + Not interested filters. Appointments: 'Pending for confirmation' list mundu date mundu. Today's post: prati post ki 👁 Preview, kotha post pettaka mundu kuda Preview. 1.68 lo vachinavi (Instagram lead card lo 📍 ooru, white study material) anni idi lo unnayi.",
+  notes: "Leads: kotha ✅ Dr tho ayina appts tile (tap = list), Not answering list paata date paina, period picker lo counts, cards madhya border. Appointments: ✅ Vachinavi box, confirm call pending gantalu/rojulu lo. Academy: batch vaari students, Batch #2 seats aa batch vi matrame, offer end ayite cheptundi. Patients: date picker + Ee roju / Ninna / Ee vaaram. Students: reception ki Add button. Files: 🔗 URL copy. Attendance: Visits target bar. 1.69 lo vachinavi anni idi lo unnayi.",
 };
 
 module.exports = async (req, res) => {
