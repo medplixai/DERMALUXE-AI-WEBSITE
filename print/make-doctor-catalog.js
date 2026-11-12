@@ -38,7 +38,7 @@ const te = (s) => `<span class="te" lang="te">${s}</span>`;
 
 // ---------------------------------------------------------------- pieces
 const top = (section, sectionTe) => `<header class="top"><div class="mark"><img src="${logo}" alt=""><b>DermaLuxe <small>by</small> Medicare</b></div><div class="sec">${section}${sectionTe ? ` · ${te(sectionTe)}` : ""}</div></header>`;
-const foot = (n) => `<footer class="foot"><span>For registered medical practitioners · ${te("రిజిస్టర్డ్ వైద్యుల కోసం")}</span><span>DermaLuxe by Medicare, Eluru · ${n} / 8</span></footer>`;
+const foot = (n) => `<footer class="foot"><span>For registered medical practitioners · ${te("రిజిస్టర్డ్ వైద్యుల కోసం")}</span><span>DermaLuxe by Medicare, Eluru · ${n} / 10</span></footer>`;
 const h1 = (en, tel) => `<h1>${en}</h1><p class="h1te">${te(tel)}</p>`;
 const photo = (f, en, tel, cls) => `<figure class="ph ${cls || ""}"><img src="${img(f)}" alt=""><figcaption>${en}<br>${te(tel)}</figcaption></figure>`;
 const ai = `<i class="ai" title="AI illustration">✦</i>`;
@@ -224,6 +224,63 @@ const P6 = `<section class="pg">
 </section>`;
 
 // ---------------------------------------------------------------- 7 · facility
+// ---------------------------------------------------------------- 7 · hair transplant
+// Owner, 12 Nov: "ht ki website lo unna image add chesi matter add cheyyi".
+// The words are the website's own (hair-transplant-eluru.html and the offer
+// page), in English and Telugu. The picture is the one the website's hair
+// transplant module and offer page show: a stock before-and-after photograph,
+// put back on the website by the owner's decision of 27 Oct after being told
+// that NMC 8.1(v) says such a photograph shall not be used to promote. It
+// carries the website's own caption here too. The package box prints only
+// while the package runs (to 6 Dec 2026) — re-run this script after that and
+// the box is gone.
+const HT_PACKAGE = Date.now() < Date.parse("2026-12-07T00:00:00+05:30");
+const HT_TECH = [
+  ["FUE", "Follicular Unit Extraction", "ఫోలిక్యులర్ యూనిట్ ఎక్స్‌ట్రాక్షన్", "Follicles taken one by one from the back of the scalp — no linear scar.", "తల వెనుక భాగం నుండి మూలాలు ఒక్కొక్కటిగా తీస్తారు — గీత మచ్చ ఉండదు."],
+  ["DHI", "Direct Hair Implantation", "డైరెక్ట్ హెయిర్ ఇంప్లాంటేషన్", "Implanter pen for denser packing and a precise hairline.", "ఇంప్లాంటర్ పెన్‌తో దట్టంగా, ఖచ్చితమైన హెయిర్‌లైన్."],
+  ["Bio-FUE", "With PRP / GFC", "PRP / GFC తో", "Growth factors during the procedure to support healing.", "ప్రొసీజర్ సమయంలో గ్రోత్ ఫ్యాక్టర్లు — త్వరగా మానడానికి."],
+];
+const HT_TIME = [
+  ["Day 1", "6–8 hours, under local anaesthesia; home the same day", "లోకల్ అనస్థీషియాతో 6–8 గంటలు; అదే రోజు ఇంటికి"],
+  ["2–3 days", "Back to routine; mild soreness and swelling are normal", "మామూలు పనులకు; తేలికపాటి నొప్పి, వాపు సాధారణం"],
+  ["3–4 months", "New growth starts", "కొత్త జుట్టు రావడం మొదలవుతుంది"],
+  ["9–12 months", "Full result", "పూర్తి ఫలితం"],
+];
+const PHT = `<section class="pg">
+  ${top("Hair transplant", "హెయిర్ ట్రాన్స్‌ప్లాంట్")}
+  ${h1("Hair transplant — FUE &amp; DHI", "హెయిర్ ట్రాన్స్‌ప్లాంట్ — FUE &amp; DHI")}
+  <div class="ht">
+    <figure class="ba"><img src="${img("ht-before-after.jpg")}" alt=""><figcaption>Stock photograph, not a patient of this clinic. Results differ from person to person.<br>${te("ఇది స్టాక్ ఫోటో — మా క్లినిక్ పేషెంట్ కాదు. ఫలితాలు ఒక్కొక్కరికి ఒక్కోలా ఉంటాయి.")}</figcaption></figure>
+    <div class="ht-txt">
+      <p class="lead">Your patient's own follicles are moved from the donor area at the back of the scalp, under local anaesthesia, with no linear scar. The hairline is designed to follow the patient's own growth pattern.</p>
+      <p class="leadte">${te("పేషెంట్ సొంత వెంట్రుకల మూలాలను తల వెనుక డోనర్ భాగం నుండి, లోకల్ అనస్థీషియాతో, గీత మచ్చ లేకుండా మారుస్తారు. హెయిర్‌లైన్ పేషెంట్ సహజ జుట్టు పెరిగే తీరును అనుసరించి డిజైన్ చేస్తారు.")}</p>
+      <ul class="gets ht-pts">
+        <li>Surgeon: Dr. Jaishree, MDS (OMFS) — 6+ years of surgical experience, with our dermatologists<br>${te("సర్జన్: డా. జైశ్రీ, MDS (OMFS) — 6+ సంవత్సరాల సర్జికల్ అనుభవం, మా డెర్మటాలజిస్టులతో కలిసి")}</li>
+        <li>For men and women with pattern baldness, a receding hairline or patchy loss<br>${te("బట్టతల, వెనక్కి వెళ్తున్న హెయిర్‌లైన్, మచ్చలుగా జుట్టు ఊడటం ఉన్న పురుషులు, స్త్రీలకు")}</li>
+        <li>The surgeon examines the donor area and decides the technique and graft count<br>${te("సర్జన్ డోనర్ భాగాన్ని పరీక్షించి, పద్ధతి &amp; గ్రాఫ్ట్‌ల సంఖ్య నిర్ణయిస్తారు")}</li>
+        <li>Transplanted follicles are permanent; the remaining natural hair can still thin and needs care<br>${te("నాటిన మూలాలు శాశ్వతం; మిగిలిన సహజ జుట్టు సన్నబడవచ్చు — దానికి సంరక్షణ అవసరం")}</li>
+        <li>Beard, moustache and eyebrow transplant also done<br>${te("గడ్డం, మీసం, కనుబొమ్మల ట్రాన్స్‌ప్లాంట్ కూడా చేస్తారు")}</li>
+      </ul>
+    </div>
+  </div>
+  <div class="tech3">${HT_TECH.map(([a, b, bt, e, t]) => `<article><b>${a}</b><h3>${b}</h3><p class="t3te">${te(bt)}</p><p>${e}</p>${te(t)}</article>`).join("")}</div>
+  <ol class="tl">${HT_TIME.map(([w, e, t]) => `<li><b>${w}</b><span>${e}</span>${te(t)}</li>`).join("")}</ol>
+  ${HT_PACKAGE ? `<div class="pkg"><div class="pkg-l"><span>Grand opening package · 6 Nov – 6 Dec 2026</span><b>₹59,999</b><i>all-inclusive</i></div>
+    <div class="pkg-r"><p><b>Up to 3,000 grafts</b> — FUE surgery and medical expenses together. Grafts beyond 3,000 are ₹20 each, told before booking. Hair transplant consultation is free in these dates.</p>
+    ${te("3,000 గ్రాఫ్ట్‌ల వరకు — సర్జరీ, మెడికల్ ఖర్చులు అన్నీ కలిపి. 3,000 కు మించి ప్రతి గ్రాఫ్ట్ ₹20, బుకింగ్‌కు ముందే చెబుతారు. ఈ తేదీల్లో హెయిర్ ట్రాన్స్‌ప్లాంట్ కన్సల్టేషన్ ఉచితం.")}</div></div>` : ""}
+  ${foot(7)}
+</section>`;
+
+// ---------------------------------------------------------------- 10 · back cover
+const PBACK = `<section class="pg bcover">
+  <div class="bc-in"><img src="${logo}" alt=""><h2>DermaLuxe <small>by</small> Medicare</h2><p class="bc-tag">Premium Skin &amp; Hair Clinic · Eluru</p>
+  <p class="bc-te">${te("ప్రీమియం స్కిన్ &amp; హెయిర్ క్లినిక్ · ఏలూరు")}</p>
+  <div class="bc-qr">__QR2__</div><p class="bc-scan">Scan for directions · ${te("దారి కోసం స్కాన్ చేయండి")}</p>
+  <p class="bc-addr">Rama Mahal, R.R. Peta, Kasturi Vari Street, Opposite Happy Mobiles, Eluru – 534002</p>
+  <p class="bc-ph">+91 ${B.wa} &nbsp;·&nbsp; www.dermaluxe.ai</p>
+  <p class="bc-h">Mon–Sat, 9 AM – 9 PM · ${te("సోమ–శని, ఉదయం 9 – రాత్రి 9")}</p></div>
+</section>`;
+
 // The clinic's own machines, photographed in the clinic by the owner on
 // 12 Nov and cut out of their backgrounds with Apple Vision on this Mac
 // (print/cutout.swift) — a mask, not a redrawing, so each machine is exactly
@@ -247,7 +304,7 @@ const P7 = `<section class="pg">
   <p class="lead narrow">Each machine was photographed where it stands in the clinic in Eluru; only the background has been removed.<br>${te("ప్రతి మెషీన్ ఏలూరు క్లినిక్‌లో ఉన్నచోటే ఫోటో తీసింది; బ్యాక్‌గ్రౌండ్ మాత్రమే తీసేశాం.")}</p>
   <div class="machines">${MACH.map(([f, n, nte, w, wte]) => `<figure class="mc"><div class="stage"><img src="${pngImg(f)}" alt=""></div>
     <figcaption><h3>${n}</h3><p class="mte">${te(nte)}</p><p>${w}</p>${te(wte)}</figcaption></figure>`).join("")}</div>
-  ${foot(7)}
+  ${foot(8)}
 </section>`;
 
 // ---------------------------------------------------------------- 8 · how to refer
@@ -272,8 +329,8 @@ const P8 = `<section class="pg back">
       <dl><dt>Call &amp; WhatsApp</dt><dd>+91 ${B.wa}</dd><dt>Also</dt><dd>${B.call}</dd><dt>Hours</dt><dd>Mon–Sat, 9 AM – 9 PM · Sunday closed · ${te("ఆదివారం సెలవు")}</dd><dt>Web</dt><dd>www.dermaluxe.ai · ${B.email}</dd></dl>
     </div>
   </div>
-  <p class="legal">Treating doctors: ${Object.values(D).map((d) => `${d.name}, ${d.q || "MD (DVL)"}, Reg. No. ${d.reg}`).join(" · ")}. Hair Transplant Surgeon: Dr. Jaishree, MDS (OMFS). ${ai} marks AI-generated pictures, illustrations and icons — the condition pictures are the ones on the website, not patients of the clinic; every other photograph is of the clinic, its machines and its doctors. DermaLuxeAI Private Limited · Part of Medicare Skin &amp; Hair Clinics.<br>${te(docs.regDisclosure("te") + ". హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్: డా. జైశ్రీ, MDS (OMFS). " + "✦ గుర్తు ఉన్నవి AI తో తయారు చేసిన ఫోటోలు, బొమ్మలు, ఐకాన్లు — వెబ్‌సైట్‌లో ఉన్నవే, క్లినిక్ పేషెంట్లు కాదు; మిగతా ఫోటోలు అన్నీ క్లినిక్, మెషీన్లు, మా డాక్టర్లవి.")}</p>
-  ${foot(8)}
+  <p class="legal">Treating doctors: ${Object.values(D).map((d) => `${d.name}, ${d.q || "MD (DVL)"}, Reg. No. ${d.reg}`).join(" · ")}. Hair Transplant Surgeon: Dr. Jaishree, MDS (OMFS). ${ai} marks AI-generated pictures, illustrations and icons — the condition pictures are the ones on the website, not patients of the clinic. The hair transplant before-and-after is a stock photograph from the website, not a patient of the clinic. Every other photograph is of the clinic, its machines and its doctors. DermaLuxeAI Private Limited · Part of Medicare Skin &amp; Hair Clinics.<br>${te(docs.regDisclosure("te") + ". హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్: డా. జైశ్రీ, MDS (OMFS). " + "✦ గుర్తు ఉన్నవి AI తో తయారు చేసిన ఫోటోలు, బొమ్మలు, ఐకాన్లు — వెబ్‌సైట్‌లో ఉన్నవే, క్లినిక్ పేషెంట్లు కాదు. హెయిర్ ట్రాన్స్‌ప్లాంట్ బిఫోర్-ఆఫ్టర్ ఫోటో వెబ్‌సైట్‌లోని స్టాక్ ఫోటో, మా పేషెంట్ కాదు. మిగతా ఫోటోలు అన్నీ క్లినిక్, మెషీన్లు, మా డాక్టర్లవి.")}</p>
+  ${foot(9)}
 </section>`;
 
 // ---------------------------------------------------------------- styles
@@ -384,6 +441,42 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .mosaic figcaption { position:absolute; left:0; right:0; bottom:0; padding: 3mm 2mm 1.2mm; font-size: 7.4pt; color:#fff; font-weight: 600; background: linear-gradient(transparent, rgba(40,15,25,.75)); }
 .mosaic figcaption .te { color:#f6dfe3; font-size: 7pt; font-weight: 500; }
 
+/* hair transplant */
+.ht { display:grid; grid-template-columns: 64mm 1fr; gap: 6mm; margin-top: 4mm; align-items:start; }
+.ba { margin:0; } .ba img { width:100%; display:block; border-radius: 2.4mm; }
+.ba figcaption { margin-top: 1.6mm; font-size: 7pt; color: var(--muted); line-height: 1.35; } .ba figcaption .te { font-size: 6.9pt; color: var(--muted); }
+.ht-txt .lead { margin-top: 0; font-size: 9.6pt; }
+.ht-txt .leadte .te { font-size: 9pt; }
+.ht-pts { margin-top: 3.4mm; gap: 2mm; } .ht-pts li { font-size: 8.8pt; font-weight: 500; } .ht-pts .te { font-size: 8.2pt; }
+.tech3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; margin-top: 4mm; }
+.tech3 article { background:#fff; border: 1px solid var(--rule); border-top: 1.2mm solid var(--gold); border-radius: 2mm; padding: 3mm 3.4mm; }
+.tech3 b { font-family: "Cormorant Garamond", serif; font-size: 17pt; color: var(--plum); line-height: 1; }
+.tech3 h3 { font-size: 8.6pt; color: var(--gold); margin-top: .6mm; } .tech3 .t3te { margin: 0; } .tech3 .t3te .te { font-size: 7.8pt; font-weight: 600; }
+.tech3 p { margin: 1.2mm 0 .4mm; font-size: 8.4pt; } .tech3 article > .te { font-size: 7.8pt; display:block; }
+.tl { list-style:none; margin: 4mm 0 0; padding: 0; display:grid; grid-template-columns: repeat(4, 1fr); gap: 2mm; position:relative; }
+.tl::before { content:""; position:absolute; left: 2mm; right: 2mm; top: 2.6mm; border-top: 1.2px dashed var(--gold); }
+.tl li { position:relative; padding-top: 6.4mm; font-size: 8.2pt; }
+.tl li::before { content:""; position:absolute; left: 0; top: 1.2mm; width: 3mm; height: 3mm; border-radius: 50%; background: var(--plum); border: 1px solid var(--gold); }
+.tl b { display:block; font-size: 10pt; color: var(--plum); } .tl span { display:block; margin: .6mm 0 .4mm; } .tl .te { font-size: 7.6pt; display:block; }
+.pkg { display:grid; grid-template-columns: 52mm 1fr; gap: 5mm; margin: auto 0 4mm; background: var(--plum); color:#fff; border-radius: 3mm; padding: 4.4mm 5mm; align-items:center; }
+.pkg-l span { display:block; font-size: 7.6pt; letter-spacing: .08em; text-transform: uppercase; color: var(--gold2); font-weight: 600; }
+.pkg-l b { display:block; font-family: "Cormorant Garamond", serif; font-size: 30pt; line-height: 1; margin-top: 1mm; }
+.pkg-l i { font-style: normal; font-size: 8.4pt; color: #f3d7dc; }
+.pkg-r p { margin: 0 0 1.2mm; font-size: 8.8pt; line-height: 1.4; } .pkg-r .te { color: #efd2d8; font-size: 8.2pt; }
+
+/* back cover */
+.bcover { background: var(--plum); color:#fff; justify-content:center; align-items:center; text-align:center; padding: 0; }
+.bc-in { display:flex; flex-direction:column; align-items:center; }
+.bc-in > img { height: 22mm; background:#1a0f07; border-radius: 3mm; padding: 2mm 4mm; }
+.bc-in h2 { color:#fff; font-size: 30pt; margin-top: 7mm; } .bc-in h2 small { font-family: Jost, sans-serif; font-size: 13pt; color: var(--gold2); font-weight: 500; }
+.bc-tag { margin: 2mm 0 0; font-size: 9pt; letter-spacing: .18em; text-transform: uppercase; color: var(--gold2); font-weight: 600; }
+.bc-te { margin: 1.4mm 0 0; } .bc-te .te { color: #f3d7dc; font-size: 10pt; }
+.bc-qr { margin-top: 12mm; background:#fff; padding: 3mm; border-radius: 2.4mm; } .bc-qr svg { width: 34mm; height: 34mm; display:block; }
+.bc-scan { margin: 2.4mm 0 0; font-size: 8.4pt; color: #f4e6e9; } .bc-scan .te { color: #f3d7dc; }
+.bc-addr { margin: 10mm 0 0; font-size: 9pt; color: #f4e6e9; max-width: 140mm; }
+.bc-ph { margin: 2mm 0 0; font-size: 12pt; color: #fbeec8; letter-spacing: .02em; }
+.bc-h { margin: 1.4mm 0 0; font-size: 8.6pt; color: #f4e6e9; } .bc-h .te { color: #f3d7dc; }
+
 /* procedures */
 .p5head { display:grid; grid-template-columns: 1fr 58mm; gap: 6mm; align-items:end; }
 .p5head .lead { font-size: 9.4pt; margin-top: 3.4mm; }
@@ -466,14 +559,14 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .legal { margin: 4mm 0 4mm; font-size: 6.9pt; line-height: 1.45; color: var(--muted); }
 `;
 
-const PAGES = [P1, P2, P3, P4, P5, P6, P7, P8];
+const PAGES = [P1, P2, P3, P4, P5, P6, PHT, P7, P8, PBACK];
 const html0 = `<!doctype html><html><head><meta charset="utf-8">
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@600;700&family=Jost:wght@400;500;600;700&family=Noto+Sans+Telugu:wght@400;500;600&family=Noto+Serif+Telugu:wght@600&display=block" rel="stylesheet">
 <style>${CSS}</style></head><body>${PAGES.join("")}</body></html>`;
 
 (async () => {
   const qrSvg = (u) => QR.toString(u, { type: "svg", errorCorrectionLevel: "M", margin: 0, color: { dark: "#4a2232", light: "#ffffff" } });
-  const html = html0.replace("__QR__", await qrSvg(MAPS)).replace("__WA__", await qrSvg(WA));
+  const html = html0.replace("__QR__", await qrSvg(MAPS)).replace("__WA__", await qrSvg(WA)).replace("__QR2__", await qrSvg(MAPS));
   const out = path.join(__dirname, "doctor-catalog.pdf"), shots = path.join(__dirname, "catalog");
   const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: "new" });
   const pg = await browser.newPage();
@@ -487,7 +580,7 @@ const html0 = `<!doctype html><html><head><meta charset="utf-8">
     document.querySelectorAll(".pg").forEach((p, i) => {
       const r = p.getBoundingClientRect();
       if (p.scrollHeight > p.clientHeight + 1) out.push(`page ${i + 1} runs ${p.scrollHeight - p.clientHeight}px long`);
-      p.querySelectorAll("*").forEach((el) => { const b = el.getBoundingClientRect(); if (b.width && (b.right > r.right + 1 || b.bottom > r.bottom + 1) && !el.closest(".cover")) out.push(`page ${i + 1}: <${el.tagName.toLowerCase()} class="${el.className}"> past the edge`); });
+      p.querySelectorAll("*").forEach((el) => { const b = el.getBoundingClientRect(); if (b.width && (b.right > r.right + 1 || b.bottom > r.bottom + 1) && !el.closest(".cover") && !el.closest(".bcover")) out.push(`page ${i + 1}: <${el.tagName.toLowerCase()} class="${el.className}"> past the edge`); });
       const f = p.querySelector(".foot"); if (f && f.getBoundingClientRect().bottom > r.bottom + 1) out.push(`page ${i + 1}: footer off the sheet`);
     });
     const fams = ["Noto Sans Telugu", "Noto Serif Telugu", "Cormorant Garamond", "Jost"];
