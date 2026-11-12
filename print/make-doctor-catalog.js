@@ -224,22 +224,29 @@ const P6 = `<section class="pg">
 </section>`;
 
 // ---------------------------------------------------------------- 7 · facility
+// The clinic's own machines, photographed in the clinic by the owner on
+// 12 Nov and cut out of their backgrounds with Apple Vision on this Mac
+// (print/cutout.swift) — a mask, not a redrawing, so each machine is exactly
+// as it stands in the room. Where Vision kept a piece of wall or floor
+// touching a machine (the hair-regrowth head, under the diode laser) it was
+// erased by hand on the mask. Names: from the machine's own label where it
+// has one (Q-Beam, Laser Hair Regrowth); the rest by type, for the owner to
+// confirm.
+const MACH = [
+  ["mach-hydrafacial.png", "HydraFacial", "హైడ్రాఫేషియల్", "Cleansing, exfoliation, hydration", "క్లెన్సింగ్, ఎక్స్‌ఫోలియేషన్, హైడ్రేషన్"],
+  ["mach-diode.png", "Diode laser", "డయోడ్ లేజర్", "Laser hair reduction", "లేజర్‌తో రోమాల తగ్గింపు"],
+  ["mach-qbeam.png", "Q-Beam laser", "Q-Beam లేజర్", "Pigmentation and tattoo removal", "పిగ్మెంటేషన్, టాటూ తొలగింపు"],
+  ["mach-co2.png", "Fractional CO₂ laser", "ఫ్రాక్షనల్ CO₂ లేజర్", "Acne scars and skin resurfacing", "మొటిమల మచ్చలు, చర్మ రీసర్ఫేసింగ్"],
+  ["mach-hifu.png", "HIFU", "హై-ఇంటెన్సిటీ ఫోకస్డ్ అల్ట్రాసౌండ్", "Skin tightening without incision", "కోత లేకుండా చర్మం బిగుతు"],
+  ["mach-lllt.png", "Laser hair regrowth", "లేజర్ హెయిర్ రీగ్రోత్", "Low-level laser therapy for hair", "జుట్టు కోసం లో-లెవల్ లేజర్ థెరపీ"],
+];
+const pngImg = (f) => "data:image/png;base64," + fs.readFileSync(path.join(__dirname, "catalog", "img", f)).toString("base64");
 const P7 = `<section class="pg">
   ${top("Inside the clinic", "క్లినిక్ లోపల")}
-  ${h1("Machines &amp; rooms", "మెషీన్లు &amp; గదులు")}
-  <p class="lead narrow">Every photograph on this page was taken at the clinic in Eluru, on the ground floor of Rama Mahal, R.R. Peta.<br>${te("ఈ పేజీలోని ప్రతి ఫోటో ఏలూరు క్లినిక్‌లోనే తీసింది — రామ మహల్, ఆర్.ఆర్. పేట గ్రౌండ్ ఫ్లోర్.")}</p>
-  <div class="mach">
-    ${photo("m_lasers.jpg", "Laser machines", "లేజర్ మెషీన్లు")}
-    ${photo("m_lllt.jpg", "Laser hair-regrowth machine", "లేజర్ హెయిర్ రీగ్రోత్ మెషీన్")}
-    ${photo("m_analyzer.jpg", "Skin analysis machine", "స్కిన్ అనాలిసిస్ మెషీన్")}
-  </div>
-  <div class="tech"><b>Technology at the clinic · ${te("క్లినిక్‌లోని టెక్నాలజీ")}</b>
-    <span>Pico laser</span><span>Fractional CO₂ laser</span><span>Diode laser</span><span>HydraFacial</span><span>MNRF</span><span>HIFU</span><span>Laser hair regrowth</span><span>Skin analysis</span></div>
-  <div class="rooms">
-    ${photo("c_proc.jpg", "Procedure room", "ప్రొసీజర్ రూమ్")}
-    ${photo("c_beds.jpg", "Treatment room", "ట్రీట్‌మెంట్ రూమ్")}
-    ${photo("c_wait.jpg", "Waiting area", "వెయిటింగ్ ఏరియా")}
-  </div>
+  ${h1("Our machines", "మా మెషీన్లు")}
+  <p class="lead narrow">Each machine was photographed where it stands in the clinic in Eluru; only the background has been removed.<br>${te("ప్రతి మెషీన్ ఏలూరు క్లినిక్‌లో ఉన్నచోటే ఫోటో తీసింది; బ్యాక్‌గ్రౌండ్ మాత్రమే తీసేశాం.")}</p>
+  <div class="machines">${MACH.map(([f, n, nte, w, wte]) => `<figure class="mc"><div class="stage"><img src="${pngImg(f)}" alt=""></div>
+    <figcaption><h3>${n}</h3><p class="mte">${te(nte)}</p><p>${w}</p>${te(wte)}</figcaption></figure>`).join("")}</div>
   ${foot(7)}
 </section>`;
 
@@ -414,6 +421,15 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 /* facility */
 .lead.narrow { font-size: 9.6pt; margin-top: 4mm; }
 .lead.narrow .te { font-size: 9pt; }
+.machines { display:grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: 1fr 1fr; gap: 4mm; flex: 1 1 auto; min-height: 0; margin: 5mm 0 5mm; }
+.mc { margin:0; display:flex; flex-direction:column; background:#fff; border: 1px solid var(--rule); border-radius: 3mm; overflow:hidden; min-height: 0; }
+.mc .stage { flex: 1 1 auto; min-height: 0; display:flex; align-items:flex-end; justify-content:center; padding: 4mm 3mm 3mm; background: radial-gradient(ellipse 70% 14% at 50% 94%, rgba(74,34,50,.16), transparent 70%), radial-gradient(circle at 50% 38%, #fff 0%, #f8ecee 70%, #f1dfe3 100%); }
+.mc .stage img { max-width: 100%; max-height: 100%; object-fit: contain; filter: drop-shadow(0 1.4mm 1.6mm rgba(60,25,40,.22)); }
+.mc figcaption { padding: 2.6mm 3.4mm 3mm; border-top: 1px solid var(--rule); height: 25mm; box-sizing: border-box; flex: 0 0 auto; }
+.mc h3 { font-size: 10.4pt; }
+.mc .mte { margin: .2mm 0 0; } .mc .mte .te { font-weight: 600; font-size: 8.6pt; }
+.mc figcaption > p:not(.mte) { margin: 1mm 0 .2mm; font-size: 8.4pt; color: var(--ink); }
+.mc figcaption > .te { font-size: 7.9pt; display:block; }
 .mach { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; height: 86mm; margin-top: 5mm; }
 .tech { display:flex; flex-wrap:wrap; gap: 1.6mm 2mm; align-items:center; margin: 4.4mm 0 0; font-size: 8.4pt; }
 .tech b { width: 100%; color: var(--plum); font-size: 9.6pt; margin-bottom: .6mm; }
