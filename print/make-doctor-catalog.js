@@ -39,7 +39,19 @@ const te = (s) => `<span class="te" lang="te">${s}</span>`;
 // ---------------------------------------------------------------- pieces
 const top = (section, sectionTe) => `<header class="top"><div class="mark"><img src="${logo}" alt=""><b>DermaLuxe <small>by</small> Medicare</b></div><div class="sec">${section}${sectionTe ? ` · ${te(sectionTe)}` : ""}</div></header>`;
 const foot = (n) => `<footer class="foot"><span>For registered medical practitioners · ${te("రిజిస్టర్డ్ వైద్యుల కోసం")}</span><span>DermaLuxe by Medicare, Eluru · ${n} / 10</span></footer>`;
-const h1 = (en, tel) => `<h1>${en}</h1><p class="h1te">${te(tel)}</p>`;
+// Chapter numbers over each title — 01 to 08, the same order as the
+// "Inside" list on the cover.
+const h1 = (en, tel, n) => `${n ? `<p class="chap">${String(n).padStart(2, "0")}<i></i></p>` : ""}<h1>${en}</h1><p class="h1te">${te(tel)}</p>`;
+const svg = (d, cls) => `<svg class="ico ${cls || ""}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+const I = {
+  phone: '<path d="M5 3h4l2 5-2.5 1.5a11 11 0 0 0 6 6L16 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 5a2 2 0 0 1 2-2z"/>',
+  clock: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  doc: '<path d="M7 3h7l4 4v14H7z"/><path d="M14 3v4h4M10 12h5M10 16h5"/>',
+  video: '<rect x="3" y="6" width="13" height="12" rx="2"/><path d="M16 10l5-3v10l-5-3"/>',
+  rupee: '<path d="M7 4h11M7 9h11M9 4c4 0 6 2 6 5s-2 5-6 5H8l7 7"/>',
+  tick: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+  blade: '<path d="M4 20l9-9M13 11c2-4 5-6 7-7-1 2-3 5-7 7z"/>',
+};
 const photo = (f, en, tel, cls) => `<figure class="ph ${cls || ""}"><img src="${img(f)}" alt=""><figcaption>${en}<br>${te(tel)}</figcaption></figure>`;
 const ai = `<i class="ai" title="AI illustration">✦</i>`;
 
@@ -50,11 +62,12 @@ const P1 = `<section class="pg cover">
        the words on a panel of their own below it. -->
   <div class="cv-photo"><img class="cv-img" src="${img("building.jpg")}" alt=""><div class="cv-shade"></div>
   <div class="cv-top"><img src="${logo}" alt=""><div><b>DermaLuxe <small>by</small> Medicare</b><span>Premium Skin &amp; Hair Clinic · Eluru</span></div></div></div>
-  <div class="cv-body">
+  <div class="cv-body"><div class="cv-main">
     <p class="eyebrow">For referring doctors · ${te("రిఫర్ చేసే డాక్టర్ల కోసం")}</p>
     <h1 class="cv-title">A Referral Guide<br>for Doctors</h1>
     <p class="cv-te">${te("డాక్టర్ల కోసం రిఫరల్ గైడ్")}</p>
-    <p class="cv-sub">Skin · Hair · Nails · Procedural &amp; Aesthetic Dermatology<br>${te("చర్మం · జుట్టు · గోళ్ళు · ప్రొసీజర్లు &amp; ఈస్థటిక్ డెర్మటాలజీ")}</p>
+    <p class="cv-sub">Skin · Hair · Nails · Procedural &amp; Aesthetic Dermatology<br>${te("చర్మం · జుట్టు · గోళ్ళు · ప్రొసీజర్లు &amp; ఈస్థటిక్ డెర్మటాలజీ")}</p></div>
+    <div class="cv-in"><p>Inside · ${te("లోపల")}</p><ol>${[["02", "Our doctors", "మా డాక్టర్లు"], ["03", "Conditions we see", "చర్మ సమస్యలు"], ["04", "Procedures", "ప్రొసీజర్లు"], ["05", "Hair &amp; transplant", "జుట్టు &amp; ట్రాన్స్‌ప్లాంట్"], ["07", "Our machines", "మా మెషీన్లు"], ["08", "How to refer", "ఎలా రిఫర్ చేయాలి"]].map(([n, e, t]) => `<li><b>${n}</b><span>${e}<br>${te(t)}</span></li>`).join("")}</ol></div>
   </div>
   <div class="cv-strip"><span>MD (DVL) dermatologists</span><span>Mon–Sat · 9 AM – 9 PM</span><span>Rama Mahal, R.R. Peta, Eluru</span></div>
 </section>`;
@@ -75,7 +88,7 @@ const GETS = [
 ];
 const P2 = `<section class="pg">
   ${top("About the clinic", "క్లినిక్ గురించి")}
-  ${h1("Dermatology care for your patients, close to home", "మీ పేషెంట్లకు దగ్గర్లోనే చర్మ వైద్యం")}
+  ${h1("Dermatology care for your patients, close to home", "మీ పేషెంట్లకు దగ్గర్లోనే చర్మ వైద్యం", 1)}
   <div class="two">
     <div>
       <p class="lead">DermaLuxe by Medicare opened in Eluru on 6&nbsp;November&nbsp;2026. It is part of Medicare Skin &amp; Hair Clinics, a group of ten centres across Andhra Pradesh. Skin disease, hair and scalp disorders, nail problems, dermatosurgery and aesthetic treatments are all seen here, by dermatologists.</p>
@@ -111,7 +124,7 @@ const TEAM = [
 ];
 const P3 = `<section class="pg">
   ${top("Who will see your patient", "మీ పేషెంట్‌ను ఎవరు చూస్తారు")}
-  ${h1("Our doctors", "మా డాక్టర్లు")}
+  ${h1("Our doctors", "మా డాక్టర్లు", 2)}
   <div class="team">${TEAM.map(([f, n, nte, q, qte, lines, reg]) => `<article class="doc">
     <img src="${img(f)}" alt="">
     <div class="who"><h3>${n}</h3><p class="nte">${te(nte)}</p><p class="q">${q}</p><p class="qte">${te(qte)}</p>${reg ? `<p class="reg">${reg}<br>${te(reg.replace("Reg. No.", "రిజి. నం."))}</p>` : ""}</div>
@@ -156,13 +169,14 @@ const CPICS = [
 ];
 const P4 = `<section class="pg">
   ${top("Medical dermatology", "మెడికల్ డెర్మటాలజీ")}
-  ${h1("Conditions we see", "మేము చూసే చర్మ సమస్యలు")}
+  ${h1("Conditions we see", "మేము చూసే చర్మ సమస్యలు", 3)}
   <div class="md">
     <ul class="cond">${COND.map(([e, t]) => `<li>${e}<br>${te(t)}</li>`).join("")}</ul>
     <div class="md-side">
       <div class="mosaic">${CPICS.map(([f, e, t]) => `<figure>${ai}<img src="${img("tx-" + f + ".jpg")}" alt=""><figcaption>${e} · ${te(t)}</figcaption></figure>`).join("")}</div>
       <div class="when"><h2>When to refer</h2><p class="wte">${te("ఎప్పుడు రిఫర్ చేయాలి")}</p>
-        <ul>${WHEN.map(([e, t]) => `<li>${e}<br>${te(t)}</li>`).join("")}</ul></div>
+        <ul>${WHEN.map(([e, t]) => `<li>${e}<br>${te(t)}</li>`).join("")}</ul>
+        <div class="when-call">${svg(I.phone)}<div><span>Call or WhatsApp · ${te("కాల్ లేదా WhatsApp చేయండి")}</span><b>+91 ${B.wa}</b></div></div></div>
     </div>
   </div>
   ${foot(4)}
@@ -192,10 +206,11 @@ const TXPIC = {
 };
 const P5 = `<section class="pg">
   ${top("Procedures &amp; aesthetics", "ప్రొసీజర్లు &amp; ఈస్థటిక్స్")}
-  ${h1("Procedures we perform", "మేము చేసే ప్రొసీజర్లు")}
+  ${h1("Procedures we perform", "మేము చేసే ప్రొసీజర్లు", 4)}
   <p class="lead p5lead">Every procedure follows a dermatologist's consultation; sessions, expected result and risks are explained before starting.<br>${te("ప్రతి ప్రొసీజర్ డెర్మటాలజిస్ట్ కన్సల్టేషన్ తర్వాతే; ఎన్ని సెషన్లు, ఎలాంటి ఫలితం, ఏ రిస్కులు — మొదలుపెట్టే ముందే వివరిస్తారు.")}</p>
   <div class="tx">${ICONS.map(([slug, label, hex]) => `<article style="--h:${hex}"><div class="pic">${ai}<img src="${img("tx-" + TXPIC[slug] + ".jpg")}" alt=""><img class="ic" src="${icon(slug)}" alt=""></div><div class="txt"><h3>${label}</h3><p>${LINE[slug][0]}</p>${te(LINE[slug][1])}</div></article>`).join("")}</div>
-  <p class="also"><b>Also:</b> Botox, dermal fillers, thread lift, PRP / GFC, mesotherapy, vitiligo surgery, mole, wart &amp; skin-tag removal.<br>${te("ఇంకా: Botox, ఫిల్లర్లు, థ్రెడ్ లిఫ్ట్, PRP / GFC, మెసోథెరపీ, బొల్లి సర్జరీ, పుట్టుమచ్చ, పులిపిర్లు &amp; స్కిన్ ట్యాగ్ తొలగింపు.")}</p>
+  <div class="dsurg"><h3>${svg(I.blade)}Dermatosurgery &amp; injectables · ${te("డెర్మటోసర్జరీ &amp; ఇంజెక్టబుల్స్")}</h3>
+    <div class="pills">${[["Mole, wart &amp; skin-tag removal", "పుట్టుమచ్చ, పులిపిర్లు &amp; స్కిన్ ట్యాగ్ తొలగింపు"], ["Vitiligo surgery (stable patches)", "బొల్లి సర్జరీ"], ["Minor nail surgery", "చిన్న గోరు సర్జరీ"], ["PRP / GFC · Mesotherapy", "మెసోథెరపీ"], ["Botox · Fillers · Thread lift", "ఫిల్లర్లు · థ్రెడ్ లిఫ్ట్"]].map(([e, t]) => `<span>${e} · ${te(t)}</span>`).join("")}</div></div>
   <p class="ainote">${ai} The pictures and icons on this page are AI-generated, the same ones the website uses; they show the condition, not a patient of the clinic. ${te("ఈ పేజీలోని ఫోటోలు, ఐకాన్లు AI తో తయారు చేసినవి — వెబ్‌సైట్‌లో ఉన్నవే; ఇవి సమస్యను చూపిస్తాయి, క్లినిక్ పేషెంట్లు కాదు.")}</p>
   ${foot(5)}
 </section>`;
@@ -210,9 +225,11 @@ const HAIR = [
 ];
 const P6 = `<section class="pg">
   ${top("Hair &amp; scalp", "జుట్టు &amp; తల చర్మం")}
-  ${h1("Hair loss, from diagnosis to transplant", "జుట్టు రాలడం — నిర్ధారణ నుండి ట్రాన్స్‌ప్లాంట్ వరకు")}
+  ${h1("Hair loss, from diagnosis to transplant", "జుట్టు రాలడం — నిర్ధారణ నుండి ట్రాన్స్‌ప్లాంట్ వరకు", 5)}
   <div class="hair">
-    <figure class="art wide">${ai}<img src="${img("art-hair-follicle.jpg")}" alt=""></figure>
+    <div class="hair-l"><figure class="art wide">${ai}<img src="${img("art-hair-follicle.jpg")}" alt=""></figure>
+    <div class="send"><h3>Sending a hair-fall patient?</h3><p class="sendte">${te("జుట్టు రాలే పేషెంట్‌ను పంపుతున్నారా?")}</p>
+      <ul>${[["Ask them to bring any thyroid, iron or vitamin D reports already done", "ఇప్పటికే చేసిన థైరాయిడ్, ఐరన్, విటమిన్ D రిపోర్టులు తీసుకురమ్మని చెప్పండి"], ["and the prescriptions they are using now", "ఇప్పుడు వాడుతున్న ప్రిస్క్రిప్షన్లు కూడా"], ["Note since when — after delivery, after an illness, or with PCOS", "ఎప్పటి నుండి అనేది రాయండి — డెలివరీ తర్వాత, అనారోగ్యం తర్వాత, PCOS తో"]].map(([e, t]) => `<li>${svg(I.tick)}<div>${e}<br>${te(t)}</div></li>`).join("")}</ul></div></div>
     <ol class="steps">${HAIR.map(([h, ht, e, t]) => `<li><h3>${h}</h3><p class="hte">${te(ht)}</p><p>${e}</p>${te(t)}</li>`).join("")}</ol>
   </div>
   <div class="row2">
@@ -248,7 +265,7 @@ const HT_TIME = [
 ];
 const PHT = `<section class="pg">
   ${top("Hair transplant", "హెయిర్ ట్రాన్స్‌ప్లాంట్")}
-  ${h1("Hair transplant — FUE &amp; DHI", "హెయిర్ ట్రాన్స్‌ప్లాంట్ — FUE &amp; DHI")}
+  ${h1("Hair transplant — FUE &amp; DHI", "హెయిర్ ట్రాన్స్‌ప్లాంట్ — FUE &amp; DHI", 6)}
   <div class="ht">
     <figure class="ba"><img src="${img("ht-before-after.jpg")}" alt=""><figcaption>Stock photograph, not a patient of this clinic. Results differ from person to person.<br>${te("ఇది స్టాక్ ఫోటో — మా క్లినిక్ పేషెంట్ కాదు. ఫలితాలు ఒక్కొక్కరికి ఒక్కోలా ఉంటాయి.")}</figcaption></figure>
     <div class="ht-txt">
@@ -273,12 +290,13 @@ const PHT = `<section class="pg">
 
 // ---------------------------------------------------------------- 10 · back cover
 const PBACK = `<section class="pg bcover">
-  <div class="bc-in"><img src="${logo}" alt=""><h2>DermaLuxe <small>by</small> Medicare</h2><p class="bc-tag">Premium Skin &amp; Hair Clinic · Eluru</p>
+  <div class="bc-photo"><img src="${img("c_sofa.jpg")}" alt=""><div class="bc-fade"></div></div>
+  <div class="bc-in"><h2>DermaLuxe <small>by</small> Medicare</h2><p class="bc-tag">Premium Skin &amp; Hair Clinic · Eluru</p>
   <p class="bc-te">${te("ప్రీమియం స్కిన్ &amp; హెయిర్ క్లినిక్ · ఏలూరు")}</p>
-  <div class="bc-qr">__QR2__</div><p class="bc-scan">Scan for directions · ${te("దారి కోసం స్కాన్ చేయండి")}</p>
-  <p class="bc-addr">Rama Mahal, R.R. Peta, Kasturi Vari Street, Opposite Happy Mobiles, Eluru – 534002</p>
-  <p class="bc-ph">+91 ${B.wa} &nbsp;·&nbsp; www.dermaluxe.ai</p>
-  <p class="bc-h">Mon–Sat, 9 AM – 9 PM · ${te("సోమ–శని, ఉదయం 9 – రాత్రి 9")}</p></div>
+  <div class="bc-qrs"><div><div class="bc-qr">__QR2__</div><p>Clinic location<br>${te("క్లినిక్ లొకేషన్")}</p></div><div><div class="bc-qr">__WA2__</div><p>WhatsApp<br>${te("WhatsApp చేయండి")}</p></div></div>
+  <p class="bc-ph">+91 ${B.wa} <small>· Call &amp; WhatsApp</small></p>
+  <p class="bc-addr">Rama Mahal, Door No. 3-12, Ground Floor, R.R. Peta, Kasturi Vari Street, Opposite Happy Mobiles, Eluru – 534002 · www.dermaluxe.ai</p>
+  <p class="bc-h">Mon–Sat, 9 AM – 9 PM · Sunday closed · ${te("సోమ–శని ఉదయం 9 – రాత్రి 9 · ఆదివారం సెలవు")}</p></div>
 </section>`;
 
 // The clinic's own machines, photographed in the clinic by the owner on
@@ -300,7 +318,7 @@ const MACH = [
 const pngImg = (f) => "data:image/png;base64," + fs.readFileSync(path.join(__dirname, "catalog", "img", f)).toString("base64");
 const P7 = `<section class="pg">
   ${top("Inside the clinic", "క్లినిక్ లోపల")}
-  ${h1("Our machines", "మా మెషీన్లు")}
+  ${h1("Our machines", "మా మెషీన్లు", 7)}
   <p class="lead narrow">Each machine was photographed where it stands in the clinic in Eluru; only the background has been removed.<br>${te("ప్రతి మెషీన్ ఏలూరు క్లినిక్‌లో ఉన్నచోటే ఫోటో తీసింది; బ్యాక్‌గ్రౌండ్ మాత్రమే తీసేశాం.")}</p>
   <div class="machines">${MACH.map(([f, n, nte, w, wte]) => `<figure class="mc"><div class="stage"><img src="${pngImg(f)}" alt=""></div>
     <figcaption><h3>${n}</h3><p class="mte">${te(nte)}</p><p>${w}</p>${te(wte)}</figcaption></figure>`).join("")}</div>
@@ -315,11 +333,13 @@ const STEPS = [
 ];
 const P8 = `<section class="pg back">
   ${top("How to refer", "ఎలా రిఫర్ చేయాలి")}
-  ${h1("Referring a patient takes a minute", "పేషెంట్‌ను రిఫర్ చేయడం ఒక్క నిమిషం పని")}
+  ${h1("Referring a patient takes a minute", "పేషెంట్‌ను రిఫర్ చేయడం ఒక్క నిమిషం పని", 8)}
   <div class="refer">
     <ol class="three">${STEPS.map(([h, e, t], i) => `<li><b>${i + 1}</b><div><h3>${h}</h3><p>${e}</p>${te(t)}</div></li>`).join("")}</ol>
     <figure class="pad"><img src="${img("refpad.jpg")}" alt=""><figcaption>The referral pad ${ai} · ${te("రిఫరల్ ప్యాడ్")}</figcaption></figure>
   </div>
+  <div class="tell"><h3>What to tell your patient · ${te("మీ పేషెంట్‌కు ఇలా చెప్పండి")}</h3>
+    <div class="chips">${[[I.rupee, "₹300 consultation with an MD (DVL) dermatologist", "₹300 కన్సల్టేషన్ — MD (DVL) డెర్మటాలజిస్ట్‌తో"], [I.clock, "Mon–Sat, 9 AM – 9 PM; we call them to fix the time", "సోమ–శని ఉదయం 9 – రాత్రి 9; టైమ్ కోసం మేమే కాల్ చేస్తాం"], [I.doc, "Bring current prescriptions and reports", "ఇప్పటి ప్రిస్క్రిప్షన్లు, రిపోర్టులు తీసుకురండి"], [I.video, "Video consultation if they cannot travel", "రాలేకపోతే వీడియో కన్సల్టేషన్"]].map(([ic, e, t]) => `<div>${svg(ic)}<span>${e}<br>${te(t)}</span></div>`).join("")}</div></div>
   <div class="contact">
     <div class="qrs"><div class="qr">__QR__<b>Clinic location</b><span>${te("క్లినిక్ లొకేషన్")}</span></div><div class="qr">__WA__<b>WhatsApp</b><span>${B.wa}</span></div></div>
     <div class="addr">
@@ -329,17 +349,17 @@ const P8 = `<section class="pg back">
       <dl><dt>Call &amp; WhatsApp</dt><dd>+91 ${B.wa}</dd><dt>Also</dt><dd>${B.call}</dd><dt>Hours</dt><dd>Mon–Sat, 9 AM – 9 PM · Sunday closed · ${te("ఆదివారం సెలవు")}</dd><dt>Web</dt><dd>www.dermaluxe.ai · ${B.email}</dd></dl>
     </div>
   </div>
-  <p class="legal">Treating doctors: ${Object.values(D).map((d) => `${d.name}, ${d.q || "MD (DVL)"}, Reg. No. ${d.reg}`).join(" · ")}. Hair Transplant Surgeon: Dr. Jaishree, MDS (OMFS). ${ai} marks AI-generated pictures, illustrations and icons — the condition pictures are the ones on the website, not patients of the clinic. The hair transplant before-and-after is a stock photograph from the website, not a patient of the clinic. Every other photograph is of the clinic, its machines and its doctors. DermaLuxeAI Private Limited · Part of Medicare Skin &amp; Hair Clinics.<br>${te(docs.regDisclosure("te") + ". హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్: డా. జైశ్రీ, MDS (OMFS). " + "✦ గుర్తు ఉన్నవి AI తో తయారు చేసిన ఫోటోలు, బొమ్మలు, ఐకాన్లు — వెబ్‌సైట్‌లో ఉన్నవే, క్లినిక్ పేషెంట్లు కాదు. హెయిర్ ట్రాన్స్‌ప్లాంట్ బిఫోర్-ఆఫ్టర్ ఫోటో వెబ్‌సైట్‌లోని స్టాక్ ఫోటో, మా పేషెంట్ కాదు. మిగతా ఫోటోలు అన్నీ క్లినిక్, మెషీన్లు, మా డాక్టర్లవి.")}</p>
+  <div class="legal"><p>Treating doctors: ${Object.values(D).map((d) => `${d.name}, ${d.q || "MD (DVL)"}, Reg. No. ${d.reg}`).join(" · ")}. Hair Transplant Surgeon: Dr. Jaishree, MDS (OMFS). ${ai} marks AI-generated pictures, illustrations and icons — the condition pictures are the ones on the website, not patients of the clinic. The hair transplant before-and-after is a stock photograph from the website, not a patient of the clinic. Every other photograph is of the clinic, its machines and its doctors. DermaLuxeAI Private Limited · Part of Medicare Skin &amp; Hair Clinics.</p><p>${te(docs.regDisclosure("te") + ". హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్: డా. జైశ్రీ, MDS (OMFS). " + "✦ గుర్తు ఉన్నవి AI తో తయారు చేసిన ఫోటోలు, బొమ్మలు, ఐకాన్లు — వెబ్‌సైట్‌లో ఉన్నవే, క్లినిక్ పేషెంట్లు కాదు. హెయిర్ ట్రాన్స్‌ప్లాంట్ బిఫోర్-ఆఫ్టర్ ఫోటో వెబ్‌సైట్‌లోని స్టాక్ ఫోటో, మా పేషెంట్ కాదు. మిగతా ఫోటోలు అన్నీ క్లినిక్, మెషీన్లు, మా డాక్టర్లవి.")}</p></div>
   ${foot(9)}
 </section>`;
 
 // ---------------------------------------------------------------- styles
 const CSS = `
 @page { size: A4; margin: 0; }
-:root { --plum:#4a2232; --mauve:#7b4a5c; --rose:#e9c9ce; --blush:#f8ecee; --cream:#fcf8f4; --gold:#b8893d; --gold2:#d8b56a; --ink:#2a1a20; --muted:#6d5560; --rule:#e3cfd3; }
+:root { --gold-ink:#8a6220; --te-ink:#5a2e40; --plum:#4a2232; --mauve:#7b4a5c; --rose:#e9c9ce; --blush:#f8ecee; --cream:#fcf8f4; --gold:#b8893d; --gold2:#d8b56a; --ink:#2a1a20; --muted:#6d5560; --rule:#e3cfd3; }
 html, body { margin:0; background:#fff; }
 body { font-variant-numeric: lining-nums; font-family: Jost, "Noto Sans Telugu", Arial, sans-serif; color: var(--ink); font-size: 9.4pt; line-height: 1.38; -webkit-print-color-adjust: exact; }
-.te { font-family: "Noto Sans Telugu", Jost, sans-serif; font-size: .93em; color: var(--mauve); line-height: 1.5; }
+.te { font-family: "Noto Sans Telugu", Jost, sans-serif; font-size: .93em; color: var(--te-ink); line-height: 1.5; }
 .pg { width:210mm; height:297mm; box-sizing:border-box; padding: 11mm 14mm 0; position:relative; overflow:hidden; page-break-after: always; display:flex; flex-direction:column; background: var(--cream); }
 .pg:last-child { page-break-after: auto; }
 .top { display:flex; justify-content:space-between; align-items:center; padding-bottom: 3mm; border-bottom: 1px solid var(--rule); }
@@ -347,7 +367,7 @@ body { font-variant-numeric: lining-nums; font-family: Jost, "Noto Sans Telugu",
 .mark img { height: 7mm; background:#1a0f07; border-radius: 1.4mm; padding: .8mm 1.6mm; }
 .mark b { font-family: "Cormorant Garamond", serif; font-size: 13pt; color: var(--plum); font-weight: 700; letter-spacing:.01em; }
 .mark b small { font-family: Jost, sans-serif; font-size: 7.5pt; color: var(--gold); font-weight: 500; letter-spacing: .08em; }
-.sec { font-size: 7.6pt; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); font-weight: 600; }
+.sec { font-size: 7.6pt; letter-spacing: .14em; text-transform: uppercase; color: var(--gold-ink); font-weight: 600; }
 .sec .te { letter-spacing: 0; text-transform:none; color: var(--gold); font-weight: 500; font-size: 8.4pt; }
 h1 { font-family: "Cormorant Garamond", serif; font-weight: 700; font-size: 27pt; line-height: 1.04; color: var(--plum); margin: 6mm 0 0; letter-spacing: -.005em; text-wrap: balance; }
 .h1te { margin: 1.4mm 0 0; font-size: 13pt; }
@@ -358,7 +378,7 @@ h3 { font-size: 10pt; margin: 0; color: var(--plum); font-weight: 600; }
 .leadte { margin: 2.4mm 0 0; }
 .leadte .te { font-size: 9.6pt; }
 .foot { margin-top:auto; display:flex; justify-content:space-between; border-top: 1px solid var(--rule); padding: 2.6mm 0 7mm; font-size: 7.2pt; color: var(--muted); }
-.foot .te { color: var(--muted); font-size: 7.4pt; }
+.foot .te { color: var(--muted); font-size: 7.6pt; }
 .ph { margin:0; position:relative; border-radius: 2.4mm; overflow:hidden; background: var(--rose); }
 .ph img { width:100%; height:100%; object-fit: cover; display:block; }
 .ph figcaption { position:absolute; left:0; right:0; bottom:0; padding: 6mm 3mm 2.2mm; color:#fff; font-size: 8.4pt; font-weight: 500; background: linear-gradient(transparent, rgba(40,15,25,.78)); line-height: 1.3; }
@@ -410,25 +430,25 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .doc .who { align-self: center; }
 .doc h3 { font-family: "Cormorant Garamond", serif; font-size: 17pt; line-height: 1.05; }
 .doc .nte { margin: .6mm 0 0; } .doc .nte .te { font-size: 9.4pt; font-weight: 600; }
-.doc .q { margin: 2mm 0 0; font-size: 8.8pt; font-weight: 600; color: var(--gold); letter-spacing: .02em; }
+.doc .q { margin: 2mm 0 0; font-size: 8.8pt; font-weight: 600; color: var(--gold-ink); letter-spacing: .02em; }
 .doc .qte { margin: .2mm 0 0; } .doc .qte .te { font-size: 8.2pt; }
 .doc ul { margin: 0; padding: 0 0 0 4mm; border-left: 1px solid var(--rule); padding-left: 8mm; font-size: 8.8pt; color: var(--ink); display:flex; flex-direction:column; gap: 2.4mm; align-self: center; }
 .doc li .te { font-size: 8.2pt; }
-.doc .reg { margin: 2mm 0 0; font-size: 7.8pt; color: var(--plum); font-weight: 600; letter-spacing: .03em; }
+.doc .reg { margin: 2mm 0 0; font-size: 8.4pt; color: var(--plum); font-weight: 600; letter-spacing: .03em; }
 .note { font-size: 8.2pt; color: var(--muted); margin: 5mm 0 4mm; line-height: 1.45; }
 .note .te { font-size: 8pt; color: var(--muted); }
 
 /* medical */
 .md { display:grid; grid-template-columns: 1fr 1fr; gap: 7mm; margin-top: 6mm; flex: 1 1 auto; }
 .cond { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
-.cond li { padding: 3.1mm 0 3.1mm 5mm; border-bottom: 1px solid var(--rule); position:relative; font-weight: 500; font-size: 9.2pt; line-height: 1.3; }
-.cond li::before { content:""; position:absolute; left: 0; top: 4.5mm; width: 2mm; height: 2mm; border-radius: 50%; border: 1.2px solid var(--gold); }
+.cond li { padding: 2.3mm 0 2.3mm 5mm; border-bottom: 1px solid var(--rule); position:relative; font-weight: 500; font-size: 9.2pt; line-height: 1.3; }
+.cond li::before { content:""; position:absolute; left: 0; top: 3.6mm; width: 2.2mm; height: 2.2mm; border-radius: 50%; background: var(--gold); }
 .cond .te { font-weight: 400; font-size: 8.4pt; }
 .md-side { display:flex; flex-direction:column; gap: 5mm; }
-.when { background: var(--plum); color:#fff; border-radius: 3mm; padding: 6mm 6mm; flex: 1 1 auto; }
+.when { background: var(--plum); color:#fff; border-radius: 3mm; padding: 4.6mm 5.4mm; flex: 1 1 auto; }
 .when h2 { color:#fff; font-size: 17pt; }
 .wte { margin: 0 0 2.4mm; } .wte .te { color: var(--gold2); font-weight: 600; }
-.when ul { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap: 3.2mm; }
+.when ul { margin:0; padding:0; list-style:none; display:flex; flex-direction:column; gap: 2.2mm; }
 .when li { font-size: 9.4pt; line-height: 1.32; padding-left: 4.4mm; position:relative; }
 .when li::before { content:"›"; position:absolute; left:0; color: var(--gold2); font-weight:700; }
 .when .te { color: #efd2d8; font-size: 8.8pt; }
@@ -436,15 +456,60 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 /* condition pictures */
 .mosaic { display:grid; grid-template-columns: 1fr 1fr; gap: 2.4mm; }
 .mosaic figure { margin:0; position:relative; border-radius: 2mm; overflow:hidden; }
-.mosaic img { width:100%; height: 25mm; object-fit: cover; display:block; }
+.mosaic img { width:100%; height: 22mm; object-fit: cover; display:block; }
 .mosaic .ai { position:absolute; top: 1mm; right: 1.4mm; color:#fff; font-size: 8pt; text-shadow: 0 0 2px rgba(0,0,0,.6); }
 .mosaic figcaption { position:absolute; left:0; right:0; bottom:0; padding: 3mm 2mm 1.2mm; font-size: 7.4pt; color:#fff; font-weight: 600; background: linear-gradient(transparent, rgba(40,15,25,.75)); }
-.mosaic figcaption .te { color:#f6dfe3; font-size: 7pt; font-weight: 500; }
+.mosaic figcaption .te { color:#f6dfe3; font-size: 7.6pt; font-weight: 500; }
+
+/* chapter numbers, icons */
+.chap { margin: 4mm 0 -4mm; display:flex; align-items:center; gap: 3mm; font-family: "Cormorant Garamond", serif; font-weight: 600; font-size: 14pt; color: var(--gold-ink); letter-spacing: .08em; }
+.chap i { display:block; width: 12mm; border-top: .4mm solid var(--gold); }
+.ico { width: 5mm; height: 5mm; flex: 0 0 auto; }
+/* cover: inside */
+.cv-body { display:grid; grid-template-columns: 1fr 56mm; gap: 6mm; align-items:end; }
+.cv-in { border-left: 1px solid rgba(216,181,106,.5); padding-left: 5mm; }
+.cv-in > p { margin: 0 0 2mm; font-size: 8pt; letter-spacing: .14em; text-transform: uppercase; color: var(--gold2); font-weight: 600; }
+.cv-in > p .te { letter-spacing: 0; text-transform: none; color: var(--gold2); }
+.cv-in ol { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 1.8mm; }
+.cv-in li { display:flex; gap: 2.6mm; align-items:baseline; font-size: 8.8pt; color: #fbeec8; line-height: 1.25; }
+.cv-in li b { font-family: "Cormorant Garamond", serif; font-size: 13pt; color: var(--gold2); min-width: 7mm; }
+.cv-in li .te { color: #ecccd2; font-size: 7.8pt; }
+/* page 4 call */
+.when { display:flex; flex-direction:column; }
+.when-call { margin-top: auto; padding-top: 3.4mm; border-top: .4mm solid rgba(216,181,106,.6); display:flex; gap: 3mm; align-items:center; color: var(--gold2); }
+.when-call .ico { width: 7mm; height: 7mm; }
+.when-call span { display:block; font-size: 8.6pt; font-weight: 600; } .when-call span .te { color: var(--gold2); }
+.when-call b { display:block; font-family: "Cormorant Garamond", serif; font-size: 22pt; color:#fff; line-height: 1; margin-top: .6mm; }
+/* page 5 dermatosurgery */
+.dsurg { margin-top: 3mm; background: var(--blush); border-radius: 2.4mm; padding: 2.8mm 3.6mm; }
+.dsurg h3 { display:flex; align-items:center; gap: 2mm; font-size: 9.6pt; color: var(--plum); } .dsurg h3 .te { font-weight: 600; }
+.pills { display:flex; flex-wrap:wrap; gap: 1.8mm; margin-top: 2.4mm; }
+.pills > span { border: 1px solid var(--gold); border-radius: 100px; padding: 1mm 3mm; background:#fff; font-size: 8pt; color: var(--plum); }
+.pills .te { font-size: 7.8pt; }
+/* page 6 checklist */
+.hair-l { display:flex; flex-direction:column; gap: 4mm; }
+.send { background: var(--blush); border: 1px solid var(--rule); border-radius: 2.4mm; padding: 3.6mm 4mm; }
+.send h3 { font-size: 10pt; } .sendte { margin: .2mm 0 2mm; } .sendte .te { font-weight: 600; font-size: 8.6pt; }
+.send ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 2mm; }
+.send li { display:flex; gap: 2mm; font-size: 8.4pt; line-height: 1.32; } .send li .ico { color: var(--gold); width: 4.4mm; height: 4.4mm; margin-top: .4mm; } .send li .te { font-size: 7.9pt; }
+/* page 9 tell */
+.tell { margin-top: 4mm; }
+.tell h3 { font-size: 10pt; color: var(--plum); } .tell h3 .te { font-weight: 600; }
+.chips { display:grid; grid-template-columns: 1fr 1fr; gap: 2.4mm 4mm; margin-top: 2.4mm; }
+.chips > div { display:flex; gap: 2.4mm; align-items:flex-start; background:#fff; border: 1px solid var(--rule); border-radius: 2mm; padding: 1.8mm 3mm; font-size: 8.4pt; line-height: 1.32; }
+.chips .ico { color: var(--plum); margin-top: .3mm; } .chips .te { font-size: 7.9pt; }
+/* back cover */
+.bc-photo { position:relative; height: 120mm; flex: 0 0 auto; overflow:hidden; }
+.bc-photo img { width:100%; height:100%; object-fit: cover; object-position: 50% 47%; display:block; }
+.bc-fade { position:absolute; inset:0; background: linear-gradient(transparent 55%, var(--plum) 100%); }
+.bcover::after { content:""; position:absolute; inset: 8mm; border: .4mm solid var(--gold2); border-radius: 2mm; pointer-events:none; }
+.bc-qrs { display:flex; gap: 10mm; margin-top: 8mm; }
+.bc-qrs p { margin: 2mm 0 0; font-size: 8.4pt; color: #f4e6e9; } .bc-qrs p .te { color: #f3d7dc; }
 
 /* hair transplant */
 .ht { display:grid; grid-template-columns: 64mm 1fr; gap: 6mm; margin-top: 4mm; align-items:start; }
 .ba { margin:0; } .ba img { width:100%; display:block; border-radius: 2.4mm; }
-.ba figcaption { margin-top: 1.6mm; font-size: 7pt; color: var(--muted); line-height: 1.35; } .ba figcaption .te { font-size: 6.9pt; color: var(--muted); }
+.ba figcaption { margin-top: 1.6mm; font-size: 7pt; color: var(--muted); line-height: 1.35; } .ba figcaption .te { font-size: 7.6pt; color: var(--muted); }
 .ht-txt .lead { margin-top: 0; font-size: 9.6pt; }
 .ht-txt .leadte .te { font-size: 9pt; }
 .ht-pts { margin-top: 3.4mm; gap: 2mm; } .ht-pts li { font-size: 8.8pt; font-weight: 500; } .ht-pts .te { font-size: 8.2pt; }
@@ -457,7 +522,7 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .tl::before { content:""; position:absolute; left: 2mm; right: 2mm; top: 2.6mm; border-top: 1.2px dashed var(--gold); }
 .tl li { position:relative; padding-top: 6.4mm; font-size: 8.2pt; }
 .tl li::before { content:""; position:absolute; left: 0; top: 1.2mm; width: 3mm; height: 3mm; border-radius: 50%; background: var(--plum); border: 1px solid var(--gold); }
-.tl b { display:block; font-size: 10pt; color: var(--plum); } .tl span { display:block; margin: .6mm 0 .4mm; } .tl .te { font-size: 7.6pt; display:block; }
+.tl b { display:block; font-size: 10pt; color: var(--plum); } .tl span { display:block; margin: .6mm 0 .4mm; } .tl .te { font-size: 7.8pt; display:block; }
 .pkg { display:grid; grid-template-columns: 52mm 1fr; gap: 5mm; margin: auto 0 4mm; background: var(--plum); color:#fff; border-radius: 3mm; padding: 4.4mm 5mm; align-items:center; }
 .pkg-l span { display:block; font-size: 7.6pt; letter-spacing: .08em; text-transform: uppercase; color: var(--gold2); font-weight: 600; }
 .pkg-l b { display:block; font-family: "Cormorant Garamond", serif; font-size: 30pt; line-height: 1; margin-top: 1mm; }
@@ -465,16 +530,16 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .pkg-r p { margin: 0 0 1.2mm; font-size: 8.8pt; line-height: 1.4; } .pkg-r .te { color: #efd2d8; font-size: 8.2pt; }
 
 /* back cover */
-.bcover { background: var(--plum); color:#fff; justify-content:center; align-items:center; text-align:center; padding: 0; }
-.bc-in { display:flex; flex-direction:column; align-items:center; }
+.bcover { background: var(--plum); color:#fff; text-align:center; padding: 0; }
+.bc-in { display:flex; flex-direction:column; align-items:center; margin-top: -10mm; position:relative; }
 .bc-in > img { height: 22mm; background:#1a0f07; border-radius: 3mm; padding: 2mm 4mm; }
 .bc-in h2 { color:#fff; font-size: 30pt; margin-top: 7mm; } .bc-in h2 small { font-family: Jost, sans-serif; font-size: 13pt; color: var(--gold2); font-weight: 500; }
 .bc-tag { margin: 2mm 0 0; font-size: 9pt; letter-spacing: .18em; text-transform: uppercase; color: var(--gold2); font-weight: 600; }
 .bc-te { margin: 1.4mm 0 0; } .bc-te .te { color: #f3d7dc; font-size: 10pt; }
-.bc-qr { margin-top: 12mm; background:#fff; padding: 3mm; border-radius: 2.4mm; } .bc-qr svg { width: 34mm; height: 34mm; display:block; }
+.bc-qr { background:#fff; padding: 2.6mm; border-radius: 2.4mm; } .bc-qr svg { width: 30mm; height: 30mm; display:block; }
 .bc-scan { margin: 2.4mm 0 0; font-size: 8.4pt; color: #f4e6e9; } .bc-scan .te { color: #f3d7dc; }
-.bc-addr { margin: 10mm 0 0; font-size: 9pt; color: #f4e6e9; max-width: 140mm; }
-.bc-ph { margin: 2mm 0 0; font-size: 12pt; color: #fbeec8; letter-spacing: .02em; }
+.bc-addr { margin: 3mm 0 0; font-size: 8.6pt; color: #f4e6e9; max-width: 140mm; }
+.bc-ph { margin: 7mm 0 0; font-size: 14pt; color: #fbeec8; letter-spacing: .02em; }
 .bc-h { margin: 1.4mm 0 0; font-size: 8.6pt; color: #f4e6e9; } .bc-h .te { color: #f3d7dc; }
 
 /* procedures */
@@ -483,28 +548,29 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .p5head .leadte .te { font-size: 8.8pt; }
 .art.small img { height: 44mm; object-fit: cover; }
 .p5lead { font-size: 9.2pt; margin-top: 3mm; } .p5lead .te { font-size: 8.6pt; }
-.tx { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 3mm; margin-top: 5mm; }
+.tx { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 2.6mm; margin-top: 4mm; }
 .tx article { flex-direction: column; padding: 0 !important; gap: 0 !important; overflow:hidden; }
-.tx .pic { position:relative; height: 22mm; align-self: stretch; }
+.tx .pic { position:relative; height: 18mm; align-self: stretch; }
 .tx .pic > img:not(.ic) { width:100%; height:100%; object-fit: cover; display:block; border-radius: 0; }
 .tx .pic .ai { position:absolute; top: 1mm; right: 1.4mm; color:#fff; font-size: 8pt; text-shadow: 0 0 2px rgba(0,0,0,.6); }
 .tx .pic .ic { position:absolute; left: 2mm; bottom: -5mm; width: 10mm !important; height: 10mm !important; border-radius: 2mm; border: 1px solid #fff; box-shadow: 0 .6mm 1.6mm rgba(0,0,0,.18); background:#fff; }
 .tx .txt { padding: 5.6mm 2.4mm 2.4mm; }
 .tx .txt p { font-size: 8.1pt !important; } .tx .txt .te { font-size: 7.6pt !important; }
-.tx article { display:flex; gap: 2.4mm; align-items:flex-start; background:#fff; border: 1px solid color-mix(in srgb, var(--h) 35%, white); border-top: 1.4mm solid var(--h); border-radius: 2mm; padding: 3.6mm 3.2mm 4mm; min-width:0; }
+.tx article { display:flex; gap: 2.4mm; align-items:flex-start; background:#fff; border: 1px solid var(--rule); border-top: 1.2mm solid var(--gold) !important; border-top: 1.4mm solid var(--h); border-radius: 2mm; padding: 3.6mm 3.2mm 4mm; min-width:0; }
 .tx img { width: 13mm; height: 13mm; border-radius: 2mm; flex: 0 0 auto; }
-.tx h3 { font-size: 10pt; color: color-mix(in srgb, var(--h) 70%, black); }
+.tx h3 { font-size: 10pt; color: var(--plum); }
 .tx p { margin: 1mm 0 .8mm; font-size: 8.6pt; line-height: 1.3; color: var(--ink); }
 .tx .te { font-size: 8pt; line-height: 1.42; display:block; }
 .also { margin: 4mm 0 0; font-size: 8.8pt; line-height: 1.45; }
 .also .te { font-size: 8.2pt; }
-.ainote { margin: 2.4mm 0 3mm; font-size: 7.4pt; color: var(--muted); }
-.ainote .te { font-size: 7.2pt; color: var(--muted); }
+.ainote { margin: 2mm 0 2mm; font-size: 7.4pt; color: var(--muted); }
+.ainote .te { font-size: 7.6pt; color: var(--muted); }
 
 /* hair */
 .hair { display:grid; grid-template-columns: 78mm 1fr; gap: 6mm; margin-top: 6mm; align-items:start; }
 .steps { margin:0; padding:0; list-style:none; counter-reset: s; display:flex; flex-direction:column; gap: 2.8mm; }
 .steps li { counter-increment: s; padding-left: 8mm; position:relative; }
+.steps li:not(:last-child)::after { content:""; position:absolute; left: 2.7mm; top: 5.4mm; bottom: -2.8mm; border-left: 1.2px dashed var(--gold); }
 .steps li::before { content: counter(s); position:absolute; left:0; top:0; width: 5.4mm; height: 5.4mm; border-radius: 50%; background: var(--plum); color:#fff; font-size: 7.6pt; font-weight:600; display:flex; align-items:center; justify-content:center; }
 .steps .hte { margin: .2mm 0 0; } .steps .hte .te { font-weight: 600; font-size: 8.4pt; }
 .steps p { margin: .6mm 0 .4mm; font-size: 8.6pt; line-height: 1.35; }
@@ -533,30 +599,31 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .grid6 .tall img { object-position: 40% 70%; }
 
 /* back */
-.refer { display:grid; grid-template-columns: 1fr 68mm; gap: 8mm; margin-top: 8mm; align-items:start; }
-.three { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 7mm; }
+.refer { display:grid; grid-template-columns: 1fr 52mm; gap: 7mm; margin-top: 5mm; align-items:start; }
+.three { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap: 3.6mm; }
 .three li { display:flex; gap: 3.6mm; }
-.three li > b { flex: 0 0 auto; width: 10mm; height: 10mm; border-radius: 50%; background: var(--gold); color:#fff; font-family: "Cormorant Garamond", serif; font-size: 16pt; display:flex; align-items:center; justify-content:center; }
-.three h3 { font-size: 13pt; }
-.three p { margin: 1.2mm 0 .8mm; font-size: 10pt; line-height: 1.45; }
-.three .te { font-size: 9.4pt; display:block; }
+.three li > b { flex: 0 0 auto; width: 10mm; height: 10mm; border-radius: 50%; background: var(--plum); border: 1px solid var(--gold); box-sizing: border-box; color:#fff; font-family: "Cormorant Garamond", serif; font-size: 16pt; display:flex; align-items:center; justify-content:center; }
+.three h3 { font-size: 11.4pt; }
+.three p { margin: .8mm 0 .6mm; font-size: 9pt; line-height: 1.4; }
+.three .te { font-size: 8.4pt; display:block; }
 .pad { margin:0; }
 .pad img { width: 100%; display:block; border-radius: 1.6mm; box-shadow: 0 1.6mm 4mm rgba(74,34,50,.18); transform: rotate(2deg); }
 .pad figcaption { margin-top: 3mm; text-align:center; font-size: 8pt; color: var(--muted); }
-.contact { display:grid; grid-template-columns: auto 1fr; gap: 8mm; margin-top: auto; padding: 6mm; background: var(--plum); color:#fff; border-radius: 3mm; align-items:center; }
+.contact { display:grid; grid-template-columns: auto 1fr; gap: 6mm; margin-top: 4mm; padding: 4.4mm 5mm; background: var(--plum); color:#fff; border-radius: 3mm; align-items:center; }
 .qrs { display:flex; gap: 5mm; }
-.qr { background:#fff; color: var(--plum); border-radius: 2mm; padding: 2.6mm; text-align:center; width: 27mm; }
-.qr svg { width: 27mm; height: 27mm; display:block; }
+.qr { background:#fff; color: var(--plum); border-radius: 2mm; padding: 2.2mm; text-align:center; width: 23mm; }
+.qr svg { width: 23mm; height: 23mm; display:block; }
 .qr b { display:block; margin-top: 1.6mm; font-size: 8pt; }
 .qr span, .qr .te { font-size: 7.4pt; color: var(--mauve); }
 .addr h2 { color:#fff; font-size: 17pt; }
-.addr p { margin: 1.4mm 0 0; font-size: 8.6pt; line-height: 1.4; color: #f4e6e9; }
+.addr p { margin: 1mm 0 0; font-size: 8.2pt; line-height: 1.35; color: #f4e6e9; }
 .addr .te { color:#efd2d8; font-size: 8pt; }
-.addr dl { display:grid; grid-template-columns: auto 1fr; gap: 1mm 3mm; margin: 3mm 0 0; font-size: 8.6pt; }
+.addr dl { display:grid; grid-template-columns: auto 1fr; gap: .6mm 3mm; margin: 2mm 0 0; font-size: 8.4pt; }
 .addr dt { color: var(--gold2); font-weight: 600; }
 .addr dd { margin:0; } .addr dd .te { color: #efd2d8; }
-.back .foot { margin-top: 0; }
-.legal { margin: 4mm 0 4mm; font-size: 6.9pt; line-height: 1.45; color: var(--muted); }
+.back .foot { margin-top: auto; }
+.legal { margin: 3mm 0 3mm; display:grid; grid-template-columns: 1fr 1fr; column-gap: 6mm; border-top: .4mm solid var(--rule); padding-top: 2mm; font-size: 6.9pt; line-height: 1.38; color: var(--muted); }
+.legal p { margin:0; } .legal .te { font-size: 7.1pt; color: var(--muted); line-height: 1.42; }
 `;
 
 const PAGES = [P1, P2, P3, P4, P5, P6, PHT, P7, P8, PBACK];
@@ -566,7 +633,7 @@ const html0 = `<!doctype html><html><head><meta charset="utf-8">
 
 (async () => {
   const qrSvg = (u) => QR.toString(u, { type: "svg", errorCorrectionLevel: "M", margin: 0, color: { dark: "#4a2232", light: "#ffffff" } });
-  const html = html0.replace("__QR__", await qrSvg(MAPS)).replace("__WA__", await qrSvg(WA)).replace("__QR2__", await qrSvg(MAPS));
+  const html = html0.replace("__QR__", await qrSvg(MAPS)).replace("__WA__", await qrSvg(WA)).replace("__QR2__", await qrSvg(MAPS)).replace("__WA2__", await qrSvg(WA));
   const out = path.join(__dirname, "doctor-catalog.pdf"), shots = path.join(__dirname, "catalog");
   const browser = await puppeteer.launch({ executablePath: "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", headless: "new" });
   const pg = await browser.newPage();
