@@ -45,9 +45,11 @@ const ai = `<i class="ai" title="AI illustration">✦</i>`;
 
 // ---------------------------------------------------------------- 1 · cover
 const P1 = `<section class="pg cover">
-  <img class="cv-img" src="${img("building.jpg")}" alt="">
-  <div class="cv-shade"></div>
-  <div class="cv-top"><img src="${logo}" alt=""><div><b>DermaLuxe <small>by</small> Medicare</b><span>Premium Skin &amp; Hair Clinic · Eluru</span></div></div>
+  <!-- The building on top with its sign in full view (owner, 12 Nov: "hospital
+       name kanipinchatledu" — the title and the shade had covered the sign),
+       the words on a panel of their own below it. -->
+  <div class="cv-photo"><img class="cv-img" src="${img("building.jpg")}" alt=""><div class="cv-shade"></div>
+  <div class="cv-top"><img src="${logo}" alt=""><div><b>DermaLuxe <small>by</small> Medicare</b><span>Premium Skin &amp; Hair Clinic · Eluru</span></div></div></div>
   <div class="cv-body">
     <p class="eyebrow">For referring doctors · ${te("రిఫర్ చేసే డాక్టర్ల కోసం")}</p>
     <h1 class="cv-title">A Referral Guide<br>for Doctors</h1>
@@ -298,22 +300,23 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 
 /* cover */
 .cover { padding:0; background: var(--plum); color:#fff; }
-.cv-img { position:absolute; inset:0; width:100%; height:100%; object-fit: cover; object-position: 50% 30%; }
-.cv-shade { position:absolute; inset:0; background: linear-gradient(180deg, rgba(40,14,24,.55) 0%, rgba(40,14,24,0) 22%, rgba(40,14,24,0) 42%, rgba(52,20,32,.86) 64%, rgba(52,20,32,.97) 100%); }
-.cv-top { position:relative; display:flex; align-items:center; gap: 3mm; padding: 12mm 14mm 0; }
+.cv-photo { position:relative; height: 196mm; flex: 0 0 auto; overflow:hidden; }
+.cv-img { position:absolute; inset:0; width:100%; height:100%; object-fit: cover; object-position: 50% 66%; }
+.cv-shade { position:absolute; inset:0; background: linear-gradient(180deg, rgba(40,14,24,.82) 0%, rgba(40,14,24,.45) 13%, rgba(40,14,24,0) 24%, rgba(40,14,24,0) 88%, rgba(74,34,50,1) 100%); }
+.cv-top { position:relative; display:flex; align-items:center; gap: 3mm; padding: 11mm 14mm 0; }
 .cv-top img { height: 13mm; background:#1a0f07; border-radius: 2mm; padding: 1.2mm 2.6mm; }
 .cv-top b { display:block; font-family: "Cormorant Garamond", serif; font-size: 19pt; font-weight:700; }
 .cv-top b small { font-family: Jost, sans-serif; font-size: 10pt; color: var(--gold2); font-weight: 500; letter-spacing: .08em; }
 .cv-top span { display:block; font-size: 7.6pt; letter-spacing: .16em; text-transform: uppercase; color: var(--gold2); font-weight: 600; margin-top: .6mm; }
-.cv-body { position:relative; margin-top:auto; padding: 0 14mm; }
+.cv-body { position:relative; padding: 4mm 14mm 0; }
 .eyebrow { font-size: 9pt; letter-spacing: .16em; text-transform: uppercase; color: var(--gold2); font-weight: 600; margin: 0; }
 .eyebrow .te { letter-spacing: 0; text-transform:none; color: var(--gold2); font-size: 9.6pt; }
-.cv-title { font-family: "Cormorant Garamond", serif; font-size: 50pt; line-height: .98; margin: 4mm 0 0; font-weight: 700; color:#fff; }
-.cv-te { margin: 3mm 0 0; }
-.cv-te .te { font-family: "Noto Serif Telugu", serif; font-size: 21pt; color: #f3d7dc; font-weight: 600; }
-.cv-sub { margin: 5mm 0 0; font-size: 11pt; line-height: 1.5; color: #f4e6e9; border-top: 1px solid rgba(216,181,106,.6); padding-top: 4mm; }
-.cv-sub .te { color: #ecccd2; font-size: 10.4pt; }
-.cv-strip { position:relative; display:flex; justify-content:space-between; gap: 4mm; margin: 9mm 14mm 11mm; padding: 3.4mm 5mm; border: 1px solid rgba(216,181,106,.7); border-radius: 100px; font-size: 8.6pt; color: #fbeec8; letter-spacing: .02em; }
+.cv-title { font-family: "Cormorant Garamond", serif; font-size: 44pt; line-height: .98; margin: 3mm 0 0; font-weight: 700; color:#fff; }
+.cv-te { margin: 2mm 0 0; }
+.cv-te .te { font-family: "Noto Serif Telugu", serif; font-size: 17pt; color: #f3d7dc; font-weight: 600; }
+.cv-sub { margin: 3.4mm 0 0; font-size: 10pt; line-height: 1.45; color: #f4e6e9; border-top: 1px solid rgba(216,181,106,.6); padding-top: 3mm; }
+.cv-sub .te { color: #ecccd2; font-size: 9.4pt; }
+.cv-strip { position:relative; display:flex; justify-content:space-between; gap: 4mm; margin: auto 14mm 10mm; padding: 3.4mm 5mm; border: 1px solid rgba(216,181,106,.7); border-radius: 100px; font-size: 8.6pt; color: #fbeec8; letter-spacing: .02em; }
 
 /* about */
 .two { display:grid; grid-template-columns: 1.15fr 1fr; gap: 8mm; align-items:start; }
