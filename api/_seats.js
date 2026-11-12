@@ -10,9 +10,12 @@
 const guard = require("./_guard.js");
 const docs = require("./_docs.js");
 
-// A student who is enrolled or active holds a seat, paid or still owing —
-// the desk created that record on purpose. An "enquiry" record is somebody
-// who only asked; "completed" and "dropped" have left.
+// A student who is enrolled, active, in training or marked inactive holds a
+// seat, paid or still owing — the desk created that record on purpose, and
+// an inactive student has paid for the seat she is not using (12 Nov: Rama,
+// ₹9,999, "not interested to attend"). Marking her discontinued frees it.
+// An "enquiry" record is somebody who only asked; "completed" and "dropped"
+// have left.
 const holdsSeat = (s) => !!s && !["dropped", "enquiry", "completed"].includes(String(s.status || ""));
 // ...and holds it in ONE batch. On 9 Nov the batch number was ignored on
 // purpose (the one student was still marked batch 1 while joining batch 2).
@@ -47,4 +50,11 @@ async function booked(cfg) {
 
 async function left(cfg) { return Math.max(0, docs.BATCH.seats - (await booked(cfg))); }
 
-module.exports = { booked, left, fromStudents, holdsSeat, inBatch };
+// A student the course is still being delivered to — daily material, fee
+// reminders, the owner's "academy notify". "training" joined on 12 Nov when
+// the desk got a status picker; leaving it out of the cron's own list would
+// have stopped a student's material the day the desk marked her as training.
+// Inactive (stopped coming, with a reason) and discontinued get none of it.
+const inCourse = (s) => !!s && ["enrolled", "active", "training"].includes(String(s.status || "enrolled"));
+
+module.exports = { booked, left, fromStudents, holdsSeat, inBatch, inCourse };

@@ -103,10 +103,13 @@ function data() {
     // Only the current batch's students (Rekha); Rama is Batch #1 (11 Nov, point 5).
     academy: { booked: 1, left: 9, leads: p.leads.filter((l) => /^academy/i.test(l.concern)) },
     today: null, queue: [], dailyOn: true, reviews: [], team: {}, owners: ["9010427777"], ts: Date.now(),
+    // The sidebar's Patients / Students numbers come with the first load (11 Nov, point 4).
+    counts: { patients: 8, students: 4 },   // the same four the academy list returns
   };
 }
 
 let mockMoved = 0;
+let mockStStatus = {};   // the last status the dashboard set on DLA002, so a re-render shows it
 const M = 60000;
 const mockIb = [
   { phone: "9876543210", name: "Lakshmi Priya", unread: 2, human: null, open: true, msgs: [
@@ -522,7 +525,8 @@ http.createServer((req, res) => {
     const iso = (n) => new Date(Date.now() - n * 86400000).toISOString().slice(0, 10);
     const st = [
       { id: "DLA001", name: "Keerthi", phone: "9876500021", course: "skin", duration: "1 month", fee: 49999, paid: 49999, status: "enrolled", onboarded: 1, startISO: iso(12), created: Date.now() - 20 * 86400000, notes: [] },
-      { id: "DLA002", name: "Harika", phone: "9876500022", course: "both", duration: "2 months", fee: 99999, paid: 9999, status: "enrolled", onboarded: 0, startISO: iso(-9), created: Date.now() - 3 * 86400000, notes: [] },
+      { id: "DLA002", name: "Harika", phone: "9876500022", course: "both", duration: "2 months", fee: 99999, paid: 9999, status: mockStStatus.status || "enrolled", statusReason: mockStStatus.reason || "", statusBy: mockStStatus.by || "", onboarded: 0, startISO: iso(-9), created: Date.now() - 3 * 86400000, notes: [] },
+      { id: "DLA004", name: "Rama Lakshmi", phone: "9876500036", course: "skin", duration: "1 month", fee: 49999, paid: 9999, status: "inactive", statusReason: "Classes ki raavadam ledu — interest ledu annaru", statusBy: "hemasri", statusAt: Date.now() - 86400000, batch: 1, onboarded: 1, startISO: "2026-10-20", created: Date.now() - 25 * 86400000, notes: [] },
       { id: "DLA003", name: "Sravani", phone: "9876500023", course: "hair", duration: "1 month", fee: 49999, paid: 49999, status: "completed", onboarded: 1, startISO: iso(40), certNo: "DLA-C-0007", created: Date.now() - 50 * 86400000, notes: [] },
     ].map((x) => Object.assign(x, { progress: progressOf(x) }));
     if (a === "students" || a === "list") return send(200, { ok: true, students: st });
@@ -545,6 +549,16 @@ http.createServer((req, res) => {
           outcome: "notinterested", closedBy: "Sowmya", closedAt: Date.now() - 9 * 86400000, lastNote: { ts: Date.now() - 9 * 86400000, by: "Sowmya", text: "Call — interest ledu" } },
       ] });
     if (a === "reopen") return send(200, { ok: true, url: "https://www.dermaluxe.ai/academy-join.html?t=xyz" });
+    if (a === "status") {   // the status with its reason comes back on the student, as the real server returns it (12 Nov, point 2)
+      let body = ""; req.on("data", (c) => (body += c));
+      return req.on("end", () => {
+        let b = {}; try { b = JSON.parse(body || "{}"); } catch (e) {}
+        if (["inactive", "dropped"].includes(b.status) && !String(b.reason || "").trim()) return send(400, { error: "Reason raayandi — enduku " + b.status + " ani" });
+        mockStStatus = { status: b.status, reason: String(b.reason || ""), by: "hemasri" };
+        const s2 = Object.assign({}, st.filter((x) => x.id === b.id)[0] || st[1], { status: b.status, statusReason: mockStStatus.reason, statusBy: "hemasri", statusAt: Date.now() });
+        return send(200, { ok: true, student: Object.assign(s2, { progress: progressOf(s2) }) });
+      });
+    }
     if (a === "pay") {
       // mirror the real server: the paid student comes back WITH progress
       const s2 = Object.assign({}, st[1], { paid: st[1].fee });
@@ -579,8 +593,10 @@ http.createServer((req, res) => {
       const term = (u.searchParams.get("q") || "").toLowerCase(), from = u.searchParams.get("from") || "", to = u.searchParams.get("to") || from;
       if (term) rows = rows.filter((r) => (r.name + r.phone + r.concern).toLowerCase().includes(term));
       const all = rows.length;   // after the search, before the days — as api/patient.js counts it
+      const visited = rows.filter((r) => r.everBooked).length;
+      if (u.searchParams.get("visited") === "1") rows = rows.filter((r) => r.everBooked);   // the people who came (11 Nov, point 1)
       if (/^\d{4}-\d{2}-\d{2}$/.test(from)) rows = rows.filter((r) => { const d = istDayP(r.last); return d >= from && d <= to; });
-      return send(200, { ok: true, rows, total: rows.length, all, repeats: rows.filter((r) => r.repeat).length,
+      return send(200, { ok: true, rows, total: rows.length, all, visited, repeats: rows.filter((r) => r.repeat).length,
         stages: [["consult","Consultation"],["plan","Plan ichcharu"],["procedure","Procedure nadustundi"],["course","Course ayipoyindi"],["review","Review / maintenance"],["declined","Vaddannaru"]]
           .map(([key,label]) => ({ key, label, count: rows.filter((r) => r.stage === key).length })),
         stageless: rows.filter((r) => !r.stage).length });

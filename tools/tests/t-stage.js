@@ -77,7 +77,13 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   const cert = progressOf({ duration: "1 month", startISO: iso(40), fee: 50000, paid: 50000, onboarded: true, certNo: "DLA-C-1", created: Date.now() });
   is(cert.doneCount, 6, "and with the certificate every step is done");
   const dropped = progressOf({ duration: "1 month", startISO: iso(5), fee: 50000, paid: 10000, status: "dropped", created: Date.now() });
-  is(dropped.where, "Aagipoyaru", "somebody who stopped is not shown as progressing");
+  is(dropped.where, "Discontinue chesaru", "somebody who stopped is not shown as progressing");
+  const why = progressOf({ duration: "1 month", startISO: iso(5), fee: 50000, paid: 10000, status: "dropped", statusReason: "Job vachindi", created: Date.now() });
+  is(why.where, "Discontinue chesaru — Job vachindi", "and the reason the desk gave is on the line");
+  const idle = progressOf({ duration: "1 month", startISO: iso(5), fee: 50000, paid: 10000, status: "inactive", statusReason: "Classes ki raavadam ledu", created: Date.now() });
+  is(idle.where, "Inactive — Classes ki raavadam ledu", "inactive says so, with why (12 Nov, point 2)");
+  const tr = progressOf({ duration: "1 month", startISO: iso(-3), fee: 50000, paid: 50000, status: "training", created: Date.now() });
+  is(tr.where, "Training nadustondi", "marked in training before the batch date, the line says training, not 'modalu kaledu'");
 
   const silly = progressOf({ duration: "", startISO: "", fee: 0, paid: 0, created: Date.now() });
   is(silly.totalDays, 30, "a student with nothing filled in still gets a sane answer");

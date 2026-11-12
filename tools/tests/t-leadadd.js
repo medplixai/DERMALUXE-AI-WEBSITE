@@ -50,6 +50,12 @@ const OWNER = mk({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: Date.now(
   const anyway = await add({ name: "Padma Rani", phone: "9876500201", concern: "Hair fall", anyway: true });
   is(anyway.code, 200, "but the desk can insist");
   is(h.run(["LRANGE", "dl_leads", "0", "9"]).length, 2, "and then there are two");
+  // One mobile for the whole family (owner PDF 11 Nov, point 6): a different
+  // name on the same number is a different person, entered without a question.
+  const son = await add({ name: "Ravi Kumar", phone: "9876500201", concern: "Acne" });
+  is(son.code, 200, "a different name on the same number is somebody else — the son on the father's phone — and goes straight in");
+  is(h.run(["LRANGE", "dl_leads", "0", "9"]).length, 3, "as a card of his own");
+  is((await add({ name: "padma  rani", phone: "9876500201", concern: "Hair fall" })).code, 409, "the same name spelt with other capitals and spaces is still the same person");
 
   // an unknown source cannot be invented
   const odd = await add({ name: "Y", phone: "9876500202", src: "magic", concern: "Acne" });

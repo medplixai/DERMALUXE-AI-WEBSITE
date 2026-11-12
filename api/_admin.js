@@ -867,7 +867,7 @@ async function handle(cfg, digits, text, photo, video) {
     for (const id of (lr.result || [])) {
       const r = await guard.kvCommand(cfg, ["GET", `acad:st:${id}`]).catch(() => ({}));
       let st = null; try { st = r.result ? JSON.parse(r.result) : null; } catch (e) {}
-      if (!st || !["enrolled", "active"].includes(String(st.status || "enrolled"))) continue;
+      if (!require("./_seats.js").inCourse(st)) continue;   // training included (12 Nov)
       const first = String(st.name || "Student").trim().split(" ")[0] || "Student";
       const ok = await notify.sendWa(st.phone, `📢 *DermaLuxe Academy*\n\n${msg}`);
       if (ok) { sent++; continue; }

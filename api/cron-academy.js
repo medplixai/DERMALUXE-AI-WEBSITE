@@ -61,7 +61,7 @@ module.exports = async (req, res) => {
     const r = await guard.kvCommand(cfg, ["GET", `acad:st:${id}`]).catch(() => ({}));
     try { if (r.result) students.push(JSON.parse(r.result)); } catch (e) {}
   }
-  const active = students.filter((s) => ["enrolled", "active"].includes(String(s.status || "enrolled")) && digits10(s.phone).length === 10);
+  const active = students.filter((s) => require("./_seats.js").inCourse(s) && digits10(s.phone).length === 10);
 
   // ---- trainer manual (once, from 3 days before the batch) ----
   const trainers = process.env.ACADEMY_TRAINER_PHONES ? phones(process.env.ACADEMY_TRAINER_PHONES) : guard.ownerPhones();
@@ -108,7 +108,9 @@ module.exports = async (req, res) => {
         await notify.sendWaDocLink(s.phone, MAT(s.id, t, sDay), `DermaLuxe-${t === "skin" ? "Skin" : "Hair"}-Day-${String(sDay).padStart(2, "0")}.pdf`,
           `📄 Day ${sDay} · ${t === "skin" ? "Skin Care" : "Hair Care"} — ${dd.t}`);
       }
-      if (sDay === 1 && s.status !== "active") { s.status = "active"; await guard.kvCommand(cfg, ["SET", `acad:st:${s.id}`, JSON.stringify(s)]).catch(() => {}); }
+      // Day 1 turns a booked seat into an active student — only a booked seat:
+      // a status the desk chose by hand (training) is theirs to keep.
+      if (sDay === 1 && String(s.status || "enrolled") === "enrolled") { s.status = "active"; await guard.kvCommand(cfg, ["SET", `acad:st:${s.id}`, JSON.stringify(s)]).catch(() => {}); }
       if (sDay === 30) await notify.sendWa(s.phone, `🎓 *Last day!* Ee roju final practical exam & viva. All the best ${String(s.name || "").split(" ")[0]} garu! 🌟\nPass ayyaka certificate WhatsApp lo vastundi.`);
       out.sent.push({ id: s.id, day: sDay, tracks });
       } catch (err) {                                   // release the marker so tomorrow's run retries

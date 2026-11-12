@@ -53,6 +53,8 @@ const bearer = (t) => ({ authorization: "Bearer " + t });
   const now = Date.now();
   const okTok = mk({ p: "9010427777", n: "Owner", r: "owner", e: 0, exp: now + 86400000 });
   const me1 = await call({ a: "data" }, null, bearer(okTok));
+  is(typeof (me1.body.counts || {}).patients === "number" && typeof (me1.body.counts || {}).students === "number", true,
+     "the first load carries the Patients and Students counts for the sidebar (11 Nov, point 4)");
   is(me1.code, 200, "a properly signed token works");
   is(me1.body.me.role, "owner", "and says who it is");
   // The "Dr tho ayina appts" tile (owner PDF 11 Nov, point 2): visits of the

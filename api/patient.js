@@ -240,6 +240,12 @@ module.exports = async (req, res) => {
     const from = dayRe.test(String(q.from || b.from || "")) ? String(q.from || b.from) : "";
     const to = dayRe.test(String(q.to || b.to || "")) ? String(q.to || b.to) : from;
     const allRows = rows.length;
+    // Only the people who came — booked or visited on any of their enquiries
+    // — as its own filter (owner PDF 11 Nov, point 1). Before the cap, like
+    // the dates, or a visitor from months back would fall off the end.
+    const visitedOnly = String(q.visited || b.visited || "") === "1";
+    const visitedAll = rows.filter((r) => r.everBooked).length;
+    if (visitedOnly) rows = rows.filter((r) => r.everBooked);
     if (from) rows = rows.filter((r) => { const d = istDayOf(r.last); return d >= from && d <= to; });
     rows.sort((a2, b2) => b2.last - a2.last);
     const shown = rows.slice(0, 200);
@@ -259,6 +265,8 @@ module.exports = async (req, res) => {
       rows: shown,
       total: rows.length,
       all: allRows,              // before the date filter — the sidebar badge must not shrink when a day is picked
+      visited: visitedAll,       // how many ever came, before the date filter — for the filter's own count
+      visitedOnly: visitedOnly || undefined,
       from: from || undefined, to: from ? to : undefined,
       repeats: rows.filter((r) => r.repeat).length,
       stages: STAGES.map((k) => ({ key: k, label: STAGE_TE[k], count: shown.filter((r) => r.stage === k).length })),

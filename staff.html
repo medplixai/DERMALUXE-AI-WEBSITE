@@ -240,6 +240,7 @@
     body[data-tab]:not([data-tab="leads"]) .stats{display:none}
     body[data-tab]:not([data-tab="leads"]) .donelist{display:none}
     .stat small{display:block;font-size:.75rem;color:var(--ok);margin-top:2px}
+    .stat small u{cursor:pointer;text-decoration-color:var(--line);text-underline-offset:2px}
     .fu-line{font-size:.76rem;color:var(--muted2);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 10px}
     .fu-line b{color:var(--text);font-weight:500}
     .oc{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:100px;border:1px solid var(--line);color:var(--g2);margin-left:6px}
@@ -664,6 +665,7 @@
     .segs button{border:1px solid var(--line2);background:var(--panel);border-radius:99px;padding:5px 13px;min-height:40px;font:inherit;font-size:.8rem;cursor:pointer;color:var(--muted)}
     .segs button.on{background:var(--g1);color:#fff;border-color:var(--g1)}
     .segs button i{font-style:normal;margin-left:4px;opacity:.8}
+    .fchips button i,.seg button i{font-style:normal;margin-left:4px;opacity:.75}
     /* ---- WhatsApp inbox ----
        Rebuilt 9 Nov 2026 (owner: "chala confusing"). The inbox is a work
        queue, not a chat log: the chats a person must act on come first and
@@ -1084,9 +1086,11 @@
         </div>
       </section>
       <section id="t-appts" class="hide">
+        <!-- The day's numbers at the very top — above the confirm-call list and
+             the date strip (owner PDF 11 Nov, point 5: "make this on the top"). -->
+        <div class="countdown" id="schHead"><div class="skk"></div><div class="skk"></div></div>
         <div id="cfPend" class="hide"></div>
         <div class="daystrip" id="dayStrip"></div>
-        <div class="countdown" id="schHead"><div class="skk"></div><div class="skk"></div></div>
         <div class="filters" style="margin-bottom:8px">
           <label class="switch"><input type="checkbox" id="myDay" /> Naavi matrame</label>
           <div class="seg" role="tablist" aria-label="View"><button type="button" data-act="sch-view" data-v="list" id="svList" class="on">List</button><button type="button" data-act="sch-view" data-v="grid" id="svGrid">Grid</button></div>
@@ -1104,6 +1108,8 @@
              the last time the person was in touch, and the list groups by that day. -->
         <div class="filters"><input id="ptQ" placeholder="Peru leda number tho vetakandi" /><input id="ptDay" type="date" aria-label="Roju" style="flex:none;width:160px" /></div>
         <div class="seg" id="ptWhen" role="tablist" aria-label="Eppudu" style="margin-bottom:10px"><button type="button" data-act="pt-when" data-w="today">Ee roju</button><button type="button" data-act="pt-when" data-w="yday">Ninna</button><button type="button" data-act="pt-when" data-w="week">Ee vaaram</button><button type="button" data-act="pt-when" data-w="all" class="on">Anni</button></div>
+        <!-- Who came, as its own switch beside the when (owner PDF 11 Nov, point 1). -->
+        <div class="seg" id="ptWho" role="tablist" aria-label="Evaru" style="margin-bottom:10px"><button type="button" data-act="pt-who" data-w="all" class="on">Andaru</button><button type="button" data-act="pt-who" data-w="visited">✅ Vachina vaaru<i id="ptVisN"></i></button></div>
         <div class="meta" id="ptStat" style="margin-bottom:8px"></div>
         <div id="ptList"><div class="sk"><div></div><div></div><div></div><div></div><div></div></div></div>
       </section>
@@ -1193,6 +1199,8 @@
             <button class="btn btn--gold btn--sm" id="stAdd">Add &amp; send form</button>
           </div>
           <div class="err" id="stErr"></div></div>
+        <!-- Every status as a filter, with its count (owner PDF 12 Nov, point 2). -->
+        <div class="fchips" id="stChips" style="margin-bottom:10px"></div>
         <div class="list" id="studList"><div class="sk"><div></div><div></div><div></div><div></div></div></div>
       </section>
       <section id="t-today" class="hide" id="todayBox"></section>
@@ -1649,11 +1657,15 @@
       // the tile went by the agent's old hot/warm guess, the group by the
       // grade — so the screen could say "2 to call" over an empty list.
       var hot = groupPeople(d.leads).filter(needsCall).length;   // people, not rows
-      var todayDone = d.leads.filter(function (l) { return l.ts >= dayStart.getTime() && (l.lastCall || l.status !== "new"); }).length;
+      // "15 call ayyayi" over "Leads today 13" read as a wrong count (11 Nov,
+      // point 7): calls were counted per row, leads per person. Both per person.
+      var todayDone = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime() && (l.lastCall || l.status !== "new"); }).length;
       // The tile counts clinic and academy together; the Leads list shows one
-      // side at a time. Say the split, or "4" over a list of three looks wrong.
+      // side at a time. Say the split, or "4" over a list of three looks wrong
+      // — and each half is a tap that opens that side's list (12 Nov, point 3).
       var acadToday = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime() && catOf(l) === "academy"; }).length;
-      $("sTodayDone").textContent = [todayDone ? "✓ " + todayDone + " call ayyayi" : "", acadToday ? (today - acadToday) + " clinic · " + acadToday + " academy" : ""].filter(Boolean).join(" · ");
+      $("sTodayDone").innerHTML = [todayDone ? "✓ " + todayDone + " call ayyayi" : "",
+        acadToday ? '<u data-act="seg-go" data-seg="today" data-cat="">' + (today - acadToday) + ' clinic</u> · <u data-act="seg-go" data-seg="today" data-cat="academy">' + acadToday + " academy</u>" : ""].filter(Boolean).join(" · ");
       $("sToday").textContent = today; $("sHot").textContent = hot; $("sAppt").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("sSeats").textContent = d.academy.booked + "/10";
       // Visits that happened in the last 30 days, with the doctor. An older
@@ -1664,6 +1676,13 @@
       $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
       $("nAppts").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("nAcad").textContent = d.academy.leads.length;
+      // Patients and Students said 0 until their tabs were opened (11 Nov,
+      // point 4). The server now sends both counts with the first load; the
+      // tabs overwrite them with their own when they open.
+      if (d.counts) {
+        if (d.counts.patients != null) $("nPt").textContent = d.counts.patients;
+        if (d.counts.students != null) $("nStud").textContent = d.counts.students;
+      }
       // The posts tab is drawn when someone opens it. Drawn on every open and
       // every refresh, it fired eight requests and pulled every poster picture
       // — 49 of them in half an hour on 8 Nov — ahead of the leads the desk
@@ -2038,9 +2057,18 @@
       // a list of six — the desk read it as the filter not working (9 Nov).
       // Follow-ups keep their own date and are never cut by the period.
       base = base.filter(function (l) { return l.ts >= since || (l.outcome === "followup" && (l.status === "new" || l.status === "contacted")); });
+      // The two mode buttons counted every lead while the list below obeyed
+      // the period — "Academy leads 22" over a list of one (11 Nov, point 2).
+      // They count what the period shows; the line above the list says how
+      // many the period hides and offers them in one tap.
+      var inPeriod = function (l) { return l.ts >= since || (l.outcome === "followup" && (l.status === "new" || l.status === "contacted")); };
       var lm0 = $("lmN0"), lm1 = $("lmN1");
-      if (lm0) lm0.textContent = clinicPeople.length ? String(clinicPeople.length) : "";
-      if (lm1) lm1.textContent = acadPeople.length ? String(acadPeople.length) : "";
+      var clinicShown = clinicPeople.filter(inPeriod).length, acadShown = acadPeople.filter(inPeriod).length;
+      if (lm0) lm0.textContent = clinicShown ? String(clinicShown) : "";
+      if (lm1) lm1.textContent = acadShown ? String(acadShown) : "";
+      var hiddenByPeriod = days < 365 ? (acadMode ? acadPeople.length - acadShown : clinicPeople.length - clinicShown) : 0;
+      var periodLine = hiddenByPeriod > 0 ? '<div class="fu-due"><span>📅 <b>' + esc($("fDays").options[$("fDays").selectedIndex].dataset.label || "") + "</b> matrame — inka " + hiddenByPeriod + " " + (acadMode ? "academy" : "clinic") + " leads ee period bayata unnayi</span>" +
+        '<button class="btn btn--sm" data-act="period-all">Anni chupinchu</button></div>' : "";
       document.querySelectorAll("#lmode [data-cat]").forEach(function (b) { b.classList.toggle("on", acadMode ? b.dataset.cat === "academy" : b.dataset.cat !== "academy"); });
       $("catchips").classList.toggle("hide", acadMode); $("fchips").classList.toggle("hide", acadMode); $("afchips").classList.toggle("hide", !acadMode);
       var myPhone = (d.me && d.me.phone) || "";
@@ -2123,7 +2151,7 @@
         var parts = CALL_WHY.filter(function (x) { return wc[x[0]]; }).map(function (x) { return "<b>" + wc[x[0]] + "</b> " + x[1]; });
         if (parts.length) whyLine = '<div class="callwhy">🔥 Ivala ' + counts[0] + " mandiki call cheyyali — " + parts.join(" · ") + '<br><span class="meta">Waiting = evaru inka touch cheyyanivi matrame. Call list lo vaatitho paatu ettanivi, follow-up date vachinavi kuda untayi. Ivala matladina / note raasina lead repati varaku list nunchi vellipotundi.</span></div>';
       }
-      $("leadList").innerHTML = summaryBar(people, d.leads) + whyLine + banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts)) +
+      $("leadList").innerHTML = summaryBar(people, d.leads) + periodLine + whyLine + banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts)) +
         (moreCards ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="lead-more">Inka ' + moreCards + " leads chupinchu</button></div>" : "") +
         (moreCalls ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Inka ' + moreCalls + " mandi chupinchu</button></div>" :
           (seg === "call" && callShowAll && list.length > 10 ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Top 10 matrame chupinchu</button></div>' : ""));
@@ -4276,7 +4304,7 @@
     // Which days the Patients list shows (owner PDF 11 Nov, point 6): a day
     // picked on the calendar wins; otherwise the chip. Eluru days, so a phone
     // set to another zone does not move a patient across midnight.
-    var ptWhen = "all";
+    var ptWhen = "all", ptWho = "all";
     function ptRange() {
       var pick = $("ptDay") && $("ptDay").value;
       if (pick) return { from: pick, to: pick };
@@ -4293,17 +4321,19 @@
     }
     function loadPatients() {
       var q = ($("ptQ").value || "").trim(), rg = ptRange();
-      return ptapi("list", null, (q ? "&q=" + encodeURIComponent(q) : "") + (rg ? "&from=" + rg.from + "&to=" + rg.to : "")).then(function (j) {
+      return ptapi("list", null, (q ? "&q=" + encodeURIComponent(q) : "") + (rg ? "&from=" + rg.from + "&to=" + rg.to : "") + (ptWho === "visited" ? "&visited=1" : "")).then(function (j) {
         ptRows = j.rows || [];
         // The server filtered before its 200-row cap; this is the safety net.
         if (rg) ptRows = ptRows.filter(function (r) { var d = istDayOf(r.last || 0); return d >= rg.from && d <= rg.to; });
-        $("nPt").textContent = (rg ? j.all : j.total) || 0;
+        if (ptWho === "visited") ptRows = ptRows.filter(function (r) { return r.everBooked; });
+        $("nPt").textContent = (rg || ptWho !== "all" ? j.all : j.total) || 0;
+        if ($("ptVisN")) $("ptVisN").textContent = j.visited ? " " + j.visited : "";
         // The stage is the point of the whole thing, so it goes where it can be
         // seen without opening anybody: the header counts, and each row.
         var set = (j.stages || []).filter(function (x) { return x.count; });
         // With a day picked every count here is for those days; the total of
         // everybody is said once, as "mottam".
-        $("ptStat").innerHTML = (rg ? ptRows.length + " ee rojullo (mottam " + j.all + " patients)" : j.total + " patients") + " · " + j.repeats + " malli vachina vaaru" +
+        $("ptStat").innerHTML = (rg || ptWho !== "all" ? ptRows.length + (ptWho === "visited" ? " vachina vaaru" : "") + (rg ? " ee rojullo" : "") + " (mottam " + j.all + " patients)" : j.total + " patients") + " · " + j.repeats + " malli vachina vaaru" +
           (set.length ? " · " + set.map(function (x) { return x.count + " " + esc(x.label); }).join(" · ") : "") +
           (j.stageless ? ' · <span style="color:var(--g3)">' + j.stageless + " ki stage pettaledu</span>" : "");
         ptRows.sort(function (a, b) { return (b.last || 0) - (a.last || 0); });   // recent to old (7 Nov)
@@ -4319,7 +4349,7 @@
             (r.everBooked ? '<span class="chip ok">visited</span>' : "") + "</div></div>" +
             '<div class="meta">' + esc(String(r.concern || "").slice(0, 70)) + " · chivari sari " + esc(dmyt(r.last)) + " (" + ago(r.last) + ")</div></article>";
           }).join("");
-        }).join("") : '<div class="empty">' + (rg ? "Aa roju evaru raaledu." : "Evaru dorakaledu.") + "</div>";
+        }).join("") : '<div class="empty">' + (ptWho === "visited" ? "Ee period lo vachina vaaru levu." : rg ? "Aa roju evaru raaledu." : "Evaru dorakaledu.") + "</div>";
         syncBadges();
       }).catch(function (e) { $("ptList").innerHTML = '<div class="empty">' + esc(e.message) + "</div>"; });
     }
@@ -6648,6 +6678,12 @@
         if (opening) { drawDone(); dl.scrollIntoView({ behavior: "smooth", block: "nearest" }); }
         return;
       }
+      if (el.dataset.act === "st-filter") { stFilter = el.dataset.st; renderStudents(); return; }
+      if (el.dataset.act === "pt-who") {
+        ptWho = el.dataset.w;
+        document.querySelectorAll("#ptWho button").forEach(function (b) { b.classList.toggle("on", b === el); });
+        loadPatients(); return;
+      }
       if (el.dataset.act === "pt-when") {
         ptWhen = el.dataset.w; if ($("ptDay")) $("ptDay").value = "";
         document.querySelectorAll("#ptWhen button").forEach(function (b) { b.classList.toggle("on", b === el); });
@@ -6689,11 +6725,18 @@
       if (el.dataset.act === "seg-go") {
         var want = el.dataset.seg;
         if (state.tab !== "leads") goTab("leads");
+        // The tiles count every lead; the list obeyed the period picker, so
+        // "Ippude call 36" opened an empty list under "Last 7 days" (11 Nov,
+        // point 8). A tile tap now widens the period to All, and a tap on the
+        // clinic / academy half of the today tile opens that side.
+        if (Number($("fDays").value) < 365) { $("fDays").value = "365"; loadRest(); }
+        if (el.dataset.cat != null) { if (((leadCat === "academy") !== (el.dataset.cat === "academy")) && $("fStatus").value) $("fStatus").value = ""; leadCat = el.dataset.cat; }
         var b = document.querySelector('#segs button[data-seg="' + want + '"]');
         if (b) { document.querySelectorAll("#segs button").forEach(function (x) { x.classList.remove("on"); }); b.classList.add("on"); renderLeads(); }
         window.scrollTo({ top: 0, behavior: "smooth" });
         return;
       }
+      if (el.dataset.act === "period-all") { $("fDays").value = "365"; loadRest(); renderLeads(); return; }
       if (el.dataset.act === "gr-why") {
         haptic();
         var lw = (state.data.leads || []).filter(function (x) { return x.key === el.dataset.key; })[0];
@@ -7349,6 +7392,12 @@
     }
     var students = [];
     var studBatch = null;
+    // The same list as api/academy.js STATUSES, with the words the desk uses.
+    // Inactive and discontinued are set with a reason, and the reason shows.
+    var ST_STATUS = [["enrolled", "Seat booked"], ["active", "Active"], ["training", "Training nadustondi"], ["inactive", "Inactive"], ["dropped", "Discontinued"], ["completed", "Completed"]];
+    var ST_LABEL = {}; ST_STATUS.forEach(function (x) { ST_LABEL[x[0]] = x[1]; }); ST_LABEL.enquiry = "Enquiry";
+    var ST_NEEDS_REASON = { inactive: 1, dropped: 1 };
+    var stFilter = "";
     function loadStudents() { sapi("list").then(function (j) { students = j.students || []; studBatch = j.batch || null; renderStudents(); fillThumbs(); }).catch(function (e) { toast(e.message); }); }
     function money(n) { return "\u20b9" + Number(n || 0).toLocaleString("en-IN"); }
     // Where this student is, in one line and one bar. The server works it out
@@ -7366,20 +7415,37 @@
       }).join(' <span style="opacity:.3">·</span> ');
       return '<div class="meta" style="margin-top:6px">' +
         '<b style="color:var(--text);font-weight:500">' + esc(p.where) + "</b>" +
-        (p.started && p.daysLeft ? ' · inka ' + p.daysLeft + " rojulu" : "") + "</div>" +
+        (p.started && p.daysLeft && s.status !== "inactive" && s.status !== "dropped" ? ' · inka ' + p.daysLeft + " rojulu" : "") + "</div>" +
         bar +
         '<div class="meta" style="display:flex;flex-wrap:wrap;gap:6px 8px">' + steps + "</div>";
     }
 
+    function studentStatusChip(s) {
+      var st = s.status || "enrolled", lbl = ST_LABEL[st] || st;
+      var cls = st === "completed" ? "warm" : st === "dropped" || st === "inactive" ? "hot" : st === "training" || st === "active" ? "" : "";
+      var sel = state.allow("academy.edit") ? '<select class="sel" data-sact="status" data-id="' + esc(s.id) + '" aria-label="Status" style="border-radius:100px;padding:4px 8px;font-size:.8rem">' +
+        ST_STATUS.map(function (x) { return '<option value="' + x[0] + '"' + (x[0] === st ? " selected" : "") + ">" + esc(x[1]) + "</option>"; }).join("") + "</select>" :
+        '<span class="badge ' + cls + '">' + esc(lbl) + "</span>";
+      return sel + (s.statusReason ? '<div class="meta" style="margin-top:4px;max-width:180px;text-align:right">' + esc(s.statusReason) + (s.statusBy ? " · " + esc(s.statusBy) : "") + "</div>" : "");
+    }
     function renderStudents() {
       $("nStud").textContent = students.length;
-      $("studList").innerHTML = students.length ? students.map(function (s) {
+      // One chip per status, with how many; tap to see only those.
+      var cnt = {}; students.forEach(function (s) { var k = s.status || "enrolled"; cnt[k] = (cnt[k] || 0) + 1; });
+      // A filter whose last student just moved out falls back to Anni, so the
+      // tab never shows an empty list with no chip lit.
+      if (stFilter && !cnt[stFilter]) stFilter = "";
+      if ($("stChips")) $("stChips").innerHTML = [["", "Anni"]].concat(ST_STATUS).filter(function (x) { return !x[0] || cnt[x[0]]; }).map(function (x) {
+        return '<button type="button" data-act="st-filter" data-st="' + x[0] + '"' + (stFilter === x[0] ? ' class="on"' : "") + ">" + esc(x[1]) + "<i>" + (x[0] ? cnt[x[0]] : students.length) + "</i></button>";
+      }).join("");
+      var shown = stFilter ? students.filter(function (s) { return (s.status || "enrolled") === stFilter; }) : students;
+      $("studList").innerHTML = shown.length ? shown.map(function (s) {
         var bal = Math.max(0, (s.fee || 0) - (s.paid || 0)), cn = { skin: "Skin Care", hair: "Hair Care", both: "Skin + Hair" }[s.course] || s.course;
         var notes = (s.notes || []).slice(0, 2).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
         return '<article class="lead ' + (bal > 0 ? "warm" : "") + '">' +
           '<div class="row"><div><h3>' + esc(s.name) + ' <span class="meta">· ' + esc(s.id) + '</span></h3>' +
           '<div class="meta">' + esc(cn) + ' · ' + esc(s.duration || "") + ' · ' + esc(s.phone) + (s.onboarded ? " · form ✓" : " · form pending") + '</div></div>' +
-          '<div><span class="badge ' + (s.status === "completed" ? "warm" : bal > 0 ? "hot" : "") + '">' + esc(s.status || "enrolled") + '</span></div></div>' +
+          '<div style="text-align:right">' + studentStatusChip(s) + '</div></div>' +
           progressRow(s) +
           '<div class="concern">Fee ' + money(s.fee) + ' · Paid <b style="color:var(--ok)">' + money(s.paid) + '</b> · Balance <b style="color:' + (bal ? "var(--hot)" : "var(--ok)") + '">' + money(bal) + '</b>' + (s.certNo ? ' · Cert ' + esc(s.certNo) : "") + '</div>' +
           '<div class="acts">' +
@@ -7398,8 +7464,19 @@
           (s.onboarded && state.allow("academy.edit") ? '<button class="btn btn--sm" data-sact="reopen" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '">↩ Form malli</button>' : "") +
           (state.allow("academy.delete") ? '<button class="btn btn--sm" data-sact="delete" data-id="' + esc(s.id) + '" data-name="' + esc(s.name) + '" style="color:var(--bad)">Teesey</button>' : "") +
           '</div><div class="notes">' + notes + '<form class="noteform" data-sact="note" data-id="' + esc(s.id) + '"><input placeholder="Note…" maxlength="300" /><button class="btn btn--sm" type="submit">Add</button></form></div></article>';
-      }).join("") : '<div class="empty">No students yet. Advance pay chesina vaarini paina add cheyandi.</div>';
+      }).join("") : '<div class="empty">' + (stFilter ? "Ee status lo students levu." : "No students yet. Advance pay chesina vaarini paina add cheyandi.") + "</div>";
     }
+    document.addEventListener("change", function (e) {
+      var el = e.target.closest("select[data-sact=\"status\"]"); if (!el) return;
+      var id = el.dataset.id, st = el.value, s0 = students.filter(function (x) { return x.id === id; })[0];
+      var reason = "";
+      if (ST_NEEDS_REASON[st]) {
+        reason = (prompt("Enduku " + (ST_LABEL[st] || st) + "? Reason raayandi:", (s0 && s0.statusReason) || "") || "").trim();
+        if (!reason) { renderStudents(); toast("Reason lekunda " + (ST_LABEL[st] || st) + " pettalemu"); return; }
+      }
+      sapi("status", { id: id, status: st, reason: reason }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast((ST_LABEL[st] || st) + " ani pettam"); })
+        .catch(function (x) { renderStudents(); toast(x.message); });
+    });
     $("stAdd").onclick = function () {
       $("stErr").textContent = "";
       var body = { name: $("stName").value.trim(), phone: $("stPhone").value.replace(/\D/g, ""), course: $("stCourse").value, duration: $("stDur").value, paid: Number($("stPaid").value || 0) };
@@ -7408,10 +7485,13 @@
         .catch(function (e) { $("stErr").textContent = e.message; }).finally(function () { $("stAdd").disabled = false; });
     };
     document.addEventListener("click", function (e) {
-      var el = e.target.closest("[data-sact]"); if (!el || el.tagName === "FORM") return;
+      var el = e.target.closest("[data-sact]"); if (!el || el.tagName === "FORM" || el.tagName === "SELECT") return;
       var id = el.dataset.id, act = el.dataset.sact;
       if (act === "link") return sapi("link", { id: id }).then(function (j) { return copyText(j.url, "Link copy ayindi"); }).catch(function (x) { toast(x.message); });
-      if (act === "pay") { var amt = prompt("Amount received (₹):", "40000"); if (!amt) return; var ref = prompt("UPI / reference (optional):", "") || ""; return sapi("pay", { id: id, amount: Number(amt), ref: ref }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Receipt sent"); }).catch(function (x) { toast(x.message); }); }
+      // The amount offered is what is still owed, not a fixed ₹40,000 — a
+      // Skin + Hair student owes ₹99,999 less what she has paid (12 Nov, point 4).
+      if (act === "pay") { var sp = students.filter(function (x) { return x.id === id; })[0] || {}; var owed = Math.max(0, (sp.fee || 0) - (sp.paid || 0));
+        var amt = prompt((sp.name || "") + " — fee " + money(sp.fee) + " · paid " + money(sp.paid) + " · balance " + money(owed) + "\n\nIppudu vachina amount (₹):", owed ? String(owed) : ""); if (!amt) return; amt = String(amt).replace(/[^\d]/g, ""); if (!Number(amt)) return; var ref = prompt("UPI / reference (optional):", "") || ""; return sapi("pay", { id: id, amount: Number(amt), ref: ref }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Receipt sent"); }).catch(function (x) { toast(x.message); }); }
       if (act === "material") { return sapi("material", { id: id }).then(function (j) { if (!j.paid) { toast("Payment record ledu — material lock lo undi"); return; } return copyText(j.day1, "Day 1 material link copy ayindi — roju material automatic ga veltundi"); }).catch(function (x) { toast(x.message); }); }
       if (act === "send") { return sapi("send", { id: id, which: ["admission", "idcard"] }).then(function () { toast("Documents sent on WhatsApp"); }).catch(function (x) { toast(x.message); }); }
       if (act === "certify") { var g = prompt("Grade (A/B/C):", "A"); if (!g) return; if (!confirm("Generate and send the certificate?")) return; return sapi("certify", { id: id, grade: g }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Certificate sent 🎓"); }).catch(function (x) { toast(x.message); }); }

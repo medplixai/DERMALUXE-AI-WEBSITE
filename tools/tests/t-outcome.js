@@ -103,8 +103,11 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   const c1 = await post("call-notice", { phone: "9876500601", name: "Lakshmi Devi", key: k2 });
   is([c1.code, c1.body.sent, c1.body.via], [200, true, "text"], "inside the 24-hour window the heads-up goes as plain text");
   const hd = toPatient("9876500601")[0] || [];
-  is([/^Lakshmi garu/.test(hd[2] || ""), /Owner/.test(hd[2] || ""), /\d{5} \d{5} nunchi call chestunnaru/.test(hd[2] || ""), /99491 34666/.test(hd[2] || ""), /teliyani number ayina lift/.test(hd[2] || "")], [true, true, true, false, true],
-    "addressed by first name, naming who is calling and the caller's OWN number (the handset that dials), not the clinic line, and asking them to lift an unknown number");
+  // Until 12 Nov the line named the handset's own number; the owner wants
+  // the clinic's public WhatsApp number there (12 Nov, point 1), and the
+  // patient is still told the call may come from a number they do not know.
+  is([/^Lakshmi garu/.test(hd[2] || ""), /Owner/.test(hd[2] || ""), /\(📞 99591 34666\) nunchi Owner ippudu call chestunnaru/.test(hd[2] || ""), /\d{5} \d{5} nunchi call/.test(hd[2] || "") && !/99591 34666\) nunchi/.test(hd[2] || ""), /teliyani number ayina lift/.test(hd[2] || "")], [true, true, true, false, true],
+    "addressed by first name, naming who is calling, the clinic by its public number (not the handset's), and asking them to lift an unknown number");
   is((JSON.parse(h.run(["HGET", "dl_notes", k2]) || "[]")[0] || {}).text, "📲 Call heads-up WhatsApp vellindi", "and the lead card says it went");
   h.sent.length = 0;
   const c2 = await post("call-notice", { phone: "9876500601", name: "Lakshmi Devi", key: k2 });

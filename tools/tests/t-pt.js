@@ -14,6 +14,7 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
     { ts: Date.now() - 20 * 86400000, name: "Latha Devi", phone: ph, message: "hair fall", status: "booked", key: "k2", source: "instagram" },
   ];
   for (const l of leads) h.run(["RPUSH", "dl_leads", JSON.stringify(l)]);
+  h.run(["HSET", "dl_status", `${leads[0].ts}|${ph}`, "visited"]);   // the desk's status lives in dl_status, keyed ts|phone
 
   const g = await PT({ a: "get", phone: ph });
   is(g.code, 200, "the file opens");
@@ -33,6 +34,14 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   const span = await PT({ a: "list", from: istDay(leads[1].ts - 6 * 86400000), to: istDay(Date.now()) });
   is(span.body.total, 1, "a run of days takes her in");
   is((await PT({ a: "list", from: "yesterday" })).body.total, 1, "a date that is not a date is ignored, not an error");
+  // The people who came, as a filter of their own (11 Nov, point 1).
+  h.run(["RPUSH", "dl_leads", JSON.stringify({ ts: Date.now() - 2 * 86400000, name: "Never Came", phone: "9876500042", message: "price?", key: "k3", source: "whatsapp" })]);
+  const everyone = await PT({ a: "list" });
+  is([everyone.body.total, everyone.body.visited], [2, 1], "two people on the books, one of them ever came");
+  const came = await PT({ a: "list", visited: "1" });
+  is([came.body.total, came.body.rows[0].name], [1, "Latha Devi"], "the visited filter keeps only her");
+  const cameThen = await PT({ a: "list", visited: "1", from: istDay(Date.now() - 2 * 86400000) });
+  is(cameThen.body.total, 0, "and it stacks with the day — the one who wrote that day never came");
 
   // notes
   await PT({ a: "note" }, { a: "note", phone: ph, text: "Allergic to lidocaine" });

@@ -13,6 +13,12 @@ const docs = require("./_docs.js");
 
 const BASE = "https://www.dermaluxe.ai";
 const LIST = "acad:st:list";
+// The statuses a student can be in, in the order the desk's filter shows
+// them. "enquiry" is somebody who only asked (no seat); the rest hold or
+// held a seat. Inactive and discontinued are set with a reason.
+const STATUSES = ["enquiry", "enrolled", "active", "training", "inactive", "dropped", "completed"];
+const STATUS_LABEL = { enquiry: "Enquiry", enrolled: "Seat booked", active: "Active", training: "Training nadustondi", inactive: "Inactive", dropped: "Discontinued", completed: "Completed" };
+const NEEDS_REASON = ["inactive", "dropped"];
 const DOC_TTL = 60 * 60 * 24 * 180;     // 180 days
 const json = (res, c, o) => { res.setHeader("Cache-Control", "no-store"); return res.status(c).json(o); };
 const digits10 = (s) => String(s || "").replace(/\D/g, "").slice(-10);
@@ -128,10 +134,12 @@ function progressOf(s) {
     percent: started ? Math.round((day / totalDays) * 100) : 0,
     balance, steps, doneCount, stepCount: steps.length,
     // one line the owner can read without doing any work
-    where: s.status === "dropped" ? "Aagipoyaru"
+    where: s.status === "dropped" ? "Discontinue chesaru" + (s.statusReason ? " — " + s.statusReason : "")
+      : s.status === "inactive" ? "Inactive" + (s.statusReason ? " — " + s.statusReason : "")
       : s.certNo ? "Certificate ichcham"
       : (started && day >= totalDays) || s.status === "completed" ? "Course ayipoyindi — certificate pending"
       : started ? `Training nadustondi — day ${day} / ${totalDays}`
+      : s.status === "training" ? "Training nadustondi"
       : balance ? `Inka modalu kaledu · ₹${balance.toLocaleString("en-IN")} balance`
       : "Modalu kaledu — batch kosam chustunnaru",
   };
@@ -377,7 +385,7 @@ module.exports = async (req, res) => {
     for (const id of (r.result || [])) {
       const s = await getSt(cfg, id);
       if (!s) continue;
-      students.push({ id: s.id, name: s.name, phone: s.phone, course: s.course, duration: s.duration, status: s.status,
+      students.push({ id: s.id, name: s.name, phone: s.phone, course: s.course, duration: s.duration, status: s.status, statusReason: s.statusReason || "", statusBy: s.statusBy || "", statusAt: s.statusAt || 0,
         fee: s.fee, paid: s.paid, batch: s.batch, created: s.created, onboarded: s.onboarded, startISO: s.startISO,
         certNo: s.certNo, grade: s.grade, docsPending: !!s.docsPending, notes: (s.notes || []).slice(0, 3),
         progress: progressOf(s) });
@@ -484,10 +492,22 @@ module.exports = async (req, res) => {
     }
     return json(res, 200, { ok: true, student: withProgress(s), certificate: f.certificate });
   }
+  // Where a student stands, set by hand (owner PDF 12 Nov, point 2): a seat
+  // booked, active, training going on, inactive, discontinued, completed.
+  // Inactive and discontinued need a reason — "not interested to attend
+  // classes" is the owner's example — and the reason stays beside the
+  // status with who set it and when; the earlier ones are kept in a log,
+  // because a record people rely on is never overwritten without a trace.
   if (a === "status") {
     const st = String(b.status || "");
-    if (!["enquiry", "enrolled", "active", "completed", "dropped"].includes(st)) return json(res, 400, { error: "bad status" });
-    s.status = st; await putSt(cfg, s);
+    if (!STATUSES.includes(st)) return json(res, 400, { error: "bad status — one of " + STATUSES.join(", ") });
+    const reason = String(b.reason || "").trim().slice(0, 160);
+    if (NEEDS_REASON.includes(st) && !reason) return json(res, 400, { error: "Reason raayandi — enduku " + (STATUS_LABEL[st] || st) + " ani" });
+    if (s.status !== st || (reason && reason !== s.statusReason)) {
+      s.statusLog = [{ from: s.status || "", to: st, reason, by: me.name, ts: Date.now() }].concat(s.statusLog || []).slice(0, 20);
+    }
+    s.status = st; s.statusReason = NEEDS_REASON.includes(st) ? reason : (reason || ""); s.statusBy = me.name; s.statusAt = Date.now();
+    await putSt(cfg, s);
     return json(res, 200, { ok: true, student: withProgress(s) });
   }
   // Batch 1 (20 October) never ran; it moved to 10 November. A student
@@ -529,3 +549,6 @@ module.exports.linkToken = linkToken;
 module.exports.buildDocs = buildDocs;
 module.exports.getSt = getSt;
 module.exports.putSt = putSt;
+module.exports.STATUSES = STATUSES;
+module.exports.STATUS_LABEL = STATUS_LABEL;
+module.exports.NEEDS_REASON = NEEDS_REASON;

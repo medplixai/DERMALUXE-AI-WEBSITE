@@ -378,7 +378,7 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
   const caps0 = effCaps(roles, me), may = (c) => caps0.includes("*") || caps0.includes(c);
   // The team list used to be fetched after everything else, one more wait for
   // something nothing else depended on. It goes with the rest.
-  const [page, ar, bk, dp, q, rv, en, teamRaw, doneRaw, usersAll] = await Promise.all([
+  const [page, ar, bk, dp, q, rv, en, teamRaw, doneRaw, usersAll, allLeadsRaw, studN] = await Promise.all([
     leadPage(cfg, 0, LEAD_PAGE),
     guard.kvCommand(cfg, ["LRANGE", "appt:q", "0", "299"]).catch(() => ({})),
     require("./_seats.js").booked(cfg).catch(() => 0),   // students on the books, not a typed number (9 Nov)
@@ -391,6 +391,12 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
     // appt:done, so a tile counted from appts alone would always say 0.
     may("appts.view") ? guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "499"]).catch(() => ({})) : Promise.resolve({}),   // the whole kept list (LTRIM 0 499)
     may("appts.view") ? users(cfg).catch(() => ({})) : Promise.resolve({}),
+    // The sidebar said "Patients 0 · Students 0" until somebody opened those
+    // tabs, and then the numbers jumped (owner PDF 11 Nov, point 4). The two
+    // counts come with the first load: every distinct number on the books,
+    // and every student record.
+    may("leads.view") ? guard.kvCommand(cfg, ["LRANGE", LEADS, "0", "799"]).catch(() => ({})) : Promise.resolve({}),
+    may("academy.view") ? guard.kvCommand(cfg, ["LLEN", "acad:st:list"]).catch(() => ({})) : Promise.resolve({}),
   ]);
   if (sc) page.leads = page.leads.filter(br.keep(sc));
   const leads = page.leads;
@@ -436,7 +442,14 @@ async function dataPayload(cfg, me, knownRoles, reqQuery) {
   const seePosts = allow("posts.view");
   if (!seePosts) { today = null; queue.length = 0; }
   const rk = roleOf(me.role, roles);
-  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, leadsTotal: page.leadsTotal, leadsMore: page.more, leadPage: LEAD_PAGE, statuses: STATUSES, appts, apptsDone, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now,
+  // Distinct numbers, the way the Patients tab counts them (patient.js list:
+  // one row per phone), so the badge and the tab agree.
+  const ptPhones = new Set();
+  for (const raw of (((allLeadsRaw || {}).result) || [])) {
+    try { const ph = digits10((JSON.parse(raw) || {}).phone); if (ph) ptPhones.add(ph); } catch (e) {}
+  }
+  const counts = { patients: ptPhones.size, students: Math.max(0, Number((studN || {}).result) || 0) };
+  return { me: Object.assign({}, me, { caps, roleLabel: roles[rk].label, roleTe: roles[rk].te }), roles, capList: CAPS, capTe: CAP_TE, capGroups: CAP_GROUPS, leads, leadsTotal: page.leadsTotal, leadsMore: page.more, leadPage: LEAD_PAGE, statuses: STATUSES, appts, apptsDone, academy: { booked: allow("academy.view") ? booked : 0, left: allow("academy.view") ? 10 - booked : 0, leads: academy }, counts, today, queue, dailyOn: String(en.result || "1") !== "0", reviews, team, owners: can(me, "team.manage", roles) ? ownerPhones() : undefined, ts: now,
     branches: br.multi() ? br.list() : undefined, branch: sc || undefined };
 }
 
@@ -842,13 +855,14 @@ module.exports = async (req, res) => {
     const nx = await guard.kvCommand(cfg, ["SET", `ntf:callhd:${phone}`, "1", "NX", "EX", "7200"]).catch(() => ({}));
     if (!nx || !nx.result) return json(res, 200, { ok: true, sent: false, why: "recent" });
     const first = clean(b.name, 40).split(" ")[0] || "Namaste";
-    // The call comes from the handset that tapped the button — the staff
-    // member's own number, which is what the patient will see ringing. Naming
-    // the clinic line instead promised a call from a number that never rang
-    // (review, 9 Nov).
-    const from = digits10(me.phone);
-    const fromFmt = /^\d{10}$/.test(from) ? `${from.slice(0, 5)} ${from.slice(5)}` : "";
-    const line = `${first} garu 🙏 DermaLuxe nunchi ${me.name} ippudu${fromFmt ? " " + fromFmt + " nunchi" : ""} call chestunnaru — teliyani number ayina lift cheyandi 😊 Convenient kakapothe reply lo mee time cheppandi.`;
+    // Until 12 Nov this named the staff member's own handset number, since
+    // that is what rings. The owner read it in a chat — "Hima mobile number
+    // estundi" — and wants the clinic's public number there, the one on the
+    // website (owner PDF 12 Nov, point 1). So the clinic is named by its
+    // number, and the line keeps saying the call may come from a number the
+    // patient does not know, because it will.
+    const clinicNo = require("./_docs.js").BRAND.wa;
+    const line = `${first} garu 🙏 DermaLuxe by Medicare (📞 ${clinicNo}) nunchi ${me.name} ippudu call chestunnaru — teliyani number ayina lift cheyandi 😊 Convenient kakapothe reply lo mee time cheppandi.`;
     const open = await notify.windowOpen(cfg, phone);
     let sent = false;
     if (open) sent = !!(await notify.sendWa(phone, line).catch(() => false));
@@ -957,15 +971,20 @@ module.exports = async (req, res) => {
       by: me.name, byPhone: me.phone, manual: true,
     };
 
-    // The same number twice in a week is nearly always the desk entering
-    // somebody who already rang. Say so rather than quietly making a second
-    // card for one person.
+    // The same NAME on the same number twice in a week is nearly always the
+    // desk entering somebody who already rang. Say so rather than quietly
+    // making a second card for one person. A different name on the same
+    // number is a different person — a father and his sons share one mobile
+    // in Eluru, and until 12 Nov the second of them could not be entered
+    // (owner PDF 11 Nov, point 6). Names compare loosely: case, spaces and
+    // dots do not make two people.
+    const nameKey = (s) => String(s || "").toLowerCase().replace(/[^a-z0-9ఀ-౿]/g, "");
     const recent = await guard.kvCommand(cfg, ["LRANGE", LEADS, "0", "199"]).catch(() => ({}));
     let dupe = null;
     for (const raw of (recent.result || [])) {
       try {
         const l = JSON.parse(raw);
-        if (digits10(l.phone) === phone && at - Number(l.ts || 0) < 7 * 86400000) { dupe = l; break; }
+        if (digits10(l.phone) === phone && nameKey(l.name) === nameKey(name) && at - Number(l.ts || 0) < 7 * 86400000) { dupe = l; break; }
       } catch (e) {}
     }
     if (dupe && !b.anyway) {
