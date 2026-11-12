@@ -93,14 +93,20 @@ const P2 = `<section class="pg">
 </section>`;
 
 // ---------------------------------------------------------------- 3 · doctors
+// Each portrait is cut from the doctor's own photograph to one framing —
+// 4:5, the head 48% of the height with its top 4% from the edge, centred —
+// so the four faces sit at the same size and the same eye line (owner,
+// 12 Nov: "doctor photos proper alignment lo levu"). Measured crops are in
+// print/catalog/img/p-*.jpg; sources: assets/dr-nikhitha.jpg, assets/founders
+// photos/Dr. Meghana Valleti.png, assets/dr-sai-divija.jpg, assets/dr-jaishree.jpg.
 const TEAM = [
-  ["dr-nikhitha.jpg", D.nikhitha.name, "డా. నిఖితా ప్రియాంక", "MD (DVL) · Consultant Dermatologist", "కన్సల్టెంట్ డెర్మటాలజిస్ట్",
+  ["p-nik.jpg", D.nikhitha.name, "డా. నిఖితా ప్రియాంక", "MD (DVL) · Consultant Dermatologist", "కన్సల్టెంట్ డెర్మటాలజిస్ట్",
     [["Aesthetics Fellowship (AAAFP), Mumbai", "ఈస్థటిక్స్ ఫెలోషిప్ (AAAFP), ముంబై"], ["Ex. Senior Dermatologist, AIIMS Mangalagiri", "మాజీ సీనియర్ డెర్మటాలజిస్ట్, AIIMS మంగళగిరి"]], `Reg. No. ${D.nikhitha.reg}`],
-  ["dr-meghana.jpg", "Dr. Meghana Valeti", "డా. మేఘన వలేటి", "MD (DVL) · Founder &amp; Medical Director", "వ్యవస్థాపకురాలు &amp; మెడికల్ డైరెక్టర్",
+  ["p-meg.jpg", "Dr. Meghana Valeti", "డా. మేఘన వలేటి", "MD (DVL) · Founder &amp; Medical Director", "వ్యవస్థాపకురాలు &amp; మెడికల్ డైరెక్టర్",
     [["Dermatologist &amp; Cosmetologist", "డెర్మటాలజిస్ట్ &amp; కాస్మటాలజిస్ట్"], ["10+ years in dermatology", "డెర్మటాలజీలో 10+ సంవత్సరాల అనుభవం"]], `Reg. No. ${D.meghana.reg}`],
-  ["dr-divija.jpg", D.divija.name, "డా. కె. సాయి దివిజ", "MD (DVL) · Dermatologist", "డెర్మటాలజిస్ట్",
+  ["p-div.jpg", D.divija.name, "డా. కె. సాయి దివిజ", "MD (DVL) · Dermatologist", "డెర్మటాలజిస్ట్",
     [["Medical dermatology, hair &amp; aesthetics", "మెడికల్ డెర్మటాలజీ, జుట్టు &amp; ఈస్థటిక్స్"], ["5+ years in dermatology", "డెర్మటాలజీలో 5+ సంవత్సరాల అనుభవం"]], `Reg. No. ${D.divija.reg}`],
-  ["dr-jaishree.jpg", "Dr. Jaishree", "డా. జైశ్రీ", "MDS (OMFS) · Hair Transplant Surgeon", "హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్",
+  ["p-jai.jpg", "Dr. Jaishree", "డా. జైశ్రీ", "MDS (OMFS) · Hair Transplant Surgeon", "హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్",
     [["FUE &amp; DHI, hairline design, graft planning", "FUE &amp; DHI, హెయిర్‌లైన్ డిజైన్, గ్రాఫ్ట్ ప్లానింగ్"], ["6+ years of surgical experience", "6+ సంవత్సరాల సర్జికల్ అనుభవం"]], ""],
 ];
 const P3 = `<section class="pg">
@@ -108,8 +114,8 @@ const P3 = `<section class="pg">
   ${h1("Our doctors", "మా డాక్టర్లు")}
   <div class="team">${TEAM.map(([f, n, nte, q, qte, lines, reg]) => `<article class="doc">
     <img src="${img(f)}" alt="">
-    <div><h3>${n}</h3><p class="nte">${te(nte)}</p><p class="q">${q}</p><p class="qte">${te(qte)}</p>
-    <ul>${lines.map(([l, lt]) => `<li>${l}<br>${te(lt)}</li>`).join("")}</ul>${reg ? `<p class="reg">${reg} · ${te(reg.replace("Reg. No.", "రిజి. నం."))}</p>` : ""}</div></article>`).join("")}</div>
+    <div class="who"><h3>${n}</h3><p class="nte">${te(nte)}</p><p class="q">${q}</p><p class="qte">${te(qte)}</p>${reg ? `<p class="reg">${reg}<br>${te(reg.replace("Reg. No.", "రిజి. నం."))}</p>` : ""}</div>
+    <ul>${lines.map(([l, lt]) => `<li>${l}<br>${te(lt)}</li>`).join("")}</ul></article>`).join("")}</div>
   <p class="note">Skin, hair and nail consultations are with the MD (DVL) dermatologists. For a hair transplant, the surgeon examines the scalp, then plans and performs the surgery.<br>${te("చర్మం, జుట్టు, గోళ్ళ కన్సల్టేషన్లు MD (DVL) డెర్మటాలజిస్టులతోనే. హెయిర్ ట్రాన్స్‌ప్లాంట్‌కు సర్జన్ తల పరీక్షించి, ప్లాన్ చేసి సర్జరీ చేస్తారు.")}</p>
   ${foot(3)}
 </section>`;
@@ -333,16 +339,17 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .row3 { display:grid; grid-template-columns: repeat(3, 1fr); gap: 3mm; flex: 1 1 auto; min-height: 0; margin-bottom: 5mm; }
 
 /* doctors */
-.team { display:grid; grid-template-columns: 1fr 1fr; gap: 4.4mm; margin-top: 5mm; }
+.team { display:grid; grid-template-columns: 1fr; gap: 3.6mm; margin-top: 5mm; }
 .doc { background:#fff; border: 1px solid var(--rule); border-radius: 3mm; overflow:hidden; display:flex; flex-direction:column; }
-.doc > img { width:100%; height: 44mm; object-fit: cover; object-position: 50% 18%; display:block; background: var(--blush); }
-.doc > div { padding: 3.6mm 4.2mm 4mm; }
-.doc h3 { font-family: "Cormorant Garamond", serif; font-size: 16pt; line-height: 1.05; }
+.doc { display:grid; grid-template-columns: 32mm 72mm 1fr; gap: 5mm; align-items:center; padding: 3.4mm; }
+.doc > img { width: 32mm; height: 40mm; object-fit: cover; display:block; border-radius: 2.4mm; background: var(--blush); }
+.doc .who { align-self: center; }
+.doc h3 { font-family: "Cormorant Garamond", serif; font-size: 17pt; line-height: 1.05; }
 .doc .nte { margin: .6mm 0 0; } .doc .nte .te { font-size: 9.4pt; font-weight: 600; }
 .doc .q { margin: 2mm 0 0; font-size: 8.8pt; font-weight: 600; color: var(--gold); letter-spacing: .02em; }
 .doc .qte { margin: .2mm 0 0; } .doc .qte .te { font-size: 8.2pt; }
-.doc ul { margin: 1.6mm 0 0; padding-left: 4mm; font-size: 8.2pt; color: var(--muted); display:flex; flex-direction:column; gap: .8mm; }
-.doc li .te { font-size: 7.8pt; }
+.doc ul { margin: 0; padding: 0 0 0 4mm; border-left: 1px solid var(--rule); padding-left: 8mm; font-size: 8.8pt; color: var(--ink); display:flex; flex-direction:column; gap: 2.4mm; align-self: center; }
+.doc li .te { font-size: 8.2pt; }
 .doc .reg { margin: 2mm 0 0; font-size: 7.8pt; color: var(--plum); font-weight: 600; letter-spacing: .03em; }
 .note { font-size: 8.2pt; color: var(--muted); margin: 5mm 0 4mm; line-height: 1.45; }
 .note .te { font-size: 8pt; color: var(--muted); }
