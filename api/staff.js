@@ -97,8 +97,11 @@ const BUILTIN_ROLES = {
     caps: ["inbox.view","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.edit","academy.material","academy.certify","reviews.view","ai.use","msg.send","files.view"] },
   // academy.edit from 11 Nov (owner PDF, point 7): the front desk takes the
   // ₹9,999 advance and was looking at an Add-student form with no Add button.
-  reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count, student add.",
-    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.seats","academy.edit","money.view","money.bill","posts.view","ai.use","msg.send","files.view"] },
+  // academy.money added 12 Nov 2026 on the owner's word ("reception ki record
+  // payment power ivvu"): the desk takes the academy fee at the counter and
+  // had no Record payment button, so a ₹99,999 student showed ₹0 paid.
+  reception: { label: "Reception", te: "రిసెప్షన్",   note: "Front desk — calls, appointments, seat count, student add, academy fee.",
+    caps: ["inbox.view","inbox.reply","leads.view","leads.edit","appts.view","appts.edit","pkg.log","stock.view","stock.edit","consent.take","academy.view","academy.seats","academy.edit","academy.money","money.view","money.bill","posts.view","ai.use","msg.send","files.view"] },
   accounts:  { label: "Accounts",  te: "అకౌంట్స్",    note: "Fees, receipts, documents. Leads edit cheyaleru.",
     caps: ["leads.view","appts.view","academy.view","academy.money","academy.docs","money.view","money.bill","money.expense","reports.view","stock.view","reviews.view","ai.use","files.view"] },
   therapist: { label: "Therapist", te: "థెరపిస్ట్",   note: "Treatments chese vaaru — chudatam matrame.",

@@ -56,6 +56,21 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   const src = (f) => require("fs").readFileSync(require("path").join(process.env.DL_API, f), "utf8");
   is([/inCourse\(s\)/.test(src("cron-academy.js")), /inCourse\(st\)/.test(src("_admin.js"))], [true, true], "and the daily cron and 'academy notify' both use that rule, not a list of their own");
 
+  // The front desk takes the fee at the counter (owner, 12 Nov: "reception
+  // ki record payment power ivvu"). Read from the real role table.
+  // The harness stubs staff.js for the endpoints; borrow the real one for a
+  // moment and put the stub back, so the permission checks below still bite.
+  const sp = require("path").join(process.env.DL_API, "staff.js"), stub = require.cache[sp];
+  delete require.cache[sp];
+  const realStaff = require(sp);
+  require.cache[sp] = stub;
+  is([realStaff.can({ role: "reception" }, "academy.money"), realStaff.can({ role: "reception" }, "academy.certify"), realStaff.can({ role: "reception" }, "academy.delete")], [true, false, false],
+     "reception can record an academy payment — but still not certify or delete a student");
+  h.as(realStaff.capsOf("reception"));   // exactly the reception role's powers
+  const paid = await A({ a: "pay" }, { a: "pay", id, amount: 45000, ref: "UPI" });
+  is([paid.code, (paid.body.student || {}).paid], [200, 54999], "with that power the payment goes on the student's record");
+  h.as(["*"]);
+
   h.as(["academy.view"]);
   is((await A({ a: "status" }, { a: "status", id, status: "active" })).code, 403, "a role that can only look cannot change it");
   h.as(["*"]);
