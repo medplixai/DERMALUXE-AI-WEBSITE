@@ -138,13 +138,21 @@ const WHEN = [
   ["Acne that is leaving scars", "మచ్చలు వదిలే మొటిమలు"],
   ["Fungal infection that keeps coming back", "మళ్ళీ మళ్ళీ వచ్చే ఫంగల్ ఇన్ఫెక్షన్"],
 ];
+// The condition pictures are the website's own (assets/tx, drawn by
+// tools/page-images.js and marked there as AI) — the owner asked for the
+// site's images on 12 Nov.
+const CPICS = [
+  ["acne-treatment-eluru", "Acne", "మొటిమలు"], ["pigmentation-treatment-eluru", "Pigmentation", "పిగ్మెంటేషన్"],
+  ["psoriasis-treatment-eluru", "Psoriasis", "సోరియాసిస్"], ["vitiligo-treatment-eluru", "Vitiligo", "బొల్లి"],
+  ["fungal-infection-treatment-eluru", "Fungal infection", "ఫంగల్ ఇన్ఫెక్షన్"], ["alopecia-areata-treatment-eluru", "Alopecia areata", "అలోపేసియా"],
+];
 const P4 = `<section class="pg">
   ${top("Medical dermatology", "మెడికల్ డెర్మటాలజీ")}
   ${h1("Conditions we see", "మేము చూసే చర్మ సమస్యలు")}
   <div class="md">
     <ul class="cond">${COND.map(([e, t]) => `<li>${e}<br>${te(t)}</li>`).join("")}</ul>
     <div class="md-side">
-      <figure class="art">${ai}<img src="${img("art-skin-layers.jpg")}" alt=""></figure>
+      <div class="mosaic">${CPICS.map(([f, e, t]) => `<figure>${ai}<img src="${img("tx-" + f + ".jpg")}" alt=""><figcaption>${e} · ${te(t)}</figcaption></figure>`).join("")}</div>
       <div class="when"><h2>When to refer</h2><p class="wte">${te("ఎప్పుడు రిఫర్ చేయాలి")}</p>
         <ul>${WHEN.map(([e, t]) => `<li>${e}<br>${te(t)}</li>`).join("")}</ul></div>
     </div>
@@ -167,15 +175,20 @@ const LINE = {
   "medi-facial": ["Facials chosen for the skin condition, doctor-supervised.", "చర్మ సమస్యకు తగ్గ facials — డాక్టర్ పర్యవేక్షణలో."],
   "glow-drip": ["IV nutrient infusions, only after a doctor's assessment.", "డాక్టర్ అసెస్‌మెంట్ తర్వాత మాత్రమే IV న్యూట్రియెంట్ డ్రిప్స్."],
 };
+// The website's picture for each procedure (assets/tx), matched to the pad's icons.
+const TXPIC = {
+  "laser-hair-removal": "laser-hair-removal-eluru", "hydrafacial": "hydrafacial-eluru", "pico-laser": "pico-laser-tattoo-removal-eluru",
+  "co2-laser": "card-laser-resurfacing", "mnrf": "mnrf-treatment-eluru", "hifu": "hifu-face-lift-eluru",
+  "hair-transplant": "hair-transplant-eluru", "rf": "anti-ageing-treatment-eluru", "skin-lightening": "tan-removal-skin-brightening-eluru",
+  "chemical-peel": "chemical-peel-eluru", "medi-facial": "open-pores-oily-skin-treatment-eluru", "glow-drip": "glutathione-skin-whitening-eluru",
+};
 const P5 = `<section class="pg">
   ${top("Procedures &amp; aesthetics", "ప్రొసీజర్లు &amp; ఈస్థటిక్స్")}
-  <div class="p5head"><div>${h1("Procedures we perform", "మేము చేసే ప్రొసీజర్లు")}
-    <p class="lead">Every procedure follows a dermatologist's consultation. The number of sessions and the expected result are explained to the patient before starting, including the risks.</p>
-    <p class="leadte">${te("ప్రతి ప్రొసీజర్ డెర్మటాలజిస్ట్ కన్సల్టేషన్ తర్వాతే. ఎన్ని సెషన్లు, ఎలాంటి ఫలితం, ఏ రిస్కులు — మొదలుపెట్టే ముందే పేషెంట్‌కు వివరిస్తారు.")}</p></div>
-    <figure class="art small">${ai}<img src="${img("art-light.jpg")}" alt=""></figure></div>
-  <div class="tx">${ICONS.map(([slug, label, hex]) => `<article style="--h:${hex}"><img src="${icon(slug)}" alt=""><div><h3>${label}</h3><p>${LINE[slug][0]}</p>${te(LINE[slug][1])}</div></article>`).join("")}</div>
+  ${h1("Procedures we perform", "మేము చేసే ప్రొసీజర్లు")}
+  <p class="lead p5lead">Every procedure follows a dermatologist's consultation; sessions, expected result and risks are explained before starting.<br>${te("ప్రతి ప్రొసీజర్ డెర్మటాలజిస్ట్ కన్సల్టేషన్ తర్వాతే; ఎన్ని సెషన్లు, ఎలాంటి ఫలితం, ఏ రిస్కులు — మొదలుపెట్టే ముందే వివరిస్తారు.")}</p>
+  <div class="tx">${ICONS.map(([slug, label, hex]) => `<article style="--h:${hex}"><div class="pic">${ai}<img src="${img("tx-" + TXPIC[slug] + ".jpg")}" alt=""><img class="ic" src="${icon(slug)}" alt=""></div><div class="txt"><h3>${label}</h3><p>${LINE[slug][0]}</p>${te(LINE[slug][1])}</div></article>`).join("")}</div>
   <p class="also"><b>Also:</b> Botox, dermal fillers, thread lift, PRP / GFC, mesotherapy, vitiligo surgery, mole, wart &amp; skin-tag removal.<br>${te("ఇంకా: Botox, ఫిల్లర్లు, థ్రెడ్ లిఫ్ట్, PRP / GFC, మెసోథెరపీ, బొల్లి సర్జరీ, పుట్టుమచ్చ, పులిపిర్లు &amp; స్కిన్ ట్యాగ్ తొలగింపు.")}</p>
-  <p class="ainote">${ai} Icons and illustrations on this page are AI-generated. ${te("ఈ పేజీలోని ఐకాన్లు, బొమ్మలు AI తో తయారు చేసినవి.")}</p>
+  <p class="ainote">${ai} The pictures and icons on this page are AI-generated, the same ones the website uses; they show the condition, not a patient of the clinic. ${te("ఈ పేజీలోని ఫోటోలు, ఐకాన్లు AI తో తయారు చేసినవి — వెబ్‌సైట్‌లో ఉన్నవే; ఇవి సమస్యను చూపిస్తాయి, క్లినిక్ పేషెంట్లు కాదు.")}</p>
   ${foot(5)}
 </section>`;
 
@@ -205,13 +218,18 @@ const P6 = `<section class="pg">
 // ---------------------------------------------------------------- 7 · facility
 const P7 = `<section class="pg">
   ${top("Inside the clinic", "క్లినిక్ లోపల")}
-  ${h1("Rooms built for procedures", "ప్రొసీజర్ల కోసం ప్రత్యేక గదులు")}
-  <p class="lead narrow">Every photograph on this page was taken at the clinic in Eluru. Lasers, energy devices and the procedure theatre are on the ground floor of Rama Mahal, R.R. Peta.<br>${te("ఈ పేజీలోని ప్రతి ఫోటో ఏలూరు క్లినిక్‌లోనే తీసింది. లేజర్లు, ఎనర్జీ డివైసులు, ప్రొసీజర్ థియేటర్ — అన్నీ రామ మహల్, ఆర్.ఆర్. పేట గ్రౌండ్ ఫ్లోర్‌లో.")}</p>
-  <div class="grid6">
-    ${photo("c_machines.jpg", "Laser &amp; energy devices", "లేజర్ &amp; ఎనర్జీ డివైసులు", "tall")}
+  ${h1("Machines &amp; rooms", "మెషీన్లు &amp; గదులు")}
+  <p class="lead narrow">Every photograph on this page was taken at the clinic in Eluru, on the ground floor of Rama Mahal, R.R. Peta.<br>${te("ఈ పేజీలోని ప్రతి ఫోటో ఏలూరు క్లినిక్‌లోనే తీసింది — రామ మహల్, ఆర్.ఆర్. పేట గ్రౌండ్ ఫ్లోర్.")}</p>
+  <div class="mach">
+    ${photo("m_lasers.jpg", "Laser machines", "లేజర్ మెషీన్లు")}
+    ${photo("m_lllt.jpg", "Laser hair-regrowth machine", "లేజర్ హెయిర్ రీగ్రోత్ మెషీన్")}
+    ${photo("m_analyzer.jpg", "Skin analysis machine", "స్కిన్ అనాలిసిస్ మెషీన్")}
+  </div>
+  <div class="tech"><b>Technology at the clinic · ${te("క్లినిక్‌లోని టెక్నాలజీ")}</b>
+    <span>Pico laser</span><span>Fractional CO₂ laser</span><span>Diode laser</span><span>HydraFacial</span><span>MNRF</span><span>HIFU</span><span>Laser hair regrowth</span><span>Skin analysis</span></div>
+  <div class="rooms">
     ${photo("c_proc.jpg", "Procedure room", "ప్రొసీజర్ రూమ్")}
     ${photo("c_beds.jpg", "Treatment room", "ట్రీట్‌మెంట్ రూమ్")}
-    ${photo("c_scan.jpg", "Skin analysis", "స్కిన్ అనాలిసిస్")}
     ${photo("c_wait.jpg", "Waiting area", "వెయిటింగ్ ఏరియా")}
   </div>
   ${foot(7)}
@@ -239,7 +257,7 @@ const P8 = `<section class="pg back">
       <dl><dt>Call &amp; WhatsApp</dt><dd>+91 ${B.wa}</dd><dt>Also</dt><dd>${B.call}</dd><dt>Hours</dt><dd>Mon–Sat, 9 AM – 9 PM · Sunday closed · ${te("ఆదివారం సెలవు")}</dd><dt>Web</dt><dd>www.dermaluxe.ai · ${B.email}</dd></dl>
     </div>
   </div>
-  <p class="legal">Treating doctors: ${Object.values(D).map((d) => `${d.name}, ${d.q || "MD (DVL)"}, Reg. No. ${d.reg}`).join(" · ")}. Hair Transplant Surgeon: Dr. Jaishree, MDS (OMFS). ${ai} marks AI-generated illustrations and icons; every photograph is of the clinic and its doctors. DermaLuxeAI Private Limited · Part of Medicare Skin &amp; Hair Clinics.<br>${te(docs.regDisclosure("te") + ". హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్: డా. జైశ్రీ, MDS (OMFS). " + "✦ గుర్తు ఉన్నవి AI తో తయారు చేసిన బొమ్మలు, ఐకాన్లు; ఫోటోలు అన్నీ క్లినిక్, మా డాక్టర్లవి.")}</p>
+  <p class="legal">Treating doctors: ${Object.values(D).map((d) => `${d.name}, ${d.q || "MD (DVL)"}, Reg. No. ${d.reg}`).join(" · ")}. Hair Transplant Surgeon: Dr. Jaishree, MDS (OMFS). ${ai} marks AI-generated pictures, illustrations and icons — the condition pictures are the ones on the website, not patients of the clinic; every other photograph is of the clinic, its machines and its doctors. DermaLuxeAI Private Limited · Part of Medicare Skin &amp; Hair Clinics.<br>${te(docs.regDisclosure("te") + ". హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్: డా. జైశ్రీ, MDS (OMFS). " + "✦ గుర్తు ఉన్నవి AI తో తయారు చేసిన ఫోటోలు, బొమ్మలు, ఐకాన్లు — వెబ్‌సైట్‌లో ఉన్నవే, క్లినిక్ పేషెంట్లు కాదు; మిగతా ఫోటోలు అన్నీ క్లినిక్, మెషీన్లు, మా డాక్టర్లవి.")}</p>
   ${foot(8)}
 </section>`;
 
@@ -341,18 +359,34 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 .when li::before { content:"›"; position:absolute; left:0; color: var(--gold2); font-weight:700; }
 .when .te { color: #efd2d8; font-size: 8.8pt; }
 
+/* condition pictures */
+.mosaic { display:grid; grid-template-columns: 1fr 1fr; gap: 2.4mm; }
+.mosaic figure { margin:0; position:relative; border-radius: 2mm; overflow:hidden; }
+.mosaic img { width:100%; height: 25mm; object-fit: cover; display:block; }
+.mosaic .ai { position:absolute; top: 1mm; right: 1.4mm; color:#fff; font-size: 8pt; text-shadow: 0 0 2px rgba(0,0,0,.6); }
+.mosaic figcaption { position:absolute; left:0; right:0; bottom:0; padding: 3mm 2mm 1.2mm; font-size: 7.4pt; color:#fff; font-weight: 600; background: linear-gradient(transparent, rgba(40,15,25,.75)); }
+.mosaic figcaption .te { color:#f6dfe3; font-size: 7pt; font-weight: 500; }
+
 /* procedures */
 .p5head { display:grid; grid-template-columns: 1fr 58mm; gap: 6mm; align-items:end; }
 .p5head .lead { font-size: 9.4pt; margin-top: 3.4mm; }
 .p5head .leadte .te { font-size: 8.8pt; }
 .art.small img { height: 44mm; object-fit: cover; }
-.tx { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 4mm; margin-top: 7mm; }
+.p5lead { font-size: 9.2pt; margin-top: 3mm; } .p5lead .te { font-size: 8.6pt; }
+.tx { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 3mm; margin-top: 5mm; }
+.tx article { flex-direction: column; padding: 0 !important; gap: 0 !important; overflow:hidden; }
+.tx .pic { position:relative; height: 22mm; align-self: stretch; }
+.tx .pic > img:not(.ic) { width:100%; height:100%; object-fit: cover; display:block; border-radius: 0; }
+.tx .pic .ai { position:absolute; top: 1mm; right: 1.4mm; color:#fff; font-size: 8pt; text-shadow: 0 0 2px rgba(0,0,0,.6); }
+.tx .pic .ic { position:absolute; left: 2mm; bottom: -5mm; width: 10mm !important; height: 10mm !important; border-radius: 2mm; border: 1px solid #fff; box-shadow: 0 .6mm 1.6mm rgba(0,0,0,.18); background:#fff; }
+.tx .txt { padding: 5.6mm 2.4mm 2.4mm; }
+.tx .txt p { font-size: 8.1pt !important; } .tx .txt .te { font-size: 7.6pt !important; }
 .tx article { display:flex; gap: 2.4mm; align-items:flex-start; background:#fff; border: 1px solid color-mix(in srgb, var(--h) 35%, white); border-top: 1.4mm solid var(--h); border-radius: 2mm; padding: 3.6mm 3.2mm 4mm; min-width:0; }
 .tx img { width: 13mm; height: 13mm; border-radius: 2mm; flex: 0 0 auto; }
 .tx h3 { font-size: 10pt; color: color-mix(in srgb, var(--h) 70%, black); }
 .tx p { margin: 1mm 0 .8mm; font-size: 8.6pt; line-height: 1.3; color: var(--ink); }
 .tx .te { font-size: 8pt; line-height: 1.42; display:block; }
-.also { margin: 6mm 0 0; font-size: 9.2pt; line-height: 1.45; }
+.also { margin: 4mm 0 0; font-size: 8.8pt; line-height: 1.45; }
 .also .te { font-size: 8.2pt; }
 .ainote { margin: 2.4mm 0 3mm; font-size: 7.4pt; color: var(--muted); }
 .ainote .te { font-size: 7.2pt; color: var(--muted); }
@@ -370,6 +404,11 @@ figure.art > .ai { position:absolute; top: 2mm; right: 2.4mm; z-index:1; font-si
 /* facility */
 .lead.narrow { font-size: 9.6pt; margin-top: 4mm; }
 .lead.narrow .te { font-size: 9pt; }
+.mach { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; height: 86mm; margin-top: 5mm; }
+.tech { display:flex; flex-wrap:wrap; gap: 1.6mm 2mm; align-items:center; margin: 4.4mm 0 0; font-size: 8.4pt; }
+.tech b { width: 100%; color: var(--plum); font-size: 9.6pt; margin-bottom: .6mm; }
+.tech > span { border: 1px solid var(--gold); color: var(--plum); border-radius: 100px; padding: 1mm 3mm; background:#fff; }
+.rooms { display:grid; grid-template-columns: 1fr 1fr 1fr; gap: 3mm; flex: 1 1 auto; min-height: 0; margin: 4.4mm 0 5mm; }
 .grid6 { display:grid; grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 3mm; flex: 1 1 auto; min-height: 0; margin: 6mm 0 5mm; }
 .grid6 .tall { grid-row: span 2; }
 .grid6 .tall img { object-position: 40% 70%; }
