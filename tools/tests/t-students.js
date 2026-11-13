@@ -75,6 +75,45 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   is((await A({ a: "status" }, { a: "status", id, status: "active" })).code, 403, "a role that can only look cannot change it");
   h.as(["*"]);
 
+  // Discount (owner PDF 12 Nov, second copy, points 1, 2, 4): hima paid
+  // ₹47,500 of ₹49,999 and the ₹2,499 left is waived.
+  const hima = (await A({ a: "create" }, { a: "create", name: "hima", phone: "9876500072", course: "skin", paid: 10000 })).body.student;
+  await A({ a: "pay" }, { a: "pay", id: hima.id, amount: 37500 });
+  const w = await A({ a: "pay" }, { a: "pay", id: hima.id, amount: 0, discount: 2499, reason: "owner approved" });
+  is(w.code, 200, "a discount alone, with no money, is accepted");
+  is([w.body.student.fee, w.body.student.feeList, w.body.student.discount, w.body.student.paid, w.body.receipt], [47500, 49999, 2499, 47500, null], "the fee owed drops by the discount, the list price is kept, and no receipt is made for money that never came");
+  is(w.body.student.progress.steps.find((x) => x.key === "fee").done, true, "and the fee step reads paid in full — balance 0");
+  const raw = JSON.parse(h.run(["GET", "acad:st:" + hima.id]));
+  is([raw.discounts.length, raw.discounts[0].amount, raw.discounts[0].by, raw.discounts[0].why], [1, 2499, "Owner", "owner approved"], "the discount is logged with who gave it and why");
+  const over = await A({ a: "pay" }, { a: "pay", id: hima.id, amount: 0, discount: 1 });
+  is(over.code, 400, "a discount that would take the fee below what is already paid is refused");
+  const both = (await A({ a: "create" }, { a: "create", name: "Both", phone: "9876500073", course: "skin", paid: 9999, discount: 5000 })).body.student;
+  is([both.fee, both.discount], [44999, 5000], "a discount given at admission comes off the fee from the start");
+  const mix = await A({ a: "pay" }, { a: "pay", id: both.id, amount: 30000, discount: 5000 });
+  is([mix.body.student.fee, mix.body.student.paid, mix.body.student.fee - mix.body.student.paid], [39999, 39999, 0], "money and a discount together clear the balance");
+  is((await A({ a: "pay" }, { a: "pay", id: both.id, amount: 0, discount: 0 })).code, 400, "nothing at all is refused");
+
+  // Days in class (point 3).
+  const ist = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
+  const today = ist(Date.now()), ago = (n) => ist(Date.now() - n * 86400000);
+  h.run(["SET", "acad:st:" + hima.id, JSON.stringify(Object.assign(JSON.parse(h.run(["GET", "acad:st:" + hima.id])), { startISO: ago(6), status: "training" }))]);
+  const p1 = await A({ a: "attend" }, { a: "attend", id: hima.id, mark: "p" });
+  is([p1.code, p1.body.student.attSum.present, p1.body.student.attSum.today], [200, 1, "p"], "present today is counted");
+  await A({ a: "attend" }, { a: "attend", id: hima.id, mark: "a", day: ago(1) });
+  const p2 = await A({ a: "attend" }, { a: "attend", id: hima.id, mark: "p", day: ago(2) });
+  is([p2.body.student.attSum.present, p2.body.student.attSum.absent], [2, 1], "a past day can be marked, present or absent");
+  const sundays = [0, 1, 2, 3, 4, 5, 6].filter((n) => new Date(Date.parse(ago(n) + "T12:00:00+05:30")).getUTCDay() === 0).length;
+  is(p2.body.student.attSum.unmarked, 7 - sundays - 3, "class days since the start that nobody marked are counted, Sundays left out");
+  const flip = await A({ a: "attend" }, { a: "attend", id: hima.id, mark: "a" });
+  is([flip.body.student.attSum.present, flip.body.student.attSum.absent, flip.body.student.attSum.today], [1, 2, "a"], "changing today's mark moves it, it does not add a second");
+  is((await A({ a: "attend" }, { a: "attend", id: hima.id, mark: "p", day: ist(Date.now() + 2 * 86400000) })).code, 400, "a day that has not come yet cannot be marked");
+  is(((await A({ a: "list" })).body.students.find((x) => x.id === hima.id) || {}).attSum.absent, 2, "the Students tab gets the counts with the list");
+  h.as(["academy.view"]);
+  is((await A({ a: "attend" }, { a: "attend", id: hima.id, mark: "p" })).code, 403, "a role that can only look cannot mark attendance");
+  is((await A({ a: "pay" }, { a: "pay", id: hima.id, amount: 0, discount: 100 })).code, 403, "or give a discount");
+  h.as(["*"]);
+  void today;
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nstudent status behaves");
   process.exit(fails ? 1 : 0);
 })();

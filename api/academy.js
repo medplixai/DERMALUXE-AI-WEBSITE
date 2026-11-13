@@ -149,7 +149,45 @@ function progressOf(s) {
 // them — otherwise recording a payment or issuing a certificate makes the
 // progress line vanish until somebody reloads, which is exactly the moment
 // they want to see it move.
-const withProgress = (s) => Object.assign({}, s, { progress: progressOf(s) });
+// A discount is money the clinic chose not to collect (owner PDF 12 Nov,
+// second copy, points 1, 2 and 4: hima paid ₹47,500 of ₹49,999 and the
+// ₹2,499 left was waived). `fee` stays what the student owes in all, so
+// every balance in the app, the receipts and the fee-reminder cron stays
+// right without being taught about discounts; the list price is kept in
+// `feeList`, the total waived in `discount`, and every discount with who
+// gave it and when in `discounts`. A discount can never take the fee below
+// what is already paid.
+function applyDiscount(s, d, me, why) {
+  d = Math.round(Number(d) || 0);
+  if (!(d > 0)) return null;
+  const list = Number(s.feeList != null ? s.feeList : s.fee) || 0;
+  const total = (Number(s.discount) || 0) + d;
+  if (list - total < (Number(s.paid) || 0)) return `Discount ekkuva — ₹${d.toLocaleString("en-IN")} isthe fee kattina ₹${(Number(s.paid) || 0).toLocaleString("en-IN")} kante takkuva avutundi`;
+  s.feeList = list; s.discount = total; s.fee = list - total;
+  s.discounts = (s.discounts || []).concat([{ amount: d, why: String(why || "").slice(0, 120), by: (me && me.name) || "", ts: Date.now() }]);
+  if ((Number(s.paid) || 0) >= s.fee) s.feeCleared = true;
+  return "";
+}
+
+// Days in class (owner PDF 12 Nov, second copy, point 3): the desk marks
+// each student present or absent for a day; the card shows how many of
+// each and how many class days since the start are still unmarked. Class
+// days are Monday to Saturday, Eluru time.
+const istDay = (ts) => new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(ts));
+function attOf(s) {
+  const att = s.att || {}, today = istDay(Date.now());
+  let present = 0, absent = 0;
+  for (const k of Object.keys(att)) { if (att[k] === "p") present++; else if (att[k] === "a") absent++; }
+  let classDays = 0;
+  const start = /^\d{4}-\d{2}-\d{2}$/.test(String(s.startISO || "")) ? String(s.startISO) : "";
+  if (start && start <= today) {
+    for (let t = Date.parse(start + "T12:00:00+05:30"); istDay(t) <= today && classDays < 400; t += 86400000) {
+      if (new Date(t).getUTCDay() !== 0) classDays++;
+    }
+  }
+  return { present, absent, unmarked: Math.max(0, classDays - present - absent), today: att[today] || "", day: today };
+}
+const withProgress = (s) => Object.assign({}, s, { progress: progressOf(s), attSum: attOf(s) });
 
 module.exports = async (req, res) => {
   if (req.method === "OPTIONS") return res.status(204).end();
@@ -232,7 +270,7 @@ module.exports = async (req, res) => {
   // One capability per action, so the owner can hand out fee entry without
   // handing out certificates (and so on) from the Control panel.
   const NEED = {
-    create: "academy.edit", status: "academy.edit", note: "academy.edit", reopen: "academy.edit", link: "academy.edit", "move-batch": "academy.edit",
+    create: "academy.edit", status: "academy.edit", attend: "academy.edit", note: "academy.edit", reopen: "academy.edit", link: "academy.edit", "move-batch": "academy.edit",
     pay: "academy.money", send: "academy.docs", material: "academy.material",
     certify: "academy.certify", delete: "academy.delete",
   };
@@ -386,7 +424,7 @@ module.exports = async (req, res) => {
       const s = await getSt(cfg, id);
       if (!s) continue;
       students.push({ id: s.id, name: s.name, phone: s.phone, course: s.course, duration: s.duration, status: s.status, statusReason: s.statusReason || "", statusBy: s.statusBy || "", statusAt: s.statusAt || 0,
-        fee: s.fee, paid: s.paid, batch: s.batch, created: s.created, onboarded: s.onboarded, startISO: s.startISO,
+        fee: s.fee, paid: s.paid, feeList: s.feeList, discount: s.discount || 0, attSum: attOf(s), batch: s.batch, created: s.created, onboarded: s.onboarded, startISO: s.startISO,
         certNo: s.certNo, grade: s.grade, docsPending: !!s.docsPending, notes: (s.notes || []).slice(0, 3),
         progress: progressOf(s) });
     }
@@ -415,6 +453,10 @@ module.exports = async (req, res) => {
       payments: paid0 ? [{ amount: paid0, mode: String(b.payMode || "UPI"), ref: String(b.payRef || "").slice(0, 40), ts: Date.now(), by: me.name }] : [],
       status: "enrolled", batch: docs.BATCH.no, startISO: String(b.startISO || docs.BATCH.startISO),
       created: Date.now(), createdBy: me.name, joined: Date.now(), validTill: "31 Dec 2026", files: {} };
+    if (Number(b.discount) > 0) {
+      const bad = applyDiscount(s, b.discount, me, "admission");
+      if (bad) return json(res, 400, { error: bad });
+    }
     await putSt(cfg, s);
     await guard.kvCommand(cfg, ["LPUSH", LIST, id]);
     const url = `${BASE}/academy-join.html?t=${linkToken(id)}`;
@@ -433,17 +475,40 @@ module.exports = async (req, res) => {
   if (!s) return json(res, 404, { error: "Student not found" });
 
   if (a === "pay") {
-    const amt = Number(b.amount || 0);
-    if (!(amt > 0)) return json(res, 400, { error: "amount required" });
-    s.paid = Number(s.paid || 0) + amt; s.paidOn = Date.now(); s.payMode = String(b.mode || s.payMode || "UPI"); s.payRef = String(b.ref || "").slice(0, 40);
-    s.payments = (s.payments || []).concat([{ amount: amt, mode: s.payMode, ref: s.payRef, ts: Date.now(), by: me.name }]);
+    const amt = Math.round(Number(b.amount || 0)), disc = Math.round(Number(b.discount || 0));
+    if (amt < 0 || disc < 0) return json(res, 400, { error: "amount cannot be negative" });
+    if (!(amt > 0) && !(disc > 0)) return json(res, 400, { error: "amount or discount required" });
+    if (disc > 0) {
+      // the payment is counted first, so a discount that clears the rest
+      // together with today's payment is allowed
+      const trial = Object.assign({}, s, { paid: Number(s.paid || 0) + amt });
+      const bad = applyDiscount(trial, disc, me, b.reason);
+      if (bad) return json(res, 400, { error: bad });
+      applyDiscount(s, disc, me, b.reason);
+    }
+    if (amt > 0) {
+      s.paid = Number(s.paid || 0) + amt; s.paidOn = Date.now(); s.payMode = String(b.mode || s.payMode || "UPI"); s.payRef = String(b.ref || "").slice(0, 40);
+      s.payments = (s.payments || []).concat([{ amount: amt, mode: s.payMode, ref: s.payRef, ts: Date.now(), by: me.name }]);
+    }
     if (s.paid >= (s.fee || 0)) s.feeCleared = true;
     await putSt(cfg, s);                       // money is recorded first and never lost
+    if (!(amt > 0)) {
+      // A discount alone: no money came, so no receipt — the owner hears of it.
+      try {
+        const push = require("./_push.js");
+        if (push.enabled()) await push.notifyCap(cfg, "academy.view", {
+          title: `🏷 Discount — ${s.name}`,
+          body: `₹${disc.toLocaleString("en-IN")} by ${me.name} · ${s.id} · balance ₹${Math.max(0, (s.fee || 0) - s.paid).toLocaleString("en-IN")}`,
+          tab: "students", data: { kind: "payment", id: s.id }, exceptPhone: me.phone,
+        });
+      } catch (e) { console.error("push: academy discount", e && e.message); }
+      return json(res, 200, { ok: true, student: withProgress(s), receipt: null });
+    }
     try {
       const push = require("./_push.js");
       if (push.enabled()) await push.notifyCap(cfg, "academy.view", {
         title: `💰 Fee received — ${s.name}`,
-        body: `₹${amt.toLocaleString("en-IN")} ${s.payMode || ""} · ${s.id} · balance ₹${Math.max(0, (s.fee || 0) - s.paid).toLocaleString("en-IN")}`,
+        body: `₹${amt.toLocaleString("en-IN")} ${s.payMode || ""}${disc ? " + ₹" + disc.toLocaleString("en-IN") + " discount" : ""} · ${s.id} · balance ₹${Math.max(0, (s.fee || 0) - s.paid).toLocaleString("en-IN")}`,
         tab: "students", data: { kind: "payment", id: s.id }, exceptPhone: me.phone,
       });
     } catch (e) { console.error("push: academy pay", e && e.message); }
@@ -514,6 +579,17 @@ module.exports = async (req, res) => {
   // admitted for it still carries the old date, and on 7 Nov the screen said
   // "day 19 / 30" for training that had not begun. One tap moves them to the
   // batch that is actually starting.
+  if (a === "attend") {
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(b.day || "")) ? String(b.day) : istDay(Date.now());
+    if (day > istDay(Date.now())) return json(res, 400, { error: "Repati attendance ippude pettalemu" });
+    const mark = String(b.mark || "");
+    if (!["p", "a", ""].includes(mark)) return json(res, 400, { error: "mark: p, a or empty" });
+    s.att = Object.assign({}, s.att || {});
+    if (mark) s.att[day] = mark; else delete s.att[day];
+    s.attLog = [{ day, mark, by: me.name, ts: Date.now() }].concat(s.attLog || []).slice(0, 120);
+    await putSt(cfg, s);
+    return json(res, 200, { ok: true, student: withProgress(s) });
+  }
   if (a === "move-batch") {
     s.batch = docs.BATCH.no; s.startISO = docs.BATCH.startISO;
     await putSt(cfg, s);

@@ -46,7 +46,12 @@ const files = [];
     // audit could not see is a published file nobody is checking.
     // .webmanifest belongs here: without it the PWA icons read as unreferenced
     // and the orphan check below wanted three of them deleted.
-    else if (/\.(html|js|txt|json|md|xml|css|webmanifest)$/.test(e.name) && !SKIP_FILE.test(e.name)) files.push(p);
+    // print/manual is the staff app's user manual: it describes staff.html
+    // (skipped above for the same reason) to the desk, and its warnings say
+    // what NOT to do — "do not ask for a Google review", "check the draft for
+    // promises before sending". It is printed for staff and never reaches a
+    // patient, so it is not advertising. Only that folder, by path.
+    else if (/\.(html|js|txt|json|md|xml|css|webmanifest)$/.test(e.name) && !SKIP_FILE.test(e.name) && !/[\\/]print[\\/]manual[\\/]/.test(p)) files.push(p);
   }
 })(ROOT);
 const rel = (p) => path.relative(ROOT, p);

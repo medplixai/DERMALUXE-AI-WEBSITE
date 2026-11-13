@@ -109,7 +109,8 @@ function data() {
 }
 
 let mockMoved = 0;
-let mockStStatus = {};   // the last status the dashboard set on DLA002, so a re-render shows it
+let mockStStatus = {};
+const mockStExtra = {};  // discount / attendance the dashboard set on a mock student   // the last status the dashboard set on DLA002, so a re-render shows it
 const M = 60000;
 const mockIb = [
   { phone: "9876543210", name: "Lakshmi Priya", unread: 2, human: null, open: true, msgs: [
@@ -528,7 +529,7 @@ http.createServer((req, res) => {
       { id: "DLA002", name: "Harika", phone: "9876500022", course: "both", duration: "2 months", fee: 99999, paid: 9999, status: mockStStatus.status || "enrolled", statusReason: mockStStatus.reason || "", statusBy: mockStStatus.by || "", onboarded: 0, startISO: iso(-9), created: Date.now() - 3 * 86400000, notes: [] },
       { id: "DLA004", name: "Rama Lakshmi", phone: "9876500036", course: "skin", duration: "1 month", fee: 49999, paid: 9999, status: "inactive", statusReason: "Classes ki raavadam ledu — interest ledu annaru", statusBy: "hemasri", statusAt: Date.now() - 86400000, batch: 1, onboarded: 1, startISO: "2026-10-20", created: Date.now() - 25 * 86400000, notes: [] },
       { id: "DLA003", name: "Sravani", phone: "9876500023", course: "hair", duration: "1 month", fee: 49999, paid: 49999, status: "completed", onboarded: 1, startISO: iso(40), certNo: "DLA-C-0007", created: Date.now() - 50 * 86400000, notes: [] },
-    ].map((x) => Object.assign(x, { progress: progressOf(x) }));
+    ].map((x) => Object.assign(x, mockStExtra[x.id] || {}, { attSum: Object.assign({ present: 0, absent: 0, unmarked: 0, today: "", day: new Date().toISOString().slice(0, 10) }, (mockStExtra[x.id] || {}).attSum || {}) })).map((x) => Object.assign(x, { progress: progressOf(x) }));
     if (a === "students" || a === "list") return send(200, { ok: true, students: st });
     // The seat board, in the shape api/academy.js returns it (the dashboard
     // reads deadline.offerDays; without it the tab shows an error the real
@@ -557,6 +558,28 @@ http.createServer((req, res) => {
         mockStStatus = { status: b.status, reason: String(b.reason || ""), by: "hemasri" };
         const s2 = Object.assign({}, st.filter((x) => x.id === b.id)[0] || st[1], { status: b.status, statusReason: mockStStatus.reason, statusBy: "hemasri", statusAt: Date.now() });
         return send(200, { ok: true, student: Object.assign(s2, { progress: progressOf(s2) }) });
+      });
+    }
+    // Discount and days in class, as api/academy.js answers them (12 Nov, second copy).
+    if (a === "pay" || a === "attend") {
+      let body = ""; req.on("data", (c) => (body += c));
+      return req.on("end", () => {
+        let b = {}; try { b = JSON.parse(body || "{}"); } catch (e) {}
+        const s0 = st.find((x) => x.id === b.id) || st[1], ex = mockStExtra[s0.id] = mockStExtra[s0.id] || {};
+        if (a === "pay") {
+          const amt = Number(b.amount) || 0, d = Number(b.discount) || 0;
+          if (!amt && !d) return send(400, { error: "amount or discount required" });
+          const list = ex.feeList || s0.fee, disc = (ex.discount || 0) + d, paid = (ex.paid != null ? ex.paid : s0.paid) + amt;
+          if (list - disc < paid) return send(400, { error: "Discount ekkuva" });
+          Object.assign(ex, { paid, fee: list - disc, feeList: list, discount: disc });
+        } else {
+          const a0 = Object.assign({ present: 0, absent: 0, unmarked: 3, today: "", day: new Date().toISOString().slice(0, 10) }, ex.attSum || {});
+          if (a0.today === "p") a0.present--; if (a0.today === "a") a0.absent--;
+          a0.today = b.mark || ""; if (a0.today === "p") a0.present++; if (a0.today === "a") a0.absent++;
+          ex.attSum = a0;
+        }
+        const s2 = Object.assign({}, s0, ex);
+        return send(200, { ok: true, student: Object.assign(s2, { progress: progressOf(s2) }), receipt: null });
       });
     }
     if (a === "pay") {

@@ -283,8 +283,8 @@ const PHT = `<section class="pg">
   <div class="tech3">${HT_TECH.map(([a, b, bt, e, t]) => `<article><b>${a}</b><h3>${b}</h3><p class="t3te">${te(bt)}</p><p>${e}</p>${te(t)}</article>`).join("")}</div>
   <ol class="tl">${HT_TIME.map(([w, e, t]) => `<li><b>${w}</b><span>${e}</span>${te(t)}</li>`).join("")}</ol>
   ${HT_PACKAGE ? `<div class="pkg"><div class="pkg-l"><span>Grand opening package · 6 Nov – 6 Dec 2026</span><b>₹59,999</b><i>all-inclusive</i></div>
-    <div class="pkg-r"><p><b>Up to 3,000 grafts</b> — FUE surgery and medical expenses together. Grafts beyond 3,000 are ₹20 each, told before booking. Hair transplant consultation is free in these dates.</p>
-    ${te("3,000 గ్రాఫ్ట్‌ల వరకు — సర్జరీ, మెడికల్ ఖర్చులు అన్నీ కలిపి. 3,000 కు మించి ప్రతి గ్రాఫ్ట్ ₹20, బుకింగ్‌కు ముందే చెబుతారు. ఈ తేదీల్లో హెయిర్ ట్రాన్స్‌ప్లాంట్ కన్సల్టేషన్ ఉచితం.")}</div></div>` : ""}
+    <div class="pkg-r" data-owner="ht-offer-2026-11"><p><b>Up to 3,000 grafts</b> — FUE surgery and medical expenses together. Grafts beyond 3,000 are ₹20 each, told before booking. Hair transplant consultation is free in these dates.</p>
+    <span data-owner="ht-offer-2026-11">${te("3,000 గ్రాఫ్ట్‌ల వరకు — సర్జరీ, మెడికల్ ఖర్చులు అన్నీ కలిపి. 3,000 కు మించి ప్రతి గ్రాఫ్ట్ ₹20, బుకింగ్‌కు ముందే చెబుతారు. ఈ తేదీల్లో హెయిర్ ట్రాన్స్‌ప్లాంట్ కన్సల్టేషన్ ఉచితం.")}</span></div></div>` : ""}
   ${foot(7)}
 </section>`;
 
@@ -349,7 +349,7 @@ const P8 = `<section class="pg back">
       <dl><dt>Call &amp; WhatsApp</dt><dd>+91 ${B.wa}</dd><dt>Also</dt><dd>${B.call}</dd><dt>Hours</dt><dd>Mon–Sat, 9 AM – 9 PM · Sunday closed · ${te("ఆదివారం సెలవు")}</dd><dt>Web</dt><dd>www.dermaluxe.ai · ${B.email}</dd></dl>
     </div>
   </div>
-  <div class="legal"><p>Treating doctors: ${Object.values(D).map((d) => `${d.name}, ${d.q || "MD (DVL)"}, Reg. No. ${d.reg}`).join(" · ")}. Hair Transplant Surgeon: Dr. Jaishree, MDS (OMFS). ${ai} marks AI-generated pictures, illustrations and icons — the condition pictures are the ones on the website, not patients of the clinic. The hair transplant before-and-after is a stock photograph from the website, not a patient of the clinic. Every other photograph is of the clinic, its machines and its doctors. DermaLuxeAI Private Limited · Part of Medicare Skin &amp; Hair Clinics.</p><p>${te(docs.regDisclosure("te") + ". హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్: డా. జైశ్రీ, MDS (OMFS). " + "✦ గుర్తు ఉన్నవి AI తో తయారు చేసిన ఫోటోలు, బొమ్మలు, ఐకాన్లు — వెబ్‌సైట్‌లో ఉన్నవే, క్లినిక్ పేషెంట్లు కాదు. హెయిర్ ట్రాన్స్‌ప్లాంట్ బిఫోర్-ఆఫ్టర్ ఫోటో వెబ్‌సైట్‌లోని స్టాక్ ఫోటో, మా పేషెంట్ కాదు. మిగతా ఫోటోలు అన్నీ క్లినిక్, మెషీన్లు, మా డాక్టర్లవి.")}</p></div>
+  <div class="legal" data-owner="ht-before-after"><p>Treating doctors: ${Object.values(D).map((d) => `${d.name}, ${d.q || "MD (DVL)"}, Reg. No. ${d.reg}`).join(" · ")}. Hair Transplant Surgeon: Dr. Jaishree, MDS (OMFS). ${ai} marks AI-generated pictures, illustrations and icons — the condition pictures are the ones on the website, not patients of the clinic. The hair transplant before-and-after is a stock photograph from the website, not a patient of the clinic. Every other photograph is of the clinic, its machines and its doctors. DermaLuxeAI Private Limited · Part of Medicare Skin &amp; Hair Clinics.</p><p>${te(docs.regDisclosure("te") + ". హెయిర్ ట్రాన్స్‌ప్లాంట్ సర్జన్: డా. జైశ్రీ, MDS (OMFS). " + "✦ గుర్తు ఉన్నవి AI తో తయారు చేసిన ఫోటోలు, బొమ్మలు, ఐకాన్లు — వెబ్‌సైట్‌లో ఉన్నవే, క్లినిక్ పేషెంట్లు కాదు. హెయిర్ ట్రాన్స్‌ప్లాంట్ బిఫోర్-ఆఫ్టర్ ఫోటో వెబ్‌సైట్‌లోని స్టాక్ ఫోటో, మా పేషెంట్ కాదు. మిగతా ఫోటోలు అన్నీ క్లినిక్, మెషీన్లు, మా డాక్టర్లవి.")}</p></div>
   ${foot(9)}
 </section>`;
 

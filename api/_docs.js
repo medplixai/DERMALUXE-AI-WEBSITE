@@ -162,7 +162,8 @@ function receiptHtml(s, p = {}) {
     <tr><th>Date</th><td>${esc(dmy(p.ts))}</td></tr>
   </table></div>
   <div class="box" style="margin-top:4mm"><span class="tag">Fee summary · ఫీజు వివరాలు</span><table style="margin-top:1.5mm">
-    <tr><th>Course fee (offer)</th><td>${money(total)} <span style="color:var(--muted2);text-decoration:line-through;margin-left:3mm">${money(c.fee)}</span> <span style="color:var(--g3);font-size:7.5pt">Launch offer till ${BATCH.offerEnd}</span></td></tr>
+    <tr><th>Course fee (offer)</th><td>${money(s.discount ? Number(s.feeList || total) : total)} <span style="color:var(--muted2);text-decoration:line-through;margin-left:3mm">${money(c.fee)}</span> <span style="color:var(--g3);font-size:7.5pt">Launch offer till ${BATCH.offerEnd}</span></td></tr>
+    ${s.discount ? `<tr><th>Discount</th><td>− ${money(s.discount)} · fee after discount ${money(total)}</td></tr>` : ""}
     <tr><th>Total paid</th><td style="color:var(--g1)">${money(paidTotal)}</td></tr>
     <tr><th>Balance due</th><td style="color:${bal ? "#ffb3a7" : "var(--g1)"}">${money(bal)}${bal ? " — payable on or before " + esc(BATCH.start) + " (course starting day)" : " — fully paid ✓"}</td></tr>
   </table></div>
@@ -223,7 +224,8 @@ function admissionHtml(s = {}) {
         <li>Signed admission &amp; consent form ${s.docs && s.docs.signed ? "✓" : "☐"}</li>
       </ul></div>
     <div class="box"><span class="tag">Fee status · ఫీజు</span><table style="margin-top:1.5mm">
-      <tr><th>Course fee</th><td>${money(s.fee || c.offer)}</td></tr>
+      <tr><th>Course fee</th><td>${money(s.discount ? (s.feeList || s.fee) : (s.fee || c.offer))}</td></tr>
+      ${s.discount ? `<tr><th>Discount</th><td>− ${money(s.discount)}</td></tr>` : ""}
       <tr><th>Advance paid</th><td>${money(s.paid || 0)}${s.paidOn ? " · " + esc(dmy(s.paidOn)) : ""}</td></tr>
       <tr><th>Balance</th><td>${money(Math.max(0, (s.fee || c.offer) - (s.paid || 0)))} — due on ${esc(BATCH.start)}</td></tr>
     </table></div>

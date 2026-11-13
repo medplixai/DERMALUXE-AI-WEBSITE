@@ -934,6 +934,53 @@
     .side{background:linear-gradient(180deg,#ffffff 0%,#fbf7f1 100%);box-shadow:inset -1px 0 0 rgba(214,206,190,.6),8px 0 24px -20px rgba(18,18,18,.35)}
     .tab.on,.side .tab.on{background:linear-gradient(180deg,#fff4f8 0%,var(--pk) 100%);box-shadow:inset 3px 0 0 var(--primary),inset 0 1px 0 rgba(255,255,255,.9),0 4px 12px -8px rgba(143,36,82,.45)}
     @media (prefers-reduced-motion:reduce){.lead,.btn{transition:none}}
+
+    /* ---- Colour and frames (owner PDF 12 Nov, second copy, points 6–9) ----
+       The count boxes on Appointments, Academy, Money and Stock were one grey
+       slab split by hairlines; each is now its own rounded card with a
+       border, space between, and a soft colour of its own. The sidebar is the
+       brand's black-plum with gold, the header a blush bar on a gold line,
+       the phone bar the same, and the page behind a warmer wash. */
+    body{background:radial-gradient(110% 55% at 100% 0%,#fbdde9 0%,rgba(251,221,233,0) 58%),radial-gradient(90% 55% at 0% 100%,#f4e6c8 0%,rgba(244,230,200,0) 62%),radial-gradient(70% 40% at 0% 0%,#ece3fa 0%,rgba(236,227,250,0) 60%),#f7f1f4}
+    .countdown{display:grid;grid-template-columns:1fr 1fr;gap:10px;background:transparent!important;border:0!important;border-radius:0;overflow:visible;box-shadow:none;margin-bottom:14px}
+    .countdown > div{border-radius:16px;border:1px solid var(--pk2);padding:14px 16px;text-align:left;
+      background:linear-gradient(160deg,#fff4f8 0%,var(--pk) 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.9),0 8px 18px -12px rgba(120,40,70,.35)}
+    .countdown > div:nth-child(2){background:linear-gradient(160deg,#fff6ef 0%,var(--peach) 100%);border-color:var(--peach2)}
+    .countdown > div:nth-child(3){background:linear-gradient(160deg,#eefaf3 0%,var(--mint) 100%);border-color:var(--mint2)}
+    .countdown > div:nth-child(4){background:linear-gradient(160deg,#f1f8fe 0%,var(--sky) 100%);border-color:var(--sky2)}
+    .countdown > div:nth-child(5){background:linear-gradient(160deg,#f6f2fd 0%,var(--lav) 100%);border-color:var(--lav2)}
+    .countdown > div:nth-child(6){background:linear-gradient(160deg,#fffbea 0%,var(--butter) 100%);border-color:var(--butter2)}
+    .countdown > div.skk{background:var(--panel)}
+    .countdown b{color:#3a1626}
+    .countdown span{color:#6b4a58;font-weight:600}
+    .countdown > div.on{outline:2.5px solid #3a1626;outline-offset:-2.5px}
+    #schFocus{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:-4px 0 12px;padding:9px 12px;border-radius:12px;background:#3a1626;color:#fbe7b0;font-weight:600;font-size:.88rem}
+    #schFocus.hide{display:none}
+    #t-appts.focus > #cfPend,#t-appts.focus > .daystrip,#t-appts.focus > .filters,#t-appts.focus > #schGrid,#t-appts.focus > #schPlan,#t-appts.focus > .grp{display:none!important}
+    .empty.nothing{font-size:1.15rem;font-weight:700;color:var(--ok);padding:26px 12px}
+    .empty.nothing small{display:block;margin-top:4px;font-size:.82rem;font-weight:500;color:var(--muted)}
+    /* student days in class */
+    .att-row{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 10px;margin:6px 0;padding:7px 10px;border-radius:10px;background:var(--sky);border:1px solid var(--sky2);font-size:.85rem;color:var(--sky-ink)}
+    .att-btns{display:flex;align-items:center;gap:6px}
+    .att-btns .on-p{background:var(--mint);border-color:var(--ok);font-weight:700}
+    .att-btns .on-a{background:var(--peach);border-color:var(--bad);font-weight:700}
+    /* header: blush on a gold line */
+    header.top{background:linear-gradient(180deg,rgba(255,246,250,.94) 0%,rgba(252,231,240,.9) 100%);border-bottom:2px solid #d8b56a;box-shadow:0 8px 20px -14px rgba(120,40,70,.45)}
+    /* phone bar: the same, upside down */
+    .appbar{background:linear-gradient(0deg,rgba(255,246,250,.96) 0%,rgba(252,231,240,.92) 100%);border-top:2px solid #d8b56a}
+    .appbar button.on{color:#3a1626}
+    @media (min-width:761px){
+      .side{background:linear-gradient(180deg,#2c1520 0%,#1b0c13 100%);border-right:2px solid #b8893d;box-shadow:8px 0 24px -18px rgba(20,5,12,.6)}
+      .side-brand{border-bottom:1px solid rgba(216,181,106,.35)}
+      .side .bm-t b{color:#fbe7b0} .side .bm-t small{color:#d8b56a}
+      .side .tab{color:#f1dfe6;border:1px solid transparent}
+      .side .tab svg{color:#d8b56a}
+      .side .tab:hover{background:rgba(255,255,255,.07);border-color:rgba(216,181,106,.3)}
+      .side .tab.on{background:linear-gradient(180deg,#fff4f8 0%,var(--pk) 100%);color:#3a1626;border-color:#d8b56a;box-shadow:0 4px 12px -6px rgba(0,0,0,.5)}
+      .side .tab.on svg{color:#8a2f55}
+      .side .tab i{background:rgba(216,181,106,.22);color:#fbe7b0}
+      .side .tab.on i{background:#3a1626;color:#fbe7b0}
+    }
 </style>
 </head>
 <body>
@@ -1089,6 +1136,7 @@
         <!-- The day's numbers at the very top — above the confirm-call list and
              the date strip (owner PDF 11 Nov, point 5: "make this on the top"). -->
         <div class="countdown" id="schHead"><div class="skk"></div><div class="skk"></div></div>
+        <div id="schFocus" class="hide"></div>
         <div id="cfPend" class="hide"></div>
         <div class="daystrip" id="dayStrip"></div>
         <div class="filters" style="margin-bottom:8px">
@@ -1196,8 +1244,10 @@
             <select id="stCourse" style="background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:8px 12px"><option value="skin">Skin ₹49,999</option><option value="hair">Hair ₹49,999</option><option value="both">Skin+Hair ₹99,999</option></select>
             <select id="stDur" style="background:var(--ink2);border:1px solid var(--line);border-radius:100px;padding:8px 12px"><option>1 month</option><option>2 months</option></select>
             <input id="stPaid" placeholder="Advance paid" inputmode="numeric" value="9999" style="max-width:120px" />
+            <input id="stDisc" placeholder="Discount ₹" inputmode="numeric" style="max-width:120px" />
             <button class="btn btn--gold btn--sm" id="stAdd">Add &amp; send form</button>
           </div>
+          <div class="meta" id="stSum" style="margin-top:6px"></div>
           <div class="err" id="stErr"></div></div>
         <!-- Every status as a filter, with its count (owner PDF 12 Nov, point 2). -->
         <div class="fchips" id="stChips" style="margin-bottom:10px"></div>
@@ -2304,6 +2354,14 @@
       $("schNew").classList.toggle("hide", !state.allow("appts.edit"));
       paintDayPlan(d.plan);
       renderCfPending();
+      // Tap a box and only its list shows, right under the boxes; everything
+      // else on the screen steps aside until the box is tapped again (owner
+      // PDF 12 Nov, second copy, point 5).
+      var FOCUS = { unconf: "Confirm avvanivi", came: "✅ Vachinavi", tom: "Repu", week: "Ee vaaram" };
+      var focusOn = !!FOCUS[schShow];
+      $("t-appts").classList.toggle("focus", focusOn);
+      $("schFocus").classList.toggle("hide", !focusOn);
+      if (focusOn) $("schFocus").innerHTML = '<span>' + esc(FOCUS[schShow]) + ' matrame chupistunnam</span><button class="btn btn--sm" data-act="sch-head" data-k="' + esc(schShow) + '">✕ Anni chupinchu</button>';
 
       if (schShow === "tom" || schShow === "week") { renderSoon(); renderWait(d); return; }
       var src = schShow === "came" ? d.came : d.rows;
@@ -2352,10 +2410,10 @@
             '<button class="btn btn--sm" data-act="sch-move" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">🕒 Marchandi</button>' +
             '<button class="btn btn--sm" data-act="sch-cancel" data-id="' + esc(r.id) + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name) + '">✖</button>' : "") +
           "</div></div></article>";
-      }).join("") : '<div class="empty">' + (schShow === "came" ? "Ee roju inka evaru raaledu — ✅ Vacharu nokkaka ikkada kanipistaru." : schMine ? "Mee peru meeda ee roju emi ledu." : "Ee roju appointments ledu.") + "</div>";
+      }).join("") : (schShow === "unconf" ? '<div class="empty nothing">Nothing to call ✅<small>Ee roju andaru confirm ayyaru.</small></div>' : schShow === "came" ? '<div class="empty nothing">Nothing to show<small>Ee roju inka evaru raaledu — ✅ Vacharu nokkaka ikkada kanipistaru.</small></div>' : '<div class="empty">' + (schMine ? "Mee peru meeda ee roju emi ledu." : "Ee roju appointments ledu.") + "</div>");
       // The Vachinavi list stays a list: the grid drags rows, and a filed row
       // cannot be moved (the server only finds rows still in the queue).
-      var gridOn = schView === "grid" && schShow !== "came";
+      var gridOn = schView === "grid" && !focusOn;
       $("schList").classList.toggle("hide", gridOn || schShow === "none");
       $("schGrid").classList.toggle("hide", !gridOn);
       $("svList").classList.toggle("on", !gridOn); $("svGrid").classList.toggle("on", gridOn);
@@ -2403,7 +2461,7 @@
               '<div class="acts"><a class="btn btn--sm btn--call" data-act="call" data-name="' + esc(r.name) + '" data-phone="' + esc(r.ph) + '" href="tel:+91' + esc(r.ph) + '">📞</a>' +
               '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(r.ph) + '">💬</a></div></div></article>';
           }).join("") + "</div>";
-      }).join("") : '<div class="empty">' + (schShow === "tom" ? "Repu appointments ledu." : "Ee vaaram inka appointments ledu.") + "</div>";
+      }).join("") : '<div class="empty nothing">Nothing to call ✅<small>' + (schShow === "tom" ? "Repu appointments ledu." : "Ee vaaram inka appointments ledu.") + "</small></div>";
     }
     // A row that left the day on its own, 48 hours after the slot with nobody
     // saying whether the patient came, is not a visit — the chip says so.
@@ -6663,7 +6721,7 @@
       if (el.dataset.act === "sch-head") {
         var k5 = el.dataset.k;
         schShow = k5 === "all" ? (schShow === "none" ? "all" : schShow === "all" ? "none" : "all") : (schShow === k5 ? "all" : k5);
-        renderSchedule(); return;
+        renderSchedule(); window.scrollTo({ top: 0, behavior: "smooth" }); return;
       }
       if (el.dataset.act === "stk-head") { stkShow = el.dataset.k === "low" ? (stkShow === "low" ? "all" : "low") : (stkShow === "none" ? "all" : "none"); loadStock(); return; }
       if (el.dataset.act === "acad-f") { acadF = acadF === el.dataset.k ? "" : el.dataset.k; renderSeatBoard(); return; }
@@ -7447,7 +7505,11 @@
           '<div class="meta">' + esc(cn) + ' · ' + esc(s.duration || "") + ' · ' + esc(s.phone) + (s.onboarded ? " · form ✓" : " · form pending") + '</div></div>' +
           '<div style="text-align:right">' + studentStatusChip(s) + '</div></div>' +
           progressRow(s) +
-          '<div class="concern">Fee ' + money(s.fee) + ' · Paid <b style="color:var(--ok)">' + money(s.paid) + '</b> · Balance <b style="color:' + (bal ? "var(--hot)" : "var(--ok)") + '">' + money(bal) + '</b>' + (s.certNo ? ' · Cert ' + esc(s.certNo) : "") + '</div>' +
+          // Days in class (owner PDF 12 Nov, second copy, point 3).
+          (s.attSum && String(s.startISO || "") <= s.attSum.day && s.status !== "completed" && s.status !== "dropped" ?
+            '<div class="att-row"><span>📅 Present <b>' + s.attSum.present + '</b> · Absent <b>' + s.attSum.absent + '</b>' + (s.attSum.unmarked ? ' · mark cheyyani <b>' + s.attSum.unmarked + '</b>' : "") + '</span>' +
+            (state.allow("academy.edit") ? '<span class="att-btns">Ee roju: <button class="btn btn--sm' + (s.attSum.today === "p" ? " on-p" : "") + '" data-sact="att" data-m="' + (s.attSum.today === "p" ? "" : "p") + '" data-id="' + esc(s.id) + '">✅ Vacharu</button><button class="btn btn--sm' + (s.attSum.today === "a" ? " on-a" : "") + '" data-sact="att" data-m="' + (s.attSum.today === "a" ? "" : "a") + '" data-id="' + esc(s.id) + '">❌ Raaledu</button></span>' : "") + "</div>" : "") +
+          '<div class="concern">Fee ' + (s.discount ? '<s style="opacity:.6">' + money(s.feeList) + "</s> " + money(s.fee) + ' <span class="chip">discount ' + money(s.discount) + "</span>" : money(s.fee)) + ' · Paid <b style="color:var(--ok)">' + money(s.paid) + '</b> · Balance <b style="color:' + (bal ? "var(--hot)" : "var(--ok)") + '">' + money(bal) + '</b>' + (s.certNo ? ' · Cert ' + esc(s.certNo) : "") + '</div>' +
           '<div class="acts">' +
           '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(s.phone) + '">💬 WhatsApp</a>' +
           (state.allow("academy.edit") ? '<button class="btn btn--sm" data-sact="link" data-id="' + esc(s.id) + '">🔗 Form link</button>' : "") +
@@ -7477,11 +7539,51 @@
       sapi("status", { id: id, status: st, reason: reason }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast((ST_LABEL[st] || st) + " ani pettam"); })
         .catch(function (x) { renderStudents(); toast(x.message); });
     });
+    // What the student will owe, worked out as the desk types (owner PDF 12
+    // Nov, second copy, point 1): course fee − discount − advance.
+    var ST_FEE = { skin: 49999, hair: 49999, both: 99999 };
+    function stSum() {
+      var fee = ST_FEE[$("stCourse").value] || 0, d = Number(($("stDisc").value || "").replace(/\D/g, "")) || 0, p = Number(($("stPaid").value || "").replace(/\D/g, "")) || 0;
+      $("stSum").innerHTML = "Fee " + money(fee) + (d ? " − discount " + money(d) + " = <b>" + money(Math.max(0, fee - d)) + "</b>" : "") + " · advance " + money(p) + " · balance <b style=\"color:var(--hot)\">" + money(Math.max(0, fee - d - p)) + "</b>";
+    }
+    ["stCourse", "stDisc", "stPaid"].forEach(function (k) { $(k).addEventListener("input", stSum); $(k).addEventListener("change", stSum); });
+    stSum();
+    // Record payment as one small form (owner PDF 12 Nov, second copy, point
+    // 2): the amount that came, a discount if one is given, and the balance
+    // the two leave — so a discount is a field, not a sum done on paper.
+    function paySheet(sp) {
+      var owed = Math.max(0, (sp.fee || 0) - (sp.paid || 0));
+      var wrap = document.createElement("div"); wrap.className = "sheet open";
+      wrap.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>💰 Record payment <span class="te" style="font-size:.85rem">· <span lang="te">ఫీజు</span></span></h2>' +
+        '<div class="meta" style="margin-bottom:8px"><b>' + esc(sp.name || "") + '</b> · fee ' + money(sp.fee) + (sp.discount ? " (discount " + money(sp.discount) + " already)" : "") + ' · paid ' + money(sp.paid) + ' · balance <b>' + money(owed) + '</b></div>' +
+        '<div style="display:flex;gap:10px"><div style="flex:1"><div class="meta">Ippudu vachina amount (₹)</div><input id="pyAmt" ' + FIELD + ' inputmode="numeric" value="' + (owed || "") + '"></div>' +
+        '<div style="flex:1"><div class="meta">Discount (₹)</div><input id="pyDisc" ' + FIELD + ' inputmode="numeric" placeholder="0"></div></div>' +
+        '<div class="meta">Discount enduku (optional)</div><input id="pyWhy" ' + FIELD + ' maxlength="120" placeholder="e.g. owner approved">' +
+        '<div class="meta">UPI / reference (optional)</div><input id="pyRef" ' + FIELD + ' maxlength="40">' +
+        '<div id="pyLeft" class="meta" style="margin-top:4px;font-size:.95rem"></div>' +
+        '<div id="pyErr" class="meta" style="color:var(--bad);min-height:1.2em;font-weight:500"></div>' +
+        '<div class="acts" style="margin-top:6px"><button class="btn btn--gold" id="pySave" style="flex:1">💰 Save</button><button class="btn" data-close="1">Cancel</button></div></div>';
+      var n = function (k) { return Number((wrap.querySelector("#" + k).value || "").replace(/\D/g, "")) || 0; };
+      var left = function () { var l = (sp.fee || 0) - (sp.paid || 0) - n("pyAmt") - n("pyDisc"); wrap.querySelector("#pyLeft").innerHTML = "Save chesaka balance: <b style=\"color:" + (l > 0 ? "var(--hot)" : "var(--ok)") + "\">" + money(Math.max(0, l)) + "</b>" + (l < 0 ? ' <span style="color:var(--bad)">— fee kante ' + money(-l) + " ekkuva</span>" : l === 0 ? " — fee mottam ✅" : ""); };
+      ["pyAmt", "pyDisc"].forEach(function (k) { wrap.querySelector("#" + k).addEventListener("input", left); });
+      wrap.addEventListener("click", function (ev) { if (ev.target.classList.contains("sheet-bg") || ev.target.closest("[data-close]")) wrap.remove(); });
+      wrap.querySelector("#pySave").onclick = function () {
+        var amt = n("pyAmt"), disc = n("pyDisc"), err = wrap.querySelector("#pyErr");
+        if (!amt && !disc) { err.textContent = "Amount leda discount ivvandi"; return; }
+        if (disc && !confirm(sp.name + " ki " + money(disc) + " discount isthunnaru — sare naa?")) return;
+        this.disabled = true;
+        sapi("pay", { id: sp.id, amount: amt, discount: disc, reason: wrap.querySelector("#pyWhy").value.trim(), ref: wrap.querySelector("#pyRef").value.trim() })
+          .then(function (j) { wrap.remove(); students = students.map(function (x) { return x.id === sp.id ? j.student : x; }); renderStudents(); toast(amt ? (j.warn || "Receipt sent") : "Discount pettam"); })
+          .catch(function (x) { err.textContent = x.message; wrap.querySelector("#pySave").disabled = false; });
+      };
+      document.body.appendChild(wrap); left();
+      setTimeout(function () { var f = wrap.querySelector("#pyAmt"); if (f) f.focus(); }, 50);
+    }
     $("stAdd").onclick = function () {
       $("stErr").textContent = "";
-      var body = { name: $("stName").value.trim(), phone: $("stPhone").value.replace(/\D/g, ""), course: $("stCourse").value, duration: $("stDur").value, paid: Number($("stPaid").value || 0) };
+      var body = { name: $("stName").value.trim(), phone: $("stPhone").value.replace(/\D/g, ""), course: $("stCourse").value, duration: $("stDur").value, paid: Number($("stPaid").value || 0), discount: Number(($("stDisc").value || "").replace(/\D/g, "")) || 0 };
       $("stAdd").disabled = true;
-      sapi("create", body).then(function (j) { students.unshift(j.student); renderStudents(); $("stName").value = ""; $("stPhone").value = ""; toast(j.student.id + " added — form link sent"); })
+      sapi("create", body).then(function (j) { students.unshift(j.student); renderStudents(); $("stName").value = ""; $("stPhone").value = ""; $("stDisc").value = ""; stSum(); toast(j.student.id + " added — form link sent"); })
         .catch(function (e) { $("stErr").textContent = e.message; }).finally(function () { $("stAdd").disabled = false; });
     };
     document.addEventListener("click", function (e) {
@@ -7490,8 +7592,10 @@
       if (act === "link") return sapi("link", { id: id }).then(function (j) { return copyText(j.url, "Link copy ayindi"); }).catch(function (x) { toast(x.message); });
       // The amount offered is what is still owed, not a fixed ₹40,000 — a
       // Skin + Hair student owes ₹99,999 less what she has paid (12 Nov, point 4).
-      if (act === "pay") { var sp = students.filter(function (x) { return x.id === id; })[0] || {}; var owed = Math.max(0, (sp.fee || 0) - (sp.paid || 0));
-        var amt = prompt((sp.name || "") + " — fee " + money(sp.fee) + " · paid " + money(sp.paid) + " · balance " + money(owed) + "\n\nIppudu vachina amount (₹):", owed ? String(owed) : ""); if (!amt) return; amt = String(amt).replace(/[^\d]/g, ""); if (!Number(amt)) return; var ref = prompt("UPI / reference (optional):", "") || ""; return sapi("pay", { id: id, amount: Number(amt), ref: ref }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Receipt sent"); }).catch(function (x) { toast(x.message); }); }
+      if (act === "pay") { var sp = students.filter(function (x) { return x.id === id; })[0] || {}; return paySheet(sp); }
+      if (act === "att") {
+        return sapi("attend", { id: id, mark: el.dataset.m }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast(el.dataset.m === "p" ? "Present ✅" : el.dataset.m === "a" ? "Absent ❌" : "Teesesam"); }).catch(function (x) { toast(x.message); });
+      }
       if (act === "material") { return sapi("material", { id: id }).then(function (j) { if (!j.paid) { toast("Payment record ledu — material lock lo undi"); return; } return copyText(j.day1, "Day 1 material link copy ayindi — roju material automatic ga veltundi"); }).catch(function (x) { toast(x.message); }); }
       if (act === "send") { return sapi("send", { id: id, which: ["admission", "idcard"] }).then(function () { toast("Documents sent on WhatsApp"); }).catch(function (x) { toast(x.message); }); }
       if (act === "certify") { var g = prompt("Grade (A/B/C):", "A"); if (!g) return; if (!confirm("Generate and send the certificate?")) return; return sapi("certify", { id: id, grade: g }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast("Certificate sent 🎓"); }).catch(function (x) { toast(x.message); }); }
