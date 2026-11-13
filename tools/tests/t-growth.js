@@ -44,6 +44,8 @@ const lead = (ts, extra) => Object.assign({ ts, name: "P" + (++n), phone: "98765
   L.push(lead(at(9, 12), { ad_id: "B1", ad_src: "ad", type: "job" }));
   L.push(lead(at(9, 13), { ad_id: "B1", ad_src: "ad", intent: "not_patient" }));
   L.push(lead(Date.parse("2026-11-12T00:30:00+05:30"), { concern: "acne" }));
+  L.push(lead(at(10, 9), { type: "ig_comment", phone: "", concern: "All the best mam 🔥" }));
+  L.push(lead(at(10, 9), { type: "ig_comment", concern: "Hair fall ki treatment undaa?" }));
   const st = {};
   const book = (l, s) => { st[`${l.ts}|${l.phone.slice(-10)}`] = s; };
   book(L[0], "visited"); book(L[1], "booked"); book(L[20], "booked");
@@ -53,6 +55,7 @@ const lead = (ts, extra) => Object.assign({ ts, name: "P" + (++n), phone: "98765
   is(F[F.length - 1].day, "2026-11-13", "ending today, Eluru's date");
   const d9 = F.find((r) => r.day === "2026-11-09");
   is([d9.boost, d9.ours, d9.job, d9.total], [4, 1, 2, 5], "the 9th: 4 from the boost, 1 ours, 2 job seekers drawn apart and not counted");
+  is(F.find((r) => r.day === "2026-11-10").insta, 1, "a reel comment with no number (\"All the best\") is not a lead; one with a number is");
   is(F.find((r) => r.day === "2026-11-12").organic, 1, "a 12:30 AM chat belongs to that day in Eluru, not the day before in UTC");
   is(F.find((r) => r.day === "2026-11-07").booked, 3, "bookings counted on the day the lead came (2 off the boost, 1 off ours)");
   is(F.every((r) => r.spend === null), true, "no Meta account, no spend line — not a line of zeros");
@@ -94,7 +97,7 @@ const lead = (ts, extra) => Object.assign({ ts, name: "P" + (++n), phone: "98765
   console.log("\n  — when they write —");
   const R = G.rhythm(L);
   is(R.peak && R.peak.from, 10, "the busiest three hours start at 10 AM, Eluru time");
-  is(R.hours.reduce((a, b) => a + b, 0), L.filter((l) => l.type !== "job" && l.intent !== "not_patient").length, "job seekers are not in the rhythm");
+  is(R.hours.reduce((a, b) => a + b, 0), L.filter((l) => l.type !== "job" && l.intent !== "not_patient" && G.countable(l)).length, "job seekers and number-less comments are not in the rhythm");
 
   console.log("\n  — the screen —");
   h.run(["DEL", "dl_leads"]);

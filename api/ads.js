@@ -903,7 +903,7 @@ module.exports = async (req, res) => {
     const top = G.winner(ads);
     // In the window: how many came from each channel, said once.
     const mix = {};
-    for (const l of inWin) { const c = G.channelOf(l, ours); mix[c] = (mix[c] || 0) + 1; }
+    for (const l of inWin) { if (!G.countable(l)) continue; const c = G.channelOf(l, ours); mix[c] = (mix[c] || 0) + 1; }
     return json(res, 200, {
       ok: true, days: win, connected: !!conn.ok, canChange,
       labels: G.LABEL, channels: G.CHANNELS, flow, ads, winner: top, mix,

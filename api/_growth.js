@@ -67,6 +67,11 @@ function channelOf(l, ours) {
   return "organic";
 }
 
+// An Instagram comment with no number is mostly "All the best" and 🔥 under
+// a reel — kind, and not somebody the desk can call. It becomes a lead when
+// the agent gets a number out of them; until then it is not counted here.
+const countable = (l) => !(l && l.type === "ig_comment" && !digits10(l.phone));
+
 const keyOf = (l) => `${l.ts}|${digits10(l.phone) || l.src_id || ""}`;
 const statusOf = (st, l) => String((st || {})[keyOf(l)] || "");
 const bookedS = (s) => s === "booked" || s === "visited";
@@ -87,7 +92,7 @@ function flow(leads, st, opts) {
   }
   for (const l of leads || []) {
     const r = at[dayOf(l.ts)];
-    if (!r) continue;
+    if (!r || !countable(l)) continue;
     const c = channelOf(l, ours);
     r[c]++;
     if (c !== "job") { r.total++; if (bookedS(statusOf(st, l))) r.booked++; }
@@ -175,7 +180,7 @@ function winner(rows) {
 function rhythm(leads) {
   const hours = Array(24).fill(0), week = Array(7).fill(0);
   for (const l of leads || []) {
-    if (isJob(l)) continue;
+    if (isJob(l) || !countable(l)) continue;
     hours[hourOf(l.ts)]++;
     const w = weekdayOf(l.ts); if (w >= 0) week[w]++;
   }
@@ -192,7 +197,7 @@ function rhythm(leads) {
 function concernMix(leads, st, ours) {
   const out = {};
   for (const l of leads || []) {
-    if (isJob(l)) continue;
+    if (isJob(l) || !countable(l)) continue;
     const ch = channelOf(l, ours);
     const c = concernOf(l.concern) || concernOf(l.ad_headline) || "other";
     const r = out[c] || (out[c] = { name: c, n: 0, ads: 0, booked: 0 });
@@ -229,4 +234,4 @@ function dropToday(leads, opts) {
   return pct >= 50 ? { today, avg: Math.round(avg * 10) / 10, pct, by: h } : null;
 }
 
-module.exports = { flow, adRows, winner, rhythm, concernMix, quietAds, dropToday, channelOf, concernOf, CONCERNS, CHANNELS, LABEL, dayOf, hourOf, QUIET_H, STOP_H };
+module.exports = { countable, flow, adRows, winner, rhythm, concernMix, quietAds, dropToday, channelOf, concernOf, CONCERNS, CHANNELS, LABEL, dayOf, hourOf, QUIET_H, STOP_H };
