@@ -1337,7 +1337,22 @@ module.exports = async (req, res) => {
   // Returning patient? (24h chat history gone, but the 180-day profile remains)
   const profile = firstTurn ? await getProfile(cfg, digits) : null;
   const apptLine = await apptCtx(cfg, digits);
-  const acadLine = await academyCtx(cfg, hist, text);   // non-empty = an academy enquiry, where fees may be said
+  // Academy chat, or an enrolled student? Decided before anything
+  // patient-shaped is added (owner, 13 Nov: "academy lead ki academy
+  // cheppali" — see _acadmode.js).
+  const AM = require("./_acadmode.js");
+  let acadStudent = null, acadAd = null;
+  if (cfg) {
+    try {
+      const idr = await guard.kvCommand(cfg, ["GET", `acad:ph:${digits}`]).catch(() => ({}));
+      if (idr && idr.result) { const sr = await guard.kvCommand(cfg, ["GET", `acad:st:${idr.result}`]).catch(() => ({})); acadStudent = sr && sr.result ? JSON.parse(sr.result) : null; }
+    } catch (e) {}
+    try { const ar = await guard.kvCommand(cfg, ["GET", `ad:ref:${digits}`]).catch(() => ({})); acadAd = ar && ar.result ? JSON.parse(ar.result) : null; } catch (e) {}
+  }
+  let acad = AM.detect({ text, hist, student: acadStudent, ad: acadAd });
+  // non-empty = an academy enquiry, where fees may be said. A student is not
+  // being sold a seat, so the seat count stays out of their chat.
+  const acadLine = acad === "student" ? "" : await academyCtx(cfg, hist, acad === "lead" ? "academy" : text);
   let extraCtx = nowIstCtx() + apptLine + acadLine + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
     : "");
@@ -1359,18 +1374,20 @@ module.exports = async (req, res) => {
       const lk = last ? `${last.ts}|${digits}` : "";
       const [stR, ocR] = lk ? await Promise.all([guard.kvCommand(cfg, ["HGET", "dl_status", lk]).catch(() => ({})), guard.kvCommand(cfg, ["HGET", "dl_outcome", lk]).catch(() => ({}))]) : [{}, {}];
       const f0 = (qrec0 && qrec0.facts) || {};
+      if (!acad) acad = AM.detect({ text, hist, concern: (last && last.concern) || f0.problem || "", type: last && last.type, ad: acadAd });
       const g = require("./_goal.js").goalFor({
-        concern: (last && last.concern) || f0.problem || "", type: last && last.type, km: qrec0 ? qrec0.km : null, intent: f0.intent,
+        concern: acad === "lead" ? "Academy course enquiry" : (last && last.concern) || f0.problem || "", type: last && last.type, km: qrec0 ? qrec0.km : null, intent: f0.intent,
         status: stR && stR.result, outcome: ocR && ocR.result, booked: !!apptLine, treatedBefore: !!known,
         name: (last && last.name) || f0.name || (profile && profile.name) || "", slot: last && (last.slot || last.date),
       });
-      extraCtx += require("./_goal.js").contextLine(g);
+      // A student has no sales goal — the student line below says what to do.
+      if (acad !== "student") extraCtx += require("./_goal.js").contextLine(g);
       // Concern known, town known, no appointment yet: this reply offers the
       // slots. The ladder's third rung is the town, and on 8 Nov the agent
       // learned it and then asked another question instead of a time.
       const concernKnown = !!((last && last.concern) || f0.problem);
       const townKnown = !!(qrec0 && (qrec0.km != null || qrec0.place || f0.village || f0.place));
-      if (hist.length >= 2 && concernKnown && townKnown && !/upcoming appointment/.test(apptLine)) extraCtx += '[OFFER SLOTS NOW — concern and town are known; put 6-9 "slots" in this reply] ';
+      if (!acad && hist.length >= 2 && concernKnown && townKnown && !/upcoming appointment/.test(apptLine)) extraCtx += '[OFFER SLOTS NOW — concern and town are known; put 6-9 "slots" in this reply] ';
     } catch (e) {}
     const ar0 = await guard.kvCommand(cfg, ["GET", `ad:ref:${digits}`]).catch(() => ({}));
     try {
@@ -1383,7 +1400,10 @@ module.exports = async (req, res) => {
       }
     } catch (e) {}
   }
-  if (lint.isMetaPrefill(text)) extraCtx += adLead && adLead !== "academy"
+  extraCtx += AM.line(acad, acadStudent);
+  if (lint.isMetaPrefill(text)) extraCtx += acad
+    ? "[This is Meta's click-to-WhatsApp prefill from an Academy ad or post, not their own words — reply in Tenglish about the DermaLuxe Academy course and ask their name; do not ask about a skin or hair concern] "
+    : adLead && adLead !== "academy"
     ? `[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish, own the concern "${adLead}" from the ad in one warm line, do not ask what concern they have] `
     : "[This is Meta's click-to-WhatsApp prefill, not the patient's words — reply in Tenglish and ask what concern they have] ";
 
@@ -1393,7 +1413,10 @@ module.exports = async (req, res) => {
   // with no way to tell whether it had helped.
   const ab = require("./_abtest.js");
   let abLine = "";
-  if (cfg && firstTurn) { try { abLine = await ab.opener(cfg, digits); } catch (e) {} }
+  // The openers are patient lines ("mee problem cheppandi", "consultation
+  // free") — an Academy chat or a student gets none of them, and is not
+  // counted in the test.
+  if (cfg && firstTurn && !acad) { try { abLine = await ab.opener(cfg, digits); } catch (e) {} }
   else if (cfg) { try { await ab.note(cfg, digits, "reply"); } catch (e) {} }
   const abRule = abLine ? `\n\nOPENER: start this reply with exactly this line, then carry on as usual:\n${abLine}` : "";
   // Would they rather listen? A voice note in, a request in words, or a
@@ -1643,7 +1666,7 @@ module.exports = async (req, res) => {
       } catch (e) { console.error("wa: trust pack", e && e.message); }
     }
     // Academy enquiry → course catalog PDF (once per number).
-    try { await maybeSendCatalog(cfg, cloud, out, text); } catch (e) { console.error("wa: catalog send", e && e.message); }
+    if (acad !== "student") { try { await maybeSendCatalog(cfg, cloud, out, text); } catch (e) { console.error("wa: catalog send", e && e.message); } }
     // Enrolled student wrote to us → hand over any material we could not deliver earlier.
     try { await flushPendingMaterial(cfg, cloud); } catch (e) { console.error("wa: pending", e && e.message); }
     return res.status(200).json({ ok: true });

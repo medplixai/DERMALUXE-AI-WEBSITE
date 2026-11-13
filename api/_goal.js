@@ -42,7 +42,11 @@ function goalFor(o) {
   else if (o.km != null && o.km > 80) key = "video_consult";
   const g = GOALS[key];
   let next = "";
-  if (["clinic_consult", "video_consult", "ht_consult", "academy_seat", "return_visit"].includes(key)) {
+  // A course enquiry has no "concern" and no clinic slot: its steps are the
+  // person, the course, then a counselling call with the academy team.
+  if (key === "academy_seat") {
+    next = !o.name ? "peru adugu" : (o.needPhone && !o.phone) ? "10-digit mobile number adugu (academy team call kosam)" : "e course (Skin / Hair / Skin + Hair) ani adigi, academy team tho counselling call / visit time offer cheyyi";
+  } else if (["clinic_consult", "video_consult", "ht_consult", "return_visit"].includes(key)) {
     next = !c.trim() ? "concern adugu" : !o.name ? "peru adugu" : (o.needPhone && !o.phone) ? "10-digit mobile number adugu (WhatsApp lo slot confirm kosam)" : !o.slot ? "2 slots offer cheyyi" : "slot confirm cheyyi";
   }
   let label = g.label;

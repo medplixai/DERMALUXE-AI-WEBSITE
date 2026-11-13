@@ -49,7 +49,11 @@ module.exports = async (req, res) => {
       try {
         const t = await guard.kvCommand(cfg, ["GET", "dp:today"]);
         const today = t && t.result ? JSON.parse(t.result) : null;
-        if (today && today.h1) text = `Hi DermaLuxe! Instagram lo "${today.h1}" post chusanu. Free AI skin & hair analysis kavali.`;
+        // An Academy poster brings people who want the course, not a skin
+        // analysis — and the first line they send is what the agent reads.
+        if (today && today.h1) text = /^acad/.test(String(today.key || ""))
+          ? `ACADEMY — Hi DermaLuxe! Instagram lo "${today.h1}" post chusanu. Academy course details kavali.`
+          : `Hi DermaLuxe! Instagram lo "${today.h1}" post chusanu. Free AI skin & hair analysis kavali.`;
       } catch (e) {}
     }
     res.setHeader("Location", "https://wa.me/919959134666?text=" + encodeURIComponent(text));
