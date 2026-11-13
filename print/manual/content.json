@@ -1,0 +1,1081 @@
+[
+ {
+  "key": "start",
+  "title_en": "Getting started",
+  "title_te": "మొదలు పెట్టడం — యాప్ ఇన్‌స్టాల్, లాగిన్, టాబ్‌లు",
+  "who_te": "అందరూ — Owner, Manager, Doctor, Reception, Accounts, Therapist, Trainer, Marketing, Staff",
+  "purpose_te": "DermaLuxe Staff యాప్‌ను ఫోన్‌లో ఎలా వేసుకోవాలి, మీ నంబర్‌తో ఎలా లాగిన్ అవ్వాలి, మీ సొంత పాస్‌వర్డ్ ఎలా పెట్టుకోవాలి, టాబ్‌ల మధ్య ఎలా వెళ్ళాలి, ఇంటర్నెట్ లేనప్పుడు ఏం జరుగుతుంది — ఇవన్నీ ఈ భాగంలో ఉన్నాయి. మీకు ఏ టాబ్‌లు కనిపిస్తాయో మీ role బట్టి ఉంటుంది. ఆ వివరం కింద టిప్స్‌లో ఉంది.",
+  "tasks": [
+   {
+    "title_te": "ఫోన్‌లో యాప్ ఇన్‌స్టాల్ చేయడం, కొత్త వెర్షన్ వేసుకోవడం",
+    "steps_te": [
+     "ఫోన్‌లో www.dermaluxe.ai/staff-app.html తెరవండి. పైన ఉన్న \"📥 App download cheyandi\" బటన్ నొక్కండి. ఫోన్ Android 7.0 లేదా అంతకంటే కొత్తది అయి ఉండాలి.",
+     "డౌన్‌లోడ్ అయ్యాక \"Open\" నొక్కండి. కనిపించకపోతే ఫోన్‌లో Files → Downloads లో DermaLuxe-Staff.apk ఫైల్ వెతకండి.",
+     "\"ఈ source నుంచి install చేయొచ్చా?\" (\"Unknown apps\") అని ఫోన్ ఒక్కసారి అడుగుతుంది. \"Allow\" నొక్కి, తర్వాత \"Install\" నొక్కండి.",
+     "యాప్ మొదటిసారి తెరిచి లాగిన్ అయ్యాక Notifications కి \"Allow\" నొక్కండి. కొత్త లీడ్ వస్తే వెంటనే మీకు తెలిసేది దీని వల్లే.",
+     "యాప్ తెరిచిన ప్రతిసారీ కొత్త వెర్షన్ ఉందేమో సర్వర్‌ను అడుగుతుంది. \"Kotha version … vachindi\" అనే పట్టీ కనిపిస్తే \"Download\" (లేదా \"Ventane update\") నొక్కండి. అది ఇదే staff-app.html పేజీ తెరుస్తుంది. పైన చెప్పినట్టే డౌన్‌లోడ్ చేసి \"Install\" నొక్కండి. పాత యాప్ మీదే కొత్తది పడుతుంది."
+    ]
+   },
+   {
+    "title_te": "లాగిన్ అవ్వడం (పాస్‌వర్డ్ లేదా WhatsApp OTP)",
+    "steps_te": [
+     "\"Mobile number\" లో మీ 10 అంకెల నంబర్ టైప్ చేయండి. Owner స్టాఫ్ లిస్ట్‌లో పెట్టిన నంబరే అయి ఉండాలి.",
+     "పాస్‌వర్డ్ ఉంటే \"Password\" లో టైప్ చేసి \"Login\" నొక్కండి. 👁 నొక్కితే టైప్ చేసింది కనిపిస్తుంది.",
+     "పాస్‌వర్డ్ లేకపోతే \"Password ledha? WhatsApp OTP pampandi\" నొక్కండి. మీ WhatsApp కి 6 అంకెల OTP వస్తుంది.",
+     "\"OTP (6 digits)\" లో ఆ కోడ్ టైప్ చేసి \"Login\" నొక్కండి. నంబర్ తప్పు అయితే \"← Back\" నొక్కి మళ్ళీ ఇవ్వండి.",
+     "\"Ee number ki password set cheyaledu — OTP tho login cheyandi.\" అని వస్తే OTP తో లాగిన్ అవ్వండి. \"Ee number staff list lo ledu\" లేదా \"Mee access ippudu off lo undi\" అని వస్తే Owner ని అడగండి. మీరు ఏమీ మార్చలేరు."
+    ]
+   },
+   {
+    "title_te": "మీ సొంత పాస్‌వర్డ్ పెట్టుకోవడం",
+    "steps_te": [
+     "Owner పంపిన పాస్‌వర్డ్‌తో లాగిన్ అయితే, యాప్ మిమ్మల్ని నేరుగా \"Mee password\" బాక్స్ దగ్గరికి తీసుకెళ్తుంది. అక్కడ \"Idi manam pampina password. Mee sonta password ippude pettukondi.\" అని కనిపిస్తుంది.",
+     "\"Kotha password (8+ characters)\" లో కనీసం 8 అక్షరాల కొత్త పాస్‌వర్డ్ టైప్ చేయండి.",
+     "\"Save\" నొక్కండి. \"Password updated\" అని వస్తే పని అయిపోయింది. ఇక నుంచి ఈ పాస్‌వర్డ్ మీ నంబర్‌తో మాత్రమే పని చేస్తుంది.",
+     "పాస్‌వర్డ్ వద్దు, OTP తోనే లాగిన్ అవుతాను అనుకుంటే \"OTP only\" నొక్కి, అడిగినప్పుడు OK నొక్కండి.",
+     "Owner, Manager కి ఈ బాక్స్ ఎప్పుడూ \"Control panel\" → \"Controls\" లో ఉంటుంది. మిగతా వాళ్ళకు \"Control panel\" టాబ్ కనిపించదు. తర్వాత పాస్‌వర్డ్ మార్చుకోవాలంటే Owner ని కొత్త పాస్‌వర్డ్ పంపమని అడగండి. దానితో లాగిన్ అయితే ఈ బాక్స్ మళ్ళీ వస్తుంది."
+    ]
+   },
+   {
+    "title_te": "టాబ్‌ల మధ్య వెళ్ళడం, ↻ రిఫ్రెష్, Logout",
+    "steps_te": [
+     "ఫోన్‌లో కింద ఒక బార్ ఉంటుంది. మీకు 5 లేదా అంతకంటే తక్కువ టాబ్‌లు ఉంటే అన్నీ అక్కడే ఉంటాయి. ఎక్కువ ఉంటే మొదటి 4 కనిపిస్తాయి, మిగతావి \"More\" నొక్కితే వచ్చే లిస్ట్‌లో ఉంటాయి.",
+     "కంప్యూటర్‌లో ఎడమ వైపు sidebar లో అన్ని టాబ్‌లు ఉంటాయి. ఫోన్‌లో కొన్ని పేర్లు చిన్నవి: \"Appts\" = \"Appointments\", \"Seats\" = \"Academy\", \"Post\" = \"Today's post\", \"Panel\" = \"Control panel\".",
+     "ఫోన్ బార్‌లో టాబ్ మీద ఉన్న నంబర్ పని లెక్క: Leads దగ్గర కొత్త లీడ్‌లు, Appts దగ్గర రాబోయే అపాయింట్‌మెంట్‌లు, Inbox దగ్గర జవాబు ఇవ్వాల్సినవి, Patients, Students, Seats దగ్గర వాటి లెక్క. 0 అయితే నంబర్ కనిపించదు.",
+     "తాజా డేటా కావాలంటే పైన \"↻\" నొక్కండి, లేదా ఫోన్‌లో స్క్రీన్‌ను పై నుంచి కిందికి లాగండి. ముందు ఆగి ఉన్న మార్పులు పంపి, తర్వాత కొత్త డేటా తెస్తుంది.",
+     "పని అయిపోయాక, లేదా వేరే వాళ్ళ ఫోన్ వాడితే, పైన \"Logout\" నొక్కండి. ఆ ఫోన్‌కు నోటిఫికేషన్లు ఆగిపోతాయి, ఫోన్‌లో దాచిన పేషెంట్ డేటా అంతా తుడిచేస్తుంది."
+    ]
+   },
+   {
+    "title_te": "ఇంటర్నెట్ లేనప్పుడు పని చేయడం",
+    "steps_te": [
+     "నెట్ లేకపోతే పైన \"📴 Internet ledu\" అని, డేటా ఎంత పాతదో (\"… ago data\") కనిపిస్తుంది. ఇంతకు ముందు తెరిచిన లీడ్‌లు, అపాయింట్‌మెంట్‌లు, Money, Stock లాంటి స్క్రీన్లు పాత డేటాతో తెరుచుకుంటాయి.",
+     "ఈ పనులు నెట్ లేకుండా చేయొచ్చు: లీడ్ స్టేటస్, కాల్ నోట్, \"+ Kotha lead\", అపాయింట్‌మెంట్ బుక్ / మార్పు / స్టేటస్, payment, bill, ఖర్చు, stock, హాజరు, పేషెంట్ నోట్ / వివరాలు, sitting. \"Offline — …\" అని ఫోన్‌లో దాచినట్టు మెసేజ్ వస్తుంది.",
+     "ఆగి ఉన్నవి ఉంటే పైన \"⏳ … marpu(lu) pampalsi undi…\" అని కనిపిస్తుంది. నెట్ రాగానే వరుసగా వాటంతట అవే వెళ్తాయి. అప్పుడు \"… marpu(lu) sync ayyayi\" అని వస్తుంది.",
+     "సర్వర్ ఒప్పుకోనివి ఉంటే పైన \"⚠️ … marpu(lu) vellaledu — nokkandi\" వస్తుంది. దాన్ని నొక్కితే \"Pampaleni marpulu\" లిస్ట్, కారణం కనిపిస్తాయి. ఆ పని మళ్ళీ సరిగ్గా చేసి, తర్వాత \"Anni teeseyandi\" నొక్కండి.",
+     "పై లిస్ట్‌లో లేని పనులు (ఉదా: WhatsApp రిప్లై, మెసేజ్ పంపడం) నెట్ లేకపోతే \"Internet andaledu\" అని ఆగిపోతాయి. నెట్ వచ్చాక మళ్ళీ చేయండి."
+    ]
+   }
+  ],
+  "tips_te": [
+   "Role బట్టి కనిపించే టాబ్‌లు ఇవి (మామూలు సెట్టింగ్. Owner \"Control panel\" లో మార్చవచ్చు). \"Attendance\" అందరికీ కనిపిస్తుంది.",
+   "Owner, Manager: అన్ని టాబ్‌లు — Leads, Inbox, Appointments, Academy, Patients, Money, Numbers, Ads, Students, Today's post, Reviews, AI Office, Stock, Files, Attendance, Control panel.",
+   "Doctor: Leads, Inbox, Appointments, Academy, Patients, Students, Reviews, AI Office, Stock, Files, Attendance.",
+   "Reception: Leads, Inbox, Appointments, Academy, Patients, Money, Students, Today's post, AI Office, Stock, Files, Attendance.",
+   "Accounts: Leads, Appointments, Academy, Patients, Money, Numbers, Ads, Students, Reviews, AI Office, Stock, Files, Attendance (Inbox ఉండదు).",
+   "Therapist: Leads, Appointments, Patients, Today's post, AI Office, Stock, Files, Attendance.",
+   "Trainer: Appointments, Academy, Students, AI Office, Files, Attendance (Leads ఉండదు).",
+   "Marketing: Leads, Inbox, Patients, Numbers, Ads, Today's post, Reviews, AI Office, Files, Attendance.",
+   "Staff (డిఫాల్ట్ role): Leads, Appointments, Academy, Patients, Students, Today's post, AI Office, Files, Attendance.",
+   "మీకు ఏదైనా టాబ్ కనిపించట్లేదంటే మీ role కి ఆ పవర్ లేదని అర్థం. అవసరమైతే Owner ని అడగండి.",
+   "నోటిఫికేషన్ నొక్కితే యాప్ నేరుగా దానికి సంబంధించిన టాబ్ తెరుస్తుంది (లీడ్ అయితే Leads, అపాయింట్‌మెంట్ అయితే ఆ రోజు Appointments).",
+   "ఫోన్ సెట్టింగ్స్‌లో ఈ యాప్‌కు మూడు రకాల నోటిఫికేషన్లు ఉంటాయి: \"Urgent — hot leads\" (గట్టిగా మోగుతుంది), \"Updates\", \"Raatri updates\" (రాత్రి వచ్చినవి మోగవు, ఉదయం చూడండి). మీ role కి సంబంధించినవే వస్తాయి.",
+   "యాప్‌ను 5 నిమిషాలకు మించి పక్కన పెట్టినా, మూసి మళ్ళీ తెరిచినా \"Unlock\" అడుగుతుంది — వేలిముద్ర లేదా ఫోన్ స్క్రీన్ లాక్ ఇవ్వండి. కంప్యూటర్ బ్రౌజర్‌లో 10 నిమిషాలు ఏమీ చేయకపోతే \"Locked\" స్క్రీన్ వచ్చి మీ పాస్‌వర్డ్ అడుగుతుంది.",
+   "రోజు మొదట్లో ఒకసారి \"↻\" నొక్కండి. పైన \"Updated … ago\" కనిపిస్తే డేటా పాతది, రిఫ్రెష్ చేయండి.",
+   "Owner, Manager \"Control panel\" → \"Controls\" → \"Notifications\" లో \"Naaku test pampu\" నొక్కి నోటిఫికేషన్లు వస్తున్నాయో చూడవచ్చు. \"Ee phone lo aapu\" ఆ ఫోన్‌కు నోటిఫికేషన్లు ఆపేస్తుంది."
+  ],
+  "warnings_te": [
+   "పాస్‌వర్డ్ గంటలో 5 సార్లు తప్పు ఇస్తే Owner కి WhatsApp లో హెచ్చరిక వెళ్తుంది. గంటలో చాలా సార్లు ప్రయత్నిస్తే \"Too many attempts\" వచ్చి ఒక గంట ఆగాలి — అప్పుడు OTP వాడండి.",
+   "మీ పాస్‌వర్డ్ ఎవరికీ చెప్పకండి. ప్రతి ఒక్కరూ తమ సొంత నంబర్‌తోనే లాగిన్ అవ్వాలి — వేరే వాళ్ళ నంబర్‌తో పని చేస్తే అది వాళ్ళ పేరు మీద నమోదవుతుంది.",
+   "ఆగి ఉన్న మార్పులు ఉన్నప్పుడు \"Logout\" నొక్కితే \"… marpu(lu) inka pampaledu. Logout aithe avi potayi. Sare naa?\" అని అడుగుతుంది. OK నొక్కితే ఆ మార్పులు పోతాయి. నెట్ వచ్చి అవి వెళ్ళేదాకా ఆగి, తర్వాత Logout చేయండి.",
+   "నెట్ లేనప్పుడు \"+ Kotha lead\" లో అపాయింట్‌మెంట్ కూడా బుక్ చేస్తే, లీడ్ మాత్రమే ఫోన్‌లో ఆగుతుంది, అపాయింట్‌మెంట్ పడదు (\"Appointment malli pettandi\"). నెట్ వచ్చాక అపాయింట్‌మెంట్ మళ్ళీ పెట్టండి.",
+   "OTP తోనే లాగిన్ అయ్యే వాళ్ళకు (పాస్‌వర్డ్ లేని వాళ్ళకు) కంప్యూటర్‌లో \"Locked\" స్క్రీన్ తెరుచుకోదు. అక్కడ \"Logout\" నొక్కి OTP తో మళ్ళీ లాగిన్ అవ్వండి.",
+   "యాప్‌లో స్క్రీన్‌షాట్ తీయలేరు, recent apps లో స్క్రీన్ ఖాళీగా కనిపిస్తుంది — ఇది పేషెంట్ డేటా కోసం పెట్టిన రూల్, లోపం కాదు.",
+   "ఫోన్ పోతే వెంటనే Owner కి చెప్పండి. వాళ్ళు \"Control panel\" నుంచి మీ లాగిన్ ఆపేస్తారు.",
+   "iPhone లో, కంప్యూటర్ బ్రౌజర్‌లో push నోటిఫికేషన్లు రావు. Android యాప్‌లో మాత్రమే వస్తాయి.",
+   "\"Ventane update\" అని వస్తే మీ యాప్ చాలా పాతది — ఆలస్యం చేయకుండా కొత్తది వేసుకోండి. కొత్త స్క్రీన్లు, సరిచేసినవి కొత్త APK లోనే వస్తాయి, \"↻\" తో రావు.",
+   "APK ని staff-app.html పేజీ నుంచి మాత్రమే డౌన్‌లోడ్ చేయండి. WhatsApp లో ఎవరో పంపిన వేరే ఫైల్ ఇన్‌స్టాల్ చేయకండి."
+  ]
+ },
+ {
+  "key": "leads",
+  "title_en": "Leads",
+  "title_te": "లీడ్స్ — ఎంక్వైరీలు, కాల్స్, బుకింగ్",
+  "who_te": "\"leads.view\" ఉన్న అందరికీ ఈ tab కనిపిస్తుంది: Owner, Manager, Doctor, Reception, Accounts, Therapist, Marketing, Staff. Trainer కు ఈ tab ఉండదు. Status మార్చడం, notes రాయడం, కాల్ ఫలితం పెట్టడం, \"+ Kotha lead\", \"📍 Location\", \"💳 QR\" — ఇవి \"leads.edit\" ఉన్నవారికే (Owner, Manager, Doctor, Reception, Staff). Accounts, Therapist, Marketing చూడగలరు, మార్చలేరు. Appointment నిజంగా పెట్టడానికి \"appts.edit\" కూడా కావాలి (Owner, Manager, Doctor, Reception). Staff role కు ఇది లేదు. 🗑 delete బటన్ \"leads.delete\" ఉన్నవారికే (మామూలుగా Owner మాత్రమే).",
+  "purpose_te": "WhatsApp, Instagram, Facebook, website, walk-in — అన్ని చోట్ల నుంచి వచ్చిన ఎంక్వైరీలు ఇక్కడ ఉంటాయి. ఒక మనిషికి ఒకే card ఉంటుంది. అదే నంబర్ నుంచి వచ్చిన పాత ఎంక్వైరీలు ఆ card కిందే \"📚 Inka … paata enquiry\" లో ఉంటాయి. ఎవరికి ముందు కాల్ చేయాలి, కాల్ తర్వాత ఏం జరిగింది, మళ్ళీ ఎప్పుడు కాల్ చేయాలి, consultation బుక్ చేయడం — ఈ పని అంతా ఇక్కడే చేస్తారు. పైన tiles ఉంటాయి. \"Leads today\" నొక్కితే \"Ee roju\" list తెరుచుకుంటుంది. ఈ రోజు academy leads కూడా ఉంటే tile కింద \"… clinic · … academy\" కనిపిస్తుంది. ఏ భాగం నొక్కితే ఆ వైపు list వస్తుంది. \"🔥 Ippude call\" నొక్కితే కాల్ list వస్తుంది. ఈ tiles నొక్కినప్పుడు period ఆటోమేటిక్‌గా \"All\" కి మారుతుంది. \"Upcoming appts\" నొక్కితే Appointments tab కు వెళ్తుంది. \"Academy seats\" (ఉదా. 4/10) నొక్కితే Academy tab లో seats దగ్గరకు వెళ్తుంది. \"✅ Dr tho ayina appts\" నొక్కితే గత 30 రోజుల్లో డాక్టర్‌తో జరిగిన visits list tiles కిందే తెరుచుకుంటుంది. మళ్ళీ నొక్కితే, లేదా \"Close ✕\" నొక్కితే మూసుకుంటుంది.",
+  "tasks": [
+   {
+    "title_te": "రోజు మొదలు: ఎవరికి కాల్ చేయాలో చూడటం",
+    "steps_te": [
+     "పైన \"🏥 DermaLuxe leads\" లేదా \"🎓 Academy leads\" ఎంచుకోండి. రెండూ ఒకే list లో కలిసి రావు. Groups, counts, filters అన్నీ ఎంచుకున్న వైపుకే పని చేస్తాయి.",
+     "\"🔥 Ippude call\" నొక్కండి. ఇందులో ఉండేవాళ్ళు: ఇంకా ఎవరూ మాట్లాడని A-grade leads, ఫోన్ ఎత్తనివాళ్ళు (3 గంటల తర్వాత మళ్ళీ వస్తారు), ఈ రోజు follow-up date ఉన్నవాళ్ళు, మళ్ళీ కాల్ చేయమన్నవాళ్ళు, 2 రోజుల క్రితం మాట్లాడి ఇంకా నిర్ణయించుకోనివాళ్ళు. ప్రతి card మీద \"🎯 #1\" లాంటి వరుస సంఖ్య, కారణం, కాల్ చేయడానికి మంచి సమయం ఉంటాయి. ఆ వరుసలోనే కాల్ చేయండి.",
+     "మొదట 10 మంది మాత్రమే కనిపిస్తారు. మిగతావాళ్ళ కోసం \"Inka … mandi chupinchu\" నొక్కండి.",
+     "పైన \"📅 Ivala … follow-up cheyyali\" banner కనిపిస్తే \"Chudandi\" నొక్కండి. Follow-up list తెరుచుకుంటుంది. దగ్గర date ఉన్నవి ముందు వస్తాయి.",
+     "మిగతా groups: \"Ee roju\" = ఈ రోజు వచ్చినవి. \"⏳ Waiting\" = ఎవరూ ఇంకా note రాయని కొత్తవి, పాతవి ముందు. \"📩 Insta / FB\" = నంబర్ ఇవ్వని Instagram / Facebook ఎంక్వైరీలు. \"Book kaanivi\" = New / Contacted. \"✅ Book ayinavi\" = Booked / Visited. \"📅 Follow-up\" = follow-up పెట్టినవి. \"🙋 Naavi\" = మీ పేరు మీద ఉన్నవి. \"Anni\" = అన్నీ."
+    ]
+   },
+   {
+    "title_te": "కాల్ చేయడం, కాల్ తర్వాత ఫలితం పెట్టడం",
+    "steps_te": [
+     "Card మీద \"📞 Call\" నొక్కండి. Phone dialer తెరుచుకుంటుంది. అదే సమయంలో patient కు ఒక WhatsApp వెళ్తుంది — క్లినిక్ నంబర్, మీ పేరుతో, \"ippudu call chestunnaru, teliyani number ayina lift cheyandi\" అని. వెళ్తే \"📲 Heads-up WhatsApp vellindi\" అని చూపిస్తుంది, card notes లో కూడా పడుతుంది. ఒక patient కు 2 గంటల్లో ఒక్కసారే వెళ్తుంది.",
+     "కాల్ అయ్యాక app కు తిరిగి రాగానే \"… ki call chesara?\" అనే sheet వస్తుంది. ఏదైనా చెప్పాలంటే ముందుగా \"Em maatladaru? (optional)\" box లో చిన్న note రాయండి.",
+     "తర్వాత ఫలితం బటన్ ఒకటి నొక్కండి: \"✅ Book for consultation\", \"🔁 Malli call\", \"📵 Ettaledu\", \"🤔 Consultation kosam alochistunnaru\", \"📅 Need follow up\", \"🚗 Raalemu (dooram)\", \"🚫 Vaddannaru\". నొక్కగానే note తో కలిపి save అవుతుంది, lead status కూడా ఆటోమేటిక్‌గా మారుతుంది. Academy lead కు academy బటన్లు వస్తాయి (\"📋 Slot / course adigaru\", \"💳 Payment pending\", \"🎟 Slot booked\" మొదలైనవి).",
+     "ఫలితం లేకుండా note మాత్రమే పెట్టాలంటే \"Save\" నొక్కండి. ఇప్పుడు ఏమీ పెట్టకూడదంటే \"Ippudu vaddu\" నొక్కండి.",
+     "\"📅 Need follow up\" నొక్కితే date అడుగుతుంది (మామూలుగా రేపు, రేపు ఆదివారం అయితే సోమవారం). కావాలంటే \"Em annaru? (optional)\" లో రాసి \"Save\" నొక్కండి. ఆ రోజు lead మళ్ళీ కాల్ list లోకి వస్తుంది.",
+     "ఒకే నంబర్‌కు నెలలో రెండోసారి \"📵 Ettaledu\" పెడితే, patient కు \"రెండు సార్లు call చేసాం, మీకు convenient time చెప్పండి\" అని WhatsApp ఆటోమేటిక్‌గా వెళ్తుంది (వారానికి ఒక్కసారే)."
+    ]
+   },
+   {
+    "title_te": "Card మీద status మార్చడం, notes రాయడం",
+    "steps_te": [
+     "Card మీద ఉన్న status dropdown లో సరైనది ఎంచుకోండి: \"New\", \"Contacted\", \"📵 Not answering\", \"📅 Need follow up\", \"🤔 Consultation kosam alochistunnaru\", \"🚫 Not interested\", \"🚗 Not willing to travel\", \"Booked\", \"Visited\", \"Closed\". Academy lead కు academy steps వస్తాయి.",
+     "Dropdown లో \"🚫 Not interested\", \"🚗 Not willing to travel\", \"Closed\" ఎంచుకుంటే కారణం అడుగుతుంది. కారణం రాయకపోతే status మారదు (\"Reason lekunda close cheyyamu\").",
+     "Card కింద \"Call note…\" box లో మాట్లాడిన విషయం రాసి \"Add\" నొక్కండి. Card మీద చివరి 3 notes కనిపిస్తాయి — ఎవరు రాసారో, ఎప్పుడు రాసారో కూడా.",
+     "Grade badge (A/B/C/D, పక్కన score) నొక్కితే ఆ grade ఎందుకు వచ్చిందో చూపిస్తుంది. కాల్ ముందు \"🤖 Em matladali\" నొక్కితే, AI chat చదివి ఏం మాట్లాడాలో note ఇస్తుంది.",
+     "\"💬 WhatsApp\" నొక్కితే ఆ నంబర్‌తో WhatsApp chat తెరుచుకుంటుంది. \"📍 Location\" నొక్కితే క్లినిక్ address, \"💳 QR\" నొక్కితే consultation fee UPI QR patient కు వెంటనే WhatsApp లో వెళ్తాయి. పేరు మీద నొక్కితే patient file తెరుచుకుంటుంది."
+    ]
+   },
+   {
+    "title_te": "Card నుంచి consultation బుక్ చేయడం",
+    "steps_te": [
+     "కాల్ sheet లో \"✅ Book for consultation\" నొక్కండి, లేదా status dropdown లో \"Booked\" ఎంచుకోండి (నంబర్ ఉన్న lead కు మాత్రమే).",
+     "\"… — consultation book\" sheet లో date, time ఎంచుకోండి. Time 9:00 AM నుంచి 8:30 PM వరకు, అరగంటకు ఒక slot.",
+     "కావాలంటే \"💳 Payment QR WhatsApp lo pampu\" tick చేయండి. \"📍 Clinic location pampu\" ముందే tick అయి ఉంటుంది. వద్దంటే tick తీసేయండి.",
+     "\"Book cheyyi\" నొక్కండి. 30 నిమిషాల appointment పడుతుంది, lead \"Booked\" అవుతుంది. ఆదివారం ఎంచుకుంటే \"Aadivaaram clinic close\" అని ఆగిపోతుంది.",
+     "ఆ సమయానికి ఇంకో appointment ఉంటే హెచ్చరిక వస్తుంది — \"Ayina book cheyyala?\". నిజంగా అవసరమైతేనే OK నొక్కండి."
+    ]
+   },
+   {
+    "title_te": "\"+ Kotha lead\" — walk-in / phone call ఎంక్వైరీ add చేయడం",
+    "steps_te": [
+     "Filters పక్కన ఉన్న \"+ Kotha lead\" నొక్కండి.",
+     "\"Peru *\", \"10-digit mobile *\", \"Em problem / e treatment? *\" తప్పనిసరి. Treatment రాస్తుంటే rate card నుంచి పేర్లు suggest అవుతాయి — వీలైతే అదే ఎంచుకోండి. \"Vayasu\", \"Gender\", source (\"Walk-in\", \"Phone call\", \"Evaro cheppi vachcharu\", \"Poster / pamphlet\", \"Camp\", \"Other\"), \"🔥 Hot\" / \"Warm\" / \"Cold\", status (\"New\", \"Maatladanu\", \"Book chesaru\", \"Vachcharu\") కూడా ఇవ్వండి. \"Evaro cheppi vachcharu\" ఎంచుకుంటే referral code (DL1234) box వస్తుంది.",
+     "మనిషి ఎదురుగా ఉంటే \"Ippude appointment kuda pettandi\" tick చేసి date, time (\"3:30 pm\" లాగా) రాయండి. ఈ tick \"appts.edit\" ఉన్నవారికే కనిపిస్తుంది.",
+     "\"Save cheyyandi\" నొక్కండి. అదే నంబర్, అదే పేరుతో గత 7 రోజుల్లో lead ఉంటే \"Ee number … na already vachindi\" అని అడుగుతుంది. OK = ఉన్న patient file తెరుచుకుంటుంది. Cancel = అయినా కొత్త lead పడుతుంది. అదే నంబర్‌తో వేరే పేరు అయితే (ఉదా. తండ్రి, కొడుకు ఒకే phone) ఏమీ అడగకుండా కొత్త lead గా పడుతుంది.",
+     "Save అయ్యాక \"WhatsApp lo welcome message pampala?\" అని అడుగుతుంది (message పంపే permission ఉన్నవారికి). OK నొక్కితే message టైప్ అయి WhatsApp తెరుచుకుంటుంది. Send మీరే నొక్కాలి."
+    ]
+   }
+  ],
+  "tips_te": [
+   "కొత్త lead వచ్చిన 15 నిమిషాల్లో touch చేయండి. 1 గంట దాటితే card ఎరుపు రంగులోకి మారి \"🚨 1 ganta daatindi\" అని చూపిస్తుంది.",
+   "ప్రతి కాల్ తర్వాత sheet లో ఫలితం తప్పకుండా నొక్కండి. Note లేకపోతే ఆ lead ను ఎవరూ touch చేయలేదనే లెక్కలోకి వస్తుంది.",
+   "ఈ రోజు మాట్లాడిన లేదా note రాసిన lead రేపటి వరకు కాల్ list నుంచి వెళ్ళిపోతుంది. \"📵 Ettaledu\" పెట్టినవాళ్ళు మాత్రం 3 గంటల తర్వాత మళ్ళీ వస్తారు. List ఖాళీ అయితే ఈ రోజు కాల్ పని అయిపోయినట్టే.",
+   "\"📵 Not answering\" filter లో పాత leads ముందు వస్తాయి. ఎక్కువ రోజులుగా ఎదురుచూస్తున్నవాళ్ళకు ముందు కాల్ చేయండి.",
+   "Period dropdown (\"Today\", \"Last 7 days\", \"Last 30 days\", \"All\") లో ప్రతి దాని పక్కన count ఉంటుంది. Period వల్ల leads దాగి ఉంటే పైన \"Anni chupinchu\" బటన్ వస్తుంది — అది నొక్కండి.",
+   "\"Contacted\", \"📵 Not answering\" లాంటి quick chips నొక్కితే list వెంటనే filter అవుతుంది. అదే chip మళ్ళీ నొక్కితే filter పోతుంది. \"💆 Skin\", \"💇 Hair\", \"🌱 Hair transplant\" filter తీసేయాలంటే \"Anni clinic\" నొక్కండి.",
+   "Internet లేనప్పుడు status మార్పు, note, కొత్త lead phone లోనే ఆగి ఉంటాయి. Network వచ్చాక server కు వెళ్తాయి."
+  ],
+  "warnings_te": [
+   "\"📩 Insta / FB\" leads కు నంబర్ ఉండదు, కాల్ బటన్ ఉండదు. \"📩 Instagram lo reply\" / \"📩 Facebook lo reply\" నొక్కి అక్కడే జవాబు ఇవ్వండి.",
+   "Dropdown లో \"Not interested\", \"Not willing to travel\", \"Closed\" కారణం లేకుండా పెట్టలేరు. నిజమైన కారణమే రాయండి — owner ఇవి చదువుతారు. కాల్ sheet లో \"🚫 Vaddannaru\", \"🚗 Raalemu (dooram)\" కారణం అడగవు, కాబట్టి ముందే note box లో కారణం రాసి నొక్కండి.",
+   "కాల్ sheet లో ఫలితం బటన్ నొక్కగానే save అయిపోతుంది. Note రాయాలంటే బటన్ నొక్కే ముందే రాయండి.",
+   "Staff role కు \"appts.edit\" లేదు. వాళ్ళు \"Book cheyyi\" నొక్కితే lead \"Booked\" అవుతుంది, QR / location వెళ్తాయి, కానీ appointment పడదు. అలాంటప్పుడు Reception కు చెప్పి appointment పెట్టించండి.",
+   "Offline లో కొత్త lead తో పాటు appointment పెట్టి ఉంటే appointment save అవ్వదు (\"Appointment malli pettandi\"). Network వచ్చాక appointment మళ్ళీ పెట్టండి.",
+   "\"Vere evaro ee lead ni ippude marcharu\" అని వస్తే మీ మార్పు నిలవలేదు. List refresh అయ్యాక చూసి, అవసరమైతే మళ్ళీ చేయండి.",
+   "Accounts, Therapist, Marketing roles కు status, note మార్చే permission లేదు. ప్రయత్నిస్తే \"permission ledu\" అని error వస్తుంది. అలాంటప్పుడు Reception కు చెప్పండి.",
+   "అదే మనిషిని మళ్ళీ add చేయకండి. \"already vachindi\" అని అడిగితే OK నొక్కి ఉన్న file లోనే పని చేయండి.",
+   "\"📞 Call\" తో వెళ్ళే heads-up WhatsApp, రెండో \"Ettaledu\" WhatsApp, \"📍 Location\", \"💳 QR\" — ఇవి patient కు నిజంగా వెళ్తాయి. పొరపాటున నొక్కకండి.",
+   "🗑 నొక్కి \"Delete this lead?\" కు OK అంటే lead పూర్తిగా పోతుంది. Owner చెప్పకుండా delete చేయకండి."
+  ]
+ },
+ {
+  "key": "inbox",
+  "title_en": "Inbox",
+  "title_te": "ఇన్‌బాక్స్ — వాట్సాప్ చాట్‌లు",
+  "who_te": "Owner, Manager, Reception, Doctor, Marketing లకు ఈ tab కనిపిస్తుంది (inbox.view). Reply పంపడం, \"✋ Nenu chusukunta\", \"✍️\" draft — ఇవి Owner, Manager, Reception మాత్రమే చేయగలరు (inbox.reply). Doctor, Marketing చాట్‌లు చదవగలరు; వారికి reply box, త్వరిత బటన్లు కనిపించవు. Owner Control panel లో roles మార్చితే ఇది మారవచ్చు.",
+  "purpose_te": "క్లినిక్ వాట్సాప్ నంబర్‌కు వచ్చిన patient చాట్‌లు అన్నీ ఇక్కడ ఉంటాయి. చాలా చాట్‌లకు AI agent తనే జవాబు ఇస్తుంది. మనిషి చూడాల్సిన చాట్‌లు పైన ఎరుపు గుంపులో, కారణంతో సహా కనిపిస్తాయి. \"Inbox\" tab మీద ఉన్న సంఖ్య = మనిషి చూడాల్సిన చాట్‌ల సంఖ్య (చదవని messages సంఖ్య కాదు).",
+  "tasks": [
+   {
+    "title_te": "ఏ చాట్‌కు మనిషి కావాలో చూడటం",
+    "steps_te": [
+     "\"Inbox\" tab తెరవండి. పైన నాలుగు డబ్బాలు ఉంటాయి: \"Anni\", \"Meeru\", \"Nadustunnavi\", \"Booked\". ప్రతి డబ్బా మీద చాట్‌ల సంఖ్య ఉంటుంది.",
+     "\"Meeru\" డబ్బా ఎరుపుగా ఉంటే, మీరు చూడాల్సిన చాట్‌లు ఉన్నాయి. దాన్ని నొక్కండి.",
+     "ప్రతి చాట్ వరుసలో రంగు పట్టీ మీద కారణం ఉంటుంది. ఉదా: \"🚨 Patient ki emergency laga undi — ventane call cheyandi\", \"👤 … chusukuntunnaru, AI aagi undi — patient … nundi reply kosam\", \"🤖 AI reply ivvaledu — … nundi waiting\", \"📞 Patient call adigaru — phone cheyandi\", \"📷 Photo pampaaru — doctor ki okasari chupinchandi\".",
+     "ఏ డబ్బా ఎంచుకోకుండా (\"Anni\") ఉంటే list గుంపులుగా వస్తుంది: \"🔴 Meeru cheyyalsinavi\", \"👤 Staff matladutunnaru\", \"🤖 AI matladutondi\", \"📅 Book ayinavi · vachinavi\". పాత చాట్‌లు \"💤 Inka … paata chats chupinchu\" బటన్ వెనుక ఉంటాయి.",
+     "పేరు, నంబర్ లేదా విషయంతో వెతకాలంటే \"Peru / number / matter\" box లో టైప్ చేయండి. \"🔥 A/B\" నొక్కితే A, B grade చాట్‌లు మాత్రమే కనిపిస్తాయి; మళ్ళీ నొక్కితే అన్నీ వస్తాయి."
+    ]
+   },
+   {
+    "title_te": "చాట్ తెరిచి reply పంపడం",
+    "steps_te": [
+     "చాట్ వరుసను నొక్కండి. పైన patient పేరు, నంబర్, వివరాల card; కింద messages వస్తాయి. ప్రతి message కింద 🤖 AI అంటే AI పంపింది, 👤 పేరు అంటే ఆ staff పంపారు.",
+     "కింద \"Reply raayandi…\" box లో మీ జవాబు రాయండి. తరచూ పంపే మాటలకు బటన్లు ఉన్నాయి: \"⏰ Timings\", \"📍 Address\", \"📅 Slot adagu\", \"💰 Price\", \"📸 Photo adagu\", \"🎥 Video consult\", \"🙏 Thanks\". నొక్కితే ఆ మాట box లోకి వస్తుంది, వెంటనే పంపదు.",
+     "\"Send\" నొక్కండి. \"Pampamu ✅\" వస్తే మామూలు message గా వెళ్ళింది. \"Template ga pampamu ✅\" వస్తే template రూపంలో వెళ్ళింది.",
+     "మీరు reply పంపగానే ఆ చాట్ మీ పేరు మీదకు వస్తుంది. 12 గంటలు AI ఆ patient కు జవాబు ఇవ్వదు.",
+     "చాట్ పైన ఎరుపు/నారింజ గీతలో \"📞 Call\" బటన్ వస్తే (emergency, call అడిగారు, window మూసుకుపోతోంది), chat కాకుండా వెంటనే ఫోన్ చేయండి. పైన పేరు పక్కన ఉన్న \"📞 Call\" తో కూడా ఎప్పుడైనా ఫోన్ చేయవచ్చు."
+    ]
+   },
+   {
+    "title_te": "AI draft (✍️) వాడటం",
+    "steps_te": [
+     "చాట్ తెరిచి, reply box పక్కన ఉన్న \"✍️\" బటన్ నొక్కండి.",
+     "కావాలంటే ముందే box లో మీకు ఏం కావాలో చిన్న మాట రాసి \"✍️\" నొక్కండి (ఉదా: repu evening slot cheppu). AI ఆ దిశలో రాస్తుంది. Draft వచ్చాక మీ మాట దాని స్థానంలో మారిపోతుంది.",
+     "\"Draft vachindi — chadivi send cheyandi\" అని వస్తుంది. Draft box లోకి మాత్రమే వస్తుంది, ఇంకా patient కు వెళ్ళలేదు.",
+     "పూర్తిగా చదవండి, తప్పు మాట ఉంటే మార్చండి, తర్వాత \"Send\" నొక్కండి.",
+     "\"AI inka configure cheyyaledu\" లేదా \"Draft raayaleka poyam\" వస్తే, మీరే reply రాసి పంపండి."
+    ]
+   },
+   {
+    "title_te": "AI నుంచి చాట్ తీసుకోవడం, తిరిగి ఇవ్వడం",
+    "steps_te": [
+     "చాట్ పైన \"🤖 AI matladutondi\" అని ఉంటే AI మాట్లాడుతోంది.",
+     "మీరే మాట్లాడాలంటే \"✋ Nenu chusukunta\" నొక్కండి. \"Ee chat meeru chusukuntunnaru — AI aagindi\" వస్తుంది. పైన \"👤 (మీ పేరు) chusukuntunnaru\" అని మారుతుంది.",
+     "మీ పని అయిపోయాక \"🤖 AI ki ivvandi\" నొక్కండి. \"AI malli matladutundi\" వస్తుంది.",
+     "మీరు చాట్ పట్టుకుని ఉండగా patient మళ్ళీ రాస్తే, ఆ చాట్ \"🔴 Meeru cheyyalsinavi\" గుంపులో \"… reply kosam\" కారణంతో పైకి వస్తుంది. వెంటనే జవాబు ఇవ్వండి."
+    ]
+   },
+   {
+    "title_te": "Location, payment QR పంపడం",
+    "steps_te": [
+     "Address text పంపాలంటే Inbox లో \"📍 Address\" నొక్కి \"Send\" నొక్కండి. ఇది address, Google Maps link ఉన్న message.",
+     "అసలు location లేదా consultation payment QR పంపాలంటే \"Leads\" tab లో ఆ patient card మీద \"📍 Location\" లేదా \"💳 QR\" నొక్కండి (leads.edit ఉన్నవారికే ఈ బటన్లు కనిపిస్తాయి).",
+     "\"… ki WhatsApp lo clinic location pampanaa?\" లేదా \"… consultation payment QR pampanaa?\" అని అడుగుతుంది. పేరు సరిగ్గా ఉందో చూసి OK నొక్కండి.",
+     "\"Location pampamu\" / \"QR pampamu\" వస్తే వెళ్ళింది. చివర \"(template lo)\" ఉంటే template రూపంలో వెళ్ళింది."
+    ]
+   }
+  ],
+  "tips_te": [
+   "రోజులో చాలాసార్లు \"Meeru\" డబ్బా చూడండి. అక్కడ 0 ఉంటే, మీరు చేయాల్సింది ఏమీ లేదు.",
+   "Inbox తెరిచి ఉన్నప్పుడు తెరిచిన చాట్ ప్రతి 8 సెకన్లకు, list ప్రతి 20 సెకన్లకు తనంతట తానే refresh అవుతుంది. Inbox బయట ఉన్నప్పుడు tab మీద సంఖ్య సుమారు నిమిషానికి ఒకసారి మారుతుంది.",
+   "Reply box పైన ఉన్న పట్టీ వాట్సాప్ window ఇంకా ఎంత సేపు తెరిచి ఉందో చూపిస్తుంది (\"⏱ WhatsApp window inka …\"). Window మూసుకోకముందే reply ఇవ్వండి.",
+   "Patient వివరాల card నొక్కితే పూర్తి వివరాలు కనిపిస్తాయి. పైన ఉన్న \"📋\" నొక్కితే patient file తెరుచుకుంటుంది.",
+   "List కింద \"🧐 Ninna agent …\" వరుస నొక్కితే AI పని మీద నిన్నటి report కనిపిస్తుంది."
+  ],
+  "warnings_te": [
+   "మీరు reply పంపినా, \"✋ Nenu chusukunta\" నొక్కినా AI 12 గంటలు ఆ patient కు మాట్లాడదు. మీ పని అయ్యాక \"🤖 AI ki ivvandi\" నొక్కడం మరచిపోకండి. లేకపోతే ఆ 12 గంటలు మీరు తప్ప ఎవరూ జవాబు ఇవ్వరు.",
+   "Patient చివరి message తర్వాత 24 గంటలు దాటితే పట్టీ ఇలా చూపిస్తుంది: \"24 gantala window close ayindi — mee reply 'clinic_update' template ga veltundi (250 letters varaku).\" అప్పుడు box పక్కన \"…/250\" లెక్క వస్తుంది. 250 దాటిన మాటలు కట్ అవుతాయి, కాబట్టి చిన్నగా రాయండి.",
+   "\"✍️\" draft ను చదవకుండా పంపకండి. ధరలు, మందులు, హామీలు సరిగ్గా ఉన్నాయో చూడండి.",
+   "\"WhatsApp ki vellaledu — phone lo direct ga call cheyandi\" వస్తే message వెళ్ళలేదు. Patient కు ఫోన్ చేయండి.",
+   "Inbox లో కొత్త నంబర్‌కు message మొదలుపెట్టలేరు (\"Ee number tho chat ledu — kotha patient ki Leads nundi message pampandi\"). కొత్త patient కు Leads నుంచి పంపండి.",
+   "\"🚨\" emergency పట్టీ కనిపిస్తే chat లో వేచి ఉండకండి. వెంటనే \"📞 Call\" చేసి doctor కు చెప్పండి."
+  ]
+ },
+ {
+  "key": "appts",
+  "title_en": "Appts",
+  "title_te": "అపాయింట్‌మెంట్లు",
+  "who_te": "Owner, Manager, Doctor, Reception, Accounts, Therapist, Trainer, Staff అందరికీ ఈ tab కనిపిస్తుంది (appts.view). Marketing కు కనిపించదు. Book చేయడం, time మార్చడం, cancel, confirm, \"✅ Vachharu\" mark చేయడం Owner, Manager, Doctor, Reception మాత్రమే చేయగలరు (appts.edit). మిగతావాళ్ళు చూడగలరు, కానీ వాళ్ళకు ఆ బటన్లు కనిపించవు. Owner Control panel లో role powers మార్చితే ఇది మారుతుంది.",
+  "purpose_te": "ఈ రోజు appointments, confirm call చేయాల్సినవి, ఎవరు వచ్చారు, రేపు, ఈ వారం ఏమున్నాయి, ఖాళీ slots, Waitlist అన్నీ ఈ tab లోనే ఉంటాయి. Book చేసినా, time మార్చినా, cancel చేసినా patient కు వాట్సాప్ message దానంతట అదే వెళ్తుంది.",
+  "tasks": [
+   {
+    "title_te": "రోజును చూడటం — పై డబ్బాలు, తేదీల వరుస",
+    "steps_te": [
+     "పైన ఐదు డబ్బాలు ఉంటాయి: \"Ee roju\", \"Confirm avvanivi\", \"✅ Vachinavi\", \"Repu\", \"Ee vaaram\". ప్రతి డబ్బా మీద సంఖ్య ఉంటుంది.",
+     "ఒక డబ్బా నొక్కితే ఆ list మాత్రమే కనిపిస్తుంది. మళ్ళీ నొక్కితే అన్నీ కనిపిస్తాయి. \"Ee roju\" నొక్కితే ఆ రోజు list మూసుకుంటుంది, మళ్ళీ నొక్కితే తెరుచుకుంటుంది.",
+     "కింద ఉన్న తేదీల వరుసలో ఒక రోజు నొక్కితే ఆ రోజు appointments వస్తాయి. తేదీ కింద ఎరుపు చుక్క • ఉంటే ఆ రోజు confirm కానివి ఉన్నాయి అని అర్థం.",
+     "\"Naavi matrame\" tick చేస్తే మీ పేరు మీద assign అయినవి మాత్రమే కనిపిస్తాయి.",
+     "\"List\" / \"Grid\" తో view మార్చండి. Grid లో ప్రతి doctor కు ఒక column ఉంటుంది. కింద ఆ రోజు ఎన్ని slots నిండాయో, ఖాళీ times ఏవో కనిపిస్తాయి."
+    ]
+   },
+   {
+    "title_te": "Confirm call చేయడం",
+    "steps_te": [
+     "పైన \"☎️ Pending for confirmation (…)\" గుంపు ఉంటుంది. ముందు రాబోయే appointment పైన ఉంటుంది.",
+     "\"📞 Call\" నొక్కి patient కు ఫోన్ చేయండి. \"❓\" వరుసలో ఇంకా ఎందుకు confirm కాలేదో రాసి ఉంటుంది.",
+     "patient వస్తాను అని చెప్తే \"✅ Confirm ayindi\" నొక్కండి. \"Confirm ayindi ani mark chesam ✅\" అని వస్తుంది. ఆ వరుస list నుంచి పోతుంది.",
+     "ఫోన్ ఎత్తకపోతే \"💬 WhatsApp\" నొక్కి message పెట్టండి. patient చెప్పేవరకు \"✅ Confirm ayindi\" నొక్కకండి."
+    ]
+   },
+   {
+    "title_te": "కొత్త appointment book చేయడం",
+    "steps_te": [
+     "తేదీల వరుసలో ఏ రోజుకు book చేయాలో ముందు ఆ రోజు నొక్కండి.",
+     "\"+ Kotha appointment\" నొక్కండి. ఒకదాని తర్వాత ఒకటి అడుగుతుంది: patient నంబర్ (10 అంకెలు), \"Peru\", \"Enduku?\", time (ఉదా: 3:30 pm), \"Entha sepu?\" (నిమిషాలు).",
+     "\"Book ayindi, patient ki cheppamu\" అని వస్తే book అయింది. patient కు వాట్సాప్ వెళ్తుంది.",
+     "ఖాళీ time బటన్ నొక్కినా, \"Ee slots lo evarini pettochu\" కింద \"Book\" నొక్కినా ఒక form తెరుచుకుంటుంది. \"Peru\", నంబర్, \"Roju\", \"Time\" నింపి \"📅 Book\" నొక్కండి. ఈ form లో రోజు కూడా మార్చవచ్చు.",
+     "ఆ time లో ఇప్పటికే appointment ఉంది అని message వచ్చి \"Ayina book cheyyala?\" అని అడిగితే, మామూలుగా Cancel నొక్కి వేరే time చూడండి. OK నొక్కితే అయినా book అవుతుంది — doctor తో మాట్లాడిన తర్వాతే అలా చేయండి."
+    ]
+   },
+   {
+    "title_te": "Patient వచ్చారు అని mark చేయడం",
+    "steps_te": [
+     "patient క్లినిక్‌కు రాగానే ఆ వరుసలో \"✅ Vachharu\" నొక్కండి. status \"lopala unnaru\" అవుతుంది.",
+     "treatment అయిపోయాక \"🏁 Ayipoyindi\" నొక్కండి. ఏం చేశారో చిన్న note రాయవచ్చు (అవసరం లేకపోతే ఖాళీగా వదిలేయండి).",
+     "slot time దాటి గంట అయినా mark చేయకపోతే వరుస మీద \"vacharu aa?\" అని వస్తుంది. అప్పుడు \"✅ Vacharu\" లేదా \"❌ Raledu\" నొక్కండి.",
+     "slot time దాటి patient రాకపోతే \"🚫 Raaledu\" నొక్కి OK నొక్కండి. \"❌ Raledu\" / \"🚫 Raaledu\" నొక్కితే patient కు 'malli book chesukondi' అని message వెళ్తుంది.",
+     "వచ్చిన వాళ్ళు అందరూ \"✅ Vachinavi\" డబ్బాలో కనిపిస్తారు."
+    ]
+   },
+   {
+    "title_te": "Time మార్చడం, cancel, doctor assign, Waitlist",
+    "steps_te": [
+     "Time మార్చాలంటే \"🕒 Marchandi\" నొక్కి కొత్త time రాయండి. ఇది అదే రోజులో మాత్రమే time మారుస్తుంది. patient కు వాట్సాప్ వెళ్తుంది.",
+     "Grid view లో block ను పట్టుకుని పైకి/కిందకు లాగితే time మారుతుంది, పక్కకు లాగితే doctor మారుతారు. \"Sare na?\" అని అడిగితే OK నొక్కండి.",
+     "Doctor, room పెట్టాలంటే \"👩‍⚕️ Assign\" నొక్కండి. list లో doctor సంఖ్య, తర్వాత room సంఖ్య, తర్వాత ఎన్ని నిమిషాలో రాయండి.",
+     "Cancel చేయాలంటే \"✖\" నొక్కి OK నొక్కండి. patient కు వాట్సాప్ వెళ్తుంది. slot ఖాళీ అయితే Waitlist లో ఉన్నవాళ్ళకు offer పంపాలా అని అడుగుతుంది.",
+     "ముందుగా slot కావాలనే patient ను \"+ Waitlist\" తో పెట్టి \"🕒 Waitlist lo pettu\" నొక్కండి. Waitlist లో \"📩 Slot offer\" (patient కు message వెళ్తుంది, YES అని reply ఇవ్వమంటుంది), \"📅 Book\", \"✖\" (తీసేయడం) బటన్లు ఉంటాయి."
+    ]
+   }
+  ],
+  "tips_te": [
+   "ప్రతి ఉదయం ముందుగా \"☎️ Pending for confirmation\" calls పూర్తి చేయండి. AI patient కు 'team call chesi confirm chestundi' అని చెప్తుంది, కాబట్టి patient మీ call కోసం ఎదురు చూస్తారు.",
+   "patient రాగానే వెంటనే \"✅ Vachharu\" నొక్కండి. అలా చేస్తేనే ఎవరు వచ్చారో లెక్క సరిగ్గా ఉంటుంది.",
+   "patient పేరు నొక్కితే patient file తెరుచుకుంటుంది.",
+   "సాయంత్రం \"Repu\" డబ్బా చూసి రేపటి patients కు ముందే call చేయండి.",
+   "వేరే రోజుకు మార్చాలంటే తేదీల వరుసలో ఆ రోజు ఎంచుకుని కొత్తగా book చేయండి, తర్వాత పాతదాన్ని \"✖\" తో cancel చేయండి."
+  ],
+  "warnings_te": [
+   "\"+ Kotha appointment\" తేదీల వరుసలో ఎంచుకున్న రోజుకే book చేస్తుంది. నొక్కే ముందు సరైన తేదీ ఎంచుకున్నారో చూసుకోండి.",
+   "Book, \"🕒 Marchandi\", \"✖\" cancel — ప్రతిదానికీ patient కు వాట్సాప్ వెళ్తుంది. పొరపాటున నొక్కకండి.",
+   "\"🕒 Marchandi\" తో time మార్చితే confirm పోతుంది. patient కు మళ్ళీ call చేసి \"✅ Confirm ayindi\" నొక్కండి.",
+   "patient call ఎత్తకుండానే \"✅ Confirm ayindi\" నొక్కకండి.",
+   "patient రాకపోతే \"✅ Vacharu\" నొక్కకండి. \"❌ Raledu\" నొక్కండి.",
+   "ఇప్పటికే file అయిన (వచ్చి వెళ్ళిన) appointment ను మార్చలేరు, cancel చేయలేరు. దానికి ఆ బటన్లు కనిపించవు.",
+   "ఆదివారం క్లినిక్ సెలవు. ఆ రోజు \"Aadivaaram — clinic close.\" అని కనిపిస్తుంది, ఖాళీ slots చూపించదు."
+  ]
+ },
+ {
+  "key": "patients",
+  "title_en": "Patients",
+  "title_te": "పేషెంట్లు",
+  "who_te": "leads.view ఉన్నవాళ్లందరికీ ఈ tab కనిపిస్తుంది: owner, manager, doctor, reception, accounts, therapist, marketing (default staff role కి కూడా). Trainer కి కనిపించదు. Note, stage, details, photo మార్చడం leads.edit ఉన్నవాళ్లు మాత్రమే చేయగలరు: owner, manager, doctor, reception. \"📤 Message\" బటన్ msg.send ఉన్నవాళ్లకే వస్తుంది: owner, manager, doctor, reception. Consent, package బటన్లు owner, manager, doctor, reception, therapist కి వస్తాయి. Bills భాగం money.view ఉన్నవాళ్లకే కనిపిస్తుంది: owner, manager, reception, accounts.",
+  "purpose_te": "ఒక వ్యక్తి ఎన్నిసార్లు enquiry చేసినా, ఒకే phone number మీద ఒకే file గా ఇక్కడ కనిపిస్తారు. List లో ప్రతి వ్యక్తి చివరిసారి contact అయిన రోజు కింద వస్తారు. కొత్త రోజులు పైన ఉంటాయి. File తెరిస్తే enquiries, stage, WhatsApp chat, consent, referral, packages, bills, photos, timeline అన్నీ ఒకే చోట ఉంటాయి.",
+  "tasks": [
+   {
+    "title_te": "పేషెంట్‌ని వెతకడం",
+    "steps_te": [
+     "కింద \"Patients\" tab నొక్కండి.",
+     "పైన \"Peru leda number tho vetakandi\" box లో పేరు గానీ number గానీ టైప్ చేయండి. టైప్ ఆపగానే list మారుతుంది.",
+     "ఒక రోజు మాత్రమే కావాలంటే పక్కన ఉన్న date box లో ఆ తేదీ ఎంచుకోండి.",
+     "లేదా \"Ee roju\", \"Ninna\", \"Ee vaaram\", \"Anni\" లో ఒకటి నొక్కండి. \"Ee vaaram\" అంటే ఈ రోజుతో కలిపి చివరి 7 రోజులు.",
+     "Clinic కి వచ్చినవాళ్లు మాత్రమే కావాలంటే \"✅ Vachina vaaru\" నొక్కండి. అందరినీ మళ్ళీ చూడటానికి \"Andaru\" నొక్కండి."
+    ]
+   },
+   {
+    "title_te": "పేషెంట్ file తెరవడం",
+    "steps_te": [
+     "List లో ఆ వ్యక్తి పేరు మీద నొక్కండి.",
+     "పైన Enquiries, Booked, Photos, Upcoming సంఖ్యలు కనిపిస్తాయి. పేరు కింద ఎరుపులో ⚠️ line ఉంటే అది allergy. తప్పకుండా చదవండి.",
+     "\"📞 Call\", \"💬 WhatsApp\" తో ఇక్కడి నుంచే మాట్లాడవచ్చు. \"📤 Message\" నొక్కి టైప్ చేసి OK నొక్కితే clinic WhatsApp నుంచి వెళ్తుంది, ఆ file లో నమోదవుతుంది.",
+     "కిందకి scroll చేస్తే Consent, \"Evarini techcharu\", Packages, Bills, \"Before / after\", Timeline భాగాలు వస్తాయి.",
+     "పని అయ్యాక పైన \"Close\" నొక్కండి."
+    ]
+   },
+   {
+    "title_te": "Note, details, stage పెట్టడం",
+    "steps_te": [
+     "File లో \"📝 Note\" నొక్కి, ఆ పేషెంట్ గురించి note టైప్ చేసి OK నొక్కండి.",
+     "పేరు లేదా allergy మార్చాలంటే \"✎ Details\" నొక్కండి. ముందు పేరు, తర్వాత allergies అడుగుతుంది. రెండింటికీ OK నొక్కండి.",
+     "\"Ekkada unnaru\" భాగంలో సరైన stage నొక్కండి: \"Consultation\", \"Plan ichcharu\", \"Procedure\", \"Ayipoyindi\", \"Review\", \"Vaddannaru\".",
+     "Note అడుగుతుంది. అవసరం లేకపోతే Cancel నొక్కండి. Cancel నొక్కినా stage మారిపోతుంది.",
+     "తప్పు stage పెడితే సరైన stage నొక్కండి, లేదా \"Teesey\" నొక్కి stage తీసేయండి."
+    ]
+   },
+   {
+    "title_te": "Photo తీయడం, before/after చూడడం",
+    "steps_te": [
+     "\"📷 Photo\" బటన్ Android app లో మాత్రమే వస్తుంది. Browser లో రాదు.",
+     "\"📷 Photo\" నొక్కండి. పేషెంట్ ఒప్పుకున్నారా అని అడుగుతుంది. పేషెంట్‌ని అడిగి \"Avunu, patient oppukunnaru\" tick చేసి \"Camera teeyandi\" నొక్కండి.",
+     "Photo తీయండి. అది \"Before / after\" భాగంలో తేదీతో కనిపిస్తుంది. Photo phone gallery లో save అవ్వదు.",
+     "రెండు లేదా అంతకంటే ఎక్కువ photos ఉంటే \"⇆ Before / after compare\" నొక్కండి.",
+     "పైన రెండు dropdown లలో Before తేదీ, After తేదీ ఎంచుకోండి. Photo మీద వేలుతో జరిపి గీతను కదపండి. అయ్యాక \"Close\" నొక్కండి."
+    ]
+   },
+   {
+    "title_te": "Consent తీసుకోవడం, package మొదలుపెట్టడం",
+    "steps_te": [
+     "Consent భాగంలో \"+ Consent teesuko\" నొక్కి సరైన consent ఎంచుకోండి. Doctor approve చేసినవి మాత్రమే list లో వస్తాయి.",
+     "పేషెంట్ చదివిన/విన్న తర్వాత \"Patient idi chadivaru / vinnaru, ophukunnaru\" tick చేయండి. తెల్ల box లో పేషెంట్ వేలుతో sign చేయాలి. తర్వాత \"Save cheyyandi\" నొక్కండి.",
+     "Package కోసం \"+ Package\" నొక్కండి. Treatment పేరు, ఎన్ని sittings (కనీసం 2), రెండు sittings మధ్య ఎన్ని రోజులు అని వరుసగా అడుగుతుంది.",
+     "ప్రతి sitting అయ్యాక \"✅ Sitting N chesamu\" నొక్కండి. Note అడిగితే OK నొక్కండి. తర్వాతి sitting తేదీ కింద చిన్న message లో వస్తుంది.",
+     "పేషెంట్ మధ్యలో ఆపేస్తే \"⏹ Aapesaru\" నొక్కి confirm చేయండి. మళ్ళీ మొదలుపెట్టాలంటే కొత్త package పెట్టాలి."
+    ]
+   }
+  ],
+  "tips_te": [
+   "Date box లో తేదీ ఎంచుకుంటే అదే పనిచేస్తుంది. \"Ee roju\" లాంటి బటన్ నొక్కితే date box ఖాళీ అవుతుంది.",
+   "List లో రోజు అంటే ఆ వ్యక్తి చివరిసారి contact అయిన రోజు (\"chivari sari\"). మొదటిసారి వచ్చిన రోజు కాదు. మొదటి రోజు file లో \"modati sari\" దగ్గర ఉంటుంది.",
+   "List పైన ఉన్న line లో ఎంతమంది ఉన్నారు, ఎంతమంది మళ్ళీ వచ్చారు, ఎంతమందికి stage పెట్టలేదు అని చూపిస్తుంది. \"stage pettaledu\" సంఖ్య తగ్గేలా చూడండి.",
+   "ప్రతి consultation తర్వాత అదే రోజు stage పెట్టండి. Stage ఉంటేనే తర్వాత ఏమైందో owner కి తెలుస్తుంది.",
+   "Allergy తెలిస్తే వెంటనే \"✎ Details\" లో రాయండి. File తెరిచిన ప్రతిసారీ అది ఎరుపులో కనిపిస్తుంది.",
+   "అనేక sittings ఉన్న treatment కి bill వేస్తే package దానంతట అదే తయారవుతుంది. \"+ Package\" నొక్కే ముందు Packages భాగం చూడండి, లేకపోతే రెండు packages అవుతాయి."
+  ],
+  "warnings_te": [
+   "\"✅ Vachina vaaru\" లో book చేసుకున్నవాళ్లు కూడా వస్తారు (booked లేదా visited). ఇంకా clinic కి రానివాళ్లు కూడా ఈ list లో ఉండవచ్చు.",
+   "Stage note అడిగినప్పుడు Cancel నొక్కినా stage మారుతుంది. తప్పు నొక్కితే వెంటనే సరైన stage నొక్కండి. కానీ \"✅ Sitting N chesamu\" note దగ్గర Cancel నొక్కితే sitting నమోదు అవ్వదు.",
+   "Consent \"Venakki teesuko\" delete కాదు. కారణం రాయాలి, అసలు consent అలాగే ఉంటుంది. పొరపాటున నొక్కకండి.",
+   "పేషెంట్ చదవకుండా, sign చేయకుండా మీరే tick పెట్టి save చేయకండి. Photo కి కూడా పేషెంట్‌ని అడగకుండా tick పెట్టకండి.",
+   "Photo తెరిచి \"Teesey\" నొక్కితే అది శాశ్వతంగా పోతుంది. మళ్ళీ తెచ్చుకోలేరు.",
+   "\"⏹ Aapesaru\" నొక్కిన package లో కూడా sitting బటన్లు కనిపిస్తూనే ఉంటాయి, కానీ నొక్కితే sitting నమోదు అవ్వదు. కొత్త package పెట్టాల్సిందే.",
+   "\"📤 Message\" తో పంపింది నేరుగా పేషెంట్ WhatsApp కి వెళ్తుంది. పంపే ముందు ఒకసారి చదవండి. 5 అక్షరాల కంటే చిన్న message వెళ్లదు."
+  ]
+ },
+ {
+  "key": "money",
+  "title_en": "Money",
+  "title_te": "డబ్బు",
+  "who_te": "ఈ tab money.view ఉన్నవాళ్లకు కనిపిస్తుంది: owner, manager, reception, accounts. Bill వేయడం, payment రాయడం, \"📲 Pay link\", \"🔔 Gurthu cheyyi\", UPI claim చెక్, \"Cash close\" money.bill ఉన్నవాళ్లకే: owner, manager, reception, accounts. \"Kharchu raayandi\" (ఖర్చులు) money.expense ఉన్నవాళ్లకే: owner, manager, accounts. Reception కి ఖర్చుల భాగం కనిపించదు.",
+  "purpose_te": "ఈ రోజు ఎంత డబ్బు వచ్చింది (Cash, UPI, Card వారీగా), ఎవరికి ఎంత బాకీ ఉంది, రోజు చివర drawer లో cash లెక్క, clinic ఖర్చులు ఇక్కడ ఉంటాయి. కొత్త bill మాత్రం పేషెంట్ file లోని \"Bills\" భాగం నుంచి వేయాలి.",
+  "tasks": [
+   {
+    "title_te": "కొత్త bill వేయడం",
+    "steps_te": [
+     "\"Patients\" tab లో పేషెంట్ file తెరవండి (\"Pending dues\" లో పేరు మీద నొక్కినా file తెరుచుకుంటుంది). \"Bills\" భాగంలో \"🧾 Kotha bill\" నొక్కండి.",
+     "Rate card list వస్తుంది. Treatment నంబర్లను comma తో టైప్ చేయండి (ఉదా: 1,3,3). ఒకే నంబర్ రెండుసార్లు రాస్తే qty 2 అవుతుంది.",
+     "\"Ippudu enta vachindi?\" box లో total ముందే నిండి ఉంటుంది. ఇప్పుడు వచ్చినంత మాత్రమే ఉంచండి. తర్వాత కడతారంటే 0 రాయండి.",
+     "డబ్బు వస్తే \"Ela vachindi? cash / upi / card\" box లో ముందే \"upi\" ఉంటుంది. Cash అయితే దాన్ని తీసి cash అని, card అయితే card అని రాయండి.",
+     "\"Treatment evaru chesaru?\" list వస్తే, చేసినవారి నంబర్ రాయండి (incentive కోసం). తెలియకపోతే 0 ఉంచండి.",
+     "Toast లో bill నంబర్, balance కనిపిస్తాయి. Bill file లోని \"Bills\" list లో చేరుతుంది."
+    ]
+   },
+   {
+    "title_te": "బాకీ payment రాయడం",
+    "steps_te": [
+     "\"Money\" tab లోని \"Pending dues\" లో, లేదా పేషెంట్ file \"Bills\" లో ఆ bill కింద \"💰 Payment vachindi\" నొక్కండి.",
+     "బాకీ మొత్తం ముందే నిండి ఉంటుంది. వచ్చినంత మాత్రమే రాయండి.",
+     "బాకీ కంటే ఎక్కువ రాస్తే, మిగిలినది advance గా ఉంటుందని app మళ్ళీ అడుగుతుంది. పొరపాటైతే \"Cancel\" నొక్కండి.",
+     "Mode box లో cash, upi లేదా card రాయండి (ముందే \"upi\" ఉంటుంది). తర్వాత \"UPI / reference (optional)\" లో reference ఉంటే రాయండి, లేకపోతే ఖాళీగా వదలండి.",
+     "\"Save ayindi · balance\" toast వస్తే పని అయిపోయింది."
+    ]
+   },
+   {
+    "title_te": "Pay link, గుర్తు చేయడం, UPI claim చెక్ చేయడం",
+    "steps_te": [
+     "\"Pending dues\" లో \"📲 Pay link\" నొక్కి OK నొక్కండి. బాకీ మొత్తంతో UPI pay link పేషెంట్ WhatsApp కి వెళ్తుంది.",
+     "WhatsApp కి వెళ్ళకపోతే phone లో share screen తెరుచుకుంటుంది. అక్కడి నుంచి link ను మీరే పంపండి.",
+     "Link లేకుండా బాకీ గుర్తు మాత్రమే చేయాలంటే \"🔔 Gurthu cheyyi\" నొక్కి OK నొక్కండి. చివరిసారి ఎప్పుడు పంపారో \"chivari gurthu\" అని పక్కన కనిపిస్తుంది.",
+     "\"UPI lo pay chesaamu antunnaru\" box కనిపిస్తే, అందులోని UTR తో bank app లో ఆ డబ్బు వచ్చిందో చూడండి.",
+     "వస్తే \"✅ Vachindi — record cheyyi\" నొక్కి, bank లో వచ్చిన మొత్తం రాయండి. ఇది UPI payment గా నమోదవుతుంది. రాకపోతే \"✗ Raaledu\" నొక్కి కారణం రాయండి."
+    ]
+   },
+   {
+    "title_te": "రోజు చివర \"Cash close\"",
+    "steps_te": [
+     "Drawer లోని cash మొత్తం లెక్కపెట్టండి.",
+     "\"Podduna float ₹\" లో ఉదయం drawer లో ఉంచిన మొత్తం, \"Drawer nundi kharchu ₹\" లో drawer నుంచి ఖర్చుపెట్టింది రాయండి.",
+     "\"Ippudu drawer lo ₹\" లో ఇప్పుడు లెక్కపెట్టిన మొత్తం రాయండి. అవసరమైతే \"Note (optional)\" లో రాయండి.",
+     "\"Close cheyyi\" నొక్కండి. ఉండాల్సింది = float + ఈ రోజు app లో రాసిన cash − drawer ఖర్చు. తేడా ఉంటే owner కి WhatsApp వెళ్తుంది.",
+     "పొరపాటైన close తీసేయాలంటే, కింద ఆ రోజు line పక్కన \"🗑 Teeseyi\" నొక్కి OK నొక్కండి. ఆ లెక్క పక్కన పెట్టబడుతుంది, owner కి WhatsApp వెళ్తుంది, ఆ రోజు మళ్ళీ close చేయవచ్చు."
+    ]
+   },
+   {
+    "title_te": "ఖర్చు రాయడం (owner, manager, accounts)",
+    "steps_te": [
+     "\"Money\" tab లో కిందకు scroll చేసి \"Kharchu raayandi\" box కి వెళ్ళండి.",
+     "\"₹\" లో మొత్తం రాసి, పక్కన category ఎంచుకోండి.",
+     "\"Enduku? (optional)\" లో కారణం రాయండి. తర్వాత Cash / UPI / Card / Bank / Other లో ఒకటి ఎంచుకోండి.",
+     "\"Add\" నొక్కండి. \"Raasam\" toast వస్తుంది, \"Ee roju kharchu\", \"Nela kharchu\" వెంటనే మారుతాయి.",
+     "తప్పు రాస్తే ఆ line పక్కన \"Teesey\" నొక్కి OK నొక్కండి. ఈ list లో ఈ రోజు ఖర్చులే కనిపిస్తాయి."
+    ]
+   }
+  ],
+  "tips_te": [
+   "Mode box లో cash, upi, card అనే పదాలనే టైప్ చేయండి. Box లో ముందే \"upi\" ఉంటుంది, cash అయితే మార్చడం మరచిపోకండి.",
+   "డబ్బు వచ్చిన వెంటనే app లో రాయండి. App లో రాయని cash \"Cash close\" లెక్కలో రాదు, తేడాగా కనిపిస్తుంది.",
+   "\"Cash close\" రోజుకు ఒక్కసారే, రోజు చివర, cash మొత్తం లెక్కపెట్టాకే చేయండి.",
+   "Bill వేసే ముందు file లోని \"Bakee\" / \"Advance\" line చూడండి. WhatsApp లో ముందే కట్టిన advance కొత్త bill లో దానంతటదే జమ అవుతుంది.",
+   "పైన ఉన్న \"Ee roju vachindi\", \"Pending mottam\" సంఖ్యలను రోజూ ఒకసారి చూడండి.",
+   "ఖర్చుల box లో \"Migilindi\" అంటే ఈ నెల వచ్చిన డబ్బు minus ఖర్చు మాత్రమే. అది accounting లాభం కాదు."
+  ],
+  "warnings_te": [
+   "Mode దగ్గర phonepe, gpay, bank లాంటి పదాలు టైప్ చేస్తే server దాన్ని cash గా రాసుకుంటుంది. Mode box ను Cancel చేసినా cash గానే పడుతుంది. అప్పుడు cash లెక్క తప్పుతుంది.",
+   "\"🧾 Kotha bill\" లో total ముందే నిండి ఉంటుంది. డబ్బు రాకపోయినా అలాగే OK నొక్కితే పూర్తిగా కట్టినట్టు నమోదవుతుంది. తర్వాత కడతారంటే 0 రాయండి.",
+   "Bill ను app లో edit చేయడానికి గానీ, delete చేయడానికి గానీ బటన్ లేదు. Treatment నంబర్లు, మొత్తం జాగ్రత్తగా చూసి OK నొక్కండి. పొరపాటైతే owner కి చెప్పండి.",
+   "అదనపు సున్నా (5000 కి బదులు 50000) సాధారణ పొరపాటు. \"💰 Payment vachindi\" లో \"advance ga untundi\" అని అడిగితే ఆగి చూడండి. కొత్త bill లో మాత్రం ఇలా అడగదు.",
+   "\"Cash close\" ను test కోసం ₹1 పెట్టి చేయకండి. తేడా వస్తే owner కి WhatsApp వెళ్తుంది. అదే రోజు మళ్ళీ close చేస్తే కొత్త లెక్క పాత లెక్క మీద పడుతుంది.",
+   "\"🗑 Teeseyi\" నొక్కిన ప్రతిసారీ owner కి WhatsApp వెళ్తుంది, మీ పేరుతో నమోదవుతుంది.",
+   "UTR bank app లో కనిపించకుండా \"✅ Vachindi — record cheyyi\" నొక్కకండి.",
+   "\"📲 Pay link\", \"🔔 Gurthu cheyyi\" నేరుగా పేషెంట్ WhatsApp కి వెళ్తాయి. పంపే ముందు \"chivari gurthu\" చూడండి. ఒకే రోజు రెండుసార్లు పంపకండి.",
+   "Clinic UPI ID set కాకపోతే \"📲 Pay link\" నొక్కినప్పుడు \"UPI ID (UPI_VPA) inka set cheyaledu\" అని వస్తుంది. అప్పుడు owner కి చెప్పండి."
+  ]
+ },
+ {
+  "key": "stock",
+  "title_en": "Stock",
+  "title_te": "స్టాక్",
+  "who_te": "ఈ tab stock.view ఉన్నవాళ్లకు కనిపిస్తుంది: owner, manager, doctor, reception, accounts, therapist. trainer, marketing కి ఈ tab కనిపించదు. మార్పులు చేయడానికి stock.edit కావాలి: owner, manager, doctor, reception, therapist. వీళ్లకు మాత్రమే \"Kotha item\" box, \"− Vaadaam\", \"+ Vachindi\", \"Lekka\", ✎, \"Teesey\" బటన్లు కనిపిస్తాయి. accounts role చూడటానికి మాత్రమే.",
+  "purpose_te": "క్లినిక్‌లో వాడే వస్తువులు ఎన్ని మిగిలి ఉన్నాయో, ఏవి అయిపోతున్నాయో ఈ tab లో చూడవచ్చు. అయిపోతున్న items list లో పైన కనిపిస్తాయి. పైన రెండు boxes ఉంటాయి: మొత్తం \"Items\", ఇంకా \"Aipotunnavi\". ప్రతి వాడకం, వచ్చిన సరుకు, లెక్క ఎవరు, ఎప్పుడు చేశారో కింద \"Chivari marpulu\" లో కనిపిస్తుంది (చివరి 30 మార్పులు). ఒక item దాని \"Low\" సంఖ్యకు సమానం అయినా, దానికంటే తగ్గినా, stock.edit ఉన్నవాళ్లకు ఆ item గురించి రోజుకు ఒకసారి phone notification వస్తుంది.",
+  "tasks": [
+   {
+    "title_te": "కొత్త item add చేయడం",
+    "steps_te": [
+     "\"Stock\" tab తెరిచి పైన ఉన్న \"Kotha item\" box కి వెళ్ళండి.",
+     "\"Item peru\" లో వస్తువు పేరు రాయండి. పేరు లేకపోతే \"Peru ivvandi\" అని వస్తుంది.",
+     "\"Enni\" లో ఇప్పుడు ఉన్న సంఖ్య రాయండి. పక్కన ఉన్న list లో unit (pcs, box, ml, vial, pack, kit, tube, pair) ఎంచుకోండి.",
+     "\"Low\" లో ఏ సంఖ్యకు దిగినప్పుడు order చేయాలో ఆ సంఖ్య రాయండి.",
+     "\"Add\" నొక్కండి. \"Add ayindi\" అని toast వస్తుంది, item list లోకి వస్తుంది."
+    ]
+   },
+   {
+    "title_te": "వాడినవి, కొత్తగా వచ్చినవి నమోదు చేయడం",
+    "steps_te": [
+     "వస్తువు వాడితే ఆ item కింద \"− Vaadaam\" నొక్కండి. \"enni vaadaru?\" అని అడుగుతుంది. సంఖ్య రాసి OK నొక్కండి.",
+     "కొత్త సరుకు వస్తే \"+ Vachindi\" నొక్కండి. \"enni vachayi?\" దగ్గర ఎన్ని వచ్చాయో రాయండి.",
+     "సగం vial లాంటి వాటికి 0.5 అని రాయవచ్చు.",
+     "Toast లో ఆ item ఎన్ని మిగిలిందో కనిపిస్తుంది (ఉదా: \"... migilindi\")."
+    ]
+   },
+   {
+    "title_te": "Shelf మీద లెక్క సరిచేయడం",
+    "steps_te": [
+     "Shelf మీద ఉన్నవి లెక్కపెట్టండి.",
+     "App లోని సంఖ్య తేడాగా ఉంటే ఆ item కింద \"Lekka\" నొక్కండి.",
+     "\"shelf meeda nijam ga enni unnayi?\" దగ్గర నిజంగా ఉన్న సంఖ్య రాసి OK నొక్కండి.",
+     "\"Lekka sarichesam\" అని toast వస్తుంది. ఎంత తేడా వచ్చిందో \"Chivari marpulu\" లో \"lekka chesam\" అని కనిపిస్తుంది."
+    ]
+   },
+   {
+    "title_te": "అయిపోతున్నవి చూడటం, Low మార్చడం, item తీసేయడం",
+    "steps_te": [
+     "పైన \"Aipotunnavi\" box నొక్కితే అయిపోతున్న items మాత్రమే కనిపిస్తాయి. మళ్ళీ నొక్కితే అన్నీ కనిపిస్తాయి. \"Items\" box నొక్కితే list మూసుకుంటుంది, మళ్ళీ నొక్కితే తెరుచుకుంటుంది.",
+     "ఎరుపు రంగు \"aipotondi\" chip ఉన్న items ను order చేయాలి.",
+     "Low సంఖ్య మార్చాలంటే ✎ నొక్కి కొత్త సంఖ్య రాయండి. \"Marchesam\" అని toast వస్తుంది. ✎ తో Low సంఖ్య మాత్రమే మారుతుంది, పేరు, unit మారవు.",
+     "ఇక వాడని item ను \"Teesey\" నొక్కి తీసేయండి. \"... ni list nunchi teeseyyanaa?\" అని అడుగుతుంది. OK నొక్కితే \"Teesesam\" అని toast వస్తుంది."
+    ]
+   }
+  ],
+  "tips_te": [
+   "వాడిన వెంటనే \"− Vaadaam\" నొక్కండి. రోజు చివరలో గుర్తు తెచ్చుకుని రాస్తే సంఖ్యలు తప్పుతాయి.",
+   "వారానికి ఒకసారి shelf లెక్కపెట్టి \"Lekka\" తో సరిచేయండి.",
+   "ప్రతి item కి \"Low\" సంఖ్య తప్పకుండా పెట్టండి. Low 0 గా ఉంటే item అయిపోయినా \"aipotondi\" chip, notification రెండూ రావు.",
+   "Network లేనప్పుడు \"− Vaadaam\", \"+ Vachindi\", \"Lekka\" phone లోనే ఆగి ఉంటాయి. Network వచ్చాక server కి వెళ్తాయి. కానీ \"Add\", ✎, \"Teesey\" పని చేయాలంటే network ఉండాలి.",
+   "ఎవరు ఎంత మార్చారో, ఎన్ని మిగిలాయో \"Chivari marpulu\" లో చూడవచ్చు."
+  ],
+  "warnings_te": [
+   "ఉన్నదానికంటే ఎక్కువ \"− Vaadaam\" రాస్తే నమోదు కాదు. \"Antha lev — ippudu ... matrame unnayi\" అని వస్తుంది. అప్పుడు shelf లెక్కపెట్టి ముందు \"Lekka\" తో సరైన సంఖ్య పెట్టండి.",
+   "\"Lekka\" box లో అంకెలు మాత్రమే రాయండి. box ఖాళీగా వదిలేసి OK నొక్కినా, అక్షరాలు రాసినా, stock 0 అయిపోతుంది. పొరపాటుగా తెరిచితే \"Cancel\" నొక్కండి.",
+   "\"Lekka\" పాత సంఖ్యను తీసేసి కొత్త సంఖ్య పెడుతుంది. కొత్త సరుకు వచ్చినప్పుడు \"Lekka\" కాకుండా \"+ Vachindi\" వాడండి.",
+   "\"Teesey\" నొక్కితే item పూర్తిగా పోతుంది. undo బటన్ లేదు, \"Chivari marpulu\" లో కూడా కనిపించదు. పేరు తప్పుగా ఉంటే తీసేయకండి, owner కి చెప్పండి.",
+   "Accounts role కి \"Kotha item\" box, బటన్లు కనిపించవు. అది పొరపాటు కాదు, ఆ role కి చూడటానికి మాత్రమే అనుమతి ఉంది."
+  ]
+ },
+ {
+  "key": "academy",
+  "title_en": "Academy",
+  "title_te": "అకాడమీ — సీట్లు, ఎంక్వైరీలు",
+  "who_te": "\"academy.view\" పవర్ ఉన్న Owner, Manager, Doctor, Reception, Accounts, Trainer, Staff కి ఈ ట్యాబ్ కనిపిస్తుంది. Therapist, Marketing కి రాదు. కింద మెనూలో ఈ ట్యాబ్ పేరు \"Seats\". \"💰 Seat reserve ayindi\" బటన్ \"academy.money\" ఉన్న Owner, Manager, Reception, Accounts కి మాత్రమే వస్తుంది. \"📝 Note\" బటన్ \"leads.edit\" ఉన్న Owner, Manager, Doctor, Reception, Staff కి మాత్రమే, అది కూడా లీడ్ బుక్ లో ఉన్న వ్యక్తి కార్డు మీదే వస్తుంది.",
+  "purpose_te": "ఇప్పటి బ్యాచ్ లో ఎన్ని సీట్లు నిండాయి, ఎవరు డబ్బు కట్టారు, ఎవరు ఎంక్వైరీ చేసి తర్వాత మాట్లాడలేదు అనేది ఒకే స్క్రీన్ మీద చూపిస్తుంది. పైన ఆఫర్ కి ఇంకా ఎన్ని రోజులు ఉన్నాయో (అయిపోతే \"Offer end ayindi\"), \"Seats migilayi\" ఎన్నో కనిపిస్తాయి. బ్యాచ్ నంబర్, తేదీ సర్వర్ నుంచే వస్తాయి. సీట్ బోర్డ్ కింద ప్రతి బ్యాచ్ స్టూడెంట్ల పేర్లు, Paid, Balance, form వచ్చిందో లేదో ఉంటాయి. \"Collected\", \"Balance pending\" మొత్తాలు, ఎంక్వైరీల సంఖ్య కూడా ఇక్కడే ఉంటాయి. రెండు రోజులు లేదా అంతకంటే ఎక్కువ రోజులు మాట్లాడని ఎంక్వైరీలు \"Ivala call cheyyali\" లో వస్తాయి (గరిష్ఠంగా 8 మంది).",
+  "tasks": [
+   {
+    "title_te": "ఈ రోజు ఎవరికి కాల్ చేయాలో చూడటం",
+    "steps_te": [
+     "\"Seats\" ట్యాబ్ తెరవండి. పాత డేటా కనిపిస్తే \"↻ Refresh\" నొక్కండి.",
+     "\"Ivala call cheyyali\" లిస్ట్ చూడండి (లేదా \"📞 Ivala call cheyyali\" చిప్ నొక్కండి). ఎక్కువ రోజులు silent గా ఉన్నవాళ్లు ముందు వస్తారు.",
+     "కార్డు మీద \"📞 Call\" నొక్కండి. ఫోన్ డయలర్ తెరుచుకుంటుంది. అదే సమయంలో ఆ వ్యక్తికి ఎవరు కాల్ చేస్తున్నారో చెప్పే WhatsApp కూడా వెళ్తుంది (\"📲 Heads-up WhatsApp vellindi\").",
+     "కాల్ అయ్యాక యాప్ కి తిరిగి వస్తే, కాల్ ఏమైందని అడుగుతుంది. సరైన జవాబు ఎంచుకోండి. అది కార్డు మీద చివరి నోట్ గా కనిపిస్తుంది. \"🚫 Vaddannaru\" ఎంచుకుంటే ఆ కార్డు \"Vaddannaru\" గ్రూప్ కి వెళ్తుంది.",
+     "కాల్ కుదరకపోతే \"💬 WhatsApp\" నొక్కి మెసేజ్ పంపండి."
+    ]
+   },
+   {
+    "title_te": "గ్రూప్ వారీగా చూడటం (ఫిల్టర్ చిప్స్)",
+    "steps_te": [
+     "పైన చిప్స్ ఉంటాయి: \"Anni\", \"📞 Ivala call cheyyali\", \"Seat reserve ayinavi\", \"Enquiries\", \"📵 Ettaledu\", \"🚫 Not interested\", \"Vaddannaru\". ప్రతి దాని పక్కన సంఖ్య ఉంటుంది.",
+     "కావలసిన చిప్ ఒకసారి నొక్కండి. ఆ గ్రూప్ వాళ్ళు మాత్రమే కనిపిస్తారు.",
+     "అన్నీ మళ్లీ చూడాలంటే \"Anni\" నొక్కండి. \"📵 Ettaledu\", \"🚫 Not interested\" గ్రూప్ లు \"Anni\" లో విడిగా రావు, చిప్ నొక్కితేనే వస్తాయి.",
+     "\"Vaddannaru\" కార్డు మీద \"Reason:\" తో ఎందుకు close చేశారు, ఎవరు చేశారు, ఎప్పుడు అనేది కనిపిస్తుంది."
+    ]
+   },
+   {
+    "title_te": "సీట్ రిజర్వ్ అయిందని నమోదు చేయడం",
+    "steps_te": [
+     "డబ్బు నిజంగా వచ్చిందని (UPI / క్యాష్) ముందు చెక్ చేయండి.",
+     "ఆ వ్యక్తి కార్డు మీద \"💰 Seat reserve ayindi\" నొక్కండి. కార్డు మీద పేరు లేకపోతే \"Peru?\" అని అడుగుతుంది, పేరు రాయండి.",
+     "కోర్సు అడిగినప్పుడు skin, hair లేదా both అని ఇంగ్లీష్ లో టైప్ చేయండి. వేరే పదం రాస్తే \"skin, hair leda both ani raayandi\" అని ఆగిపోతుంది.",
+     "\"Enta vachindi? (₹)\" దగ్గర వచ్చిన మొత్తం రాయండి (మొదట 9999 ఉంటుంది).",
+     "\"UPI / reference (optional)\" దగ్గర నంబర్ ఉంటే రాయండి, లేకపోతే ఖాళీగా OK నొక్కండి. \"Seat reserve ayindi 🎉\" వస్తుంది.",
+     "Student ID లేని కొత్త వ్యక్తికి సర్వర్ కొత్త ID (DLA-xxxx) ఇచ్చి, WhatsApp లో welcome, onboarding form link, receipt పంపుతుంది. ఇప్పటికే ID ఉన్నవాళ్ళకు ఆ మొత్తం payment గా కలిపి receipt మాత్రమే పంపుతుంది. వాళ్ళు \"Students\" ట్యాబ్ లో కూడా కనిపిస్తారు."
+    ]
+   },
+   {
+    "title_te": "కేటలాగ్ పంపడం, నోట్ రాయడం",
+    "steps_te": [
+     "పైన ఉన్న \"📤 Catalog share cheyandi\" లేదా కార్డు మీద \"📤 Catalog\" నొక్కండి.",
+     "ఫోన్ share మెనూ తెరుచుకుంటుంది. WhatsApp ఎంచుకుని ఆ వ్యక్తికి పంపండి.",
+     "కాల్ తర్వాత కార్డు మీద \"📝 Note\" నొక్కండి.",
+     "ఏం మాట్లాడారో చిన్నగా రాసి OK నొక్కండి. \"Note save ayindi\" వస్తుంది. చివరి నోట్ కార్డు మీద కనిపిస్తుంది."
+    ]
+   },
+   {
+    "title_te": "నిండిన సీటులో ఎవరున్నారో చూడటం",
+    "steps_te": [
+     "సీట్ బోర్డ్ లో \"Booked\" అని ఉన్న సీటు నంబర్ నొక్కండి. కింద బ్యాచ్ లిస్ట్ లో స్టూడెంట్ పేరు నొక్కినా అదే వస్తుంది.",
+     "Course, Phone, Fee, Paid, Balance, Form, Last note తో ఒక కార్డు తెరుచుకుంటుంది.",
+     "అక్కడి నుంచే \"📞 Call\" లేదా \"💬 WhatsApp\" చేయవచ్చు. పని అయ్యాక \"Close\" నొక్కండి."
+    ]
+   }
+  ],
+  "tips_te": [
+   "రోజూ పొద్దున ఒకసారి \"Ivala call cheyyali\" లిస్ట్ చూడండి. ఈ స్క్రీన్ లో ఇదే ముఖ్యమైన పని.",
+   "ప్రతి కాల్ తర్వాత జవాబు ఎంచుకోండి, లేదా నోట్ రాయండి. నోట్ లో \"ettaledu\" లేదా \"not interested\" అని రాసినా ఆ కార్డు \"📵 Ettaledu\" / \"🚫 Not interested\" చిప్ లో వస్తుంది.",
+   "ఫీజులు స్క్రీన్ మీదే ఉన్నాయి: Skin ₹49,999 · Hair ₹49,999 · Both ₹99,999 · Seat reserve ₹9,999. ఫోన్ లో చెప్పేటప్పుడు ఇవే చెప్పండి.",
+   "సీటు మీద పేరు లేకుండా \"Booked\" మాత్రమే ఉండి, నొక్కినా ఏమీ తెరుచుకోకపోతే ఆ సీటు యాప్ బయట బుక్ అయింది. Owner ని అడగండి."
+  ],
+  "warnings_te": [
+   "డబ్బు చేతికి రాకముందే \"💰 Seat reserve ayindi\" నొక్కవద్దు. నొక్కిన వెంటనే ఆ వ్యక్తికి WhatsApp లో seat confirm మెసేజ్, receipt వెళ్ళిపోతాయి.",
+   "ఒక్కసారే నొక్కండి. \"Seat reserve ayindi 🎉\" వచ్చే వరకు ఆగండి. ID ఉన్న వ్యక్తికి మళ్లీ నొక్కితే అదే డబ్బు రెండోసారి లెక్కలో కలుస్తుంది.",
+   "ఈ బటన్ తో కొత్త స్టూడెంట్ ని చేస్తే కోర్సు టైం ఎప్పుడూ \"1 month\" గానే నమోదవుతుంది. 2 months అయితే \"Students\" ట్యాబ్ లోని add student ఫారమ్ వాడండి.",
+   "Accounts రోల్ వాళ్ళు student ID లేని కొత్త వ్యక్తికి సీట్ రిజర్వ్ చేస్తే \"Mee role ki academy lo marpulu chese permission ledu\" అనే ఎర్రర్ వస్తుంది (\"academy.edit\" పవర్ లేదు). Reception లేదా Manager కి చెప్పండి.",
+   "సీట్ల సంఖ్య చేతితో మార్చలేరు. సర్వర్ లో ఉన్న స్టూడెంట్ రికార్డుల లెక్కతోనే సీట్లు నిండుతాయి.",
+   "కాల్ చేసే ముందు గుర్తుంచుకోండి: \"📞 Call\" నొక్కిన ప్రతిసారీ ఆ వ్యక్తికి WhatsApp వెళ్తుంది (2 గంటలకు ఒకసారి మాత్రమే). టెస్ట్ కోసం ఊరికే నొక్కవద్దు."
+  ]
+ },
+ {
+  "key": "students",
+  "title_en": "Students",
+  "title_te": "స్టూడెంట్స్ — చేరిన విద్యార్థులు",
+  "who_te": "\"academy.view\" ఉన్న అందరికీ ఈ ట్యాబ్ కనిపిస్తుంది: Owner, Manager, Doctor, Reception, Accounts, Trainer, Staff (Therapist, Marketing కి కనిపించదు). \"Add student\", స్టేటస్ మార్చడం, \"🔗 Form link\", \"↩ Form malli\", \"🗓 Batch … ki marchu\", నోట్లు: Owner, Manager, Doctor, Reception, Trainer. \"💰 Record payment\": Owner, Manager, Reception, Accounts. \"📄 Resend docs\": Owner, Manager, Accounts, Trainer (Reception, Doctor కి లేదు). \"📚 Material link\": Owner, Manager, Doctor, Trainer. \"🎓 Certificate\": Owner, Manager, Doctor. \"Teesey\": Owner మాత్రమే.",
+  "purpose_te": "అడ్వాన్స్ కట్టిన ప్రతి స్టూడెంట్ కి ఒక కార్డు ఉంటుంది. అందులో పేరు, student ID (DLA-xxxx), కోర్సు, టైం, ఫోన్, \"form ✓\" లేదా \"form pending\", Fee, Paid, Balance కనిపిస్తాయి. ప్రతి కార్డులో ఒక progress బార్, ఈ స్టెప్స్ ఉంటాయి: \"Seat reserve ayindi\", \"Onboarding form\", \"Fee mottam\", \"Training modalu\", \"Course ayipoyindi\", \"Certificate\". ట్రైనింగ్ మొదలైతే \"inka N rojulu\" కూడా చూపిస్తుంది. ఇవన్నీ సర్వర్ లో ఉన్న డేటా నుంచి ఆటోమేటిక్ గా వస్తాయి, ఎవరూ టిక్ చేయనక్కర్లేదు. పైన స్టేటస్ చిప్స్ (\"Anni\", \"Seat booked\", \"Active\" మొదలైనవి, ప్రతి దాని పక్కన సంఖ్య) తో ఫిల్టర్ చేయవచ్చు. ఆ స్టేటస్ లో స్టూడెంట్స్ ఉంటేనే ఆ చిప్ కనిపిస్తుంది.",
+  "tasks": [
+   {
+    "title_te": "కొత్త స్టూడెంట్ ని చేర్చడం",
+    "steps_te": [
+     "అడ్వాన్స్ ₹9,999 నిజంగా వచ్చిందని ముందు చెక్ చేసుకోండి.",
+     "\"Add student\" బాక్స్ లో \"Full name\", \"10-digit mobile\" రాయండి.",
+     "కోర్సు ఎంచుకోండి (\"Skin ₹49,999\" / \"Hair ₹49,999\" / \"Skin+Hair ₹99,999\"). టైం ఎంచుకోండి (\"1 month\" / \"2 months\").",
+     "\"Advance paid\" లో వచ్చిన మొత్తం సరిచూడండి. మొదట 9999 ఉంటుంది.",
+     "\"Add & send form\" నొక్కండి. \"DLA-xxxx added — form link sent\" వస్తుంది. స్టూడెంట్ కి WhatsApp లో welcome మెసేజ్, onboarding form link వెళ్తాయి. అడ్వాన్స్ 0 కాకపోతే receipt కూడా వెళ్తుంది. స్టేటస్ \"Seat booked\" గా మొదలవుతుంది.",
+     "బాక్స్ కింద ఎర్రటి అక్షరాల్లో \"Name + valid 10-digit mobile required\" వస్తే, పేరు, నంబర్ సరిచేసి మళ్లీ నొక్కండి."
+    ]
+   },
+   {
+    "title_te": "ఫీజు కట్టినప్పుడు నమోదు చేయడం",
+    "steps_te": [
+     "ఆ స్టూడెంట్ కార్డు మీద \"💰 Record payment\" నొక్కండి.",
+     "fee, paid, balance చూపిస్తుంది. \"Ippudu vachina amount (₹):\" లో మొదట మిగిలిన balance మొత్తం ఉంటుంది. నిజంగా వచ్చిన మొత్తం మాత్రమే ఉంచి OK నొక్కండి.",
+     "\"UPI / reference (optional):\" ఉంటే రాసి OK నొక్కండి.",
+     "\"Receipt sent\" వస్తుంది. Paid, Balance మారుతాయి. స్టూడెంట్ కి WhatsApp లో receipt వెళ్తుంది. academy చూసే మిగతా స్టాఫ్ కి \"💰 Fee received\" నోటిఫికేషన్ వెళ్తుంది."
+    ]
+   },
+   {
+    "title_te": "స్టేటస్ మార్చడం, ఫిల్టర్ చేయడం",
+    "steps_te": [
+     "కార్డు కుడివైపు ఉన్న స్టేటస్ డ్రాప్‌డౌన్ నొక్కండి: \"Seat booked\", \"Active\", \"Training nadustondi\", \"Inactive\", \"Discontinued\", \"Completed\".",
+     "\"Inactive\" లేదా \"Discontinued\" ఎంచుకుంటే కారణం అడుగుతుంది. కారణం తప్పకుండా రాయండి. ఖాళీగా వదిలితే \"Reason lekunda … pettalemu\" వస్తుంది, స్టేటస్ మారదు.",
+     "మారితే \"… ani pettam\" వస్తుంది. కారణం, ఎవరు మార్చారు అనేది స్టేటస్ కింద కనిపిస్తుంది.",
+     "ఒక స్టేటస్ వాళ్లను మాత్రమే చూడాలంటే పైన ఆ చిప్ నొక్కండి. అందరినీ చూడాలంటే \"Anni\" నొక్కండి."
+    ]
+   },
+   {
+    "title_te": "ఫారం, డాక్యుమెంట్లు, మెటీరియల్ పంపడం",
+    "steps_te": [
+     "స్టూడెంట్ దగ్గర form link పోయిందంటే \"🔗 Form link\" నొక్కండి. \"Link copy ayindi\" వస్తుంది. \"💬 WhatsApp\" నొక్కి పేస్ట్ చేసి పంపండి.",
+     "ఫారం తప్పుగా నింపితే \"↩ Form malli\" నొక్కి confirm చేయండి. \"Kotha form link copy ayindi — WhatsApp lo pampandi\" వస్తుంది, ఆ లింక్ పంపండి. ఈ బటన్ ఫారం నింపిన తర్వాతే (\"form ✓\") కనిపిస్తుంది.",
+     "admission form, ID card మళ్లీ కావాలంటే \"📄 Resend docs\" నొక్కండి. \"Documents sent on WhatsApp\" వస్తుంది.",
+     "\"📚 Material link\" నొక్కితే Day 1 మెటీరియల్ లింక్ కాపీ అవుతుంది. తర్వాతి రోజుల మెటీరియల్ ఆటోమేటిక్ గా వెళ్తుంది. పేమెంట్ నమోదు కాకపోతే \"Payment record ledu — material lock lo undi\" వస్తుంది."
+    ]
+   },
+   {
+    "title_te": "బ్యాచ్ మార్చడం, సర్టిఫికెట్ ఇవ్వడం",
+    "steps_te": [
+     "పాత బ్యాచ్ తేదీతో ఉన్న స్టూడెంట్ కార్డు మీద \"🗓 Batch N (తేదీ) ki marchu\" బటన్ వస్తుంది. నొక్కి confirm చేయండి. \"Batch N ki marcham\" వస్తుంది. ట్రైనింగ్ రోజులు కొత్త బ్యాచ్ తేదీ నుంచి లెక్కిస్తారు.",
+     "కోర్సు పూర్తయ్యాక \"🎓 Certificate\" నొక్కండి.",
+     "\"Grade (A/B/C):\" లో గ్రేడ్ రాయండి (మొదట A ఉంటుంది). \"Generate and send the certificate?\" కి OK నొక్కండి.",
+     "\"Certificate sent 🎓\" వస్తుంది. స్టేటస్ \"Completed\" అవుతుంది, కార్డు మీద Cert నంబర్ కనిపిస్తుంది. సర్టిఫికెట్ స్టూడెంట్ కి WhatsApp లో వెళ్తుంది."
+    ]
+   }
+  ],
+  "tips_te": [
+   "స్టూడెంట్ ని చేర్చిన తర్వాత కార్డు మీద \"form ✓\" వచ్చిందో చూడండి. \"form pending\" అలాగే ఉంటే ఫోన్ చేసి గుర్తు చేయండి.",
+   "ముఖ్యమైన విషయాలు కార్డు కింద \"Note…\" లో రాసి \"Add\" నొక్కండి. \"Note saved\" వస్తుంది. చివరి రెండు నోట్లు కార్డు మీద కనిపిస్తాయి.",
+   "ఆండ్రాయిడ్ యాప్ లో \"📷 Document\" బటన్ తో స్టూడెంట్ డాక్యుమెంట్ ఫోటో తీసి సేవ్ చేయవచ్చు.",
+   "స్టేటస్ డ్రాప్‌డౌన్ బదులు బ్యాడ్జ్ మాత్రమే కనిపిస్తే, మీ రోల్ కి స్టేటస్ మార్చే పవర్ లేదు అని అర్థం.",
+   "\"Add student\" బాక్స్ బదులు \"Kotha student add cheyyadam mee role ki ledu\" కనిపిస్తే Owner / Manager కి చెప్పండి."
+  ],
+  "warnings_te": [
+   "\"Record payment\" లో మొదట ఉండేది మిగిలిన balance మొత్తం. తక్కువ డబ్బు వస్తే దాన్ని మార్చండి. OK నొక్కిన వెంటనే ఆ మొత్తానికి receipt స్టూడెంట్ కి వెళ్లిపోతుంది.",
+   "ఒకే పేమెంట్ ని రెండుసార్లు నమోదు చేయవద్దు. Paid రెండుసార్లు పెరుగుతుంది, రెండు receipts వెళ్తాయి.",
+   "ఒకే స్టూడెంట్ ని రెండుసార్లు \"Add & send form\" చేయవద్దు. యాప్ ఆపదు, రెండో student ID తో రెండో కార్డు, రెండో welcome మెసేజ్ వెళ్తాయి. ముందు లిస్ట్ లో పేరు ఉందో చూడండి.",
+   "\"Receipt sent\" వచ్చినా స్టూడెంట్ కి receipt అందలేదని చెబితే Owner కి చెప్పండి. \"📄 Resend docs\" admission form, ID card మాత్రమే పంపుతుంది, receipt పంపదు.",
+   "\"🎓 Certificate\" కోర్సు నిజంగా పూర్తయ్యాకే నొక్కండి. మళ్లీ నొక్కితే కొత్త సర్టిఫికెట్ నంబర్ తో మరో సర్టిఫికెట్ వెళ్తుంది.",
+   "\"📚 Material link\" స్టూడెంట్ కోసం. స్టాఫ్ కోసం ఉన్న \"Files\" ట్యాబ్ లోని 15 నిమిషాల మెటీరియల్ లింక్ ని స్టూడెంట్ కి పంపవద్దు.",
+   "\"Teesey\" (Owner మాత్రమే) నొక్కితే ఫీజు, నోట్లు, డాక్యుమెంట్లు అన్నీ పోతాయి, మళ్లీ తిరిగి రావు. student ID సరిగ్గా టైప్ చేస్తేనే తొలగిస్తుంది, లేకపోతే \"ID saripoledu — aapesam\" వస్తుంది.",
+   "\"Inactive\" / \"Discontinued\" కి కారణం స్పష్టంగా రాయండి. ఇది ఎవరు మార్చారు అనే పేరుతో రికార్డు లో ఉంటుంది."
+  ]
+ },
+ {
+  "key": "attend",
+  "title_en": "Attendance",
+  "title_te": "హాజరు (Attendance)",
+  "who_te": "ఈ tab staff అందరికీ కనిపిస్తుంది. ప్రతి ఒక్కరి card కింద ఉండే mark buttons, \"Ee nela\" box \"attend.manage\" power ఉన్నవాళ్లకు మాత్రమే కనిపిస్తాయి (మామూలుగా owner, manager). \"Mee incentive — ee nela\" box owner కి కనిపించదు. మిగతా staff కి కనిపిస్తుంది.",
+  "purpose_te": "మీరు రోజూ క్లినిక్ కి వచ్చిన టైమ్, వెళ్లిన టైమ్ ఇక్కడ నమోదు అవుతుంది. పైన ఈ రోజు లెక్కలు మూడు ఉంటాయి: \"Vachcharu\" (half day వాళ్లు కూడా ఇందులోనే), \"Leave\", \"Mark cheyyaledu\". కింద \"Ee roju\" list లో staff అందరి పేర్లు, వాళ్లు వచ్చిన, వెళ్లిన టైమ్స్ ఉంటాయి. మీ incentive, ఈ నెల visits target కూడా ఇక్కడే కనిపిస్తాయి.",
+  "tasks": [
+   {
+    "title_te": "క్లినిక్ కి వచ్చినప్పుడు, వెళ్లేటప్పుడు mark చేయడం",
+    "steps_te": [
+     "\"Attendance\" tab తెరవండి.",
+     "\"Meeru\" box లో \"Vachanu\" నొక్కండి. \"… ki mark chesam\" అని message వస్తుంది. తర్వాత \"Vachanu\" button కనిపించదు, దాని స్థానంలో \"Velthunna\" వస్తుంది.",
+     "సాయంత్రం వెళ్లేటప్పుడు అదే box లో \"Velthunna\" నొక్కండి.",
+     "\"Ee roju … ki vachcharu, … ki vellaru.\" అని కనిపిస్తే రెండు టైమ్స్ సరిగ్గా నమోదయ్యాయి. \"Inka velladu.\" అని ఉంటే వెళ్లిన టైమ్ ఇంకా నమోదు కాలేదు."
+    ]
+   },
+   {
+    "title_te": "వేరేవాళ్ల హాజరు mark చేయడం (owner / manager)",
+    "steps_te": [
+     "\"Ee roju\" list లో ఆ వ్యక్తి card వెతకండి.",
+     "card కింద ఉన్న \"Vachcharu\", \"Leave\", \"Half day\", \"Selavu\" లో సరైనది నొక్కండి. ఇప్పుడు ఉన్న status button బంగారు రంగులో ఉంటుంది.",
+     "\"Leave\" నొక్కితే కారణం అడుగుతుంది. రాయకపోయినా పరవాలేదు.",
+     "ఎవరు mark చేశారో వాళ్ల పేరు ఆ card మీద కనిపిస్తుంది.",
+     "నెల మొత్తం లెక్క కోసం కింద \"Ee nela\" box చూడండి. ప్రతి ఒక్కరికి present రోజులు, half రోజులు, leave రోజులు అందులో ఉంటాయి."
+    ]
+   },
+   {
+    "title_te": "మీ incentive, visits target చూడడం",
+    "steps_te": [
+     "\"Attendance\" tab లో పైన ఉన్న \"Mee incentive — ee nela\" box చూడండి.",
+     "పెద్ద అంకె ఈ నెల మీ incentive మొత్తం. దాని కింద collection, treatments, leads లెక్కలు ఉంటాయి. ఏమీ లేకపోతే \"Ee nela inka emi ledu\" అని ఉంటుంది.",
+     "Owner మీ role కి target పెడితే \"Visits 6 / 20\" లాగా ఒక bar కనిపిస్తుంది. \"inka … kavali\" అంటే target కి ఇంకా ఎన్ని visits కావాలో. \"ippatiki … undali\" అంటే ఈ రోజు వరకు ఎన్ని ఉండాలో.",
+     "ఈ రోజు వరకు ఉండాల్సిన లెక్క అందితే bar ఆకుపచ్చ అవుతుంది. పూర్తి target అయితే \"target ayipoyindi ✅\" అని వస్తుంది."
+    ]
+   }
+  ],
+  "tips_te": [
+   "క్లినిక్ కి రాగానే మొదట \"Vachanu\" నొక్కడం అలవాటు చేసుకోండి.",
+   "Net లేనప్పుడు నొక్కినా tap phone లో ఆగుతుంది. Net వచ్చాక వెళ్తుంది. 12 గంటల లోపు వెళ్తే మీరు నొక్కిన టైమ్ నే లెక్కలోకి తీసుకుంటుంది.",
+   "Lead ని \"Visited\" కి ఎవరు మార్చారో ఆ visit వాళ్ల లెక్కలోకే వెళ్తుంది. అందుకే మీరు చూసుకున్న patient వచ్చినప్పుడు ఆ lead ని మీరే \"Visited\" చేయండి.",
+   "Owner target పెట్టకపోతే (0 అయితే) visits bar కనిపించదు. అది మామూలే."
+  ],
+  "warnings_te": [
+   "\"Vachanu\" ఒక రోజుకు ఒక్కసారే పడుతుంది. \"Velthunna\" కూడా ఒక్కసారే. ఒకసారి నొక్కిన తర్వాత ఆ button కనిపించదు. టైమ్ మార్చలేరు.",
+   "\"Vachanu\" నొక్కకుండా \"Velthunna\" పనిచేయదు (\"Mundu 'Vachanu' kottandi\" అని వస్తుంది).",
+   "సాయంత్రం \"Velthunna\" మర్చిపోతే మరుసటి రోజు app లో సరిచేయలేరు. Manager కి చెప్పండి.",
+   "App లో mark buttons ఈ రోజు కోసం మాత్రమే. నిన్నటి రోజులు గానీ, రాబోయే రోజులు గానీ ఇక్కడ mark చేయలేరు.",
+   "Manager \"Leave\" లేదా \"Selavu\" mark చేస్తే ఆ రోజు నమోదైన వచ్చిన, వెళ్లిన టైమ్స్ తీసేస్తుంది. తప్పు వ్యక్తి card మీద నొక్కకుండా జాగ్రత్తగా చూడండి."
+  ]
+ },
+ {
+  "key": "files",
+  "title_en": "Files",
+  "title_te": "ఫైళ్లు (Files)",
+  "who_te": "\"files.view\" power ఉన్న అందరికీ ఈ tab కనిపిస్తుంది. Default గా అన్ని roles కూ ఉంది (owner, manager, doctor, reception, accounts, therapist, trainer, marketing, staff). \"Academy study material\" box owner, manager, doctor, trainer కి మాత్రమే కనిపిస్తుంది. అందులో \"Full books — trainers\" buttons owner, manager, doctor కి మాత్రమే వస్తాయి (trainer role కి రావు). \"Instagram posters\" box \"posts.view\" ఉన్నవాళ్లకు మాత్రమే: owner, manager, reception, therapist, marketing, staff. Owner roles ని మార్చి ఉంటే ఇది మారవచ్చు.",
+  "purpose_te": "క్లినిక్ forms, posters, videos, photos ఒకే చోట ఉంటాయి. ఇక్కడ మీరు file తెరిచి చూడవచ్చు, phone లో save చేసుకోవచ్చు, link copy చేసి WhatsApp లో పంపవచ్చు. Power ఉన్నవాళ్లకు academy study material, save అయిన Instagram posters కూడా ఇక్కడే ఉంటాయి.",
+  "tasks": [
+   {
+    "title_te": "File వెతికి తెరవడం, phone లో save చేయడం",
+    "steps_te": [
+     "\"Files\" tab తెరవండి.",
+     "పైన ఉన్న \"Vethakandi… poster, consent, logo, video\" box లో పదం type చేయండి. సరిపోయే cards మాత్రమే మిగులుతాయి.",
+     "File చూడడానికి card లో \"👁 Open\" నొక్కండి. File కొత్త window లో తెరుచుకుంటుంది.",
+     "Phone లో save చేయడానికి \"⬇ Download\" నొక్కండి."
+    ]
+   },
+   {
+    "title_te": "Patient కి WhatsApp లో file link పంపడం",
+    "steps_te": [
+     "కావాల్సిన file card లో \"🔗 URL copy\" నొక్కండి.",
+     "\"URL copy ayindi — WhatsApp lo paste cheyandi\" అనే message వస్తుంది.",
+     "ఒకవేళ \"Copy cheyandi:\" అనే box వస్తే, అందులో ఉన్న link ని చేతితో copy చేసుకోండి.",
+     "WhatsApp chat తెరిచి link paste చేసి పంపండి. Link https://www.dermaluxe.ai తో మొదలవుతుంది, కాబట్టి ఎవరి phone లోనైనా తెరుచుకుంటుంది."
+    ]
+   },
+   {
+    "title_te": "Academy material తెరవడం (power ఉన్నవాళ్లు)",
+    "steps_te": [
+     "\"Academy study material\" box కి వెళ్లండి.",
+     "\"Skin track · Day\" లేదా \"Hair track · Day\" కింద ఉన్న Day number (1 నుంచి 30) నొక్కండి. ఆ రోజు PDF కొత్త window లో తెరుచుకుంటుంది.",
+     "పూర్తి పుస్తకం కావాలంటే \"Full books — trainers\" కింద ఉన్న \"📚\" button నొక్కండి (owner, manager, doctor కి మాత్రమే కనిపిస్తుంది)."
+    ]
+   },
+   {
+    "title_te": "Save అయిన Instagram poster తీసుకోవడం",
+    "steps_te": [
+     "\"Instagram posters\" box కి వెళ్లండి.",
+     "కావాల్సిన poster లో \"⬇ Download\" నొక్కి phone లో save చేసుకోండి.",
+     "Instagram లో ఆ post చూడాలంటే \"📸 Post\" నొక్కండి. Post అయిన posters కి మాత్రమే ఈ button ఉంటుంది."
+    ]
+   }
+  ],
+  "tips_te": [
+   "Card పైన ఉన్న గుర్తు చూస్తే file రకం తెలుస్తుంది: 📄 అంటే PDF, 🎬 అంటే video, photo అయితే ఆ బొమ్మే కనిపిస్తుంది.",
+   "Card కింద file రకం, size (KB / MB) ఉంటాయి. పెద్ద video లు mobile data మీద download చేసేముందు size చూసుకోండి.",
+   "\"Instagram posters\" లో ఉన్నవి \"Today's post\" tab లో save అయిన posters. ఇవి కొన్ని రోజులు మాత్రమే ఉంటాయి, కావాల్సినవి వెంటనే \"⬇ Download\" చేసుకోండి.",
+   "\"Save ayina posters levu\" అని వస్తే, ఇంకా ఏ poster కూడా save అవ్వలేదు అని అర్థం."
+  ],
+  "warnings_te": [
+   "\"🔗 URL copy\" link public. అది ఎవరికి చేరినా వాళ్లు తెరవగలరు. సంబంధం లేనివాళ్లకు పంపకండి.",
+   "Academy material link 15 నిమిషాలు మాత్రమే పనిచేస్తుంది. దాన్ని students కి పంపకండి. వాళ్ల link వాళ్లకు WhatsApp లో విడిగా వెళ్తుంది.",
+   "Academy material కి \"🔗 URL copy\" button లేదు. ఆ PDF లను బయటకు పంపకండి, అది డబ్బు కట్టిన course material."
+  ]
+ },
+ {
+  "key": "today",
+  "title_en": "Today's post",
+  "title_te": "ఈ రోజు పోస్ట్ (Today's post)",
+  "who_te": "\"posts.view\" power ఉన్నవాళ్లకు ఈ tab కనిపిస్తుంది (owner, manager, reception, therapist, marketing, staff). Doctor, accounts, trainer కి కనిపించదు. \"Daily posters\" box, \"+ Kotha post\", \"Teesey\" బటన్లు \"posts.toggle\" ఉన్నవాళ్లకే (owner, manager, marketing). \"Poster doctor\", \"Academy posters\" మార్చడం \"settings.manage\" ఉన్నవాళ్లకే, అంటే owner మాత్రమే. మిగతావాళ్లకు అవి బూడిద రంగులో, \"owner matrame maarchagalaru\" అని కనిపిస్తాయి.",
+  "purpose_te": "రోజూ ఉదయం 7:00 కి poster తయారవుతుంది. 8:30 కి అది Instagram (@dermaluxe.ai), Facebook లో automatic గా వెళ్తుంది. పైన \"Today's auto post\" box లో ఈ రోజు poster కనిపిస్తుంది. \"Pampalsinavi\" లో ఇంకా వెళ్లాల్సిన posts ఉంటాయి. \"Pettinavi\" లో ఇప్పటికే వెళ్లినవి ఉంటాయి. Power ఉన్నవాళ్లు ఇక్కడే కొత్త poster తయారు చేసి పెట్టవచ్చు, లేదా తమ సొంత photo తో post పెట్టవచ్చు.",
+  "tasks": [
+   {
+    "title_te": "కొత్త daily poster తయారు చేయడం",
+    "steps_te": [
+     "\"Daily posters\" box లో list నుంచి topic ఎంచుకోండి. లేదా \"Automatic — repu vachche laaga\" అలాగే వదిలేయండి.",
+     "కావాలంటే \"Em undali? (optional)\" box లో బొమ్మలో ఏం ఉండాలో రాయండి (ఉదా: నవ్వుతున్న అమ్మాయి).",
+     "\"🎨 Poster create cheyyi\" నొక్కండి. ఒకటి రెండు నిమిషాలు పడుతుంది. ఆ సమయంలో \"🎨 Tayaru avutondi\" అని, సెకన్ల లెక్కతో కనిపిస్తుంది.",
+     "Poster తయారయ్యాక \"Draft\" card గా save అవుతుంది. అది ఇంకా ఎక్కడా post అవ్వదు."
+    ]
+   },
+   {
+    "title_te": "Poster ని post చేయడం, రేపటికి పెట్టడం, తీసేయడం",
+    "steps_te": [
+     "Card లో బొమ్మ, caption పూర్తిగా చదవండి. పెద్దగా చూడాలంటే బొమ్మ మీద నొక్కండి.",
+     "నచ్చకపోతే card లోని \"Em maarchali? (optional)\" box లో ఏం మార్చాలో రాసి \"↻ Regenerate\" నొక్కండి. కొత్త poster వస్తుంది.",
+     "వెంటనే పెట్టాలంటే \"Post now\" నొక్కి, అడిగినప్పుడు OK చేయండి. Instagram, Facebook రెండింటిలో వెళ్తుంది.",
+     "రేపు ఉదయం పెట్టాలంటే \"Repu 8:30 ki\" నొక్కండి (ఇది Draft card మీద మాత్రమే ఉంటుంది). రేపు ఈ poster post గానూ, 3 నిమిషాల తర్వాత story గానూ వెళ్తుంది. ఆ రోజు automatic poster రాదు.",
+     "అక్కర్లేని poster ని \"✕\" నొక్కి, OK చేసి తీసేయండి. రేపటికి పెట్టినదాన్ని తీసేస్తే, రేపు మళ్లీ automatic poster వెళ్తుంది."
+    ]
+   },
+   {
+    "title_te": "మీ సొంత photo తో post పెట్టడం",
+    "steps_te": [
+     "\"+ Kotha post\" నొక్కండి.",
+     "\"📷 Camera\" (Android app లో మాత్రమే ఉంటుంది) లేదా \"🖼 Gallery nunchi\" నొక్కి photo తీసుకోండి.",
+     "Caption box లో caption రాయండి. Photo, caption రెండూ లేకపోతే post వెళ్లదు.",
+     "తర్వాత పెట్టాలంటే \"Ippudu kaadu, taruvata pettandi\" tick చేయండి. తేదీ ఎంచుకుని, టైమ్ \"6:00 pm\" లాగా రాయండి.",
+     "\"👁 Preview — ela kanipistundo chudandi\" నొక్కి, Instagram లో ఎలా కనిపిస్తుందో చూడండి.",
+     "\"Pettandi\" నొక్కి OK చేయండి. టైమ్ ఇవ్వకపోతే వెంటనే వెళ్తుంది. టైమ్ ఇస్తే \"Pampalsinavi\" queue లోకి వెళ్తుంది."
+    ]
+   },
+   {
+    "title_te": "Queue లో, వెళ్లిన posts లో చూడడం",
+    "steps_te": [
+     "\"Pampalsinavi\" లేదా \"Pettinavi\" list లో post కింద \"👁 Preview\" నొక్కండి. పెద్ద బొమ్మ, పూర్తి caption కనిపిస్తాయి.",
+     "వెళ్లిన post లో \"Instagram ✓ · Facebook ✓\" అని ఉంటే రెండింటిలో వెళ్లింది. \"Facebook ✗\" అని ఉంటే Facebook లో వెళ్లలేదు.",
+     "\"Instagram lo chudu ↗\" నొక్కితే ఆ post Instagram లో తెరుచుకుంటుంది.",
+     "Post కింద \"… lead → … vachcharu\" అని ఉంటే, ఆ post తర్వాత 3 రోజుల్లో Instagram/Facebook నుంచి వచ్చినవాళ్ల లెక్క అది. ఇది అంచనా మాత్రమే."
+    ]
+   }
+  ],
+  "tips_te": [
+   "Post చేసే ముందు caption పూర్తిగా చదవండి. Spelling తప్పులు, తప్పు phone number, తప్పు ధర ఉన్నాయేమో చూడండి.",
+   "Card మీద ఎరుపులో \"photo raaledu\" అని ఉంటే బొమ్మ సరిగ్గా తయారవ్వలేదు. \"↻ Regenerate\" చేయండి.",
+   "ఇక్కడ తయారు చేసిన poster cards 14 రోజులు మాత్రమే ఉంటాయి. తర్వాత వాటంతట అవే పోతాయి.",
+   "\"Repu 8:30 ki\" నొక్కినప్పుడు \"Repati poster ippatike ready ayyindi\" అని వస్తే, రేపటి post ఇప్పటికే queue లో ఉంది. \"Pampalsinavi\" లో చూడండి."
+  ],
+  "warnings_te": [
+   "\"Post now\", \"Pettandi\" నొక్కితే ఊరంతా చూసే public account లో వెంటనే వెళ్తుంది. పూర్తిగా చెక్ చేశాకే నొక్కండి.",
+   "Patient photo వాళ్ల అనుమతి లేకుండా ఎప్పుడూ పెట్టకండి.",
+   "\"Pettinavi\" లో \"Teesey\" నొక్కితే ఆ post Instagram నుంచి, Facebook నుంచి శాశ్వతంగా పోతుంది. Likes, comments కూడా పోతాయి. మళ్లీ తేలేము. Owner చెప్పకుండా నొక్కకండి.",
+   "\"Pampalsinavi\" లో \"Teesey\" నొక్కితే ఆ post queue నుంచి పోతుంది. ఇక వెళ్లదు.",
+   "Queue లో ఎరుపులో \"Time dati poyindi\" అని ఉంటే ఆ post ఇంకా వెళ్లలేదు. System ప్రతి 10 నిమిషాలకు మళ్లీ ప్రయత్నిస్తుంది. చాలాసేపు అలాగే ఉంటే owner కి చెప్పండి."
+  ]
+ },
+ {
+  "key": "reviews",
+  "title_en": "Reviews",
+  "title_te": "పేషెంట్ రేటింగ్స్ (Reviews)",
+  "who_te": "\"reviews.view\" power ఉన్నవాళ్లకు మాత్రమే కనిపిస్తుంది: owner, manager, doctor, accounts, marketing. Reception, therapist, trainer, staff roles కు ఈ tab కనిపించదు.",
+  "purpose_te": "Visit అయిన రెండో రోజు patient కి WhatsApp లో రేటింగ్ అడిగే message వెళ్తుంది. Patient నొక్కిన stars ఇక్కడ కనిపిస్తాయి. ప్రతి card లో పేరు, phone number, ఎంత సేపటి క్రితం, concern, stars ఉంటాయి. కొత్తవి పైన, చివరి 30 రేటింగ్స్ మాత్రమే చూపిస్తుంది. 3 లేదా అంతకంటే తక్కువ stars వస్తే card ఎరుపులో కనిపిస్తుంది. అప్పుడు \"reviews.view\" ఉన్నవాళ్లకు app notification, team phones కు WhatsApp message కూడా వస్తాయి.",
+  "tasks": [
+   {
+    "title_te": "తక్కువ రేటింగ్ ఇచ్చిన patient కి call చేయడం",
+    "steps_te": [
+     "\"Reviews\" tab తెరవండి. (Notification నొక్కినా ఇదే tab తెరుచుకుంటుంది.)",
+     "ఎరుపు card (3★ లేదా తక్కువ) చూడండి.",
+     "\"📞 Service recovery call\" నొక్కండి. Phone లో ఆ number తో dialer తెరుచుకుంటుంది, call మీరే చేయాలి.",
+     "మర్యాదగా మాట్లాడండి. ఏం ఇబ్బంది అయిందో అడిగి తెలుసుకోండి.",
+     "\"Leads\" tab లో ఆ patient ను వెతికి, మాట్లాడిన విషయం note గా రాయండి (\"leads.edit\" power ఉంటేనే రాయగలరు)."
+    ]
+   },
+   {
+    "title_te": "రేటింగ్ message వెళ్లేలా చూడడం",
+    "steps_te": [
+     "Patient visit అయిన రోజే \"Appts\" tab లో ఆ appointment ను వచ్చారు / done అని mark చేయండి.",
+     "Mark చేయని (unmarked), cancel అయిన, రాని (no-show) appointments కు రేటింగ్ message వెళ్లదు.",
+     "Mark చేసిన రెండో రోజు ఉదయం 10 గంటలకు system నే patient కి రేటింగ్ message పంపుతుంది."
+    ]
+   }
+  ],
+  "tips_te": [
+   "తక్కువ రేటింగ్ వచ్చిన రోజే call చేయండి. Patient కి కూడా \"ఈరోజు team call చేస్తారు\" అని message వెళ్తుంది.",
+   "4–5 stars ఇచ్చినవాళ్లకు system నే WhatsApp లో thank you చెబుతుంది. మీరు ఏమీ చేయనక్కర్లేదు.",
+   "ఎరుపు card లో phone number లేకపోతే call button రాదు. అప్పుడు \"Leads\" లో పేరుతో వెతకండి."
+  ],
+  "warnings_te": [
+   "Google review పెట్టమని గానీ, మంచి రేటింగ్ ఇవ్వమని గానీ patient ని అడగకండి. డాక్టర్ల ప్రకటనల నియమాలు (NMC) దీనిని ఒప్పుకోవు. అందుకే app కూడా అడగదు.",
+   "Call లో వాదించకండి. Patient చెప్పింది పూర్తిగా విని, owner కి తెలియజేయండి.",
+   "Appointment ను mark చేయకపోతే patient కి రేటింగ్ message వెళ్లదు, ఈ tab లో ఏమీ రాదు."
+  ]
+ },
+ {
+  "key": "ads",
+  "title_en": "Ads",
+  "title_te": "ప్రకటనలు (Ads)",
+  "who_te": "\"reports.view\" ఉన్నవాళ్లకే ఈ tab కనిపిస్తుంది (owner, manager, accounts, marketing). Budget \"Save\", \"Pause\", \"Activate\", \"Radius\", \"🚀 Promote (3 days)\", \"Avunu, cheyyi\", \"↻ Sync from Ads Manager\" వంటి మార్పులు \"settings.manage\" ఉన్నవాళ్లకే (మామూలుగా owner ఒక్కరే) పనిచేస్తాయి. Manager కి కూడా ఈ power లేదు.",
+  "purpose_te": "Meta (Instagram/Facebook) ads కి ఎంత ఖర్చయింది, ఎంతమంది WhatsApp లో మాట్లాడారు, ads నుంచి ఎన్ని leads వచ్చాయి, ఎంతమంది book చేశారు, ఎంతమంది క్లినిక్ కి వచ్చారు అనేవి ఈ tab లో చూడవచ్చు. Staff కి ఇది ఎక్కువగా చూడడానికి మాత్రమే.",
+  "tasks": [
+   {
+    "title_te": "Ads లెక్కలు చూడడం",
+    "steps_te": [
+     "\"Ads\" tab తెరవండి.",
+     "పైన ఒక్క వాక్యంలో మొత్తం లెక్క ఉంటుంది: ఎంత ఖర్చు, ఎన్ని leads, ఎన్ని book, ఎంతమంది \"vachcharu\".",
+     "Cards లో \"Ee roju kharchu\", \"Nadustunna campaigns\", \"Ads nunchi leads\" చూడండి.",
+     "కింద \"Nadustunnavi\" లో ప్రతి campaign card ఉంటుంది. అందులో \"Kharchu\" మరియు \"Leads → book → vachcharu\" లెక్క ఉంటుంది.",
+     "ఆపిన campaigns \"Aapinavi\" కింద ఉంటాయి. పాతవి \"Paata campaigns\" నొక్కితే కనిపిస్తాయి."
+    ]
+   },
+   {
+    "title_te": "Ads నుంచి వచ్చిన వాళ్లకు call చేయడం",
+    "steps_te": [
+     "\"💡 Ee roju ads suchanalu\" box చూడండి.",
+     "సూచన కింద \"Leads teruvu\" ఉంటే నొక్కండి. \"Leads\" tab తెరుచుకుంటుంది.",
+     "అక్కడ \"🔥 Ippude call\" లో ఉన్నవాళ్లకు వెంటనే call చేయండి.",
+     "\"Inbox teruvu\" ఉంటే నొక్కండి. \"Inbox\" లో ఆ chats ఉన్నాయో చూసి reply ఇవ్వండి."
+    ]
+   }
+  ],
+  "tips_te": [
+   "Ads కి డబ్బు పెట్టినా patient కి వెంటనే call వెళ్లకపోతే ఆ డబ్బు వృథా. Ads నుంచి వచ్చిన leads కి ముందు call చేయండి.",
+   "మీ role కి \"Inbox\" tab లేకపోతే \"Inbox teruvu\" నొక్కినా ఏమీ జరగదు. అప్పుడు Inbox ఉన్నవాళ్లకు చెప్పండి.",
+   "\"Meta\" లెక్క, మన లెక్క వేరు. Meta సంభాషణలు లెక్కిస్తుంది. మనం patient అయినవాళ్లను లెక్కిస్తాము."
+  ],
+  "warnings_te": [
+   "Budget box, \"Pause\", \"Activate\", \"🚀 Promote (3 days)\", \"Avunu, cheyyi\" buttons owner login లో మాత్రమే కనిపిస్తాయి. ఇవి నిజమైన ad మీద పనిచేస్తాయి. Owner అడిగితేనే, owner చూస్తుండగానే వాడండి.",
+   "\"↻ Sync from Ads Manager\" button అందరికీ కనిపిస్తుంది, కానీ owner కి మాత్రమే పనిచేస్తుంది. మిగతావాళ్లు నొక్కితే \"Ads marchagaligedi owner matrame\" అని వస్తుంది.",
+   "సూచన కింద \"Vaddu\" ఎవరైనా నొక్కవచ్చు. నొక్కితే ఆ సూచన అందరికీ 7 రోజులు కనిపించదు. Owner చూడకముందే నొక్కకండి.",
+   "\"Inka connect cheyyaledu\" అని వస్తే Meta keys సెట్ కాలేదు. Owner కి చెప్పండి."
+  ]
+ },
+ {
+  "key": "numbers",
+  "title_en": "Numbers",
+  "title_te": "లెక్కలు (Numbers)",
+  "who_te": "\"reports.view\" ఉన్నవాళ్లకు ఈ tab కనిపిస్తుంది: owner, manager, accounts, marketing. రూపాయల లెక్కలు \"money.view\" ఉన్నవాళ్లకే కనిపిస్తాయి (owner, manager, accounts). marketing వాళ్లకు leads, bookings సంఖ్యలు మాత్రమే కనిపిస్తాయి. \"Nela lekka\" box కి \"money.view\", \"money.expense\" రెండూ కావాలి (owner, manager, accounts). \"Staff incentives\" box owner కి మాత్రమే కనిపిస్తుంది.",
+  "purpose_te": "ఎంచుకున్న రోజుల్లో ఎంత డబ్బు వచ్చింది, ఇంకా ఎంత రావాలి, ఎన్ని leads booking అయ్యాయి, ఏ channel నుంచి ఎక్కువ మంది వచ్చారు, ఏ treatments ఎక్కువ జరిగాయి, ఎంత మంది మళ్లీ వచ్చారు, ఎవరు referral తో ఎవరిని తెచ్చారు అనేవి ఈ tab లో చూడవచ్చు. Ads లెక్కలు ఇక్కడ ఉండవు, అవి వేరే \"Ads\" tab లో ఉంటాయి.",
+  "tasks": [
+   {
+    "title_te": "7 / 30 / 90 రోజుల లెక్క చూడడం",
+    "steps_te": [
+     "\"Numbers\" tab తెరవండి. మొదట 30 రోజుల లెక్క వస్తుంది.",
+     "పైన \"7 rojulu\", \"30 rojulu\", \"90 rojulu\" లో ఒకటి నొక్కండి. కింద ఉన్న లెక్కలన్నీ ఆ రోజులకు మారుతాయి.",
+     "డబ్బు చూసే అనుమతి ఉంటే, పైన ఆ రోజుల్లో వచ్చిన మొత్తం, \"Inka raavalsindi\", \"Roju roju\" bars, Cash / UPI / Card విడివిడిగా కనిపిస్తాయి.",
+     "\"Lead nunchi booking varaku\" box లో \"Leads\", \"Contact chesam\", \"Booked\", \"Conversion\" చూడండి. మొదటి reply కి సగటున ఎన్ని నిమిషాలు పట్టిందో కూడా అక్కడే ఉంటుంది.",
+     "\"E channel pani chestondi\" లో ఏ channel నుంచి ఎన్ని leads, ఎన్ని booked వచ్చాయో చూడండి. తర్వాత \"Ekkuva ammudu ponavi\" (ఎక్కువ జరిగిన treatments), \"Malli vachina vaaru\" (repeat patients) boxes ఉంటాయి."
+    ]
+   },
+   {
+    "title_te": "Referral లెక్క చూడడం",
+    "steps_te": [
+     "\"Numbers\" tab లో కిందికి \"Evaru techcharu\" box వరకు scroll చేయండి.",
+     "ఎంచుకున్న రోజుల్లో ఎంత మంది referral తో వచ్చారో, ఎంత మందికి ఇంకా thank-you ఇవ్వలేదో అక్కడ కనిపిస్తుంది.",
+     "ఒక పేరు మీద నొక్కితే ఆ patient file తెరుచుకుంటుంది.",
+     "ఎవరూ రాలేదని చూపిస్తే, patient file లో \"Code pampu\" నొక్కండి. వాళ్ల referral code WhatsApp లో వెళ్తుంది."
+    ]
+   },
+   {
+    "title_te": "నెల లాభ నష్టాలు చూడడం (owner, manager, accounts)",
+    "steps_te": [
+     "\"Nela lekka\" box లో ‹ › బటన్లతో నెల మార్చండి. రాబోయే నెలకు వెళ్లలేరు.",
+     "\"Vachindi\", \"Kharchu\", \"Migilindi\", \"Margin · patients\" చూడండి. పక్కన ▲ ▼ గుర్తు ముందు నెలతో పోలిక.",
+     "కింద ప్రతి రోజు వచ్చిన డబ్బు, ఖర్చు bars గా ఉంటాయి. \"Treatment-wise (bill chesinavi)\", \"Kharchu category-wise\" జాబితాలు కూడా ఉంటాయి."
+    ]
+   },
+   {
+    "title_te": "Staff incentive rates పెట్టడం (owner మాత్రమే)",
+    "steps_te": [
+     "\"Staff incentives\" box లో ఈ నెల ప్రతి staff కి ఎంత incentive వచ్చిందో కనిపిస్తుంది.",
+     "\"Rates (role-wise)\" table లో ప్రతి role కి \"Collection %\", \"Treatment %\", \"₹ / lead\", \"Visits target / nela\" నింపండి. Target వద్దంటే 0 పెట్టండి.",
+     "\"Rates save cheyyi\" నొక్కండి. \"Rates save ayyayi\" అని వస్తే save అయినట్టు.",
+     "Visits target ఆ staff \"Attendance\" tab లో \"Visits 6 / 20\" లాగా కనిపిస్తుంది."
+    ]
+   }
+  ],
+  "tips_te": [
+   "ఒక patient ఇచ్చిన డబ్బు అంతా, వాళ్లు మొదటిసారి ఏ channel నుంచి వచ్చారో ఆ channel కే లెక్క అవుతుంది (first touch). తర్వాత వేరే channel లో రాసినా మారదు.",
+   "\"Nela lekka\" cash లెక్క మాత్రమే. Tax, depreciation ఇందులో ఉండవు.",
+   "\"7 rojulu / 30 rojulu / 90 rojulu\" బటన్లు \"Nela lekka\", \"Staff incentives\" ని మార్చవు. అవి ఎప్పుడూ ఎంచుకున్న నెలకే ఉంటాయి.",
+   "\"Kharchu\" సరిగ్గా రావాలంటే ప్రతి ఖర్చును \"Money\" tab లో అదే రోజు రాయండి."
+  ],
+  "warnings_te": [
+   "ఈ లెక్కలు clinic రహస్యాలు. Screenshot తీసి బయటి వాళ్లకు పంపకండి.",
+   "Lead status సరిగ్గా మార్చకపోతే లెక్కలు తప్పుగా వస్తాయి. \"new\" లోనే ఉంటే \"Contact chesam\" లో లెక్కకు రాదు. \"Booked\" లేదా \"Visited\" పెట్టకపోతే booking గా లెక్కకు రాదు.",
+   "\"Staff incentives\" table లో ఈ నెల రిపోర్ట్ లో ఉన్న roles మాత్రమే కనిపిస్తాయి. ఒక role కనిపించకపోతే, ఆ role staff కి ఈ నెల ఇంకా లెక్క రాలేదని అర్థం.",
+   "Rates మార్చిన తర్వాత \"Rates save cheyyi\" నొక్కకుండా tab మారితే మార్పులు పోతాయి."
+  ]
+ },
+ {
+  "key": "office",
+  "title_en": "AI Office",
+  "title_te": "AI సహాయకుడు (AI Office)",
+  "who_te": "\"ai.use\" permission ఉన్న అన్ని roles కు ఈ tab కనిపిస్తుంది: owner, manager, doctor, reception, accounts, therapist, trainer, marketing, staff. మీ role కి ఏ data చూసే అనుమతి ఉందో, AI కి కూడా అదే data కనిపిస్తుంది. AI సూచించే పనులు కూడా మీ role కి ఉన్న permission బట్టే వస్తాయి.",
+  "purpose_te": "క్లినిక్ data గురించి ప్రశ్న అడిగితే AI జవాబు ఇస్తుంది (leads, appointments, academy, today's post). తెలుగులో కూడా అడగవచ్చు. AI తనంతట తానే ఏ patient కీ message పంపదు. అది message draft, appointment, note, status మార్పు వంటి పనులను card గా సూచిస్తుంది. మీరు \"Approve\" నొక్కితేనే ఆ పని జరుగుతుంది.",
+  "tasks": [
+   {
+    "title_te": "ప్రశ్న అడగడం",
+    "steps_te": [
+     "\"AI Office\" tab తెరవండి.",
+     "పైన ఉన్న buttons లో ఒకటి నొక్కండి (ఉదా: \"Ee roju status cheppandi\", \"Evariki mundu call cheyyali?\", \"Ivala appointments enni?\").",
+     "లేదా కింద ఉన్న box లో మీ ప్రశ్న type చేసి \"Ask\" నొక్కండి (Enter నొక్కినా సరిపోతుంది).",
+     "\"Alochistunna…\" అని కనిపిస్తుంది. కొద్దిసేపటిలో జవాబు వస్తుంది."
+    ]
+   },
+   {
+    "title_te": "AI సూచించిన పనిని approve చేయడం",
+    "steps_te": [
+     "జవాబు కింద \"✦ Meeru approve cheste ivi chestanu\" box వస్తే, అందులోని ప్రతి card ని జాగ్రత్తగా చదవండి.",
+     "Card పైన ఏ పనో రాసి ఉంటుంది: WhatsApp message, appointment book చేయడం, lead మీద note, status మార్పు, లేదా ఒక sitting done అని mark చేయడం.",
+     "Message card అయితే, box లోని text ని మీరే సరిచేయవచ్చు.",
+     "అంతా సరిగ్గా ఉంటే \"Approve\" నొక్కండి. \"Chestunna…\" తర్వాత \"✓\" తో పని అయిపోయిందని చూపిస్తుంది.",
+     "ఆ పని అక్కర్లేకపోతే \"Vaddu\" నొక్కండి. ఆ card తీసేయబడుతుంది, ఏమీ జరగదు."
+    ]
+   }
+  ],
+  "tips_te": [
+   "ప్రశ్న చిన్నగా, స్పష్టంగా అడగండి. ఉదా: \"ee roju enni leads?\"",
+   "AI చెప్పిన అంకెలు ముఖ్యమైనవైతే, ఆ tab లో ఒకసారి చెక్ చేసుకోండి.",
+   "App refresh చేస్తే లేదా మళ్ళీ తెరిస్తే పాత ప్రశ్నలు, జవాబులు కనిపించవు. అవసరమైతే మళ్ళీ అడగండి."
+  ],
+  "warnings_te": [
+   "Message card లో \"Approve\" నొక్కితే, ఆ patient కి నిజంగా WhatsApp message వెళ్తుంది. Appointment card approve చేస్తే appointment book అవుతుంది, patient కి message కూడా వెళ్తుంది. అందుకే ముందు పేరు, number, time, text అన్నీ పూర్తిగా చదవండి.",
+   "\"Approve\" తర్వాత message ని వెనక్కి తీసుకోలేరు.",
+   "\"Pampaleka poyam — WhatsApp lo direct ga pampandi\" అని వస్తే, message వెళ్ళలేదని అర్థం. Patient కి WhatsApp లో మీరే నేరుగా పంపండి.",
+   "\"Konchem aagandi\" అని వస్తే, కాసేపు ఆగి మళ్ళీ అడగండి (గంటకు 120 ప్రశ్నలు మాత్రమే అడగవచ్చు).",
+   "\"AI reply raledu\", \"AI Office error\" లేదా \"AI key configure cheyaledu\" వంటి error వస్తే owner కి చెప్పండి. ఈలోపు మామూలు tabs వాడండి."
+  ]
+ },
+ {
+  "key": "team",
+  "title_en": "Control panel",
+  "title_te": "కంట్రోల్ ప్యానెల్ (Control panel)",
+  "who_te": "\"team.manage\" power ఉన్నవాళ్లకు మాత్రమే ఈ tab కనిపిస్తుంది. Default గా owner, manager కి ఉంటుంది. Owner ఎవరికైనా ఒక్కరికి ఈ power ఇస్తే వాళ్లకు కూడా కనిపిస్తుంది. WhatsApp లో \"staff add\", \"staff remove\" commands owner number నుంచి మాత్రమే పనిచేస్తాయి.",
+  "purpose_te": "ఎవరికి login ఇవ్వాలి, ఎవరికి ఏ role, ఏ powers ఉండాలి అనేది ఇక్కడ నిర్ణయిస్తారు. పైన నాలుగు buttons ఉంటాయి: \"Logins\", \"Roles & powers\", \"Controls\", \"Activity\". \"Controls\" లో goals, \"Agent rules\", \"Price policy\", \"Ads boost\", \"Campaigns\", \"Mee password\", \"Notifications\", \"Treatment prices\", \"Backup\", \"Owner numbers\" వంటి boxes ఉంటాయి.",
+  "tasks": [
+   {
+    "title_te": "కొత్త staff కి login ఇవ్వడం (app లో)",
+    "steps_te": [
+     "\"Control panel\" తెరిచి \"Logins\" నొక్కండి.",
+     "\"Kotha login ivvandi\" box లో \"10-digit mobile\", \"Name\" నింపండి. Role dropdown లో సరైన role ఎంచుకోండి (మొదట \"Reception\" ఉంటుంది).",
+     "\"Add\" నొక్కండి. ఆ వ్యక్తి WhatsApp కి login link, వాళ్ల role, access వివరాలు వెళ్తాయి.",
+     "వాళ్లు www.dermaluxe.ai/staff.html లో లేదా app లో తమ number తో OTP ద్వారా login అవుతారు. Password కావాలంటే వాళ్ల card లో \"🔑 Password pampu\" నొక్కండి."
+    ]
+   },
+   {
+    "title_te": "WhatsApp లో \"staff add\" తో add చేయడం (owner మాత్రమే)",
+    "steps_te": [
+     "Owner number నుంచి క్లినిక్ WhatsApp number కి ఇలా పంపండి: \"staff add 9876543210 Priya reception\".",
+     "చివరి పదం role పేరు. Role పదం లేకపోయినా, తప్పుగా ఉన్నా \"Staff\" role వస్తుంది. అప్పుడు చివరి పదం పేరులో కలిసిపోతుంది.",
+     "తీసేయాలంటే \"staff remove 9876543210\" పంపండి. అందరి list కోసం \"staff list\", roles కోసం \"staff roles\" పంపండి."
+    ]
+   },
+   {
+    "title_te": "ఒకరి role, powers మార్చడం, login ఆపడం",
+    "steps_te": [
+     "\"Logins\" లో ఆ వ్యక్తి card లో role dropdown మార్చండి. వెంటనే మారి \"Role updated\" అని వస్తుంది.",
+     "ఒక్కరికి మాత్రమే power ఇవ్వాలంటే లేదా తీసేయాలంటే card లో ఆ power tick చేయండి లేదా tick తీసేయండి. వెంటనే \"Powers saved\" వస్తుంది. Grey tick అంటే role నుంచి వచ్చింది, gold tick అంటే ఆ ఒక్కరికే ఇచ్చింది.",
+     "Phone పోతే \"🔒 Sign out\" నొక్కండి. అన్ని phones నుంచి logout అవుతారు, మళ్లీ login కావాలి.",
+     "కొంతకాలం ఆపడానికి \"Turn off\" నొక్కండి (వెంటనే logout అవుతారు; మళ్లీ ఇవ్వడానికి \"Turn on\"). పూర్తిగా తీసేయడానికి \"Remove\".",
+     "కొత్త password వాళ్ల WhatsApp కి పంపాలంటే \"🔑 Password pampu\" (ముందే password ఉంటే \"🔑 Kotha password pampu\") నొక్కండి. ఆ password మీకు కనిపించదు, నేరుగా వాళ్లకే వెళ్తుంది."
+    ]
+   },
+   {
+    "title_te": "కొత్త role తయారు చేయడం",
+    "steps_te": [
+     "\"Roles & powers\" తెరవండి.",
+     "\"key (english, e.g. front_desk)\", \"Peru (e.g. Front desk)\", \"తెలుగు పేరు\" నింపి \"Create\" నొక్కండి. కొత్త role కి మొదట leads చూసే power ఒక్కటే ఉంటుంది.",
+     "కింద list లో ఆ role card లో కావాల్సిన powers tick చేసి \"Save\" నొక్కండి.",
+     "ఉన్న role లాంటిదే కావాలంటే ఆ card లో \"Copy\" నొక్కి కొత్త key ఇవ్వండి.",
+     "మార్చిన default role ని మళ్లీ మొదటిలా చేయాలంటే \"Reset\" నొక్కండి. మీరు తయారు చేసిన role ని \"Delete\" చేస్తే, అందులో ఉన్నవాళ్లు \"Staff\" role కి వెళ్తారు."
+    ]
+   },
+   {
+    "title_te": "మీ సొంత password పెట్టుకోవడం",
+    "steps_te": [
+     "\"Controls\" నొక్కి \"Mee password\" box కి వెళ్లండి.",
+     "\"Kotha password (8+ characters)\" లో password type చేసి \"Save\" నొక్కండి. \"Password updated\" వస్తుంది.",
+     "Password వద్దు, OTP తోనే login కావాలంటే \"OTP only\" నొక్కండి."
+    ]
+   }
+  ],
+  "tips_te": [
+   "ప్రతి ఒక్కరికి వాళ్ల పనికి సరిపడా powers మాత్రమే ఇవ్వండి. Front desk కి \"Reception\" role సరిపోతుంది.",
+   "ప్రతి వ్యక్తి card లో \"Last login\", password ఉందా లేదా అనేది కనిపిస్తుంది. \"manam pampina password ne vadutunnaru\" అని ఉంటే, వాళ్లను \"Mee password\" లో సొంత password పెట్టుకోమని చెప్పండి.",
+   "ఎవరు ఏం మార్చారో \"Activity\" లో \"Evaru em marcharu\" కింద కనిపిస్తుంది.",
+   "Staff మానేసిన రోజే \"Remove\" చేయండి."
+  ],
+  "warnings_te": [
+   "మీ password ఎవరికీ చెప్పకండి. ప్రతి ఒక్కరు సొంత password పెట్టుకోవాలి.",
+   "Owner కాకపోతే: మీ సొంత access మీరే మార్చుకోలేరు, Control panel ఉన్న role ఎవరికీ ఇవ్వలేరు, మీకు లేని powers వేరేవాళ్లకు ఇవ్వలేరు. \"Owner\" role dropdown లో మీకు కనిపించదు.",
+   "Owner numbers ఇక్కడ మార్చలేరు. అవి Vercel లో ADMIN_PHONES / STAFF_OWNERS లో మాత్రమే మారతాయి. Owner number ని \"Add\" చేయడం కుదరదు.",
+   "\"Controls\" లోని \"Campaigns\", \"Ads boost\", \"Agent rules\", \"Price policy\" patients కి వెళ్లే messages ని, ads ఖర్చును మారుస్తాయి. Owner చెప్పకుండా వాటిని ముట్టుకోకండి.",
+   "\"Remove\" నొక్కితే ఆ వ్యక్తి అన్ని phones నుంచి వెంటనే logout అవుతారు, మళ్లీ login కాలేరు. సరైన number అని చూసి నొక్కండి.",
+   "Power tick లు, role dropdown నొక్కిన వెంటనే save అవుతాయి. పొరపాటున నొక్కితే వెంటనే సరిచేయండి."
+  ]
+ }
+]
