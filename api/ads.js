@@ -847,6 +847,93 @@ module.exports = async (req, res) => {
     });
   }
 
+  // ---- marketing growth: where the leads come from, and which ad ----------
+  // Works with or without the Meta account: the leads, their ads and what
+  // happened to them are all in our own book. Meta's spend is laid on top
+  // when there is an account to read (see _growth.js for why this exists).
+  if (a === "growth") {
+    const rl = await guard.rateLimit(cfg, `rl:adsg:${me.phone}`, 120, 3600);
+    if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
+    const G = require("./_growth.js");
+    const now = Date.now();
+    const win = Math.max(7, Math.min(30, days));
+    const since = now - 30 * 86400000;
+    const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "1999"]).catch(() => ({}));
+    const leads = (r.result || []).map((x) => parse(x, null)).filter((l) => l && Number(l.ts) >= since);
+    const st = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "dl_status"]).catch(() => ({}))).result);
+    const paidRaw = guard.hashOf((await guard.kvCommand(cfg, ["HGETALL", "ads:bspend"]).catch(() => ({}))).result);
+    const paid = {};
+    for (const [k, v] of Object.entries(paidRaw || {})) { const p = parse(v, null); if (p && p.rupees > 0) paid[k] = p; }
+
+    // Meta's side, cached: the chart's spend line, each of our ads' spend, and
+    // who the money reached. Thirty minutes is fresher than anybody acts on.
+    let metaSide = { spend: {}, ads: {}, ids: [], age: [], place: [], error: "" };
+    if (conn.ok) {
+      const ck = `ads:growth:meta:${win}`;
+      const cached = parse(((await guard.kvCommand(cfg, ["GET", ck]).catch(() => ({}))) || {}).result || "", null);
+      if (cached && cached.at > now - 1800000) metaSide = cached.v;
+      else {
+        try {
+          const tok = tokenOf(conn.tokenName), act = `/act_${conn.accountId}`;
+          const range = JSON.stringify({ since: G.dayOf(now - (win - 1) * 86400000), until: G.dayOf(now) });
+          const conv = (actions) => { const hit = (actions || []).find((x) => /messaging_conversation_started/.test(x.action_type)); return hit ? Number(hit.value) || 0 : 0; };
+          const [daily, perAd, adsList, age, place] = await Promise.all([
+            graph(act + "/insights", tok, { fields: "spend", time_range: range, time_increment: 1, limit: 60 }).catch(() => ({ data: [] })),
+            graph(act + "/insights", tok, { fields: "ad_id,ad_name,spend,actions", level: "ad", time_range: range, limit: 200 }).catch(() => ({ data: [] })),
+            graph(act + "/ads", tok, { fields: "id", limit: 500 }).catch(() => ({ data: [] })),
+            graph(act + "/insights", tok, { fields: "spend,actions", breakdowns: "age,gender", time_range: range, limit: 100 }).catch(() => ({ data: [] })),
+            graph(act + "/insights", tok, { fields: "spend,actions", breakdowns: "publisher_platform,platform_position", time_range: range, limit: 100 }).catch(() => ({ data: [] })),
+          ]);
+          for (const d of daily.data || []) metaSide.spend[d.date_start] = rupees(d.spend);
+          for (const x of perAd.data || []) metaSide.ads[String(x.ad_id)] = { spend: rupees(x.spend), name: x.ad_name || "", chats: conv(x.actions) };
+          metaSide.ids = (adsList.data || []).map((x) => String(x.id));
+          const each = (rows, label) => (rows.data || []).map((x) => ({ label: label(x), spend: rupees(x.spend), chats: conv(x.actions) }))
+            .filter((x) => x.spend > 0).sort((p, q) => q.spend - p.spend).slice(0, 10)
+            .map((x) => Object.assign(x, { each: x.chats ? Math.round(x.spend / x.chats) : null }));
+          metaSide.age = each(age, (x) => `${x.gender === "female" ? "Aadavaallu" : x.gender === "male" ? "Magavaallu" : "?"} ${x.age}`);
+          metaSide.place = each(place, (x) => `${x.publisher_platform} · ${String(x.platform_position || "").replace(/_/g, " ")}`);
+        } catch (e) { metaSide.error = String(e.message || e).slice(0, 160); }
+        await guard.kvCommand(cfg, ["SET", ck, JSON.stringify({ at: now, v: metaSide }), "EX", "1800"]).catch(() => {});
+      }
+    }
+    const ours = metaSide.ids && metaSide.ids.length ? new Set(metaSide.ids) : null;
+    const inWin = leads.filter((l) => Number(l.ts) >= now - win * 86400000);
+    const flow = G.flow(leads, st, { now, days: 14, ours, spend: metaSide.spend });
+    const ads = G.adRows(inWin, st, { now, ours, paid, meta: metaSide.ads });
+    const top = G.winner(ads);
+    // In the window: how many came from each channel, said once.
+    const mix = {};
+    for (const l of inWin) { const c = G.channelOf(l, ours); mix[c] = (mix[c] || 0) + 1; }
+    return json(res, 200, {
+      ok: true, days: win, connected: !!conn.ok, canChange,
+      labels: G.LABEL, channels: G.CHANNELS, flow, ads, winner: top, mix,
+      quiet: G.quietAds(ads).map((x) => x.id),
+      drop: G.dropToday(leads, { now, ours }),
+      rhythm: G.rhythm(inWin), concerns: G.concernMix(inWin, st, ours),
+      audience: { age: metaSide.age || [], place: metaSide.place || [] },
+      metaError: metaSide.error || undefined,
+    });
+  }
+
+  // What the owner paid for an Instagram boost, typed in by hand — the boost
+  // lives in an account this server cannot read, and without the number the
+  // leaderboard can only count leads, not say what each one cost.
+  if (a === "boostspend") {
+    if (!canChange) return json(res, 403, { error: "Owner matrame idi marchagalaru" });
+    const ad = clean(b.ad, 40).replace(/[^0-9A-Za-z_-]/g, "");
+    const n = Math.round(Number(b.rupees));
+    if (!ad) return json(res, 400, { error: "Ad id ledu" });
+    if (!Number.isFinite(n) || n < 0 || n > 500000) return json(res, 400, { error: "Amount sariga ledu (₹0 – ₹5,00,000)" });
+    const ok = n === 0
+      ? await guard.kvWrite(cfg, ["HDEL", "ads:bspend", ad], "boost spend clear")
+      : await guard.kvWrite(cfg, ["HSET", "ads:bspend", ad, JSON.stringify({ rupees: n, note: clean(b.note, 80), at: Date.now(), by: me.name })], "boost spend");
+    if (!ok) return json(res, 503, { error: "Save avvaledu — malli try cheyyandi" });
+    await guard.kvCommand(cfg, ["LPUSH", "staff:audit", JSON.stringify({
+      ts: Date.now(), by: me.name, phone: me.phone, what: `Ads: boost ${ad} kharchu ₹${n.toLocaleString("en-IN")} ani rasaru`,
+    })]).catch(() => {});
+    return json(res, 200, { ok: true, ad, rupees: n });
+  }
+
   // Posters to choose from: what the clinic has put on Instagram lately, and
   // the posters it has published from this app. Typing an image URL by hand
   // was the only way before, which nobody on a phone was going to do.

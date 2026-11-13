@@ -43,14 +43,8 @@ const capi = require("./_capi.js");
 
 // What an ad was about, from its headline — so a person who tapped "Hair
 // fall? PRP therapy" is not asked what their concern is.
-const AD_CONCERNS = [
-  [/hair\s*transplant|fue|dhi|bald/i, "hair transplant"], [/hair\s*(fall|loss)|prp|gfc|thinning|dandruff|scalp/i, "hair fall"],
-  [/pigment|melasma|dark\s*spot|tan|pico|glow|bright/i, "pigmentation"], [/acne|pimple|scar/i, "acne"],
-  [/laser\s*hair|hair\s*removal|unwanted\s*hair/i, "laser hair removal"], [/hydra|facial/i, "Hydrafacial"],
-  [/wrinkle|botox|filler|anti[-\s]*ag|hifu|thread|tight/i, "anti-ageing"], [/weight|fat|slim|body/i, "weight loss"],
-  [/eczema|psoriasis|vitiligo|fungal|allerg|rash|itch/i, "skin disease"], [/wart|mole|skin\s*tag/i, "wart / mole removal"],
-  [/academy|course|training/i, "academy"],
-];
+// The list lives in _growth.js, which the Ads screen reads too.
+const AD_CONCERNS = require("./_growth.js").CONCERNS;
 const adConcern = (headline) => { const h = String(headline || ""); for (const [re, c] of AD_CONCERNS) if (re.test(h)) return c; return ""; };
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
@@ -915,7 +909,10 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
   if (cfg) {
     const ar = await guard.kvCommand(cfg, ["GET", `ad:ref:${phone}`]).catch(() => ({}));
     let ref = null; try { ref = ar && ar.result ? JSON.parse(ar.result) : null; } catch (e) {}
-    if (ref && ref.ad) { lead.ad_id = ref.ad; if (ref.headline) lead.ad_headline = ref.headline; if (ref.src) lead.ad_src = ref.src; }
+    if (ref && ref.ad) {
+      lead.ad_id = ref.ad; if (ref.headline) lead.ad_headline = ref.headline; if (ref.src) lead.ad_src = ref.src;
+      if (ref.body) lead.ad_body = ref.body; if (ref.url) lead.ad_url = ref.url; if (ref.thumb) lead.ad_thumb = ref.thumb;
+    }
   }
   const sync = await clinic.forwardLead(cfg, lead);
   if (sync.attempted) lead.synced = sync.synced;
@@ -1055,7 +1052,13 @@ module.exports = async (req, res) => {
       // "ad" is money being spent; "post" is an organic post with a message
       // button and nothing to switch off. Told apart only by this field, and
       // a day went into guessing which it was for want of storing it.
-      const ref = { ad: String(msg.referral.source_id || "").slice(0, 40), headline: String(msg.referral.headline || "").slice(0, 120), src: String(msg.referral.source_type || "").slice(0, 12).toLowerCase(), ts: Date.now() };
+      const R = msg.referral;
+      const ref = { ad: String(R.source_id || "").slice(0, 40), headline: String(R.headline || "").slice(0, 120), src: String(R.source_type || "").slice(0, 12).toLowerCase(), ts: Date.now(),
+        // Enough to recognise the ad by on the Ads screen: an Instagram boost
+        // lives in an account we cannot read, and its "headline" is often just
+        // "api.whatsapp.com". Its own words, its link and its picture are not.
+        body: String(R.body || "").replace(/\s+/g, " ").slice(0, 200), url: String(R.source_url || "").slice(0, 300),
+        thumb: String(R.thumbnail_url || R.image_url || "").slice(0, 500) };
       if (rph.length === 10 && ref.ad) {
         await guard.kvCommand(cfg, ["SET", `ad:ref:${rph}`, JSON.stringify(ref), "EX", String(30 * 86400)]).catch(() => {});
         // The ad already told us the concern: the grade starts from it, and the

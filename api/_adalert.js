@@ -62,6 +62,11 @@ async function run(cfg, opts) {
     if (!due || !due.result) return Object.assign(res, { skipped: "too soon" });
   }
 
+  // Leads going quiet needs only our own book, so it runs before — and
+  // without — the Meta account. On 13 November an Instagram boost ran out and
+  // ad leads fell from 14 a day to 3 with nothing anywhere saying so.
+  try { await quietAlerts(cfg, res); } catch (e) { console.error("adalert: quiet", e && e.message); }
+
   const ads = require("./ads.js");
   const conn = await ads.connect(cfg).catch(() => ({ ok: false }));
   if (!conn.ok) return Object.assign(res, { skipped: "not connected" });
@@ -102,24 +107,51 @@ async function run(cfg, opts) {
   }
   res.checked = campaigns.length;
 
-  const to = guard.ownerPhones()[0];
-  for (const p of problems(account, campaigns, target)) {
-    // Once a week per campaign per problem. It is still wrong tomorrow.
-    const once = await guard.kvCommand(cfg, ["SET", `ads:alert:${p.id}:${p.kind}`, "1", "NX", "EX", WEEK]).catch(() => ({}));
-    if (!once || !once.result) continue;
-    res.alerts++;
-    const line = `🔔 *${String(p.name).slice(0, 60)}*\n${p.text}`;
-    // Free-form only reaches somebody who wrote to us in the last 24 hours.
-    // Whether it landed is written down beside the alert, either way.
-    let sent = false;
-    if (to) sent = !!(await notify.sendWa(to, `${line}\n\nAds screen lo chudandi: dermaluxe.ai/staff.html#ads`).catch(() => false));
-    if (sent) res.sent++;
-    await guard.kvCommand(cfg, ["LPUSH", "ads:alerts", JSON.stringify({
-      ts: Date.now(), kind: p.kind, id: p.id, name: p.name, text: p.text, sent,
-    })]).catch(() => {});
-  }
+  for (const p of problems(account, campaigns, target)) await say(cfg, res, p, WEEK);
   await guard.kvCommand(cfg, ["LTRIM", "ads:alerts", "0", "29"]).catch(() => {});
   return res;
+}
+
+// Once per thing per window, to the owner, and written down either way.
+async function say(cfg, res, p, ttl) {
+  // Once a week per campaign per problem. It is still wrong tomorrow.
+  const once = await guard.kvCommand(cfg, ["SET", `ads:alert:${p.id}:${p.kind}`, "1", "NX", "EX", String(ttl)]).catch(() => ({}));
+  if (!once || !once.result) return false;
+  res.alerts++;
+  const to = guard.ownerPhones()[0];
+  const line = `🔔 *${String(p.name).slice(0, 60)}*\n${p.text}`;
+  // Free-form only reaches somebody who wrote to us in the last 24 hours.
+  // Whether it landed is written down beside the alert, either way.
+  let sent = false;
+  if (to) sent = !!(await notify.sendWa(to, `${line}\n\nAds screen lo chudandi: dermaluxe.ai/staff.html#ads`).catch(() => false));
+  if (sent) res.sent++;
+  await guard.kvCommand(cfg, ["LPUSH", "ads:alerts", JSON.stringify({
+    ts: Date.now(), kind: p.kind, id: p.id, name: p.name, text: p.text, sent,
+  })]).catch(() => {});
+  return true;
+}
+
+// An ad that was bringing people in and has stopped, and a day when the ad
+// leads as a whole fell by half or more by this hour.
+function quietProblems(leads, now) {
+  const G = require("./_growth.js");
+  const out = [];
+  const week = (leads || []).filter((l) => Number(l.ts) >= now - 7 * 86400000);
+  for (const r of G.quietAds(G.adRows(week, {}, { now }))) {
+    const name = r.label || r.body || `Ad …${String(r.id).slice(-5)}`;
+    out.push({ kind: "quiet", id: r.id, name,
+      text: `${r.sinceH} gantalu ga ee ad nunchi okka lead kuda raaledu — mundu ee vaaram ${r.leads} leads ichindi. Instagram boost aipoyindemo: Instagram app → Professional dashboard → Ad tools lo chudandi. Baaga pani chesindi kabatti malli boost cheyyochu.` });
+  }
+  const d = G.dropToday(leads, { now });
+  if (d) out.push({ kind: "drop", id: `day:${G.dayOf(now)}`, name: "Ads nunchi leads taggayi",
+    text: `Ee roju ${d.by} gantala varaku ads nunchi ${d.today} leads — gata vaaram ee time ki sagatu ${d.avg}. ${d.pct}% takkuva. Boost / campaign aagipoyindemo chudandi.` });
+  return out;
+}
+
+async function quietAlerts(cfg, res) {
+  const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "799"]).catch(() => ({}));
+  const leads = (r.result || []).map((x) => parse(x, null)).filter(Boolean);
+  for (const p of quietProblems(leads, Date.now())) await say(cfg, res, p, p.kind === "drop" ? 86400 : 7 * 86400);
 }
 
 async function recent(cfg, n) {
@@ -127,4 +159,4 @@ async function recent(cfg, n) {
   return (r.result || []).map((x) => parse(x, null)).filter(Boolean);
 }
 
-module.exports = { run, recent, problems, MIN_SPEND, EVERY, WINDOW };
+module.exports = { run, recent, problems, quietProblems, MIN_SPEND, EVERY, WINDOW };

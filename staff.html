@@ -573,6 +573,39 @@
     .postpick img{width:100%;height:100%;object-fit:cover;display:block}
     .postpick i{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);color:#fff;font-size:.75rem;font-style:normal;padding:1px 0}
     .pbud.on{border-color:var(--g2);color:var(--g2)}
+    /* marketing growth (13 Nov 2026) */
+    .gchart{display:flex;align-items:stretch;gap:3px;margin-top:14px;overflow-x:auto;padding-bottom:2px}
+    .gbar{flex:1 0 19px;display:flex;flex-direction:column;align-items:center;min-width:0}
+    .gstack{width:100%;max-width:34px;height:150px;display:flex;flex-direction:column;justify-content:flex-end}
+    .gstack b{font-size:.75rem;font-weight:600;text-align:center;font-variant-numeric:tabular-nums;margin-bottom:2px}
+    .gstack i{display:block;width:100%;min-height:2px}
+    .gstack i:nth-child(2){border-radius:4px 4px 0 0}
+    .gbar em{font-size:.75rem;color:var(--muted2);font-style:normal;text-align:center;line-height:1.15;margin-top:4px}
+    .gbook{font-size:.75rem;color:var(--ok);font-weight:600;min-height:1.1em;margin-top:2px}
+    .gspend{font-size:.75rem;color:var(--g2);white-space:nowrap}
+    .glegend{display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:14px}
+    .glg{display:inline-flex;align-items:center;gap:5px;font-size:.8rem;color:var(--muted)}
+    .glg i{width:10px;height:10px;border-radius:3px;display:inline-block}
+    .glg b{color:var(--text);font-weight:600}
+    .gwin{border-color:rgba(31,150,90,.55);box-shadow:0 0 0 2px rgba(31,150,90,.12)}
+    .gspark{display:inline-flex;align-items:flex-end;gap:2px;height:14px;vertical-align:middle;margin-left:4px}
+    .gspark i{width:5px;background:var(--g2);border-radius:1px;display:block}
+    .ghours{display:grid;grid-template-columns:repeat(24,1fr);gap:2px;margin-top:10px}
+    .ghours i{height:26px;border-radius:3px;display:block}
+    .ghl{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted2);margin-top:2px}
+    .gweek{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;height:90px;margin-top:12px}
+    .gwd{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:2px;min-width:0}
+    .gwd i{width:70%;background:rgba(138,100,36,.55);border-radius:4px 4px 0 0;display:block}
+    .gwd em{font-size:.75rem;font-style:normal;color:var(--muted2)}
+    .gwd b{font-size:.75rem;font-weight:600}
+    .gconc{display:grid;grid-template-columns:minmax(90px,32%) 1fr auto;gap:8px;align-items:center;font-size:.84rem;padding:3px 0}
+    .gconc i{height:8px;background:var(--g5,#eee);border-radius:4px;overflow:hidden;display:block}
+    .gconc i b{display:block;height:100%;background:var(--g2);border-radius:4px}
+    .gconc em{font-style:normal;color:var(--muted);font-size:.78rem;white-space:nowrap}
+    .gspendin{text-align:right;font-variant-numeric:tabular-nums}
+    .gtbl{width:100%;border-collapse:collapse;font-size:.8rem}
+    .gtbl th,.gtbl td{padding:5px 6px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+    .gtbl th:first-child,.gtbl td:first-child{text-align:left}
     .adbud,.adrad{text-align:right}
     .goalbar i{display:block;height:100%;border-radius:3px}
     .pnl-row span:last-child{font-variant-numeric:tabular-nums;white-space:nowrap}
@@ -1212,7 +1245,8 @@
       <!-- The one screen where a tap spends money. It was the fourth board at
            the bottom of Numbers, so nobody ever scrolled to it. -->
       <section id="t-ads" class="hide">
-        <div id="adsBoard"></div>
+        <div id="growthBoard"></div>
+        <div id="adsBoard" style="margin-top:12px"></div>
       </section>
       <section id="t-academy" class="hide">
         <div class="countdown" id="acadCount"></div>
@@ -3273,6 +3307,135 @@
           "</div>" + promoBox + todoBox + openerBox;
         restorePlan(j);
       }).catch(function () { host.innerHTML = ""; });
+    }
+
+    // ---- marketing growth ----------------------------------------------------
+    // Where the leads came from, day by day, and which ad brought them. Its own
+    // request, so it shows even when the Meta account is not connected — half
+    // the clinic's ad leads come from Instagram boosts that account cannot see
+    // (13 Nov 2026: a boost ran out, ad leads fell 14 → 3, nothing said so).
+    var growDays = 14;
+    var GROW_COL = { ours: "#8a6424", boost: "#d6336c", post: "#7c3aed", insta: "#0284c7", organic: "#059669", desk: "#64748b", job: "#c9c9cf" };
+    function loadGrowth() {
+      var host = $("growthBoard"); if (!host) return;
+      if (!host.innerHTML) host.innerHTML = '<div class="box"><div class="sk"><div></div><div></div><div></div></div></div>';
+      adsapi("growth", null, "&days=" + growDays).then(paintGrowth)
+        .catch(function (e) { host.innerHTML = '<div class="box"><p class="meta">Growth numbers raaledu: ' + esc(e.message) + "</p></div>"; });
+    }
+    function paintGrowth(j) {
+      var host = $("growthBoard"); if (!host) return;
+      var L = j.labels || {}, CH = j.channels || [];
+      var ago = function (h) { return h == null ? "" : h < 1 ? "ippude" : h < 48 ? h + " gantala kritam" : Math.round(h / 24) + " rojula kritam"; };
+      var nameOf = function (r) { return r.label || r.body || ("Ad …" + String(r.id).slice(-5)); };
+
+      // Said first, in red: the two things the owner needed to hear on 13 Nov.
+      var warn = "";
+      if (j.drop) warn += '<div class="adverdict" style="color:var(--bad);background:rgba(190,60,50,.08);margin-top:10px">📉 <b>Ee roju ads nunchi leads ' + j.drop.pct + "% takkuva</b> — " +
+        j.drop.by + " gantala varaku " + j.drop.today + " leads, gata vaaram ee time ki sagatu " + j.drop.avg + ". Boost / campaign aagipoyindemo chudandi.</div>";
+      var quiet = (j.ads || []).filter(function (r) { return (j.quiet || []).indexOf(r.id) >= 0; });
+      if (quiet.length) warn += '<div class="adverdict" style="color:var(--hot);background:rgba(214,120,40,.09);margin-top:8px">⏸ <b>Leads aagipoyina ads (' + quiet.length + ")</b>: " +
+        quiet.map(function (r) { return esc(nameOf(r)) + " — " + ago(r.sinceH); }).join(" · ") +
+        '<div class="meta" style="margin-top:4px">Instagram boost ayithe: Instagram app → Professional dashboard → <b>Ad tools</b> → aa post → Boost again.</div></div>';
+
+      // The chart. Stacked by channel, patients only; job enquiries drawn
+      // faint on top so they are seen and not counted.
+      var F = j.flow || [];
+      var max = Math.max(1, Math.max.apply(null, F.map(function (d) { return d.total + d.job; })));
+      var bars = F.map(function (d) {
+        var segs = CH.map(function (c) {
+          return d[c] ? '<i title="' + esc(L[c] + ": " + d[c]) + '" style="height:' + (d[c] / max * 100) + "%;background:" + GROW_COL[c] + '"></i>' : "";
+        }).reverse().join("");
+        var dt = new Date(d.day + "T12:00:00+05:30");
+        // The total sits on top of its own bar, inside the stack, so a short
+        // day's number is not floating at the height of the tallest.
+        return '<div class="gbar"><div class="gstack"><b>' + d.total + "</b>" + segs + "</div>" +
+          "<em>" + dt.getDate() + "<br>" + dt.toLocaleDateString("en-IN", { weekday: "short", timeZone: "Asia/Kolkata" }).slice(0, 2) + "</em>" +
+          '<span class="gbook" title="Book ayinavi">' + (d.booked ? "✓" + d.booked : "") + "</span>" +
+          (j.connected ? '<span class="gspend">' + (d.spend ? "₹" + d.spend : "") + "</span>" : "") + "</div>";
+      }).join("");
+      var mix = j.mix || {};
+      var legend = CH.filter(function (c) { return mix[c]; }).map(function (c) {
+        return '<span class="glg"><i style="background:' + GROW_COL[c] + '"></i>' + esc(L[c]) + " <b>" + mix[c] + "</b></span>";
+      }).join("");
+      var tot = F.reduce(function (n, d) { return n + d.total; }, 0), bk = F.reduce(function (n, d) { return n + d.booked; }, 0);
+
+      var flowBox = '<div class="box"><div class="adshead"><div><h2 style="margin:0">📈 Leads ekkada nunchi <span class="te" style="font-size:.9rem;color:var(--g3)">· లీడ్స్ ఎక్కడి నుంచి</span></h2>' +
+        '<p class="meta" style="margin-top:2px">Gata 14 rojulu: <b style="color:var(--text)">' + tot + " patient leads</b>, " + bk + " book ayyayi. Ads, Instagram boosts, WhatsApp, desk — anni okka chota.</p></div>" +
+        '<div class="acts">' + [7, 14, 30].map(function (n) {
+          return '<button class="btn btn--sm pbud' + (growDays === n ? " on" : "") + '" data-act="grow-days" data-d="' + n + '">' + n + " rojulu</button>";
+        }).join("") + "</div></div>" + warn +
+        '<div class="gchart" role="img" aria-label="Leads per day by source">' + bars + "</div>" +
+        '<div class="glegend">' + legend + "</div>" +
+        '<p class="meta" style="margin-top:6px">Paina number = patient leads (job enquiries kalapaledu, avi chivari boodida rangu). ✓ = book ayinavi' + (j.connected ? ", ₹ = mana ad account kharchu" : "") + ". Rangulu, list kinda ee " + j.days + " rojulavi.</p></div>";
+
+      // The leaderboard: every ad that brought somebody, ours or a boost.
+      var A = j.ads || [];
+      var STATE = { live: ["🟢 Nadustondi", "var(--ok)"], slow: ["🟠 Taggindi", "var(--hot)"], stopped: ["🔴 Aagipoyindi", "var(--bad)"], none: ["—", "var(--muted)"] };
+      var KIND = { ours: "Mana ad", boost: "Instagram boost", post: "Post button" };
+      var spark = function (w) { var m = Math.max(1, Math.max.apply(null, w)); return '<span class="gspark" title="Gata 7 rojulu">' + w.map(function (n) { return '<i style="height:' + Math.max(8, n / m * 100) + '%;opacity:' + (n ? 1 : .25) + '"></i>'; }).join("") + "</span>"; };
+      var cell = function (t, v) { return '<div class="adcell"><div class="meta">' + esc(t) + "</div><b>" + esc(v) + "</b></div>"; };
+      var cards = A.map(function (r) {
+        var s = STATE[r.state] || STATE.none;
+        return '<div class="adcard' + (j.winner === r.id ? " gwin" : "") + '"><div class="adtop">' +
+          (r.thumb ? '<img class="adthumb" src="' + esc(r.thumb) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<div class="adthumb" style="display:grid;place-items:center;font-size:1.4rem">' + (r.kind === "boost" ? "📣" : r.kind === "post" ? "📌" : "🎯") + "</div>") +
+          '<div style="min-width:0;flex:1"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><b style="min-width:0;overflow-wrap:anywhere">' + esc(nameOf(r)) + "</b>" +
+          (j.winner === r.id ? '<span class="badge">🏆 Top</span>' : "") + "</div>" +
+          '<div class="meta" style="margin-top:2px">' + esc(KIND[r.kind] || r.kind) + ' · <span style="color:' + s[1] + '">' + s[0] + "</span>" + (r.last ? " · last lead " + ago(r.sinceH) : "") + "</div>" +
+          '<div class="meta" style="margin-top:2px">7 rojulu ' + spark(r.week || []) + "</div></div></div>" +
+          '<div class="adcells">' + cell("Leads", String(r.leads)) + cell("Book", String(r.booked)) + cell("Vachcharu", String(r.came)) +
+            cell("Okko lead ki", r.perLead ? money0(r.perLead) : "—") + "</div>" +
+          (r.concerns && r.concerns.length ? '<div class="meta" style="margin-top:6px">Adigindi: ' + r.concerns.map(function (c) { return esc(c.name) + " " + c.n; }).join(" · ") + "</div>" : "") +
+          (r.towns ? '<div class="meta" style="margin-top:2px">📍 ' + r.local + "/" + r.towns + " Eluru 40 km lopu" + (r.far ? ' · <span style="color:var(--bad)">' + r.far + " chaala dooram</span>" : "") + "</div>" : "") +
+          (r.jobs ? '<div class="meta" style="margin-top:2px;color:var(--hot)">' + r.jobs + " mandi patient kaadu (job etc.) — vaallani leads lo lekkapettaledu</div>" : "") +
+          (r.link ? '<div class="meta" style="margin-top:4px"><a target="_blank" rel="noopener" href="' + esc(r.link) + '">Ad / post chudu ↗</a></div>' : "") +
+          (r.kind !== "ours" && j.canChange
+            ? '<div class="noteform" style="margin-top:8px;flex-wrap:wrap"><span class="meta">Boost ki kattinadi ₹</span><input class="gspendin" inputmode="numeric" value="' + (r.spent || "") + '" placeholder="enta?" style="width:90px">' +
+              '<button class="btn btn--sm" data-act="grow-spend" data-ad="' + esc(r.id) + '">Save</button>' +
+              (r.perBooked ? '<span class="meta">okko booking ki <b style="color:var(--g2)">' + money0(r.perBooked) + "</b></span>" : "") + "</div>"
+            : r.spent ? '<div class="meta" style="margin-top:6px">Kharchu ' + money0(r.spent) + (r.perBooked ? " · okko booking ki " + money0(r.perBooked) : "") + "</div>" : "") +
+          "</div>";
+      }).join("");
+      var adsBox = '<div class="box" style="margin-top:12px"><h3 style="margin:0 0 4px">🏆 E ad baaga pani chestondi — ' + j.days + " rojulu</h3>" +
+        '<p class="meta" style="margin-bottom:8px">Prathi ad / Instagram boost ki: enta mandi WhatsApp chesaru, enta mandi book chesaru, vachcharu. Boost ki enta kattaro rasthe, okko lead ki enta paddindo chupistundi. 🏆 = mundu dabbu pettalsina ad.</p>' +
+        (cards ? '<div class="adsgrid">' + cards + "</div>" : '<p class="meta">Ee ' + j.days + " rojullo ad nunchi vachchina lead ledu.</p>") + "</div>";
+
+      // When they write, and about what.
+      var R = j.rhythm || { hours: [], week: [] };
+      var hm = Math.max(1, Math.max.apply(null, R.hours.concat([1])));
+      var hl = function (h) { return (h % 12 || 12) + (h < 12 ? "am" : "pm"); };
+      var hours = R.hours.map(function (n, h) { return '<i title="' + hl(h) + ": " + n + '" style="background:rgba(138,100,36,' + (n ? (.12 + .88 * n / hm).toFixed(2) : .05) + ')"></i>'; }).join("");
+      var wd = ["Som", "Mang", "Budh", "Guru", "Shuk", "Shani", "Aadi"];
+      var wm = Math.max(1, Math.max.apply(null, R.week.concat([1])));
+      var week = R.week.map(function (n, i) { return '<div class="gwd"><i style="height:' + Math.max(6, n / wm * 100) + '%"></i><em>' + wd[i] + "</em><b>" + n + "</b></div>"; }).join("");
+      var C = j.concerns || [];
+      var cmax = Math.max(1, C.length ? C[0].n : 1);
+      var conc = C.map(function (c) {
+        return '<div class="gconc"><span>' + esc(c.name) + '</span><i><b style="width:' + Math.round(c.n / cmax * 100) + '%"></b></i><em>' + c.n + (c.ads ? " · ads " + c.ads : "") + (c.booked ? " · ✓" + c.booked : "") + "</em></div>";
+      }).join("");
+      var whenBox = '<div class="box" style="margin-top:12px"><h3 style="margin:0 0 4px">⏰ Eppudu vastunnaru, emi adugutunnaru</h3>' +
+        (R.peak ? '<p class="meta">Ekkuva leads <b style="color:var(--text)">' + hl(R.peak.from) + " – " + hl(R.peak.to) + "</b> madhya (" + R.peak.share + "%). Aa time lo desk phone daggara undali; ads ki ide manchi time.</p>" : "") +
+        '<div class="ghours">' + hours + '</div><div class="ghl"><span>12am</span><span>6am</span><span>12pm</span><span>6pm</span><span>11pm</span></div>' +
+        '<div class="gweek">' + week + "</div>" +
+        (conc ? '<div style="margin-top:12px"><div class="meta" style="margin-bottom:4px">E problem tho vastunnaru (patients, ' + j.days + " rojulu)</div>" + conc + "</div>" : "") +
+        '<p class="meta" style="margin-top:8px">Ekkuva adugutunna problem meeda kotha ad / poster pettandi — "AI plan" lo adi choose cheyyochu.</p></div>';
+
+      // Who the money reached — only once our own account has spent.
+      var AU = j.audience || {};
+      var tbl = function (rows) {
+        return '<div style="overflow-x:auto"><table class="gtbl"><tr><th></th><th>Kharchu</th><th>Chats</th><th>Okkodaaniki</th></tr>' + rows.map(function (x) {
+          return "<tr><td>" + esc(x.label) + "</td><td>" + money0(x.spend) + "</td><td>" + x.chats + "</td><td>" + (x.each ? money0(x.each) : "—") + "</td></tr>";
+        }).join("") + "</table></div>";
+      };
+      var audBox = (AU.age && AU.age.length) || (AU.place && AU.place.length)
+        ? '<div class="box" style="margin-top:12px"><h3 style="margin:0 0 4px">👥 Mana ad account dabbu evarini cherindi</h3>' +
+          '<p class="meta" style="margin-bottom:8px">Okko chat ki takkuva unna group ki ekkuva pettandi; chats raani group ni AI plan lo teeseyyandi.</p>' +
+          '<div class="abgrid">' + (AU.age.length ? "<div>" + tbl(AU.age) + "</div>" : "") + (AU.place.length ? "<div>" + tbl(AU.place) + "</div>" : "") + "</div></div>"
+        : "";
+
+      host.innerHTML = flowBox + adsBox + whenBox + audBox;
+      // On a phone the fortnight is wider than the screen; today is the end
+      // that matters, so that is where it opens.
+      var gc = host.querySelector(".gchart"); if (gc) gc.scrollLeft = gc.scrollWidth;
     }
 
     // ---- plan a campaign, then build it -------------------------------------
@@ -6447,7 +6610,7 @@
       if (t === "inbox") loadInbox();
       if (t === "attend") loadAttend();
       if (t === "numbers") loadInsights();
-      if (t === "ads") loadAds();
+      if (t === "ads") { loadGrowth(); loadAds(); }
       if (t === "appts") loadSchedule();
       if (t === "today" && todayDirty && state.data) { todayDirty = false; renderToday(); }
     });
@@ -7300,10 +7463,20 @@
         paintPosters();
         return;
       }
+      if (el.dataset.act === "grow-days") { growDays = Number(el.dataset.d) || 14; loadGrowth(); return; }
+      if (el.dataset.act === "grow-spend") {
+        var gin = el.closest(".adcard") && el.closest(".adcard").querySelector(".gspendin");
+        var gv = Math.round(Number(String(gin ? gin.value : "").replace(/[^0-9]/g, "")) || 0);
+        el.disabled = true;
+        adsapi("boostspend", { ad: el.dataset.ad, rupees: gv })
+          .then(function () { toast(gv ? "₹" + gv.toLocaleString("en-IN") + " save chesam" : "Teesesam"); loadGrowth(); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
       if (el.dataset.act === "ads-sync") {
         el.disabled = true; el.textContent = "Sync…";
         adsapi("sync", {})
-          .then(function () { toast("Meta nunchi malli teesukunnam"); loadAds(); })
+          .then(function () { toast("Meta nunchi malli teesukunnam"); loadAds(); loadGrowth(); })
           .catch(function (x) { toast(x.message); el.disabled = false; el.textContent = "↻ Sync from Ads Manager"; });
         return;
       }
