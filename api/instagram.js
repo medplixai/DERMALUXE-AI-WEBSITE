@@ -511,10 +511,14 @@ async function handleComment(entry, v) {
   if (process.env.IG_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) return;
 
   const cfg = guard.kvConfig();
-  // one shot per comment, ever (covers webhook redeliveries too)
+  // one shot per comment, ever (covers webhook redeliveries too). The mark
+  // lived 7 days while the hourly sweep looks back 60, so from the eighth day
+  // a comment we had already tried was tried again every hour, and Instagram
+  // refused the private reply every time ("the comment is too old") — 13 Nov
+  // 2026, hourly in the logs. The mark now outlives the sweep window.
   if (cfg) {
     try {
-      const first = await guard.kvCommand(cfg, ["SET", `ig:c:${commentId}`, "1", "NX", "EX", "604800"]);
+      const first = await guard.kvCommand(cfg, ["SET", `ig:c:${commentId}`, "1", "NX", "EX", String(61 * 86400)]);
       if (!first.result) return;
     } catch (e) {}
   }
@@ -550,6 +554,12 @@ async function handleComment(entry, v) {
   }
   if (out.public_reply && unsafeComment(out.public_reply, text)) out.public_reply = COMMENT_WA;
 
+  // Instagram allows a private reply only within 7 days of the comment, so an
+  // older one found by the sweep goes straight to the public reply with the
+  // number instead of a request bound to fail.
+  const tooOld = v.timestamp && Date.parse(v.timestamp) < Date.now() - 7 * 86400000;
+  // (its public line may say "DM chesam" — untrue once no DM goes, so it is the number instead)
+  if (out.dm && tooOld) { out.dm = null; out.public_reply = COMMENT_WA; }
   if (out.dm) {
     const ok = await sendPrivateReply(commentId, out.dm, cred);
     // Instagram refuses a private reply now and then (the commenter's settings,
@@ -601,7 +611,7 @@ async function sweepIgComments(cfg, max) {
       if (((c.replies || {}).data || []).some(ours)) continue;          // already answered
       const done = await guard.kvCommand(cfg, ["GET", `ig:c:${c.id}`]).catch(() => ({}));
       if (done && done.result) continue;
-      await handleComment({ id: ourId || "ourpage" }, { id: c.id, text: c.text, from: { id: fromId || `u:${uname}`, username: uname }, media: { id: m.id } });
+      await handleComment({ id: ourId || "ourpage" }, { id: c.id, text: c.text, timestamp: c.timestamp, from: { id: fromId || `u:${uname}`, username: uname }, media: { id: m.id } });
       if (++handled >= (max || 20)) return { ok: true, seen, handled, more: true };
     }
   }

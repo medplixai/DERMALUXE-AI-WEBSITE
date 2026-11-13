@@ -240,6 +240,7 @@ const hook = { token: "hook" };
     if (/graph\.instagram\.com\/v[\d.]+\/me\?/.test(u)) return { ok: true, json: async () => ({ user_id: "ourig", username: "dermaluxe.ai" }) };
     if (/\/me\/media\?/.test(u)) return { ok: true, json: async () => ({ data: [{ id: "m1", timestamp: new Date().toISOString() }] }) };
     if (/\/m1\/comments\?/.test(u)) return { ok: true, json: async () => ({ data: [
+      { id: "stale1", text: "doctor eppudu untaru?", username: "late", timestamp: new Date(Date.now() - 10 * 86400000).toISOString(), from: { id: "u9", username: "late" }, replies: { data: [] } },
       { id: "old1", text: "hair transplant cost entha?", username: "asker", from: { id: "u1", username: "asker" }, replies: { data: [] } },
       { id: "old2", text: "Super 😍", username: "fan", from: { id: "u2", username: "fan" }, replies: { data: [] } },
       { id: "old3", text: "price?", username: "done", from: { id: "u3", username: "done" }, replies: { data: [{ username: "dermaluxe.ai", from: { id: "ourig" } }] } },
@@ -247,11 +248,16 @@ const hook = { token: "hook" };
     if (/ig\.refresh|refresh_access_token/.test(u)) return { ok: false, json: async () => ({}) };
     return keepFetch(url, opt);
   };
-  claude.push({ dm: "Hi 🙏 WhatsApp: 99591 34666", public_reply: "Details DM chesam 💬" }, { dm: "Thank you 😊 skin leda hair doubt unte adagandi", public_reply: "Thank you 🙏" });
+  claude.push({ dm: "Hi 🙏 doctor Mon–Sat untaru", public_reply: "Details DM chesam 💬" }, { dm: "Hi 🙏 WhatsApp: 99591 34666", public_reply: "Details DM chesam 💬" }, { dm: "Thank you 😊 skin leda hair doubt unte adagandi", public_reply: "Thank you 🙏" });
   const sw = await igMod.sweepIgComments(h.cfg || {}, 20);
   global.fetch = keepFetch; delete process.env.IG_LOGIN_TOKEN;
   const swl = leads().filter((l) => l.type === "ig_comment");
-  is([sw.handled, swl.some((l) => l.name === "@asker" && l.heat === "warm"), swl.some((l) => l.name === "@fan" && l.heat === "cold"), swl.some((l) => l.name === "@done")],
+  // 13 Nov 2026: Instagram refuses a private reply to a comment over 7 days
+  // old, and the sweep tried one every hour.
+  is([privates.some((x) => x.to === "stale1"), publics.some((x) => x.on === "stale1" && !/DM chesam/.test(x.text))], [false, true],
+    "a comment over a week old is not sent a private reply bound to fail — it gets the public reply with the number, never 'DM chesam'");
+  is(String(h.run(["TTL", "ig:c:old1"])) > String(7 * 86400) || Number(h.run(["TTL", "ig:c:old1"])) > 7 * 86400, true, "and a handled comment stays marked longer than the sweep looks back, so it is not tried again on day eight");
+  is([sw.handled - 1, swl.some((l) => l.name === "@asker" && l.heat === "warm"), swl.some((l) => l.name === "@fan" && l.heat === "cold"), swl.some((l) => l.name === "@done")],
     [2, true, false, false], "old comments we never answered are answered — the question becomes a lead, the praise does not — and one we already answered is left");
 
   dms.length = 0;

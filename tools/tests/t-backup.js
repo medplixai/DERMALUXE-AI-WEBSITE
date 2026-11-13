@@ -85,6 +85,32 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   const list = await h.call(restore, { a: "list" });
   is(list.body.backups.length, 1, "the owner can see what backups exist");
 
+  // 8–13 Nov 2026: every night failed with "canceling statement due to
+  // statement timeout" — one pipeline is one statement, and 300 keys' worth
+  // of values no longer fitted. Pretend the database refuses any statement
+  // carrying more than ~6 KB of values or 20 commands, give it a lead list far
+  // too big for one statement, and the backup must still come out whole.
+  const gpath = require("path").join(process.env.DL_API, "_guard.js"), G = require.cache[gpath].exports, realPipe = G.kvPipeline;
+  for (let i = 0; i < 260; i++) h.run(["RPUSH", "dl_leads", JSON.stringify({ name: "Lead " + i, phone: "98765" + String(10000 + i), note: "x".repeat(80) })]);
+  for (let i = 0; i < 120; i++) h.run(["SET", "pt:98" + String(76540000 + i), JSON.stringify({ stage: "consult", n: i })]);
+  let refused = 0;
+  G.kvPipeline = async (cfg, cs) => {
+    const out = await realPipe(cfg, cs);
+    const reads = cs.filter((c) => /^(GET|LRANGE|HGETALL|SMEMBERS)$/.test(c[0]));
+    if (reads.length && (reads.length > 20 || JSON.stringify(out).length > 6000)) { refused++; throw new Error("db 500 canceling statement due to statement timeout"); }
+    return out;
+  };
+  const big = await backup.writeBackup({ kind: "pg" }, day);
+  G.kvPipeline = realPipe;
+  const peek2 = await h.call(restore, { a: "peek" }, { a: "peek", day });
+  is(refused > 0, true, `the database refused ${refused} statements as too big`);
+  is([big.failed.length, peek2.body.leads], [0, h.run(["LLEN", "dl_leads"])], "and still every key came out — the long lead list read a page at a time, in full");
+  is(peek2.body.keys >= 120, true, "with every patient record beside it");
+  G.kvPipeline = async (cfg, cs) => { if (cs.some((c) => c[0] === "GET" && c[1] === "pt:9876540007")) throw new Error("statement timeout"); return realPipe(cfg, cs); };
+  const holed = await backup.writeBackup({ kind: "pg" }, day);
+  G.kvPipeline = realPipe;
+  is([holed.failed.length, /pt:9876540007/.test(holed.failed[0] || "")], [1, true], "a key that can never be read is named, and the rest of the copy is still written");
+
   h.as(["money.view"]);
   is((await h.call(restore, { a: "list" })).code, 403, "nobody but the owner can touch backups");
   h.as(["*"]);
