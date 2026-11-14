@@ -247,6 +247,8 @@ const MENU = [
   { s: "Anti-ageing", t: "HIFU / skin tightening", d: "Non-surgical lift, single session" },
   { s: "Anti-ageing", t: "Weight loss", d: "Doctor-supervised, body contouring" },
 ];
+// A first message that says nothing yet: "Hi", "Hello mam", "Dermaluxe", "?".
+const GREET_ONLY = /^(hi+|hii+ ?(mam|sir|madam|andi)?|hello+( (mam|sir|madam|andi))?|hlo+|hai+|hey+|namaste|namaskaram|namaskar|good ?(morning|afternoon|evening|night)|dermaluxe|dermaluxe by medicare|reply|ok|\?+|\.+)?[\s!.?🙏😊👋]*$/i;
 const MENU_ASK = /^(💆 services|services|menu|treatments?|treatment list|price list|rates|list)\s*\??$/i;
 async function sendCloudMenu(phoneNumberId, to, cfg) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -972,6 +974,32 @@ async function storeLead(cfg, leadInfo, phone, lastMsg) {
   return { bookedAt: bookedNow };
 }
 
+// The burst this message belongs to. Waits WA_MERGE_MS (2.5 s), then reads
+// the patient's inbox thread: a later plain-text message from them means
+// that one will answer ({later:true}); otherwise every plain-text message
+// they sent since our last word to them, within a minute, is joined into
+// one ({text}). Photos, voice notes and files are never folded in — they go
+// through on their own, as before.
+const MEDIA_LINE = /^\[(📷|🎤|🎬|📄)/;
+async function mergeBurst(cfg, phone, myTs, myText) {
+  const wait = Number(process.env.WA_MERGE_MS == null ? 2500 : process.env.WA_MERGE_MS);
+  if (!(wait > 0)) return {};
+  await new Promise((r) => setTimeout(r, wait));
+  const r = await guard.kvCommand(cfg, ["LRANGE", `ib:m:${phone}`, "0", "11"]).catch(() => ({}));
+  const rows = ((r && r.result) || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+  // Newest first. Anything from them after mine, in words, will answer.
+  if (rows.some((m) => m.dir === "in" && Number(m.ts) > myTs && !MEDIA_LINE.test(String(m.text || "")))) return { later: true };
+  const mine = [];
+  for (const m of rows) {
+    if (Number(m.ts) > myTs) continue;               // a photo that came after: it answers itself
+    if (m.dir !== "in") break;                       // our last word to them ends the burst
+    if (myTs - Number(m.ts) > 60000 || MEDIA_LINE.test(String(m.text || ""))) break;
+    mine.unshift(String(m.text || ""));
+  }
+  if (mine.length < 2) return {};
+  return { text: mine.join("\n").slice(0, 1000) };
+}
+
 // Meta Cloud API: send a text reply via the Graph API.
 async function sendCloud(phoneNumberId, to, text) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -1144,9 +1172,10 @@ module.exports = async (req, res) => {
 
   if (!digits || (!text && !imageId && !audioId && !videoId && !docId)) return respond(FALLBACK_REPLY);
   if (isMeta) await notify.markWindow(cfg, digits); // team alerts check this before sending plain text
+  let loggedAt = 0;   // when this message went into the inbox — see the merge below
   if (patientChat()) {
     const shown = text || (imageId ? "[📷 photo]" : audioId ? "[🎤 voice note]" : videoId ? "[🎬 video]" : docId ? `[📄 ${docName || "document"}]` : "");
-    await inbox.log(cfg, digits, { dir: "in", text: (imageId || videoId || docId) && text ? `[${imageId ? "📷" : videoId ? "🎬" : "📄"}] ${text}` : shown, name: profileName }).catch(() => {});
+    loggedAt = await inbox.log(cfg, digits, { dir: "in", text: (imageId || videoId || docId) && text ? `[${imageId ? "📷" : videoId ? "🎬" : "📄"}] ${text}` : shown, name: profileName }).catch(() => {});
   }
 
   // Owner/admin commands (owner allowlist = ADMIN_PHONES ∪ STAFF_OWNERS;
@@ -1318,6 +1347,19 @@ module.exports = async (req, res) => {
     return respond(FALLBACK_REPLY);
   }
 
+  // Two or three messages in one breath get one answer. "Hair fall" and
+  // "Dandruff" a second apart used to get two replies, and "Dermaluxe" + "?"
+  // two identical greetings — 177 times in the fortnight to 14 Nov. Each
+  // plain text message waits a moment; if the patient has written again it
+  // stays quiet, and the newest one answers all of them together.
+  if (isMeta && cfg && loggedAt && text && !imageId && !audioId && !videoId && !docId) {
+    try {
+      const mg = await mergeBurst(cfg, digits, loggedAt, text);
+      if (mg.later) return res.status(200).json({ ok: true, merged: true });
+      if (mg.text) text = mg.text;
+    } catch (e) { console.error("wa: merge", e && e.message); }
+  }
+
   const histKey = `wa:h:${digits}`;
   const hist = cfg ? await getHistory(cfg, histKey) : [];
   const firstTurn = hist.length === 0;
@@ -1438,7 +1480,16 @@ module.exports = async (req, res) => {
   // counted in the test.
   if (cfg && firstTurn && !acad) { try { abLine = await ab.opener(cfg, digits); } catch (e) {} }
   else if (cfg) { try { await ab.note(cfg, digits, "reply"); } catch (e) {} }
-  const abRule = abLine ? `\n\nOPENER: start this reply with exactly this line, then carry on as usual:\n${abLine}` : "";
+  // The opener asks "mee problem cheppandi". To "Hi" that is right. To "How
+  // many sessions are required?" or "Private parts ki laser vintundha" it
+  // was glued on in front of the answer, asking for what they had just said.
+  // Then only the greeting goes first and the question is answered.
+  // An ad that already named the concern counts as said, too.
+  const greetOnly = !(adLead && adLead !== "academy")
+    && (String(text || "").split(/\n+/).every((l) => GREET_ONLY.test(l.trim())) || lint.isMetaPrefill(text));
+  const abRule = !abLine ? ""
+    : greetOnly ? `\n\nOPENER: start this reply with exactly this line, then carry on as usual:\n${abLine}`
+    : `\n\nOPENER: their first message already says what they want. Start with only "Namaste 🙏 DermaLuxe by Medicare nunchi" and answer what they asked straight away — do not ask what their problem is.`;
   // Would they rather listen? A voice note in, a request in words, or a
   // preference they set earlier (a month) — then the reply is spoken too.
   let speak = !!audioId;
@@ -1547,16 +1598,20 @@ module.exports = async (req, res) => {
   let justBooked = 0;
   // The model said a slot is held but sent no time with it: read the slot from
   // the patient's own words, so the booking reaches the desk (7 Nov, Prasanthi).
+  // Then from the reply itself, when it names exactly one time and says it is
+  // done — between 6 and 11 Nov five more patients were told "slot hold
+  // chesanu" with no booking behind it, because the time had been picked a
+  // message earlier ("Location ekda" → "*Repu 11:30 AM* slot hold chesanu").
   try {
     const sp = require("./_slotparse.js");
     if (sp.HELD.test(String(out.reply || "")) && !(out.lead && out.lead.slot_ts)) {
-      const ts = sp.parseSlot(text);
+      const ts = sp.parseSlot(text) || sp.slotInReply(out.reply);
       if (ts) {
         let prev = null;
         const lr = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "99"]).catch(() => ({}));
         for (const x of ((lr && lr.result) || [])) { try { const l = JSON.parse(x); if (String(l.phone || "").replace(/\D/g, "").slice(-10) === digits) { prev = l; break; } } catch (e) {} }
         out.lead = Object.assign({ name: (prev && !/\(WhatsApp peru\)|peru cheppaledu/.test(prev.name || "") && prev.name) || "", concern: (prev && prev.concern) || "Consultation", heat: "hot" }, out.lead || {}, { slot: text.slice(0, 40), slot_ts: ts });
-        console.log("wa: slot read from the patient's words", digits.slice(-4), ts);
+        console.log("wa: slot read from the chat (no slot_ts)", digits.slice(-4), ts);
       }
     }
   } catch (e) {}

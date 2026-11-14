@@ -3,6 +3,10 @@
 // blame the code for — so it implements the commands properly.
 process.env.STAFF_SECRET = "local-test-secret";
 process.env.ADMIN_KEY = "local-admin";
+// The WhatsApp agent waits 2.5 s for a second message before answering; a
+// test that sends one message at a time has nothing to wait for. t-merge sets
+// its own.
+if (process.env.WA_MERGE_MS == null) process.env.WA_MERGE_MS = "0";
 const path = require("path");
 const API = process.env.DL_API || path.resolve("api");
 const real = require(path.join(API, "_guard.js"));

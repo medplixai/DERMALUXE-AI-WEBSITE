@@ -42,4 +42,19 @@ function parseSlot(text, nowMs) {
 // The reply says the slot is held / booked.
 const HELD = /(hold chesanu|hold chesam|note chesanu|book chesanu|slot (meeku )?(hold|reserve)|confirm chest|slot hold)/i;
 
-module.exports = { parseSlot, HELD };
+// Stricter: the reply itself says it is done — "slot hold chesanu", "ki
+// marchanu", "Confirmed!" — not "select cheste team confirm chestundi".
+// Only this lets the time be read out of the agent's own words.
+const DONE = /(hold chesanu|hold chesam|hold chesa\b|book chesanu|ki note chesanu|ki marchanu|slot (meeku )?(hold|reserve|book) chesanu|\bConfirmed!)/i;
+
+// The one time the reply names. Two times ("6:30 PM leda 11:00 AM") is an
+// offer, not a booking, and gives nothing.
+function slotInReply(reply, nowMs) {
+  const r = String(reply || "");
+  if (!DONE.test(r)) return "";
+  const times = r.match(/\b\d{1,2}(?:[:.]\d{2})?\s*(?:am|pm)\b/gi) || [];
+  if (new Set(times.map((x) => x.toLowerCase().replace(/\s+/g, ""))).size !== 1) return "";
+  return parseSlot(r.replace(/\*/g, ""), nowMs);
+}
+
+module.exports = { parseSlot, slotInReply, HELD, DONE };

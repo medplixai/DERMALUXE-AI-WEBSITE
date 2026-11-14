@@ -54,7 +54,7 @@ async function log(cfg, phone, m) {
   await guard.kvCommand(cfg, ["LREM", "ib:list", "0", ph]).catch(() => {});
   await guard.kvCommand(cfg, ["LPUSH", "ib:list", ph]).catch(() => {});
   await guard.kvCommand(cfg, ["LTRIM", "ib:list", "0", "499"]).catch(() => {});
-  return true;
+  return now;   // truthy, and the caller can find its own line again by it
 }
 
 async function human(cfg, phone) {
