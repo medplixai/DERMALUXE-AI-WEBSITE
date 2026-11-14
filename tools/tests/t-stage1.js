@@ -29,21 +29,23 @@ stub("_hr.js", { handle: async () => null });
 stub("_clinic.js", { forwardLead: async () => ({ attempted: false }) });
 stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () => null, transcribe: async () => null });
 
-let claude = [], lastUser = "", capi = [], rzp = [], cloudOut = [], patientLines = [], judgeCalls = 0;
+let claude = [], lastUser = "", capi = [], rzp = [], cloudOut = [], patientLines = [], judgeCalls = 0, judgeAsked = null;
 global.fetch = async (url, opt) => {
   const u = String(url);
   if (u.includes("api.anthropic.com")) {
     const body = JSON.parse(opt.body);
     if (/You fix one WhatsApp reply/.test(body.system)) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: body.messages[0].content.split("\n")[1] || "ok" }] }) };
     if (/haiku/.test(body.model)) { const next = patientLines.length ? patientLines.shift() : "[END]"; return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: next }] }) }; }
+    // Like the real API on the 4.6+ models: a request whose last message is
+    // the assistant's (a prefill) is refused. This stub used to accept one,
+    // which is how the exam's broken judge passed here for seven weeks.
+    if (body.messages[body.messages.length - 1].role === "assistant") return { ok: false, status: 400, json: async () => ({ error: { message: "This model does not support assistant message prefill." } }) };
     if (/grade ONE simulated/.test(body.system)) {
       judgeCalls++;
+      judgeAsked = body;
       const booked = /slot_ts/.test(body.messages[0].content);
-      // The last message is the prefilled "{", so the model answers with the
-      // REST of the object — exactly how the real one is asked now.
       const verdict = JSON.stringify({ score: booked ? 88 : 40, booked, trap_passed: booked, facts: {}, faults: booked ? [] : ["no_next_step"], note: booked ? "baaga close chesindi" : "slot adagaledu" });
-      const prefilled = body.messages[body.messages.length - 1].role === "assistant";
-      return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: prefilled ? verdict.slice(1) : verdict }], stop_reason: "end_turn" }) };
+      return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: verdict }], stop_reason: "end_turn" }) };
     }
     lastUser = body.messages[body.messages.length - 1].content;
     const next = claude.length ? claude.shift() : { reply: "Namaste 🙏 Em problem andi?", lead: null };
@@ -215,6 +217,8 @@ const slotTs = (daysAhead) => { const d = new Date(Date.now() + daysAhead * DAY 
   claude = [];
   const night = await exam.run(cfg, { n: 4, turns: 2, width: 1 });   // one at a time, so the stubbed patient's lines land in order
   is([night.n >= 3, JSON.parse(h.run(["GET", "exam:latest"])).n], [true, night.n], "a real sitting is kept for the Inbox card");
+  is([judgeAsked && judgeAsked.output_config && judgeAsked.output_config.format.type, judgeAsked && judgeAsked.messages.slice(-1)[0].role], ["json_schema", "user"],
+    "the judge is held to a JSON schema, not a prefilled \"{\" — which the judge's model refuses with a 400 (28 Sep – 14 Nov: no exam kept)");
   // A verdict the judge mangles must not be scored as a zero — that is how a
   // morning's exam came out at 5/100 with "🔴 Suresh 0 —" under it.
   const realFetch2 = global.fetch;
