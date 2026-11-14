@@ -544,6 +544,9 @@ module.exports = async (req, res) => {
   // Leads graded before "vaddu" counted: their own last words, read again.
   let lowered = 0;
   try { if (room("rescan")) lowered = (await qualify.rescan(cfg, 100)).lowered; } catch (e) { console.error("cron: qualify rescan", e && e.message); }
+  // "Rendu sarlu call chesam" messages held back after a fresh call heads-up.
+  let noansSent = 0;
+  try { if (room("noans")) noansSent = (await require("./_noans.js").flush(cfg)).sent; } catch (e) { console.error("cron: noans", e && e.message); }
   // And every stored grade by today's rules (one read, writes only on change).
   let regraded = 0;
   try { if (room("regrade")) regraded = (await qualify.refresh(cfg)).changed; } catch (e) { console.error("cron: qualify refresh", e && e.message); }
@@ -710,6 +713,6 @@ module.exports = async (req, res) => {
   // get to" — so it says both where somebody can read it afterwards.
   const took = Date.now() - STARTED;
   console.log(`cron-followup ${took}ms hour=${istHour}${skipped.length ? " skipped=" + skipped.join(",") : ""}` +
-    ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled} lowered=${lowered} regraded=${regraded}`);
-  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, confirmNags, slaNags, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, lowered, regraded, early, reengaged, rescued, assigned, overdue, photosMoved, comments, igNudge, swept });
+    ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled} lowered=${lowered} regraded=${regraded} noans=${noansSent}`);
+  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, confirmNags, slaNags, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, lowered, regraded, noansSent, early, reengaged, rescued, assigned, overdue, photosMoved, comments, igNudge, swept });
 };

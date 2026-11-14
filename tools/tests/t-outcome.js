@@ -126,10 +126,41 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   const o1 = await post("outcome", { key: k2, outcome: "noanswer" });
   is([o1.code, o1.body.nudged, toPatient("9876500601").length], [200, undefined, 0], "the first 'no answer' sends the patient nothing");
   const o2 = await post("outcome", { key: k2, outcome: "noanswer" });
-  is([o2.body.nudged, toPatient("9876500601").length], [true, 1], "the second sends one WhatsApp asking for a time that suits them");
+  // 13 Nov: "ippudu call chestunnaru" and "rendu sarlu call chesam" went out
+  // in the same minute. With the heads-up minutes old, the second one waits.
+  is([o2.body.nudgeHeld, toPatient("9876500601").length], [true, 0], "the second, minutes after the call heads-up, waits a quarter hour instead of going in the same minute");
+  const NA = h.load("_noans");
+  is((await NA.flush({ kind: "pg" })).waiting, 1, "the hourly run leaves it while the quarter hour is not up");
+  const due = JSON.parse(h.run(["GET", "noans:due:9876500601"]));
+  h.run(["SET", "noans:due:9876500601", JSON.stringify(Object.assign(due, { after: Date.now() - 1000 }))]);
+  is((await NA.flush({ kind: "pg" })).sent, 1, "and sends it once it is");
+  is(toPatient("9876500601").length, 1, "one WhatsApp asking for a time that suits them");
   is([/^Lakshmi garu/.test(toPatient("9876500601")[0][2]), /rendu sarlu call chesam/.test(toPatient("9876500601")[0][2])], [true, true], "by first name — found from the lead, the app did not send it — and saying why");
   const o3 = await post("outcome", { key: k2, outcome: "noanswer" });
-  is([o3.body.nudged, toPatient("9876500601").length], [undefined, 1], "the third sends nothing more — still the one message");
+  is([o3.body.nudged, o3.body.nudgeHeld, toPatient("9876500601").length], [undefined, undefined, 1], "the third sends nothing more — still the one message");
+
+  // No heads-up lately: it goes at once, as before.
+  const ts4 = Date.now() - 200000;
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: ts4, type: "whatsapp", name: "Sita Rani", phone: "9876500604", concern: "Acne" })]);
+  const k4 = `${ts4}|9876500604`;
+  h.run(["SET", "ntf:callhd:9876500604", String(Date.now() - 3600000)]);
+  await post("outcome", { key: k4, outcome: "noanswer" });
+  const o4 = await post("outcome", { key: k4, outcome: "noanswer" });
+  is([o4.body.nudged, toPatient("9876500604").length], [true, 1], "with the heads-up an hour old, the message goes straight away");
+
+  // Held, and then the patient writes: nothing goes.
+  const ts5 = Date.now() - 100000;
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: ts5, type: "whatsapp", name: "Ramu", phone: "9876500605", concern: "Acne" })]);
+  const k5 = `${ts5}|9876500605`;
+  h.run(["SET", "ntf:callhd:9876500605", String(Date.now() - 60000)]);
+  await post("outcome", { key: k5, outcome: "noanswer" });
+  await post("outcome", { key: k5, outcome: "noanswer" });
+  await new Promise((r) => setTimeout(r, 5));
+  await h.load("_inbox").log({ kind: "pg" }, "9876500605", { dir: "in", text: "Sorry andi, meeting lo unna. Saayantram 6 ki call cheyandi" });
+  const d5 = JSON.parse(h.run(["GET", "noans:due:9876500605"]));
+  h.run(["SET", "noans:due:9876500605", JSON.stringify(Object.assign(d5, { after: Date.now() - 1000 }))]);
+  const f5 = await NA.flush({ kind: "pg" });
+  is([f5.dropped, toPatient("9876500605").length], [1, 0], "if they wrote back in the quarter hour, the message is dropped — they already answered it");
   // An Instagram lead has no number; its key carries the Instagram id, whose
   // last ten digits can look like a mobile number. Two "no answer" marks on
   // it must not WhatsApp a stranger.
