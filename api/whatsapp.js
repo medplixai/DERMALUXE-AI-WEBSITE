@@ -1224,9 +1224,13 @@ module.exports = async (req, res) => {
     } catch (e) { console.error("wa: hr error", e && e.message); }
   }
 
-  // Documents outside the careers flow — steer to what the agent handles.
+  // Documents outside the careers flow — steer to what the agent handles,
+  // once a day; after that a plain "it arrived", and the team sees it in the
+  // inbox, instead of the same refusal for every file in a batch.
   if (docId) {
-    return respond("Namaste! 🙏 Document analysis cheyalenu — text, voice note leda skin/hair photo pampandi. 📸\nJob application ki aithe *JOBS* ani pampandi. 💼");
+    const once = cfg ? await guard.kvCommand(cfg, ["SET", `wa:docmsg:${digits}`, "1", "NX", "EX", "86400"]).catch(() => ({ result: "OK" })) : { result: "OK" };
+    if (once && once.result) return respond("Namaste! 🙏 Document analysis cheyalenu — text, voice note leda skin/hair photo pampandi. 📸\nJob application ki aithe *JOBS* ani pampandi. 💼");
+    return respond("📄 Document vachindi 👍 Mana team chusi cheptaru.");
   }
 
   // Videos are only for the admin Reel pipeline — the patient agent can't
@@ -1300,7 +1304,10 @@ module.exports = async (req, res) => {
   }
 
   // Layer 3: rate limits — per phone + global daily
-  const perPhone = await guard.rateLimit(cfg, `rl:wa:h:${digits}`, 15, 3600);
+  // 30 an hour. At 15, a patient booking in a quick back-and-forth of short
+  // replies and button taps (11 Nov: "Op charges" mid-booking) was told
+  // "please wait".
+  const perPhone = await guard.rateLimit(cfg, `rl:wa:h:${digits}`, 30, 3600);
   if (!perPhone.allowed) {
     // Said once per phone per two hours. It used to go out on every message
     // over the limit, and on 7 Nov one patient was told "please wait" eight

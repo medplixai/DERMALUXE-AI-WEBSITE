@@ -112,6 +112,18 @@ async function alertTeam(cfg, app) {
   }
 }
 
+// A document after the application: to HR, once per file.
+async function forwardDoc(cfg, digits, doc) {
+  const nx = await guard.kvCommand(cfg, ["SET", `hr:doc:${doc.id}`, "1", "NX", "EX", "604800"]).catch(() => ({}));
+  if (!(nx && nx.result)) return false;
+  const normList = (v) => String(v || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter((s) => s.length === 10);
+  const targets = Array.from(new Set(normList(process.env.HR_PHONES).concat(guard.ownerPhones())));
+  const app = await findApp(cfg, digits).catch(() => null);
+  const who = (app && app.name) || digits;
+  for (const to of targets) { try { await notify.sendWaDocument(to, doc.id, doc.name || `Document-${digits}.pdf`, `📄 ${who} (${digits}) pampina document`); } catch (e) { console.error("hr: forward doc", e && e.message); } }
+  return true;
+}
+
 async function storeApplication(cfg, app) {
   const lead = {
     ts: Date.now(), type: "job",
@@ -139,6 +151,18 @@ async function handle(cfg, digits, text, doc) {
   let st = await getState(cfg, digits);
 
   if (!st) {
+    // A document from somebody who has already applied (certificates, a CV
+    // sent after "skip") or one named like a CV. On 7 Nov a cosmetologist was
+    // asked by the agent for her resume and certificates, sent six of them,
+    // and was told "Document analysis cheyalenu" six times. Now each one goes
+    // to HR and she is told it did.
+    if (doc && doc.id) {
+      const applied = await getStatus(cfg, digits);
+      if (applied || /\b(cv|resume|bio\s*data|biodata|certificate|cert|marks|memo)\b/i.test(String(doc.name || ""))) {
+        await forwardDoc(cfg, digits, doc);
+        return { text: "📄 Document vachindi — HR team ki pampanu ✅\nShortlist aithe vaalle call chestaru 🙏" };
+      }
+    }
     if (!isTrigger(t)) return null;
     await setState(cfg, digits, { step: "role", ts: Date.now() });
     return roleListReply(
@@ -202,13 +226,18 @@ async function handle(cfg, digits, text, doc) {
       app.cvId = doc.id;
       app.cvName = doc.name || "";
     } else if (!/^skip$/i.test(t)) {
-      return { text: "📄 CV file attach chesi pampandi (PDF/Word) — leda *skip* ani pampandi." };
+      // Asked twice already: a photo of the CV, a "ok", a question — the
+      // application goes in without the file rather than asking a seventh
+      // time (10 Nov: the same line seven times in six minutes).
+      st.cvAsks = (st.cvAsks || 0) + 1;
+      if (st.cvAsks < 2) { await setState(cfg, digits, st); return { text: "📄 CV file attach chesi pampandi (PDF/Word) — leda *skip* ani pampandi." }; }
+      app.cvLater = true;
     }
     await clearState(cfg, digits);
     await storeApplication(cfg, app);
     await setStatus(cfg, digits, "applied");
     try { await alertTeam(cfg, app); } catch (e) { console.error("hr: alert", e && e.message); }
-    return { text: `🎉 *Application received, ${app.name.split(" ")[0]}!*\n\n• Role: *${app.role}*\n• Experience: ${app.exp}\n${app.cvId ? "• CV: received ✅" : "• CV: pending (interview appudu teeskuni randi)"}\n\nMana HR team review chesi *2-3 rojullo* meeku call chestundi. All the best! 🍀\n— Team DermaLuxe`. trim() };
+    return { text: `🎉 *Application received, ${app.name.split(" ")[0]}!*\n\n• Role: *${app.role}*\n• Experience: ${app.exp}\n${app.cvId ? "• CV: received ✅" : app.cvLater ? "• CV: tarvata ikkade PDF ga pampochu — HR ki veltundi" : "• CV: pending (interview appudu teeskuni randi)"}\n\nMana HR team review chesi *2-3 rojullo* meeku call chestundi. All the best! 🍀\n— Team DermaLuxe`. trim() };
   }
 
   return null;

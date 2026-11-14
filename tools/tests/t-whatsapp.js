@@ -163,13 +163,14 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
 
   console.log("\n  — one number cannot run up the bill —");
   claudeCalls = 0;
-  for (let i = 0; i < 16; i++) await say("9876500005", "message " + i);
-  is(claudeCalls, 15, "fifteen messages an hour reach the model");
-  is(/wait/i.test((lastTo("9876500005") || {}).text || ""), true, "the sixteenth is asked to wait");
+  for (let i = 0; i < 31; i++) await say("9876500005", "message " + i);
+  // 30, not 15: at 15 a patient mid-booking was told to wait (11 Nov).
+  is(claudeCalls, 30, "thirty messages an hour reach the model");
+  is(/wait/i.test((lastTo("9876500005") || {}).text || ""), true, "the thirty-first is asked to wait");
   // 7 Nov: one patient read "please wait" eight times in a row.
   const beforeMore = sentTo("9876500005");
-  const muted = await say("9876500005", "message 17");
-  is([muted.code, muted.body && muted.body.muted, sentTo("9876500005") - beforeMore], [200, true, 0], "the seventeenth gets a silent 200 — the wait message goes once per two hours, not on every message");
+  const muted = await say("9876500005", "message 32");
+  is([muted.code, muted.body && muted.body.muted, sentTo("9876500005") - beforeMore], [200, true, 0], "the next one gets a silent 200 — the wait message goes once per two hours, not on every message");
   is(h.run(["GET", "wa:wait:9876500005"]), "1", "because a two-hour marker remembers it was said");
 
   console.log("\n  — a conversation becomes a lead —");
