@@ -163,13 +163,18 @@ const FAMILY = /(intlo|ఇంట్లో|amma|nanna|husband|wife|family ni adig
 // sit, and a bare "vaddu" only in a short message that is not a question —
 // "Ala vadhu andi, oka sari remove cheyyadam avvadha?" is a question about
 // how, and "Location vaddu" turns down a map, not the clinic.
-const SAID_NO = /(not\s*inter[ea]?st|no\s*inter[ea]?st|inter[ea]?st\w*\s*(ledu|ledhu|leadu|leedu|ledandi)|inter[ea]?sted\s*(kadu|kaadu|kadhu|kaadhu|ledu)|don'?t\s*(call|message|msg|want|need)|do\s*not\s*(call|message)|call\s*(cheyakandi|cheyyakandi|cheyakanḍi|cheyodhu|cheyoddu|cheyyoddu|vaddu|vadhu|vaddhu)|(messages?|msgs?)\s*(cheyakandi|pampakandi|pettakandi|vaddu|vadhu|vaddhu)|avasaram\s*le(du|dhu)|need\s*le(du|dhu)|\bno\s*need\b|kavalsina\s*avasaram\s*le|(money|dabbulu|budget|amount)\b.{0,30}(ledu|ledhu|pettalem|pettaleymu|pettalenu)|no\s*thank\s*(you|u|s)\b|ra(a)?nu\s*andi|raalenu|ravalenu|cheyinchukonu)/i;
+const SAID_NO = /(not\s*inter[ea]?st|no\s*inter[ea]?st|inter[ea]?st\w*\s*(ledu|ledhu|leadu|leedu|ledandi)|inter[ea]?sted\s*(kadu|kaadu|kadhu|kaadhu|ledu)|don'?t\s*(call|message|msg|want|need)|do\s*not\s*(call|message)|call\s*(cheyakandi|cheyyakandi|cheyakanḍi|cheyodhu|cheyoddu|cheyyoddu|vaddu|vadhu|vaddhu)|(messages?|msgs?)\s*(cheyakandi|pampakandi|pettakandi|vaddu|vadhu|vaddhu)|avasaram\s*le(du|dhu)|need\s*le(du|dhu)|\bno\s*need\b|kavalsina\s*avasaram\s*le|(money|dabbulu|budget|amount)\b.{0,30}(ledu|ledhu|pettalem|pettaleymu|pettalenu)|no+\s*thank\s*(you|u|s)\b|cheyinchukonu|akkar?a?le(du|dhu)|akkarle)/i;
+// Gone elsewhere: "already 65k tho Bhimavaram lo package matladukoni advance
+// ichesam" (14 Nov). Only with money or a booking said, so "already book
+// chesanu, time enti?" about our own slot is not read as a no.
+const ELSEWHERE = /\balready\b.{0,160}\b(advance\s*(ichesam|ichanu|ichamu|kattanu|kattam|paid)|package\s*(ga\s*)?(teesukun|matladukun|matladukoni|tisukun))|vere\s*(clinic|hospital|chota|daggara)\s*lo\s*(chesukun|cheyinchukun|teesukun|tisukun|join|treatment|start)/i;
 const BARE_NO = /\b(vaddu|vadhu|vaddhu|vaddule|vadhule|vaddulendi|vadhulendi|వద్దు)\b/i;
 const NO_OBJECT = /(location|address|map|photo|pic|link|pdf|voice|video|catalog|menu|reminder)\s*(vaddu|vadhu|vaddhu)/i;
 function saysNo(text) {
   const t = String(text || "").trim();
   if (!t) return false;
-  if (SAID_NO.test(t)) return true;
+  if (SAID_NO.test(t) || ELSEWHERE.test(t)) return true;
+  if (/^(stop|unsubscribe)[.!🙏\s]*$/i.test(t)) return true;   // STOP itself is handled first; this is for reading old chats
   if (!BARE_NO.test(t) || NO_OBJECT.test(t) || /[?？]|avvadha|avutunda|enduku|ela\b|kani\b|\bbut\b/i.test(t)) return false;
   return t.split(/\s+/).length <= 6;
 }
@@ -432,7 +437,9 @@ function settle(rec, lead) {
 // (14 Nov morning) took any "no" anywhere with no "book" word after it, and
 // lowered a student who had said "Avasaram ledu" to a facial at 9:12 and
 // joined the Academy and paid by 1 PM. Version 2 also puts back what version
-// 1 got wrong. Each number is read once per version (qual:rs2:<phone>).
+// 1 got wrong. Version 3 (same day) also hears "Noo thanks", "services
+// akkarledhu", a final "Stop" and "already advance ichesam" elsewhere.
+// Each number is read once per version (qual:rs3:<phone>).
 const TIME_SAID = /\b\d{1,2}\s*(?:[:.]\s*\d{2})?\s*(?:am|pm)\b|\b(yes|avunu|sare|ok\s+vastanu)\b/i;
 function endedOnNo(said) {
   const tail = (said || []).slice(-2);
@@ -454,7 +461,7 @@ async function rescan(cfg, limit) {
     if (isNo) v1 = !!(((await guard.kvCommand(cfg, ["GET", `qual:rs1:${ph}`]).catch(() => ({}))) || {}).result);
     if ((rec.grade === "D" && !isNo) || (isNo && !v1)) continue;   // nothing to lower; a live "no" stays
     if (out.looked >= (limit || 100)) break;
-    const nx = await guard.kvCommand(cfg, ["SET", `qual:rs2:${ph}`, "1", "NX", "EX", KEEP]).catch(() => ({}));
+    const nx = await guard.kvCommand(cfg, ["SET", `qual:rs3:${ph}`, "1", "NX", "EX", KEEP]).catch(() => ({}));
     if (!(nx && nx.result)) continue;
     out.looked++;
     const th = await require("./_inbox.js").thread(cfg, ph).catch(() => null);

@@ -25,9 +25,11 @@ const Q = h.load("_qualify");
   console.log("NO MEANS NO\n");
 
   console.log("  — what counts as no —");
-  for (const t of ["Don't call", "Eppudu vadhu naku", "Sare vadhu le Naku kuda", "Vadhu", "Call cheyakandi e number ki", "Avasaram ledu", "No thank you", "Thank you but not interested", "No mam not interested money antha pettaleymu"])
+  for (const t of ["Don't call", "Eppudu vadhu naku", "Sare vadhu le Naku kuda", "Vadhu", "Call cheyakandi e number ki", "Avasaram ledu", "No thank you", "Thank you but not interested", "No mam not interested money antha pettaleymu",
+    "Noo thanks", "Naku mee services akkarledhu", "Sorry sir already 65 k tho bhimavaram lo package ga matladukoni advance ichesam madam"])
     is(Q.saysNo(t), true, `"${t}"`);
-  for (const t of ["Ala vadhu andi mottam oka sari remove cheyyadam avvadha", "Location vaddu ani cheppaa", "E roju cancel cheyandi please e roju meeting", "Hair fall", "Repu vastanu"])
+  for (const t of ["Ala vadhu andi mottam oka sari remove cheyyadam avvadha", "Location vaddu ani cheppaa", "E roju cancel cheyandi please e roju meeting", "Hair fall", "Repu vastanu",
+    "Nenu repu ralenu", "Already book chesanu, time enti?", "No cancel"])
     is(Q.saysNo(t), false, `not "${t}"`);
 
   console.log("\n  — the grade hears it —");
