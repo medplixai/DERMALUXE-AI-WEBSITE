@@ -1288,10 +1288,13 @@ module.exports = async (req, res) => {
   if (cfg && !imageId && !audioId) {
     if (/^(stop|unsubscribe|opt\s*out)$/i.test(text.trim())) {
       await guard.kvCommand(cfg, ["SADD", "optout", digits]).catch(() => {});
+      // STOP is a no to the desk as well: off the A list, out of the call queue.
+      try { if (await qualify.read(cfg, digits)) await qualify.absorb(cfg, digits, {}, { opted_out: true }); } catch (e) {}
       return respond("✅ Done — ika meeku offers/promotional messages pampamu. 🙏\nAppointments & skin/hair questions ki eppudaina message cheyochu!\n(Offers malli kavali ante *START* ani pampandi)");
     }
     if (/^(start|subscribe)$/i.test(text.trim())) {
       await guard.kvCommand(cfg, ["SREM", "optout", digits]).catch(() => {});
+      try { if (await qualify.read(cfg, digits)) await qualify.absorb(cfg, digits, {}, { opted_out: false }); } catch (e) {}
       return respond("💖 Welcome back! Offers & updates malli vastayi. 🙏");
     }
   }
@@ -1562,7 +1565,7 @@ module.exports = async (req, res) => {
     try {
       const im = await inbox.meta(cfg, digits);
       const oo = await guard.setHas(cfg, "optout", digits);
-      qrec = await qualify.absorb(cfg, digits, out.qual || {}, { inboundCount: (im && im.inCount) || hist.length + 1, photo_sent: !!imageId, opted_out: oo, channel: "whatsapp",
+      qrec = await qualify.absorb(cfg, digits, out.qual || {}, { inboundCount: (im && im.inCount) || hist.length + 1, photo_sent: !!imageId, opted_out: oo, channel: "whatsapp", text,
         status: /last visit|came \d+ times/.test(known) ? "visited" : undefined });   // a patient who has been here is graded as one
       await qualify.react(cfg, digits, qrec, { name: (out.lead && out.lead.name) || profileName });
     } catch (e) { console.error("wa: qualify", e && e.message); }

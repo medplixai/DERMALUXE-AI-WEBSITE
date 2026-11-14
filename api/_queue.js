@@ -55,7 +55,14 @@ async function assign(cfg, opts) {
   const rows = (((await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "199"]).catch(() => ({}))).result) || [])
     .map((x) => parse(x, null)).filter((l) => l && ten(l.phone).length === 10 && Date.now() - l.ts < 7 * 86400000);
   if (!rows.length) return res;
-  const [owners, status, grades] = await Promise.all([hashOf(cfg, "lead:owner"), hashOf(cfg, "dl_status"), qualify.forPhones(cfg, rows.map((l) => l.phone))]);
+  const [owners, status, grades, outcome, offR] = await Promise.all([hashOf(cfg, "lead:owner"), hashOf(cfg, "dl_status"), qualify.forPhones(cfg, rows.map((l) => l.phone)),
+    hashOf(cfg, "dl_outcome"), guard.kvCommand(cfg, ["SMEMBERS", "optout"]).catch(() => ({}))]);
+  const off = new Set(((offR && offR.result) || []));
+  // Nobody is dealt a call to a person who said no (see _qualify.settle).
+  for (const l of rows) {
+    const ph = ten(l.phone), k = leadKey(l);
+    if (grades[ph]) grades[ph] = qualify.settle(grades[ph], { status: status[k] || "new", outcome: outcome[k] || "", optedOut: off.has(ph) });
+  }
   const load = new Map(pool.map((c) => [c.phone, 0]));
   for (const [k, ph] of Object.entries(owners)) {
     const st = status[k] || "new";

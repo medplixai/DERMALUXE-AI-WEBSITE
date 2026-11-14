@@ -253,6 +253,19 @@ async function leadNameOf(cfg, key) {
 // lead's key carries its 15-digit Instagram id in the phone's place, and the
 // last ten digits of that look enough like a mobile number to be messaged
 // (review, 9 Nov). Empty when the lead has no number.
+// What the desk learned on the call goes into the grade itself, so the
+// follow-up ladder, the call queue and the A-grade alerts all hear it — not
+// only the Leads screen. "Not interested" makes a D; a booking lifts it.
+async function regrade(cfg, key, status, outcome) {
+  try {
+    const ph = await leadPhoneOf(cfg, key);
+    if (!/^[6-9]\d{9}$/.test(ph)) return;
+    const qual = require("./_qualify.js");
+    if (!(await qual.read(cfg, ph))) return;
+    await qual.absorb(cfg, ph, outcome === "notinterested" ? { intent: "not_interested" } : {}, { status, outcome: outcome || null });
+  } catch (e) { console.error("staff: regrade", e && e.message); }
+}
+
 async function leadPhoneOf(cfg, key) {
   const r = await guard.kvCommand(cfg, ["LRANGE", LEADS, "0", "399"]).catch(() => ({}));
   for (const s of ((r && r.result) || [])) {
@@ -346,7 +359,10 @@ async function leadPage(cfg, offset, count) {
     if (calls.length) base.lastCall = Math.max(...calls.map((x) => Number(x.ts) || 0));
     // The grade and, from it, the one thing to do next — and how long this
     // person has been waiting for somebody to do it.
-    const rec = grades[ph];
+    // A lead the desk marked "not interested", closed, or that sent STOP is a
+    // D on this screen whatever the record last said (14 Nov: fourteen As
+    // had written "Don't call" or "Vaddu").
+    const rec = qual.settle(grades[ph], base);
     if (rec) Object.assign(base, qual.stamp(rec));
     // No number yet and the enquiry came through Instagram or Facebook: the
     // agent there is doing the asking, so the card says that instead of
@@ -779,6 +795,7 @@ module.exports = async (req, res) => {
     // A plain stage change replaces whatever reason was on file.
     await guard.kvCommand(cfg, ["HDEL", "dl_outcome", key]).catch(() => {});
     await guard.kvCommand(cfg, ["HDEL", "dl_fu", key]).catch(() => {});
+    await regrade(cfg, key, s, null);
     return json(res, 200, { ok: true, at });
   }
   // "🤖 Em matladali": before a call, the chat read for the caller in four
@@ -812,6 +829,7 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["HSET", "dl_outcome", key, o]);
     if (fu) await guard.kvCommand(cfg, ["HSET", "dl_fu", key, fu]);
     else await guard.kvCommand(cfg, ["HDEL", "dl_fu", key]).catch(() => {});
+    await regrade(cfg, key, OUTCOMES[o], o);
     const out = { ok: true, status: OUTCOMES[o], outcome: o, fu, at };
     // Two unanswered calls and the desk stops ringing a number that does not
     // pick up: 80 of 121 desk outcomes up to 9 November were "no answer", and

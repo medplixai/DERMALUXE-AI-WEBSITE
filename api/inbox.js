@@ -104,7 +104,7 @@ module.exports = async (req, res) => {
     try {
       const qualify = require("./_qualify.js");
       const [recs, leads] = await Promise.all([qualify.forPhones(cfg, rows.map((t) => t.phone)), leadsByPhone(cfg, rows.map((t) => t.phone))]);
-      for (const t of rows) enrich(t, recs[t.phone], leads[t.phone], now);
+      for (const t of rows) enrich(t, qualify.settle(recs[t.phone], leads[t.phone]), leads[t.phone], now);
     } catch (e) { console.error("inbox: triage", e && e.message); for (const t of rows) if (!t.stage) enrich(t, null, null, now); }
     rows.sort(require("./_triage.js").order);
     const counts = { need: 0, human: 0, ai: 0, booked: 0, quiet: 0 };
@@ -127,8 +127,9 @@ module.exports = async (req, res) => {
     let card = null, tri = null;
     try {
       const qualify = require("./_qualify.js");
-      const [rec, known, leads] = await Promise.all([qualify.read(cfg, ph), require("./_memory.js").facts(cfg, ph).catch(() => null), leadsByPhone(cfg, [ph])]);
+      const [rec0, known, leads] = await Promise.all([qualify.read(cfg, ph), require("./_memory.js").facts(cfg, ph).catch(() => null), leadsByPhone(cfg, [ph])]);
       const lead = leads[ph] || null;
+      const rec = qualify.settle(rec0, lead);   // "not interested" at the desk is a D here too
       const lastIn = (t.meta && Number(t.meta.lastIn)) || 0;
       const lastOut = [...(t.msgs || [])].reverse().find((m) => m.dir === "out");
       tri = enrich(Object.assign({ phone: ph }, t.meta || {}, { human: t.human }), rec, lead, Date.now());

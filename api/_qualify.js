@@ -69,7 +69,7 @@ function placeOf(village) {
 const ringOf = (km) => (km == null ? null : km <= 25 ? "local" : km <= 80 ? "district" : km <= 150 ? "region" : "far");
 
 // ---- the score ---------------------------------------------------------------
-const INTENTS = ["book_now", "considering", "price_only", "info_only", "not_patient"];
+const INTENTS = ["book_now", "considering", "price_only", "info_only", "not_patient", "not_interested"];
 const URGENCY = ["emergency", "this_week", "this_month", "later", "unknown"];
 const GRADE_OF = (s) => (s >= 70 ? "A" : s >= 45 ? "B" : s >= 25 ? "C" : "D");
 // Treatments where one patient is a course of sittings or a procedure, not a single consult.
@@ -91,6 +91,7 @@ function scoreLead(q) {
   else if (q.intent === "considering") add("intent", 16, "alochistunnaru");
   else if (q.intent === "price_only") add("intent", 4, "price matrame adigaru");
   else if (q.intent === "not_patient") add("intent", -45, "patient kaadu (job / sales / wrong number)");
+  else if (q.intent === "not_interested") add("intent", -60, "vaddu / interest ledu annaru");
 
   if (q.urgency === "emergency") add("urgency", 22, "ippude kavali");
   else if (q.urgency === "this_week") add("urgency", 18, "ee vaaram lo");
@@ -120,12 +121,20 @@ function scoreLead(q) {
   if (q.status === "booked") add("booked", 30, "appointment book ayindi");
   if (q.status === "visited") add("visited", 40, "clinic ki vachcharu");
   if (q.status === "closed") add("closed", -25, "desk close chesindi");
+  if (q.outcome === "notinterested") add("desk_no", -40, "desk ki interest ledu ani chepparu");
+  if (q.outcome === "notravel") add("desk_no", -40, "raaleru ani desk ki chepparu");
 
   const raw = signals.reduce((s, x) => s + x.points, 0);
   let score = Math.max(0, Math.min(100, 20 + raw));
   // An A tells the desk "call now", so it must mean they said they want to come.
   const said = !!q.intent || (q.urgency && q.urgency !== "unknown") || !!q.prefers || q.status === "booked" || q.status === "visited";
   if (!said && score >= 70) { score = 69; signals.push({ key: "no_intent_yet", points: 0, why: "vastanani inka cheppaledu — adigaka A avutundi" }); }
+  // Somebody who said no is not a lead to ring, however much else they said
+  // first. On 14 Nov fourteen A-grade leads — "call ki A, ippude call
+  // cheyandi" — had written "Don't call", "Vadhu", "Avasaram ledu", "Stop".
+  // A booking or a visit after that outranks it: they came back.
+  const no = q.intent === "not_interested" || q.intent === "not_patient" || q.opted_out || q.status === "closed" || q.outcome === "notinterested" || q.outcome === "notravel";
+  if (no && q.status !== "booked" && q.status !== "visited" && score > 20) score = 20;
   return { score, grade: GRADE_OF(score), signals, km, ring, place: place.known ? place.label : "" };
 }
 
@@ -143,6 +152,21 @@ const THIS_WEEK = /(ee vaaram|this week|repu|tomorrow|ee roju|today|రేపు
 const THIS_MONTH = /(ee nela|this month|ఈ నెల|next week|vachche vaaram)/i;
 const LATER = /(tarvata|later|next month|vachche nela|తర్వాత|konchem time|after \d)/i;
 const FAMILY = /(intlo|ఇంట్లో|amma|nanna|husband|wife|family ni adigi|వాళ్ళని అడిగి)/i;
+
+// "Vaddu", in the ways people say it. Phrases that mean no wherever they
+// sit, and a bare "vaddu" only in a short message that is not a question —
+// "Ala vadhu andi, oka sari remove cheyyadam avvadha?" is a question about
+// how, and "Location vaddu" turns down a map, not the clinic.
+const SAID_NO = /(not\s*inter[ea]?st|no\s*inter[ea]?st|inter[ea]?st\w*\s*(ledu|ledhu|leadu|leedu|ledandi)|inter[ea]?sted\s*(kadu|kaadu|kadhu|kaadhu|ledu)|don'?t\s*(call|message|msg|want|need)|do\s*not\s*(call|message)|call\s*(cheyakandi|cheyyakandi|cheyakanḍi|cheyodhu|cheyoddu|cheyyoddu|vaddu|vadhu|vaddhu)|(messages?|msgs?)\s*(cheyakandi|pampakandi|pettakandi|vaddu|vadhu|vaddhu)|avasaram\s*le(du|dhu)|need\s*le(du|dhu)|\bno\s*need\b|kavalsina\s*avasaram\s*le|(money|dabbulu|budget|amount)\b.{0,30}(ledu|ledhu|pettalem|pettaleymu|pettalenu)|no\s*thank\s*(you|u|s)\b|ra(a)?nu\s*andi|raalenu|ravalenu|cheyinchukonu)/i;
+const BARE_NO = /\b(vaddu|vadhu|vaddhu|vaddule|vadhule|vaddulendi|vadhulendi|వద్దు)\b/i;
+const NO_OBJECT = /(location|address|map|photo|pic|link|pdf|voice|video|catalog|menu|reminder)\s*(vaddu|vadhu|vaddhu)/i;
+function saysNo(text) {
+  const t = String(text || "").trim();
+  if (!t) return false;
+  if (SAID_NO.test(t)) return true;
+  if (!BARE_NO.test(t) || NO_OBJECT.test(t) || /[?？]|avvadha|avutunda|enduku|ela\b|kani\b|\bbut\b/i.test(t)) return false;
+  return t.split(/\s+/).length <= 6;
+}
 
 // A town named in the middle of a sentence. Short aliases ("undi", "kalla" are
 // ordinary Telugu words) only count next to a "from" word.
@@ -176,6 +200,7 @@ function extract(text) {
   if (d) f.problem_since = d[0].trim().slice(0, 40);
   if (PRICE_ASK.test(t)) f.asked_price = true;
   if (NOT_PATIENT.test(t)) f.intent = "not_patient";
+  else if (saysNo(t)) f.intent = "not_interested";
   else if (BOOK_NOW.test(t)) f.intent = "book_now";
   else if (CONSIDER.test(t)) f.intent = "considering";
   else if (PRICE_ASK.test(t)) f.intent = "price_only";
@@ -270,7 +295,18 @@ async function absorb(cfg, phone, facts, ctx) {
   const prev = (await read(cfg, ph)) || { facts: {} };
   const f = Object.assign({}, prev.facts || {});
   const F = facts || {};
-  if (INTENTS.includes(F.intent)) f.intent = F.intent;
+  const c0 = ctx || {};
+  // What they wrote this turn, when the caller passes it. A "no" in their own
+  // words wins over the model's reading; once they have said no, the model
+  // carrying an old "book_now" forward does not undo it — only words of
+  // their own that say yes do.
+  const typed = c0.text != null ? String(c0.text) : null;
+  const saidNoNow = typed != null && saysNo(typed);
+  if (INTENTS.includes(F.intent)) {
+    const holdNo = f.intent === "not_interested" && F.intent !== "not_interested" && typed != null && !BOOK_NOW.test(typed) && !CONSIDER.test(typed);
+    if (!holdNo) f.intent = F.intent;
+  }
+  if (saidNoNow) f.intent = "not_interested";
   if (URGENCY.includes(F.urgency)) f.urgency = F.urgency;
   for (const [k, n] of [["problem", 120], ["problem_since", 60], ["village", 80], ["prefers", 80], ["name", 80]]) { const v = clean(F[k], n); if (v) f[k] = v; }
   if (["self", "family"].includes(F.decision_maker)) f.decision_maker = F.decision_maker;
@@ -280,10 +316,12 @@ async function absorb(cfg, phone, facts, ctx) {
   const r = scoreLead(Object.assign({}, f, {
     inboundCount: c.inboundCount != null ? c.inboundCount : prev.inbound,
     repliedToNudge: c.repliedToNudge != null ? c.repliedToNudge : prev.repliedToNudge,
-    opted_out: c.opted_out, status: c.status || prev.status,
+    opted_out: c.opted_out != null ? c.opted_out : prev.opted_out, status: c.status || prev.status, outcome: c.outcome !== undefined ? c.outcome : prev.outcome,
   }));
   const rec = { facts: f, score: r.score, grade: r.grade, km: r.km, ring: r.ring, place: r.place, signals: r.signals.slice(0, 6), inbound: c.inboundCount != null ? c.inboundCount : prev.inbound,
-    status: c.status || prev.status, at: Date.now(), wasGrade: prev.grade || null, channel: c.channel || prev.channel || "" };
+    status: c.status || prev.status, outcome: (c.outcome !== undefined ? c.outcome : prev.outcome) || undefined,
+    opted_out: (c.opted_out != null ? c.opted_out : prev.opted_out) || undefined,
+    at: Date.now(), wasGrade: prev.grade || null, channel: c.channel || prev.channel || "" };
   await guard.kvCommand(cfg, ["SET", `qual:${ph}`, JSON.stringify(rec), "EX", KEEP]).catch(() => {});
   return Object.assign({ line: contextLine(rec), changed: prev.grade !== r.grade }, rec);
 }
@@ -363,6 +401,47 @@ const stamp = (rec) => (rec ? { grade: rec.grade, score: rec.score, km: rec.km =
   since: (rec.facts || {}).problem_since || undefined, prefers: (rec.facts || {}).prefers || undefined, intent: (rec.facts || {}).intent || undefined,
   why: (rec.signals || []).filter((s) => s.points > 0).sort((a, b) => b.points - a.points).slice(0, 3).map((s) => s.why) } : {});
 
+// The grade as the desk should see it, with what the desk knows on top:
+// a lead marked "not interested", closed, or STOP'd is a D on every screen,
+// whatever the record last said. A booking or a visit is left alone.
+function settle(rec, lead) {
+  if (!rec) return rec;
+  const l = lead || {};
+  const st = l.status || rec.status;
+  if (st === "booked" || st === "visited") return rec;
+  const no = st === "closed" || l.optedOut || l.outcome === "notinterested" || l.outcome === "notravel";
+  if (!no || rec.grade === "D") return rec;
+  return Object.assign({}, rec, { grade: "D", score: Math.min(Number(rec.score) || 0, 20) });
+}
+
+// The leads graded before "no" counted: read their own last words again,
+// a batch at a time. A lead whose latest message from them says no — and
+// who has not said yes since — is re-scored with it. Each number is looked
+// at once (qual:rs1:<phone>, 30 days).
+async function rescan(cfg, limit) {
+  const out = { looked: 0, lowered: 0 };
+  if (!cfg) return out;
+  const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]).catch(() => ({}));
+  const phones = [...new Set(((r && r.result) || []).map((x) => parse(x, null)).filter(Boolean).map((l) => ten(l.phone)).filter((p) => p.length === 10))];
+  const recs = await forPhones(cfg, phones);
+  for (const ph of phones) {
+    const rec = recs[ph];
+    if (!rec || rec.grade === "D" || (rec.facts || {}).intent === "not_interested") continue;
+    if (out.looked >= (limit || 25)) break;
+    const nx = await guard.kvCommand(cfg, ["SET", `qual:rs1:${ph}`, "1", "NX", "EX", KEEP]).catch(() => ({}));
+    if (!(nx && nx.result)) continue;
+    out.looked++;
+    const th = await require("./_inbox.js").thread(cfg, ph).catch(() => null);
+    const said = ((th && th.msgs) || []).filter((m) => m.dir === "in").map((m) => String(m.text || ""));
+    let lastNo = -1, lastYes = -1;
+    said.forEach((t, i) => { if (saysNo(t)) lastNo = i; else if (BOOK_NOW.test(t)) lastYes = i; });
+    if (lastNo < 0 || lastYes > lastNo) continue;
+    await absorb(cfg, ph, { intent: "not_interested" }, {});
+    out.lowered++;
+  }
+  return out;
+}
+
 // How hard we chase, by grade — the whole point of grading.
 //  early:  hours after the enquiry for the first free-window nudge
 //  paid:   whether the paid template ladder (day 3, 7, 21) applies
@@ -379,4 +458,4 @@ async function chase(cfg, phone) {
   return cadenceOf(rec && rec.grade);
 }
 
-module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, nextAction, forPhones, backfill, read, absorb, react, stamp, chase, cadenceOf, CADENCE, contextLine, INTENTS, URGENCY, GRADE_OF };
+module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, saysNo, nextAction, forPhones, backfill, rescan, settle, read, absorb, react, stamp, chase, cadenceOf, CADENCE, contextLine, INTENTS, URGENCY, GRADE_OF };
