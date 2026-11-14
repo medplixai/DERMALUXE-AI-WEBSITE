@@ -122,6 +122,20 @@ const Q = h.load("_qualify");
   is(rs.lowered, 1, "one lowered");
   is((await Q.rescan(cfg, 10)).looked, 0, "and nobody is read twice");
 
+  console.log("\n  — an A is somebody who said when —");
+  h.run(["DEL", "dl_leads"]);
+  const vague = { problem: "acne", problem_since: "1 year", village: "Eluru", intent: "book_now", asked_price: true, name: "Sita" };
+  const whenSaid = Object.assign({}, vague, { prefers: "Monday evening" });
+  for (const [p, f] of [["9876500409", vague], ["9876500410", whenSaid]]) {
+    h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: Date.now() - 7200000, type: "whatsapp", name: f.name, phone: p, concern: "Acne" })]);
+    // graded under the old bar, which let any intent through
+    h.run(["SET", `qual:${p}`, JSON.stringify({ facts: f, score: 95, grade: "A", inbound: 6, signals: [] })]);
+  }
+  const rf = await Q.refresh(cfg);
+  is([(await Q.read(cfg, "9876500409")).grade, (await Q.read(cfg, "9876500410")).grade], ["B", "A"], "the stored As are re-graded: no day said → B, a day said → stays A");
+  is(rf.changed >= 1, true, "written only where it moved");
+  is((await Q.refresh(cfg)).changed, 0, "and a second pass changes nothing");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nno means no");
   process.exit(fails ? 1 : 0);
 })();

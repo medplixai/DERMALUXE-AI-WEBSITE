@@ -56,8 +56,13 @@ const cfg = { kind: "pg" };
   console.log("  — the score says why —");
   const bare = Q.scoreLead({});
   is([bare.score, bare.grade], [14, "D"], "a bare enquiry with one message is a D — somebody wrote, but that is all");
-  const near = Q.scoreLead({ village: "RR Peta, Eluru", intent: "book_now", problem: "hair fall", problem_since: "6 nelalu", inboundCount: 3 });
-  is([near.grade, near.km], ["A", 0], "near, means to come, says how long — an A");
+  const near = Q.scoreLead({ village: "RR Peta, Eluru", intent: "book_now", urgency: "this_week", problem: "hair fall", problem_since: "6 nelalu", inboundCount: 3 });
+  is([near.grade, near.km], ["A", 0], "near, means to come this week, says how long — an A");
+  // 14 Nov: an A is somebody who said when. "book_now" with no day was 44% of
+  // all leads under the old bar; the ones that booked had said a when.
+  is(Q.scoreLead({ village: "RR Peta, Eluru", intent: "book_now", problem: "hair fall", problem_since: "6 nelalu", inboundCount: 3 }).grade, "B", "the same with no day or week said — a B until they say when");
+  is(Q.scoreLead({ village: "Eluru", intent: "info_only", urgency: "unknown", problem: "acne", problem_since: "1 year", photo_sent: true, inboundCount: 6 }).grade, "B", "asking for information, however chatty, is not an A");
+  is(Q.scoreLead({ village: "Eluru", problem: "acne", prefers: "Monday evening", inboundCount: 3 }).grade, "A", "a day they can come is enough");
   is(near.signals.map((s) => s.key).includes("since"), true, "and the strongest reason is on the list");
   const chatty = Q.scoreLead({ village: "Eluru", problem: "acne", problem_since: "2 years", asked_price: true, photo_sent: true, inboundCount: 6 });
   is([chatty.grade, chatty.score], ["B", 69], "talkative but never said they will come — held at B until asked");
@@ -85,7 +90,7 @@ const cfg = { kind: "pg" };
   is(/from Eluru, ~0 km/.test(lastUser) || /still unknown/.test(lastUser), true, "the model was told what was already known before it answered");
   const hot = sentTo("9989325777").filter((s) => /A-grade/.test(s[2]));
   is(hot.length, 1, "the desk is told the moment it becomes an A — while the chat is live");
-  is(/Eluru \(0 km\)/.test(hot[0][2]) && /6 nelalu/.test(hot[0][2]), true, "with the reasons");
+  is(/Eluru \(0 km\)/.test(hot[0][2]) && /ee vaaram lo/.test(hot[0][2]), true, "with the reasons — where they are and when they said they will come");
   const lead = JSON.parse(h.run(["LRANGE", "dl_leads", "0", "0"])[0]);
   is([lead.grade, lead.score, lead.village, lead.since, (lead.why || []).length > 0], ["A", rec.score, "Eluru", "6 nelalu", true], "and the lead the desk reads carries the grade and why");
   claude.push({ reply: "Ok 🙏", lead: { name: "Anu", concern: "hair fall" }, qual: { prefers: "repu 6 PM" } });

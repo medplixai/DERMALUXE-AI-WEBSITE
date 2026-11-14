@@ -163,7 +163,7 @@ const lead = (o) => h.run(["RPUSH", "dl_leads", JSON.stringify(Object.assign({ t
   // Day 3 is a paid template. A and B get the whole ladder, C gets day 3 only,
   // D gets nothing — because every one of these costs the clinic money.
   const grade = async (ph, facts, ctx) => (await Q.absorb(cfg, ph, facts, ctx)).grade;
-  is(await grade("9876502040", { village: "Eluru", intent: "book_now", problem: "hair fall", problem_since: "6 nelalu" }, { inboundCount: 3 }), "A", "near, ready, and talking — an A");
+  is(await grade("9876502040", { village: "Eluru", intent: "book_now", urgency: "this_week", problem: "hair fall", problem_since: "6 nelalu" }, { inboundCount: 3 }), "A", "near, ready this week, and talking — an A");
   is(await grade("9876502041", { village: "Eluru", problem: "acne" }, { inboundCount: 2 }), "B", "a nearby problem with no plans yet — a B");
   is(await grade("9876502042", { problem: "acne" }, { inboundCount: 2 }), "C", "a problem and nothing else — a C");
   is(await grade("9876502043", { intent: "not_patient" }, {}), "D", "not a patient at all — a D");
@@ -193,7 +193,7 @@ const lead = (o) => h.run(["RPUSH", "dl_leads", JSON.stringify(Object.assign({ t
   is((await queue.callers(cfg)).map((c) => c.name).sort(), ["Ravi", "Sowmya"], "the callers are the people whose role may work a lead");
   h.run(["DEL", "dl_leads"]);
   for (const ph of ["9876502050", "9876502051"]) {
-    await Q.absorb(cfg, ph, { village: "Eluru", intent: "book_now", problem: "acne", problem_since: "2 nelalu" }, { inboundCount: 3 });
+    await Q.absorb(cfg, ph, { village: "Eluru", intent: "book_now", urgency: "this_week", problem: "acne", problem_since: "2 nelalu" }, { inboundCount: 3 });
     lead({ ts: NOW - 2 * HOUR, phone: ph, name: "Hot " + ph.slice(-2), concern: "Acne" });
   }
   await Q.absorb(cfg, "9876502052", { village: "Eluru", problem: "acne" }, { inboundCount: 2 });

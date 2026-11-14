@@ -166,7 +166,7 @@ const tomorrow11 = () => {
   is(plan2.free.some((f) => f.time === "1:30 pm" || f.time === "2:00 pm"), false, "nor a time the doctor is away");
   // who the records say to ring
   h.run(["RPUSH", "dl_leads", JSON.stringify({ ts: Date.now() - 3600000, type: "whatsapp", phone: "9876500091", name: "Hot Anu", concern: "Hair fall" })]);
-  await Q2.absorb({ kind: "pg" }, "9876500091", { village: "Eluru", intent: "book_now", problem: "hair fall", problem_since: "6 nelalu" }, { inboundCount: 3 });
+  await Q2.absorb({ kind: "pg" }, "9876500091", { village: "Eluru", intent: "book_now", urgency: "this_week", problem: "hair fall", problem_since: "6 nelalu" }, { inboundCount: 3 });
   h.run(["LPUSH", "appt:done", JSON.stringify({ ph: "9876500092", name: "Missed Ravi", at: Date.now() - 5 * 86400000, ns: 1, status: "noshow" })]);
   const plan3 = (await S({ a: "day", day: tomDay })).body.plan;
   const kinds = plan3.fill.map((f) => f.kind);

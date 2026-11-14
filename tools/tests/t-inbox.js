@@ -104,7 +104,7 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   console.log("\n  — what the desk sees beside the chat —");
   h.as(["inbox.view", "inbox.reply"], DESK);
   const Q = require(path.join(API, "_qualify.js"));
-  await Q.absorb({ kind: "pg" }, "9876500910", { problem: "pigmentation", problem_since: "8 nelalu", village: "Eluru", intent: "book_now" }, { inboundCount: 3 });
+  await Q.absorb({ kind: "pg" }, "9876500910", { problem: "pigmentation", problem_since: "8 nelalu", village: "Eluru", intent: "book_now", urgency: "this_week" }, { inboundCount: 3 });
   const li = await h.call(inbox, { a: "list" });
   const row = li.body.threads.find((t) => t.phone === "9876500910");
   is([row.grade, row.score > 0], ["A", true], "the list carries each patient's grade, so the desk answers the right chat first");

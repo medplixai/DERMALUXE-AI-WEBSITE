@@ -126,9 +126,14 @@ function scoreLead(q) {
 
   const raw = signals.reduce((s, x) => s + x.points, 0);
   let score = Math.max(0, Math.min(100, 20 + raw));
-  // An A tells the desk "call now", so it must mean they said they want to come.
-  const said = !!q.intent || (q.urgency && q.urgency !== "unknown") || !!q.prefers || q.status === "booked" || q.status === "visited";
-  if (!said && score >= 70) { score = 69; signals.push({ key: "no_intent_yet", points: 0, why: "vastanani inka cheppaledu — adigaka A avutundi" }); }
+  // An A tells the desk "call now", so it must mean they said they want to
+  // come: a day or time they can make it, or ready to book this week. Until
+  // 14 Nov any stated intent counted — "info_only" included — and 44% of all
+  // leads were A, of whom 27% booked. Of the leads that meet this bar 47%
+  // had booked; of the As it takes away, 1 in 47.
+  const ready = !!q.prefers || q.status === "booked" || q.status === "visited"
+    || (q.intent === "book_now" && (q.urgency === "this_week" || q.urgency === "emergency"));
+  if (!ready && score >= 70) { score = 69; signals.push({ key: "no_intent_yet", points: 0, why: "eppudu vastaro inka cheppaledu — cheppaka A avutundi" }); }
   // Somebody who said no is not a lead to ring, however much else they said
   // first. On 14 Nov fourteen A-grade leads — "call ki A, ippude call
   // cheyandi" — had written "Don't call", "Vadhu", "Avasaram ledu", "Stop".
@@ -148,7 +153,7 @@ const BOOK_NOW = /(book|slot|vasta(?:nu|m|ru)?|వస్తాను|వస్�
 const CONSIDER = /(alochi|ఆలోచి|thinking|later chuda|maatladi cheptanu|intlo adigi|discuss)/i;
 const NOT_PATIENT = /(\bjob\b|ఉద్యోగ|udyoga|vacancy|resume|\bcv\b|hiring|salary entha|marketing executive|\bsales\b|medical rep|business proposal|partnership|promote your|seo|website design)/i;
 const EMERGENCY = /(emergency|అత్యవసర|ventane|bleeding|raktam|chemu|swelling ekkuva|burn|కాలిన|allergy ekkuva|severe)/i;
-const THIS_WEEK = /(ee vaaram|this week|repu|tomorrow|ee roju|today|రేపు|ఈరోజు|ఈ వారం|saturday|sunday|monday|tuesday|wednesday|thursday|friday)/i;
+const THIS_WEEK = /(ee\s*vaa?ram|ee\s*week|this week|ivala|eeroju|repu|tomorrow|ee roju|today|రేపు|ఈరోజు|ఈ వారం|saturday|sunday|monday|tuesday|wednesday|thursday|friday)/i;
 const THIS_MONTH = /(ee nela|this month|ఈ నెల|next week|vachche vaaram)/i;
 const LATER = /(tarvata|later|next month|vachche nela|తర్వాత|konchem time|after \d)/i;
 const FAMILY = /(intlo|ఇంట్లో|amma|nanna|husband|wife|family ni adigi|వాళ్ళని అడిగి)/i;
@@ -307,6 +312,12 @@ async function absorb(cfg, phone, facts, ctx) {
     if (!holdNo) f.intent = F.intent;
   }
   if (saidNoNow) f.intent = "not_interested";
+  // "Ee week lo vastanu", "repu": the when, read from their own words when
+  // the model left it out — the A bar below needs it.
+  if (typed != null && !URGENCY.includes(F.urgency) && !f.urgency) {
+    const u = extract(typed).urgency;
+    if (u) f.urgency = u;
+  }
   if (URGENCY.includes(F.urgency)) f.urgency = F.urgency;
   for (const [k, n] of [["problem", 120], ["problem_since", 60], ["village", 80], ["prefers", 80], ["name", 80]]) { const v = clean(F[k], n); if (v) f[k] = v; }
   if (["self", "family"].includes(F.decision_maker)) f.decision_maker = F.decision_maker;
@@ -442,6 +453,27 @@ async function rescan(cfg, limit) {
   return out;
 }
 
+// Every stored grade, scored again by today's rules from the facts it was
+// built on — so a change to the rules reaches the leads already on the
+// screen, not only the ones that write in next. Written only when the grade
+// or score actually moves.
+async function refresh(cfg) {
+  const out = { looked: 0, changed: 0 };
+  if (!cfg) return out;
+  const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]).catch(() => ({}));
+  const phones = [...new Set(((r && r.result) || []).map((x) => parse(x, null)).filter(Boolean).map((l) => ten(l.phone)).filter((p) => p.length === 10))];
+  const recs = await forPhones(cfg, phones);
+  for (const [ph, rec] of Object.entries(recs)) {
+    out.looked++;
+    const s2 = scoreLead(Object.assign({}, rec.facts || {}, { inboundCount: rec.inbound, status: rec.status, outcome: rec.outcome, opted_out: rec.opted_out }));
+    if (s2.grade === rec.grade && s2.score === rec.score) continue;
+    const next = Object.assign({}, rec, { score: s2.score, grade: s2.grade, signals: s2.signals.slice(0, 6), wasGrade: rec.grade, at: Date.now() });
+    await guard.kvCommand(cfg, ["SET", `qual:${ph}`, JSON.stringify(next), "EX", KEEP]).catch(() => {});
+    out.changed++;
+  }
+  return out;
+}
+
 // How hard we chase, by grade — the whole point of grading.
 //  early:  hours after the enquiry for the first free-window nudge
 //  paid:   whether the paid template ladder (day 3, 7, 21) applies
@@ -458,4 +490,4 @@ async function chase(cfg, phone) {
   return cadenceOf(rec && rec.grade);
 }
 
-module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, saysNo, nextAction, forPhones, backfill, rescan, settle, read, absorb, react, stamp, chase, cadenceOf, CADENCE, contextLine, INTENTS, URGENCY, GRADE_OF };
+module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, saysNo, nextAction, forPhones, backfill, rescan, refresh, settle, read, absorb, react, stamp, chase, cadenceOf, CADENCE, contextLine, INTENTS, URGENCY, GRADE_OF };
