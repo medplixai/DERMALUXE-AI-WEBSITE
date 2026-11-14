@@ -265,7 +265,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, imageBlock) {
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 2000,
+      max_tokens: 6000,   // room for the model's thinking before the JSON (see whatsapp.js askClaude)
       system: sysBlocks(imageBlock ? CLINIC_FACTS + "\n\n" + PHOTO_RULES : CLINIC_FACTS),
       messages,
     }),
@@ -458,7 +458,7 @@ async function askClaudeComment(username, commentText) {
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 600,
+      max_tokens: 2000,   // 600 left too little room once the model thinks first
       system: sysBlocks(CLINIC_FACTS + "\n\n" + COMMENT_RULES),
       messages: [{ role: "user", content: `[Instagram comment by @${username} on our post] ${commentText}` }],
     }),

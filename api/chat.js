@@ -133,7 +133,7 @@ module.exports = async (req, res) => {
         // 1000 cut replies off mid-word on 5 November ("✨ *Laser"): a reply in
         // Telugu script, the opening details and the qual block did not fit,
         // the JSON broke, and salvageReply sent the half that had arrived.
-        max_tokens: 2000,
+        max_tokens: 6000,   // room for the model's thinking before the JSON (see whatsapp.js askClaude)
         system: sysBlocks(CLINIC_FACTS),
         messages,
       }),

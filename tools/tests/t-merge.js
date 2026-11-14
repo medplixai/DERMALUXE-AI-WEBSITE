@@ -31,13 +31,14 @@ process.env.ANTHROPIC_API_KEY = "test";
   stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () => null, transcribe: async () => null });
   stub("_push.js", { enabled: () => false, notifyCap: async () => ({ ok: true }), send: async () => ({ ok: true }) });
   const asked = [];
-  let nextReply = "Sare andi 🙏";
+  let nextReply = "Sare andi 🙏", cutNext = 0;
   global.fetch = async (url, opt) => {
     const u = String(url);
     if (u.includes("api.anthropic.com")) {
       const body = String((opt && opt.body) || "");
       if (/You fix one WhatsApp reply/.test(body)) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: "ok" }] }) };
       asked.push(body);
+      if (cutNext > 0) { cutNext--; return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: '{"reply":"Hi 🙏' }], stop_reason: "max_tokens", usage: { output_tokens: 2000 } }) }; }
       return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify({ reply: nextReply, lead: null }) }] }) };
     }
     return { ok: true, status: 200, json: async () => ({}), text: async () => "" };
@@ -98,6 +99,15 @@ process.env.ANTHROPIC_API_KEY = "test";
   nextReply = "Monday 11:00 AM kudurutunda andi? Cheppandi, team call chesi confirm chestundi.";
   await say("9876500307", "Ok");
   is(h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).filter((a) => a.ph === "9876500307").length, 0, "and a question about one time is not either");
+
+  console.log("\n  — a reply cut off half-way —");
+  // 14 Nov: a new patient's "Hi" got the fixed "team twaralo reply chestundi"
+  // card because the model's answer ran out of room before the JSON closed.
+  nextReply = "Namaste 🙏 Skin aa leda hair aa, cheppandi?"; cutNext = 1; asked.length = 0;
+  const outsBefore = h.run(["LRANGE", "ib:m:9876500308", "0", "-1"]).length;
+  await say("9876500308", "Hi");
+  const lastOut = h.run(["LRANGE", "ib:m:9876500308", "0", "0"]).map((x) => JSON.parse(x))[0] || {};
+  is([asked.length, /Skin aa leda hair aa/.test(lastOut.text || ""), /twaralo/.test(lastOut.text || "")], [2, true, false], "it is asked once more, and the patient gets the real answer, not the fallback card");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe conversation is tidy");
   process.exit(fails ? 1 : 0);

@@ -162,7 +162,23 @@ function turns(hist) {
 }
 const NO_WORDS = "[patient sent something with no words in it — greet them and ask what they need help with]";
 
+// A reply that cannot be read used to become the fixed "team twaralo reply
+// chestundi" card, with nothing in the logs: on 14 Nov a new patient's "Hi"
+// got it, the sixth time in a fortnight outside an outage. The model thinks
+// before it answers, and 2,000 tokens could run out before the JSON closed.
+// Now there is more room, a reply that still cannot be read is asked for
+// once more, and the reason is logged either way.
 async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
+  const o = opts || {};
+  const out = await askClaudeOnce(hist, userMsg, profileName, extraCtx, sysExtra, o);
+  if (!out._unread || o.retried) { delete out._unread; return out; }
+  console.error(`wa: model reply unreadable (${out._unread}) — asking again`);
+  const again = await askClaudeOnce(hist, userMsg, profileName, extraCtx, sysExtra, Object.assign({}, o, { retried: true }));
+  if (again._unread) console.error(`wa: model reply unreadable twice (${again._unread}) — fallback card sent`);
+  delete again._unread;
+  return again;
+}
+async function askClaudeOnce(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
   const messages = turns(hist);
   messages.push({ role: "user", content: said((extraCtx || "") + (profileName ? `[patient name on WhatsApp: ${profileName}] ` : "") + said(userMsg)) || NO_WORDS });
 
@@ -175,7 +191,7 @@ async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
     },
     body: JSON.stringify({
       model: (opts && opts.model) || process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 2000,
+      max_tokens: 6000,
       system: sysBlocks(CLINIC_FACTS, sysExtra),
       messages,
     }),
@@ -195,7 +211,9 @@ async function askClaude(hist, userMsg, profileName, extraCtx, sysExtra, opts) {
     const parsed = JSON.parse(m ? m[0] : text);
     if (parsed && typeof parsed.reply === "string") return parsed;
   } catch (e) {}
-  return { reply: facts.salvageReply(text) || FALLBACK_REPLY, lead: null };
+  const saved = facts.salvageReply(text);
+  if (saved) return { reply: saved, lead: null };
+  return { reply: FALLBACK_REPLY, lead: null, _unread: `stop=${data.stop_reason || "?"} out=${(data.usage || {}).output_tokens || 0} text=${JSON.stringify(text.slice(0, 120))}` };
 }
 
 // Quick-menu buttons shown on the first reply of a conversation.
@@ -853,7 +871,7 @@ async function askClaudeVision(hist, media, caption, profileName, extraCtx, sysE
     },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 2000,
+      max_tokens: 6000,
       // PHOTO_RULES is constant too, so it joins the cached half; the owner's
       // rules stay after the breakpoint.
       system: sysBlocks(CLINIC_FACTS + "\n\n" + PHOTO_RULES, sysExtra),
