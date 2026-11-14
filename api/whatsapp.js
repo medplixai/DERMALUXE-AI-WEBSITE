@@ -1578,8 +1578,12 @@ module.exports = async (req, res) => {
     // fees are published) are the two cases where a number may stand.
     try {
       const pol = await require("./_prices.js").load(cfg);
-      if (pol.mode !== "bands" && !acadLine) {
+      // Under "bands" the owner's own ranges stand and nothing else does: until
+      // 14 Nov this whole block was skipped in bands mode, so a figure the
+      // model made up for a treatment not on the list would have gone out.
+      if (!acadLine) {
         const allow = new Set(pol.mode !== "none" && pol.consult ? [pol.consult] : []);
+        if (pol.mode === "bands") for (const b of pol.bands || []) { allow.add(b.from); if (b.to) allow.add(b.to); }
         // The closing line names the consultation fee only when the policy
         // has one, and never for a hair transplant chat — that assessment is
         // the owner's own package offer and the brief says what it costs.

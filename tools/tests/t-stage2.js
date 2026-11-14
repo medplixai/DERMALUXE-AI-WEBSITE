@@ -70,7 +70,9 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   // leaving nothing in its place would have left a patient worse informed than
   // before. NMC 8.1(x): a disclosure of fees "shall be factual, transparent and
   // not misleading" \u2014 so the fee is told when asked, and only when asked.
-  is((await prices.load(cfg)).mode, "consult", "with nothing set, the agent may state the consultation fee");
+  // 14 Nov: the owner confirmed seven starting prices from the rate card.
+  is((await prices.load(cfg)).mode, "bands", "with nothing set, the agent may state the consultation fee and the owner's seven starting prices");
+  is(/HydraFacial ₹3,500\+/.test(await prices.blockFor(cfg)) && /starts from/.test(await prices.blockFor(cfg)), true, "always as \"starts from\", with the exact plan left to the consultation");
   is(/consultation fee is \u20b9300/.test(await prices.blockFor(cfg)), true, "and the fee it states is \u20b9300");
   is(/Never volunteer it/.test(await prices.blockFor(cfg)), true, "but it never brings the price up itself");
   is((await prices.save(cfg, { mode: "consult" }, "Owner")).ok, false, "a consultation policy without a fee is refused");

@@ -24,20 +24,35 @@ const MODES = ["none", "consult", "bands"];
 // so the default is now to tell a patient the fee when they ask, rather than
 // to say nothing and leave them guessing after "free" was taken away. The
 // owner's own setting in the staff app still overrides this.
-const DEFAULT = { mode: "consult", consult: 300 };
+//
+// 14 Nov 2026: the owner confirmed the rate card's starting prices for the
+// agent to give when asked ("ok" to the list of seven) — of the chats that
+// asked "cost entha?" and heard only "consultation lo cheptaru", several
+// ended on "later". Always said as "starts from", always with the exact plan
+// left to the consultation (block() below). These are the rate card's own
+// numbers (money.js DEFAULT_RATES), so the bill and the chat agree.
+const DEFAULT = { mode: "bands", consult: 300, bands: [
+  { name: "HydraFacial", from: 3500, to: 0 },
+  { name: "Chemical peel", from: 2500, to: 0 },
+  { name: "Laser hair removal — face, per sitting", from: 2500, to: 0 },
+  { name: "PRP hair — per sitting", from: 5000, to: 0 },
+  { name: "GFC hair — per sitting", from: 7000, to: 0 },
+  { name: "Acne treatment — per sitting", from: 2000, to: 0 },
+  { name: "Pigmentation — per sitting", from: 3000, to: 0 },
+] };
 const parse = (s, d) => { try { return JSON.parse(s); } catch (e) { return d; } };
 const rupee = (n) => "₹" + Number(n).toLocaleString("en-IN");
 const money = (v) => Math.max(0, Math.min(500000, Math.round(Number(String(v == null ? "" : v).replace(/[^\d.]/g, "")) || 0)));
 
 async function load(cfg) {
-  if (!cfg) return { mode: DEFAULT.mode, consult: DEFAULT.consult, bands: [] };
+  if (!cfg) return { mode: DEFAULT.mode, consult: DEFAULT.consult, bands: DEFAULT.bands.slice() };
   const raw = ((await guard.kvCommand(cfg, ["GET", KEY]).catch(() => ({}))) || {}).result || "";
   const v = parse(raw, null);
   // The default applies only when the owner has never set a policy. Once they
   // have, what they chose is returned exactly as they chose it — including
   // "none", which has to keep meaning silence, and a zero fee, which has to
   // keep failing validation rather than being quietly filled in from here.
-  if (!v) return { mode: DEFAULT.mode, consult: DEFAULT.consult, bands: [], by: "", ts: 0, set: false };
+  if (!v) return { mode: DEFAULT.mode, consult: DEFAULT.consult, bands: DEFAULT.bands.slice(), by: "", ts: 0, set: false };
   return {
     mode: MODES.includes(v.mode) ? v.mode : "none",
     consult: money(v.consult),
