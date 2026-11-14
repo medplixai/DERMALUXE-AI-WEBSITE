@@ -137,9 +137,10 @@ function scoreLead(q) {
   // Somebody who said no is not a lead to ring, however much else they said
   // first. On 14 Nov fourteen A-grade leads — "call ki A, ippude call
   // cheyandi" — had written "Don't call", "Vadhu", "Avasaram ledu", "Stop".
-  // A booking or a visit after that outranks it: they came back.
   const no = q.intent === "not_interested" || q.intent === "not_patient" || q.opted_out || q.status === "closed" || q.outcome === "notinterested" || q.outcome === "notravel";
-  if (no && q.status !== "booked" && q.status !== "visited" && score > 20) score = 20;
+  // Only a booking outranks it: they came back. Having visited once before
+  // does not — a past patient who says "vaddu" to more sessions means it.
+  if (no && q.status !== "booked" && score > 20) score = 20;
   return { score, grade: GRADE_OF(score), signals, km, ring, place: place.known ? place.label : "" };
 }
 
@@ -425,30 +426,49 @@ function settle(rec, lead) {
   return Object.assign({}, rec, { grade: "D", score: Math.min(Number(rec.score) || 0, 20) });
 }
 
-// The leads graded before "no" counted: read their own last words again,
-// a batch at a time. A lead whose latest message from them says no — and
-// who has not said yes since — is re-scored with it. Each number is looked
-// at once (qual:rs1:<phone>, 30 days).
+// The leads graded before "no" counted: read their own last words again.
+// Only how the chat ENDED counts — a "no" in one of their last two messages,
+// with nothing after it that says yes or names a time. The first version
+// (14 Nov morning) took any "no" anywhere with no "book" word after it, and
+// lowered a student who had said "Avasaram ledu" to a facial at 9:12 and
+// joined the Academy and paid by 1 PM. Version 2 also puts back what version
+// 1 got wrong. Each number is read once per version (qual:rs2:<phone>).
+const TIME_SAID = /\b\d{1,2}\s*(?:[:.]\s*\d{2})?\s*(?:am|pm)\b|\b(yes|avunu|sare|ok\s+vastanu)\b/i;
+function endedOnNo(said) {
+  const tail = (said || []).slice(-2);
+  const i = tail.map((t) => saysNo(t)).lastIndexOf(true);
+  if (i < 0) return false;
+  return !tail.slice(i + 1).some((t) => BOOK_NOW.test(t) || TIME_SAID.test(t));
+}
 async function rescan(cfg, limit) {
-  const out = { looked: 0, lowered: 0 };
+  const out = { looked: 0, lowered: 0, restored: 0 };
   if (!cfg) return out;
   const r = await guard.kvCommand(cfg, ["LRANGE", "dl_leads", "0", "399"]).catch(() => ({}));
   const phones = [...new Set(((r && r.result) || []).map((x) => parse(x, null)).filter(Boolean).map((l) => ten(l.phone)).filter((p) => p.length === 10))];
   const recs = await forPhones(cfg, phones);
   for (const ph of phones) {
     const rec = recs[ph];
-    if (!rec || rec.grade === "D" || (rec.facts || {}).intent === "not_interested") continue;
-    if (out.looked >= (limit || 25)) break;
-    const nx = await guard.kvCommand(cfg, ["SET", `qual:rs1:${ph}`, "1", "NX", "EX", KEEP]).catch(() => ({}));
+    if (!rec) continue;
+    const isNo = (rec.facts || {}).intent === "not_interested";
+    let v1 = false;
+    if (isNo) v1 = !!(((await guard.kvCommand(cfg, ["GET", `qual:rs1:${ph}`]).catch(() => ({}))) || {}).result);
+    if ((rec.grade === "D" && !isNo) || (isNo && !v1)) continue;   // nothing to lower; a live "no" stays
+    if (out.looked >= (limit || 100)) break;
+    const nx = await guard.kvCommand(cfg, ["SET", `qual:rs2:${ph}`, "1", "NX", "EX", KEEP]).catch(() => ({}));
     if (!(nx && nx.result)) continue;
     out.looked++;
     const th = await require("./_inbox.js").thread(cfg, ph).catch(() => null);
     const said = ((th && th.msgs) || []).filter((m) => m.dir === "in").map((m) => String(m.text || ""));
-    let lastNo = -1, lastYes = -1;
-    said.forEach((t, i) => { if (saysNo(t)) lastNo = i; else if (BOOK_NOW.test(t)) lastYes = i; });
-    if (lastNo < 0 || lastYes > lastNo) continue;
-    await absorb(cfg, ph, { intent: "not_interested" }, {});
-    out.lowered++;
+    const no = endedOnNo(said);
+    if (no && !isNo) { await absorb(cfg, ph, { intent: "not_interested" }, {}); out.lowered++; }
+    else if (!no && isNo) {
+      // Version 1 called this a no; their chat did not end on one. Take the
+      // intent off and score again from everything else they said.
+      const f = Object.assign({}, rec.facts || {}); delete f.intent;
+      const s2 = scoreLead(Object.assign({}, f, { inboundCount: rec.inbound, status: rec.status, outcome: rec.outcome, opted_out: rec.opted_out }));
+      await guard.kvCommand(cfg, ["SET", `qual:${ph}`, JSON.stringify(Object.assign({}, rec, { facts: f, score: s2.score, grade: s2.grade, signals: s2.signals.slice(0, 6), wasGrade: rec.grade, at: Date.now() })), "EX", KEEP]).catch(() => {});
+      out.restored++;
+    }
   }
   return out;
 }
@@ -490,4 +510,4 @@ async function chase(cfg, phone) {
   return cadenceOf(rec && rec.grade);
 }
 
-module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, saysNo, nextAction, forPhones, backfill, rescan, refresh, settle, read, absorb, react, stamp, chase, cadenceOf, CADENCE, contextLine, INTENTS, URGENCY, GRADE_OF };
+module.exports = { PLACES, placeOf, placeIn, ringOf, scoreLead, extract, saysNo, endedOnNo, nextAction, forPhones, backfill, rescan, refresh, settle, read, absorb, react, stamp, chase, cadenceOf, CADENCE, contextLine, INTENTS, URGENCY, GRADE_OF };

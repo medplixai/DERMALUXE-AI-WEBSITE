@@ -42,6 +42,7 @@ const Q = h.load("_qualify");
   const back = await Q.absorb(cfg, ph, { intent: "book_now" }, { inboundCount: 9, text: "Sorry, repu evening vastanu" });
   is(back.grade, "A", "their own \"vastanu\" does");
   is(Q.scoreLead(Object.assign({}, keen, { intent: "not_interested", status: "booked" })).grade !== "D", true, "and a booking after a no is not held against them");
+  is(Q.scoreLead(Object.assign({}, keen, { intent: "not_interested", status: "visited" })).grade, "D", "a past patient who says \"vaddu\" to more sessions is a D — having visited once is not a yes");
   is(Q.scoreLead(Object.assign({}, keen, { opted_out: true })).grade, "D", "STOP is a D");
   is(Q.extract("Avasaram ledu").intent, "not_interested", "the words alone are read the same way (old leads, other channels)");
 
@@ -117,9 +118,21 @@ const Q = h.load("_qualify");
   await ib.log(cfg, "9876500407", { dir: "in", text: "Vaddu le" });
   await ib.log(cfg, "9876500408", { dir: "in", text: "Ippudu vaddu" });
   await ib.log(cfg, "9876500408", { dir: "in", text: "Monday vastanu" });
+  // A real case from the first version: "Avasaram ledu" to a facial at 9:12,
+  // then the Academy, a slot at 12:30 and "Pay chesanu" — lowered by mistake.
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: Date.now() - 86400000, type: "whatsapp", name: "Student", phone: "9876500411", concern: "Academy" })]);
+  h.run(["SET", "qual:9876500411", JSON.stringify(Object.assign(Q.scoreLead(Object.assign({}, keen, { intent: "not_interested" })), { facts: Object.assign({}, keen, { intent: "not_interested" }), inbound: 9 }))]);
+  h.run(["SET", "qual:rs1:9876500411", "1"]);   // version 1 did it
+  for (const t of ["Hydrafacial", "Avasaram ledu", "Academy", "Ivala 12:30 PM", "Yes", "Pay chesanu", "Both parts are interested"]) await ib.log(cfg, "9876500411", { dir: "in", text: t });
+  // and one whose chat really did end on a no, a message later
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: Date.now() - 86400000, type: "whatsapp", name: "Ended no", phone: "9876500412", concern: "Acne" })]);
+  h.run(["SET", "qual:9876500412", JSON.stringify(Object.assign(Q.scoreLead(keen), { facts: keen }))]);
+  for (const t of ["Hair fall undi", "Avasaram ledu", "Ok"]) await ib.log(cfg, "9876500412", { dir: "in", text: t });
   const rs = await Q.rescan(cfg, 10);
   is([(await Q.read(cfg, "9876500407")).grade, (await Q.read(cfg, "9876500408")).grade], ["D", "A"], "an old A whose last word was \"Vaddu le\" is lowered; one who said yes after is not");
-  is(rs.lowered, 1, "one lowered");
+  is((await Q.read(cfg, "9876500412")).grade, "D", "\"Avasaram ledu\" then \"Ok\" — the chat ended on no");
+  is([(await Q.read(cfg, "9876500411")).facts.intent, (await Q.read(cfg, "9876500411")).grade !== "D"], [undefined, true], "the student lowered by the first version is put back — her chat did not end on no");
+  is([rs.lowered, rs.restored], [2, 1], "two lowered, one put back");
   is((await Q.rescan(cfg, 10)).looked, 0, "and nobody is read twice");
 
   console.log("\n  — an A is somebody who said when —");

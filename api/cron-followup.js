@@ -543,7 +543,7 @@ module.exports = async (req, res) => {
   try { if (room("backfill")) backfilled = (await qualify.backfill(cfg, 25)).graded; } catch (e) { console.error("cron: qualify backfill", e && e.message); }
   // Leads graded before "vaddu" counted: their own last words, read again.
   let lowered = 0;
-  try { if (room("rescan")) lowered = (await qualify.rescan(cfg, 30)).lowered; } catch (e) { console.error("cron: qualify rescan", e && e.message); }
+  try { if (room("rescan")) lowered = (await qualify.rescan(cfg, 100)).lowered; } catch (e) { console.error("cron: qualify rescan", e && e.message); }
   // And every stored grade by today's rules (one read, writes only on change).
   let regraded = 0;
   try { if (room("regrade")) regraded = (await qualify.refresh(cfg)).changed; } catch (e) { console.error("cron: qualify refresh", e && e.message); }
