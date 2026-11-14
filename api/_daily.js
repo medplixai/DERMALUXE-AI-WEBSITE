@@ -296,10 +296,15 @@ JSON: {"key":"...","h1":"...","te":"...","sub":"...","img":"...","why":"..."}`;
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: process.env.DAILY_PLANNER_MODEL || process.env.AI_MODEL || "claude-sonnet-5", max_tokens: 600, system: sys, messages: [{ role: "user", content: user }] }),
+      // 600 was not enough room: on 14 Nov the copy came back cut off mid
+      // string ("Unterminated string in JSON at position 275") and the day
+      // fell back to the library topic. Telugu script costs several tokens a
+      // letter, and the photo brief is a full sentence.
+      body: JSON.stringify({ model: process.env.DAILY_PLANNER_MODEL || process.env.AI_MODEL || "claude-sonnet-5", max_tokens: 1500, system: sys, messages: [{ role: "user", content: user }] }),
     });
     if (!resp.ok) throw new Error("claude HTTP " + resp.status);
     const data = await resp.json();
+    if (data.stop_reason === "max_tokens") console.error("daily: planner hit max_tokens");
     const t = ((data.content || []).find((b) => b.type === "text") || {}).text || "";
     const p = JSON.parse((t.match(/\{[\s\S]*\}/) || [t])[0]);
     const lib2 = TOPICS.find((x) => x.key === String(p.key || "").toLowerCase());
