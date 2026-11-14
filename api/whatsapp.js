@@ -18,6 +18,7 @@ const guard = require("./_guard.js");
 const clinic = require("./_clinic.js");
 const leadstore = require("./_leadstore.js");
 const inbox = require("./_inbox.js");
+const SA = require("./_staffask.js");
 const qualify = require("./_qualify.js");
 const lint = require("./_lint.js");
 const rules = require("./_rules.js");
@@ -1153,7 +1154,10 @@ module.exports = async (req, res) => {
   // anything else from the admin falls through to the normal agent).
   // Admin-looking command from a number that is not on the admin allowlist:
   // tell them, instead of letting the patient agent answer it.
-  const ADMIN_CMD = /^(templates?|staff|academy\s+(booked|status|notify|msg|message)|daily\s+(post|on|off|status|topics)|report|weekly|funnel|reviews|referrals|appointments|checkups|blocks|results|insta\s+report|leads\s+report|ideas|queue|campaigns|marketing\s+report)\b/i;
+  // "staff", "report", "results", "appointments" and "reviews" on their own
+  // are words patients use — every first reply tells them to type "staff" —
+  // so only the full owner forms of those ("staff add …") are caught here.
+  const ADMIN_CMD = /^(templates?|staff\s+(list|add|remove|delete|roles|password)|academy\s+(booked|status|notify|msg|message)|daily\s+(post|on|off|status|topics)|weekly|funnel|referrals|checkups|blocks|insta\s+report|leads\s+report|ideas|queue|campaigns|marketing\s+report)\b/i;
   if (isMeta && !admin.isAdmin(digits) && ADMIN_CMD.test(String(text || "").trim())) {
     return respond(`🔒 Ee command *owner number* nunchi matrame pani chestundi.\n\nMee number: ${digits}\nOwner numbers: ${guard.ownerPhones().map((x) => x.slice(0, 2) + "xxxxx" + x.slice(-3)).join(", ") || "—"}\n\nMee number ni owner ga add cheyalante, existing owner number nunchi cheppandi.`);
   }
@@ -1297,6 +1301,19 @@ module.exports = async (req, res) => {
     }
   }
 
+  // "Staff" — they want a person. Said, and the team told; see _staffask.js.
+  if (patientChat() && !imageId && !audioId && SA.isAsk(text)) {
+    const sk = `wa:h:${digits}`;
+    const h0 = await getHistory(cfg, sk);
+    const lastAsk = h0.map((t) => String((t && t.u) || "")).reverse().find((u) => u && !SA.isAsk(u)) || "";
+    const open = SA.openNow();
+    await SA.alert(cfg, { phone: digits, name: profileName, last: lastAsk, open }).catch((e) => console.error("wa: staff ask", e && e.message));
+    const said = SA.reply(open);
+    h0.push({ u: text, a: said });
+    await saveHistory(cfg, sk, h0);
+    return respond(said);
+  }
+
   if (process.env.WA_AGENT_ENABLED !== "1" || !process.env.ANTHROPIC_API_KEY) {
     return respond(FALLBACK_REPLY);
   }
@@ -1387,7 +1404,10 @@ module.exports = async (req, res) => {
       // learned it and then asked another question instead of a time.
       const concernKnown = !!((last && last.concern) || f0.problem);
       const townKnown = !!(qrec0 && (qrec0.km != null || qrec0.place || f0.village || f0.place));
-      if (!acad && hist.length >= 2 && concernKnown && townKnown && !/upcoming appointment/.test(apptLine)) extraCtx += '[OFFER SLOTS NOW — concern and town are known; put 6-9 "slots" in this reply] ';
+      // Not for a job seeker: on 13 Nov one finished her application, said
+      // "Ok", and was offered "Repu 11:30 AM" — which she took for an interview.
+      const slotsFit = ["clinic_consult", "video_consult", "ht_consult", "return_visit"].includes(g.key);
+      if (!acad && slotsFit && hist.length >= 2 && concernKnown && townKnown && !/upcoming appointment/.test(apptLine)) extraCtx += '[OFFER SLOTS NOW — concern and town are known; put 6-9 "slots" in this reply] ';
     } catch (e) {}
     const ar0 = await guard.kvCommand(cfg, ["GET", `ad:ref:${digits}`]).catch(() => ({}));
     try {

@@ -125,10 +125,14 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
 
   console.log("\n  — what only the owner may do —");
   clear(); adminCalls.length = 0; claudeCalls = 0;
-  await say("9876500003", "report");
+  await say("9876500003", "staff add 9000000009 Ravi reception");
   is(adminCalls.length, 0, "a patient typing an owner command does not reach the owner's handler");
   is(/owner number/.test((lastTo("9876500003") || {}).text || ""), true, "and is told it is for the owner");
   is(claudeCalls, 0, "without the model being asked either");
+  // "Report" alone is what a patient types about their own blood report —
+  // that goes to the agent, not to a lock.
+  await say("9876500004", "Report");
+  is(/owner number/.test((lastTo("9876500004") || {}).text || ""), false, "a patient's \"Report\" is answered, not locked");
   await say(OWNER, "report");
   is(adminCalls, ["report"], "the owner's own number reaches it");
   is(((lastTo(OWNER) || {}).text || "").includes("report"), true, "and gets the answer");
@@ -334,6 +338,17 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   await say("9876500027", "ok eppudu ravali?");
   is(/OFFER SLOTS NOW/.test(String(claudeBody.messages.slice(-1)[0].content)), true, "with the concern and the town known and no appointment, the next turn is told to offer slots");
   is((lastText("9876500027") || {}).type, "interactive", "and the slot list reaches the phone as a tappable list");
+
+  // 13 Nov: a job seeker finished her application, said "Ok", and was offered
+  // a consultation slot she took for an interview.
+  h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: Date.now(), name: "Applicant", phone: "9876500028", type: "job", concern: "Other Role" })]);
+  claude.push({ reply: "HR team chusi call chestaru 🙏", lead: null, qual: { problem: "job", village: "Eluru" } });
+  await say("9876500028", "Eluru");
+  claude.push({ reply: "Sare andi 🙏", lead: null });
+  await say("9876500028", "Fresher");
+  claude.push({ reply: "Sare andi 🙏", lead: null });
+  await say("9876500028", "Ok");
+  is(/OFFER SLOTS NOW/.test(String(claudeBody.messages.slice(-1)[0].content)), false, "a job seeker with a town known is not told to offer consultation slots");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe whatsapp agent behaves");
   process.exit(fails ? 1 : 0);
