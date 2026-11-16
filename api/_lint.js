@@ -150,7 +150,7 @@ async function rewrite(out, faults, patientText, opts) {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": key, "anthropic-version": "2023-06-01" },
       body: JSON.stringify({
-        model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 2000,
+        model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 4000,
         system: "You fix one WhatsApp reply from DermaLuxe Assistant (a skin & hair clinic receptionist in Eluru), keeping the same language, tone, every fact and the booking intent. Return ONLY the corrected reply text, no JSON, no preamble.",
         messages: [{ role: "user", content: `REPLY:\n${out.reply}\n\nFAULTS TO FIX:\n${faults.map((f) => "- " + f.note).join("\n")}\n\nRules: exactly one question mark in the whole reply (or none when buttons/slots are offered); never a treatment price or a medicine name; never name a condition the patient did not name; no safety verdicts; end with one short next step unless it is a confirmation, an emergency, or the reply to a stop request; Tenglish (Telugu in English letters) unless the patient wrote real English of their own. Keep it 2–6 short lines.` }],
       }),

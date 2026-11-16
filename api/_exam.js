@@ -150,7 +150,7 @@ async function judge(p, conv, cfg) {
   // to 14 Nov not one exam was kept — nobody was testing the agent at all.
   const out = await model(JUDGE_MODEL(), JUDGE + policy, [
     { role: "user", content: `${persona}\n${flags}\n\nTRANSCRIPT:\n${transcript}` },
-  ], 1200, { output_config: { format: { type: "json_schema", schema: VERDICT } } });
+  ], 4000, { output_config: { format: { type: "json_schema", schema: VERDICT } } });
   const text = String(out.text || "");
   const j = require("./_review.js").extractJson(text);
   // A verdict we could not read is NOT a zero. Scoring it as one dragged a

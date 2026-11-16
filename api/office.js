@@ -231,7 +231,7 @@ Rules for the block:
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: process.env.OFFICE_MODEL || process.env.AI_MODEL || "claude-opus-5", max_tokens: 1200, system, messages }),
+      body: JSON.stringify({ model: process.env.OFFICE_MODEL || process.env.AI_MODEL || "claude-opus-5", max_tokens: 6000, system, messages }),
     });
     if (!r.ok) { const t = await r.text().catch(() => ""); console.error("office: claude", r.status, t.slice(0, 200)); return json(res, 502, { error: "AI reply raledu — malli try cheyandi" }); }
     const d = await r.json();

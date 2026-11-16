@@ -42,7 +42,7 @@ async function make(cfg, key, preloaded) {
     const r = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 700, system: SYSTEM, messages: [{ role: "user", content: brief }] }),
+      body: JSON.stringify({ model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 4000, system: SYSTEM, messages: [{ role: "user", content: brief }] }),
     });
     const d = await r.json().catch(() => ({}));
     if (!r.ok) return { ok: false, code: 502, error: "AI: " + String((d.error || {}).message || r.status).slice(0, 120) };

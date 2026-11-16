@@ -380,7 +380,7 @@ async function writeCaption(topic) {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: process.env.DAILY_CAPTION_MODEL || process.env.AI_MODEL || "claude-sonnet-5", max_tokens: 700, system: sys, messages: [{ role: "user", content: user }] }),
+      body: JSON.stringify({ model: process.env.DAILY_CAPTION_MODEL || process.env.AI_MODEL || "claude-sonnet-5", max_tokens: 4000, system: sys, messages: [{ role: "user", content: user }] }),
     });
     if (!resp.ok) throw new Error("claude HTTP " + resp.status);
     const data = await resp.json();

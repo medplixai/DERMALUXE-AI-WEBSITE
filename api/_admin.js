@@ -101,7 +101,7 @@ async function captionCall(content) {
     headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
     body: JSON.stringify({
       model: process.env.AI_MODEL || "claude-opus-5",
-      max_tokens: 600,
+      max_tokens: 3000,
       system: CAPTION_SYSTEM,
       messages: [{ role: "user", content }],
     }),
@@ -937,7 +937,7 @@ async function handle(cfg, digits, text, photo, video) {
         headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
         body: JSON.stringify({
           model: process.env.AI_MODEL || "claude-opus-5",
-          max_tokens: 500,
+          max_tokens: 3000,
           system: "You are the social media strategist for DermaLuxe by Medicare — premium skin/hair/aesthetics clinic in Eluru, Andhra Pradesh (Telugu audience). Services: laser hair removal, PICO pigmentation, Hydrafacial, PRP/GFC, hair transplant, acne care, anti-aging, bridal packages, weight loss.",
           messages: [{ role: "user", content: `Today is ${today} (IST). Give exactly 3 Instagram post ideas for this week — consider the season, any nearby Indian/Telugu festivals, and wedding/exam seasons. For each: one bold hook line, then "📷" line saying what photo/video to shoot at the clinic, then "✍️" line with the caption angle. Tenglish-friendly, no prices. Max 12 short lines total, numbered 1-3.` }],
         }),
@@ -1016,7 +1016,7 @@ async function handle(cfg, digits, text, photo, video) {
           headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
           body: JSON.stringify({
             model: process.env.AI_MODEL || "claude-opus-5",
-            max_tokens: 300,
+            max_tokens: 2000,
             system: "Marketing advisor for DermaLuxe skin/hair clinic, Eluru. Be concrete and brief.",
             messages: [{ role: "user", content: `This week's stats — Leads: ${leadStats || "n/a"}. Instagram: ${igStats || "n/a"}. Link clicks: ${linkStats || "n/a"}. Give exactly 3 short next-week marketing actions (one line each, Tenglish-friendly, no prices).` }],
           }),

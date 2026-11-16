@@ -213,7 +213,7 @@ module.exports = async (req, res) => {
     const resp = await fetch("https://api.anthropic.com/v1/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
-      body: JSON.stringify({ model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 600, system: sysBlocks(CLINIC_FACTS), messages }),
+      body: JSON.stringify({ model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 3000, system: sysBlocks(CLINIC_FACTS), messages }),
     });
     if (!resp.ok) throw new Error("claude HTTP " + resp.status);
     const data = await resp.json();

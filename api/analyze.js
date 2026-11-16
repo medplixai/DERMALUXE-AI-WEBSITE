@@ -120,7 +120,7 @@ module.exports = async (req, res) => {
       },
       body: JSON.stringify({
         model: process.env.AI_MODEL || "claude-opus-5",
-        max_tokens: 1500,
+        max_tokens: 6000,
         system:
           "You are the AI skin & hair pre-assessment assistant for DermaLuxe by Medicare, a premium medical aesthetic clinic in Eluru, India. " +
           "You analyse photos for cosmetic wellness screening only. You never diagnose disease, never mention cancer or serious pathology — if something needs medical attention, set severity to 'significant' and recommend an in-clinic dermatologist consultation. " +

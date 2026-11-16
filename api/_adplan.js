@@ -135,7 +135,7 @@ Plan ONE campaign to run next.`;
         // and some of them refuse a prefilled turn outright ("This model does
         // not support assistant message prefill"). extractJson copes with a
         // model that wraps its JSON in a sentence, which is the other risk.
-        model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 1800, system: SYS,
+        model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 6000, system: SYS,
         messages: [{ role: "user", content: ask }],
       }),
     });
