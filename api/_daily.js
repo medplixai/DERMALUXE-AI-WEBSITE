@@ -298,9 +298,10 @@ JSON: {"key":"...","h1":"...","te":"...","sub":"...","img":"...","why":"..."}`;
       headers: { "Content-Type": "application/json", "x-api-key": process.env.ANTHROPIC_API_KEY, "anthropic-version": "2023-06-01" },
       // 600 was not enough room: on 14 Nov the copy came back cut off mid
       // string ("Unterminated string in JSON at position 275") and the day
-      // fell back to the library topic. Telugu script costs several tokens a
-      // letter, and the photo brief is a full sentence.
-      body: JSON.stringify({ model: process.env.DAILY_PLANNER_MODEL || process.env.AI_MODEL || "claude-sonnet-5", max_tokens: 1500, system: sys, messages: [{ role: "user", content: user }] }),
+      // fell back to the library topic. 1,500 was not either (15 Nov, "hit
+      // max_tokens" again): the model thinks before it writes, and the
+      // thinking counts against the same limit.
+      body: JSON.stringify({ model: process.env.DAILY_PLANNER_MODEL || process.env.AI_MODEL || "claude-sonnet-5", max_tokens: 8000, system: sys, messages: [{ role: "user", content: user }] }),
     });
     if (!resp.ok) throw new Error("claude HTTP " + resp.status);
     const data = await resp.json();
