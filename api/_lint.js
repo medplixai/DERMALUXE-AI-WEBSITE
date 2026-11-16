@@ -39,6 +39,44 @@ function similar(a, b) {
 }
 const hasTelugu = (s) => /[ఀ-౿]/.test(String(s || ""));
 
+// What a reply asks the patient for, by topic.
+//
+// Counting question marks missed the commonest double ask: "Mee peru
+// cheppandi" has none, and a reply carrying slots was let off the count
+// altogether — so "pick a time, and your name?" went out (exam, 16 Nov: five
+// of twelve chats). A sentence is an ask when it ends in "?" or tells them to
+// tell us something; the slots themselves are a time ask. Asks with no topic
+// ("mee problem cheppandi", "skin aa, hair aa?") count once between them —
+// they are nearly always the same question said twice.
+const ASK_TOPICS = [
+  ["name", /\b(peru|name)\b|పేరు/i],
+  ["town", /\b(ooru|uru|town|village|place|area|ekkada nunchi|ekkadi nunchi|ekkada untaru|where are you from|which city)\b|ఊరు/i],
+  ["since", /\b(entakalam|entha kalam|enta kalam|enni rojul\w*|enni nelal\w*|since when|how long)\b|ఎంత కాలం/i],
+  ["time", /\b(time|slot|slots|eppudu|e roju|ye roju|(?<!since )when|convenient|vastara|ravachu|raagalara)\b|ఎప్పుడు|టైమ్/i],
+  ["background", /\b(occupation|background|profession|qualification|chaduvu|chadivaru|work chestunnaru)\b/i],
+];
+const ASK_VERB = /\b(cheppandi|cheppagalara|chepthara|cheptara|cheppu|tell me|let me know)\b|చెప్పండి/i;
+function asksIn(prose, out) {
+  const sentences = bodyOf(prose).split(/(?<=[?!.])\s+|\n+/).map((s) => s.trim()).filter(Boolean);
+  const topics = new Set();
+  let loose = 0;
+  for (const s of sentences) {
+    if (!/\?\s*\S{0,3}$/.test(s) && !ASK_VERB.test(s)) continue;
+    // "Marchali ante cheppandi" after a booking, "doubt unte cheppandi": an
+    // offer to hear from them, not a question.
+    if (!/\?/.test(s) && /\b(ante|unte|aithe|ayithe|if)\b/i.test(s)) continue;
+    const hit = ASK_TOPICS.filter(([, re]) => re.test(s)).map(([k]) => k);
+    if (hit.length) hit.forEach((k) => topics.add(k)); else loose++;
+  }
+  if (Array.isArray(out && out.slots) && out.slots.length) topics.add("time");
+  const list = [...topics];
+  if (loose) list.push("concern");
+  return list;
+}
+const MAX_BODY = 420;
+// The reply without links and without the quiet first-reply AI line.
+const bodyOf = (prose) => String(prose || "").split("\n").filter((l) => !/^\s*_.*_\s*$/.test(l)).join("\n").trim();
+
 // out = the model's parsed JSON (reply, buttons, slots, urgent, lead…).
 // patientText = what the patient wrote this turn. recent = our last replies.
 function lintReply(out, patientText, recent, opts) {
@@ -51,6 +89,18 @@ function lintReply(out, patientText, recent, opts) {
 
   const questions = (prose.match(/\?/g) || []).length;
   if (questions > 1 && !hasChoice) faults.push({ code: "two_questions", note: `${questions} questions unnayi — okkate undali; migilinavi statements ga maarchu` });
+  else {
+    const asks = asksIn(prose, out);
+    if (asks.length > 1) faults.push({ code: "two_questions", note: `okate message lo ${asks.length} vishayalu adigav (${asks.join(" + ")}) — okkate adugu.${asks.includes("time") ? " Slots unte avve question — peru/ooru ippudu adagaku; time select chesaka peru adugu." : ""}` });
+  }
+
+  // A wall of text. The exam of 16 Nov marked four chats down for it, and the
+  // real ones ran to 600 characters: three tips, the whole treatment, the
+  // offer, then the question. A booking confirmation (address, time) and a
+  // photo analysis may run longer; an academy answer carries the course.
+  const body = bodyOf(prose);
+  const confirmed = /(book ayindi|appointment (confirm|ready)|confirm (chesanu|ayindi|chesam)|note chesanu|reserve chesa|✅)/i.test(prose);
+  if (body.length > MAX_BODY && !o.analysis && !o.academy && !confirmed) faults.push({ code: "too_long", note: `reply ${body.length} aksharalu — ${MAX_BODY} lopu undali. Adigina daniki 1-2 lines lo answer, okka tip (avasaram aithe), tarvata okka question. Migilina explanation teesey` });
 
   // Prices: the site never quotes treatment prices; the academy's fees are published.
   const rupees = [...prose.matchAll(/₹\s?([\d,]{3,})|(?:rs\.?|inr)\s?([\d,]{3,})/gi)].map((m) => Number((m[1] || m[2]).replace(/,/g, ""))).filter((n) => n >= 100);
@@ -152,7 +202,7 @@ async function rewrite(out, faults, patientText, opts) {
       body: JSON.stringify({
         model: process.env.AI_MODEL || "claude-opus-5", max_tokens: 4000,
         system: "You fix one WhatsApp reply from DermaLuxe Assistant (a skin & hair clinic receptionist in Eluru), keeping the same language, tone, every fact and the booking intent. Return ONLY the corrected reply text, no JSON, no preamble.",
-        messages: [{ role: "user", content: `REPLY:\n${out.reply}\n\nFAULTS TO FIX:\n${faults.map((f) => "- " + f.note).join("\n")}\n\nRules: exactly one question mark in the whole reply (or none when buttons/slots are offered); never a treatment price or a medicine name; never name a condition the patient did not name; no safety verdicts; end with one short next step unless it is a confirmation, an emergency, or the reply to a stop request; Tenglish (Telugu in English letters) unless the patient wrote real English of their own. Keep it 2–6 short lines.` }],
+        messages: [{ role: "user", content: `REPLY:\n${out.reply}\n\nFAULTS TO FIX:\n${faults.map((f) => "- " + f.note).join("\n")}\n\nRules: ask for ONE thing only — exactly one question mark in the whole reply (or none when buttons/slots are offered), and when slots are offered they ARE the question, so do not also ask the name or town; never a treatment price or a medicine name; never name a condition the patient did not name; no safety verdicts; end with one short next step unless it is a confirmation, an emergency, or the reply to a stop request; Tenglish (Telugu in English letters) unless the patient wrote real English of their own. Keep it 2–4 short lines, under ${MAX_BODY} characters.` }],
       }),
     });
     if (!r.ok) return { out, faults, rewritten: false };

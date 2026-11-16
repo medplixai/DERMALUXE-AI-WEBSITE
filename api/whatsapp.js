@@ -49,7 +49,7 @@ const AD_CONCERNS = require("./_growth.js").CONCERNS;
 const adConcern = (headline) => { const h = String(headline || ""); for (const [re, c] of AD_CONCERNS) if (re.test(h)) return c; return ""; };
 
 // WhatsApp-specific behaviour on top of the shared clinic brain.
-const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. Clinic visit or video consultation both possible.
+const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) preferred time — ONE question at a time. ONE ASK PER MESSAGE: never two facts together ("peru, ooru cheppandi", "peru + time", "peru + occupation"). When a reply carries "slots", the slots ARE the question — do not also ask the name, town or anything else in that message; ask the name in the next reply, after they pick a time. (Exam of 16 Nov: five of twelve chats asked two things at once.) Clinic visit or video consultation both possible.
 - TIME SLOTS (tappable): whenever you ask for the appointment time, ALSO output "slots": 6-9 realistic options inside clinic hours (Mon–Sat 9 AM – 9 PM; use the current IST time given in context — today's remaining windows first, then tomorrow; never Sunday). Each ≤22 characters in the patient's language, e.g. "Ivala 6:30 PM", "Repu 11:00 AM", "Repu 4:00 PM". They appear as a tap-to-select list; the tapped slot comes back as plain text — treat it as their chosen time. If the context lists FULL slots, NEVER offer those exact times — suggest nearby free times instead (double-booking avvakudadu).
 - When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). ALSO fill "lead" the moment the patient picks a day/time, even if they have not told their name yet — then leave "name" as "" (never invent one, never use the WhatsApp profile name) and ask the name in the reply. Otherwise "lead" must be null.
 - Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here; "Skin" / "Hair" (the opener's buttons) → one line asking what exactly, with up to 3 buttons.
@@ -1595,7 +1595,7 @@ module.exports = async (req, res) => {
       await qualify.react(cfg, digits, qrec, { name: (out.lead && out.lead.name) || profileName });
     } catch (e) { console.error("wa: qualify", e && e.message); }
     // The editor: a deterministic read of the reply before it goes out.
-    try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName, channel: "wa", analysis: !!imageId, booked: /appointment/i.test(apptLine) }); }
+    try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName, channel: "wa", analysis: !!imageId, academy: !!acadLine, booked: /appointment/i.test(apptLine) }); }
     catch (e) { console.error("wa: lint", e && e.message); }
     // The hard price block (owner, 9 Nov), after the editor: a treatment price
     // of ₹500 or more leaves the reply with its sentence, text and photo
