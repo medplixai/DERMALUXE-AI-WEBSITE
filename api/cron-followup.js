@@ -513,6 +513,10 @@ module.exports = async (req, res) => {
     }
   } catch (e) { console.error("cron: early nudge", e && e.message); }
 
+  // ---- "Hi", and then silence: one tap-to-answer message, once ever ------
+  let hiNudged = 0;
+  try { if (room("hinudge")) hiNudged = (await require("./_hinudge.js").run(cfg, { max: 15 })).sent; } catch (e) { console.error("cron: hi nudge", e && e.message); }
+
   // ---- the academy enquiries, which until now nobody ever wrote to again ---
   let acad = null;
   try {
@@ -713,6 +717,6 @@ module.exports = async (req, res) => {
   // get to" — so it says both where somebody can read it afterwards.
   const took = Date.now() - STARTED;
   console.log(`cron-followup ${took}ms hour=${istHour}${skipped.length ? " skipped=" + skipped.join(",") : ""}` +
-    ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled} lowered=${lowered} regraded=${regraded} noans=${noansSent}`);
-  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, confirmNags, slaNags, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, lowered, regraded, noansSent, early, reengaged, rescued, assigned, overdue, photosMoved, comments, igNudge, swept });
+    ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled} lowered=${lowered} regraded=${regraded} noans=${noansSent} hi=${hiNudged}`);
+  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, confirmNags, slaNags, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, lowered, regraded, noansSent, hiNudged, early, reengaged, rescued, assigned, overdue, photosMoved, comments, igNudge, swept });
 };

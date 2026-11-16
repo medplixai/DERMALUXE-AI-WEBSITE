@@ -265,8 +265,8 @@ const MENU = [
   { s: "Anti-ageing", t: "HIFU / skin tightening", d: "Non-surgical lift, single session" },
   { s: "Anti-ageing", t: "Weight loss", d: "Doctor-supervised, body contouring" },
 ];
-// A first message that says nothing yet: "Hi", "Hello mam", "Dermaluxe", "?".
-const GREET_ONLY = /^(hi+|hii+ ?(mam|sir|madam|andi)?|hello+( (mam|sir|madam|andi))?|hlo+|hai+|hey+|namaste|namaskaram|namaskar|good ?(morning|afternoon|evening|night)|dermaluxe|dermaluxe by medicare|reply|ok|\?+|\.+)?[\s!.?🙏😊👋]*$/i;
+// A first message that says nothing yet — shared with the "Hi" follow-up.
+const GREET_ONLY = require("./_hinudge.js").GREET_ONLY;
 const MENU_ASK = /^(💆 services|services|menu|treatments?|treatment list|price list|rates|list)\s*\??$/i;
 async function sendCloudMenu(phoneNumberId, to, cfg) {
   const token = process.env.WA_CLOUD_TOKEN;
