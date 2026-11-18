@@ -246,7 +246,7 @@ module.exports = async (req, res) => {
           const nx = await guard.kvCommand(cfg, ["SET", `ntf:fu3:${ph}`, "1", "NX", "EX", "2592000"]);
           if (!nx.result) continue; // already pushed this lead
         } catch (e) { continue; }
-        const first = String(l.name || "").trim().split(" ")[0] || "friend";
+        const first = require("./_greet.js").greetName(l.name) || "friend";
         const line = l.concern
           ? `Meeru '${String(l.concern).slice(0, 40)}' gurinchi adigaru kada — doctor consultation tho correct plan vastundi. Ee week slots available, book cheyalante reply cheyandi 😊`
           : `Meeru mana treatments gurinchi adigaru kada — doctor consultation tho correct plan vastundi. Ee week slots available, book cheyalante reply cheyandi 😊`;
@@ -276,7 +276,7 @@ module.exports = async (req, res) => {
         const nx = await guard.kvCommand(cfg, ["SET", `${marker}:${ph}`, "1", "NX", "EX", String(ttl)]);
         if (!nx.result) continue;
       } catch (e) { continue; }
-      const first = String(l.name || "").trim().split(" ")[0] || "friend";
+      const first = require("./_greet.js").greetName(l.name) || "friend";
       const out = await notify.sendWaTemplate(ph, tpl, [first, line(l)]);
       if (out.ok) n++;
       else await guard.kvCommand(cfg, ["DEL", `${marker}:${ph}`]).catch(() => {}); // template not approved yet → retry next day
@@ -507,13 +507,16 @@ module.exports = async (req, res) => {
       if (!cad.early || age < cad.early) continue;
       const nx = await guard.kvCommand(cfg, ["SET", `ntf:early:${ph}`, "1", "NX", "EX", "604800"]).catch(() => ({}));
       if (!nx || !nx.result) continue;
-      const first = String(l.name || "").trim().split(" ")[0] || "andi";
+      const first = require("./_greet.js").greetName(l.name) || "andi";
       const ok = await notify.sendWa(ph, `Hi ${first}! 🙏 Meeru adigina *${String(l.concern || "treatment").slice(0, 40)}* gurinchi — mee doubts emaina unte ikkade adagandi 😊\nDoctor consultation ki ee roju/repu slots khaali unnayi. Eppudu convenient?`);
       if (ok) early++;
     }
   } catch (e) { console.error("cron: early nudge", e && e.message); }
 
   // ---- "Hi", and then silence: one tap-to-answer message, once ever ------
+  // Good chats the agent never wrote down as leads — onto the Leads screen.
+  let chatLeads = 0;
+  try { if (room("chatlead")) chatLeads = (await require("./_chatlead.js").sweep(cfg, { hours: 72, max: 60 })).saved; } catch (e) { console.error("cron: chat leads", e && e.message); }
   let hiNudged = 0;
   try { if (room("hinudge")) hiNudged = (await require("./_hinudge.js").run(cfg, { max: 15 })).sent; } catch (e) { console.error("cron: hi nudge", e && e.message); }
 
@@ -717,6 +720,6 @@ module.exports = async (req, res) => {
   // get to" — so it says both where somebody can read it afterwards.
   const took = Date.now() - STARTED;
   console.log(`cron-followup ${took}ms hour=${istHour}${skipped.length ? " skipped=" + skipped.join(",") : ""}` +
-    ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled} lowered=${lowered} regraded=${regraded} noans=${noansSent} hi=${hiNudged}`);
-  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, confirmNags, slaNags, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, lowered, regraded, noansSent, hiNudged, early, reengaged, rescued, assigned, overdue, photosMoved, comments, igNudge, swept });
+    ` sent=${sent} early=${early} acad=${acad ? acad.rung1 + acad.rung3 + acad.rung7 : 0} reengaged=${reengaged} recovered=${recovered} backfilled=${backfilled} lowered=${lowered} regraded=${regraded} noans=${noansSent} hi=${hiNudged} chatleads=${chatLeads}`);
+  return res.status(200).json({ ok: true, health, ms: took, skipped, acad, checked, sent, confirmNags, slaNags, day3, day7, day21, confirmAsked, visited, rated, visit7, visit30, recalls, cycled, briefed, reminded, closing, callNags, recovered, reviewed, backfilled, lowered, regraded, noansSent, hiNudged, chatLeads, early, reengaged, rescued, assigned, overdue, photosMoved, comments, igNudge, swept });
 };

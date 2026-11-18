@@ -401,7 +401,7 @@ async function waHandoff(cfg, lead, channel) {
       if (!nx || !nx.result) return { ok: false, msg: "already" };
     } catch (e) {}
   }
-  const first = String(lead.name || "").trim().split(" ")[0] || "friend";
+  const first = require("./_greet.js").greetName(lead.name) || "friend";
   const concern = String(lead.concern || "").trim().slice(0, 40);
   const line = `Meeru ${channel} lo${concern ? " '" + concern + "' gurinchi" : ""} adigaru kada — ikkada WhatsApp lo mana team doctor slot confirm chestundi. Free AI skin & hair analysis kuda ikkade. Reply cheyandi 😊`;
   let out = await sendWaTemplate(ph, "insta_lead_followup", [first, line]);

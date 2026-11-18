@@ -846,7 +846,7 @@ module.exports = async (req, res) => {
         if (n === 2) {
           // Sent now, or held a quarter hour when the call heads-up has only
           // just gone (see _noans.js — 13 Nov, the two in the same minute).
-          const first = clean(b.name, 40).split(" ")[0] || (await leadNameOf(cfg, key)).split(" ")[0] || "Namaste";
+          const first = require("./_greet.js").greetName(clean(b.name, 40)) || require("./_greet.js").greetName(await leadNameOf(cfg, key)) || "Namaste";
           const r = await require("./_noans.js").after(cfg, { ph, first, by: me.name, key });
           if (r.sent) out.nudged = true;
           if (r.held) out.nudgeHeld = true;
@@ -871,7 +871,7 @@ module.exports = async (req, res) => {
     // quarter hour after it (_noans.js).
     const nx = await guard.kvCommand(cfg, ["SET", `ntf:callhd:${phone}`, String(Date.now()), "NX", "EX", "7200"]).catch(() => ({}));
     if (!nx || !nx.result) return json(res, 200, { ok: true, sent: false, why: "recent" });
-    const first = clean(b.name, 40).split(" ")[0] || "Namaste";
+    const first = require("./_greet.js").greetName(clean(b.name, 40)) || "Namaste";
     // Until 12 Nov this named the staff member's own handset number, since
     // that is what rings. The owner read it in a chat — "Hima mobile number
     // estundi" — and wants the clinic's public number there, the one on the
@@ -909,7 +909,7 @@ module.exports = async (req, res) => {
     if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
     const phone = digits10(b.phone), kind = String(b.kind || "");
     if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit number ledu" });
-    const first = clean(b.name, 40).split(" ")[0] || "friend";
+    const first = require("./_greet.js").greetName(clean(b.name, 40)) || "friend";
     const open = await notify.windowOpen(cfg, phone);
     const ADDR = "Rama Mahal, R.R. Peta, Kasturi Vari Street, Opp. Happy Mobiles, Eluru";
     let sent = false, text = "";

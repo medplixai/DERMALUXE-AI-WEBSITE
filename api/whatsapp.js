@@ -1653,6 +1653,11 @@ module.exports = async (req, res) => {
       justBooked = (st && st.bookedAt) || 0;
     } catch (e) {}
   }
+  // No lead from the model this turn: if the grading says this chat is an A
+  // or B with a known problem, it goes on the Leads screen anyway (_chatlead).
+  else if (cfg && !acadLine) {
+    try { await require("./_chatlead.js").ensure(cfg, digits, { profile: profileName, last: text, alert: true }); } catch (e) { console.error("wa: chat lead", e && e.message); }
+  }
   if (justBooked && cfg) {
     // Meta learns who actually fixes a slot, not who merely says hello — and
     // the scoreboard learns how many replies a booking took, ad vs organic.
