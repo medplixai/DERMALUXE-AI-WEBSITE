@@ -34,10 +34,16 @@ const OPT_OUT = /^\s*(stop|unsubscribe)\s*$|\b(mes+a?g?e?s?|msgs?|mesg|sms)\s*(c
 // and then nothing changed: no opt-out, the desk's card still said
 // "contacted", the nudges kept coming.
 const CALL_OR_MSG = "(calls?|phone|ph|msgs?|mes+a?g?e?s?|mesg|sms|కాల్|మెసేజ్)";
-const DONT = "(cheyakandi|cheya\\s*kandi|cheyyakandi|cheyakudadhu|cheyoddu|pampakandi|pampoddu|vaddu|vadhu|చేయకండి|చేయొద్దు|పంపకండి|వద్దు)";
+const DONT = "(cheyakandi|cheya\\s*kandi|cheyyakandi|cheyakudadhu|cheyakudadu|cheyoddu|cheyodhu|cheyyoddu|cheyyodhu|chey+odd?h?u|pampakandi|pampoddu|pampodhu|vaddu|vadhu|చేయకండి|చేయొద్దు|పంపకండి|వద్దు)";
 const NO_CONTACT = new RegExp(`${CALL_OR_MSG}[\\s\\S]{0,25}?${DONT}|${DONT}[\\s\\S]{0,25}?${CALL_OR_MSG}|\\b(stop|don'?t|do not|no more)\\s+(calling|call|messaging|messages?|texting)\\b`, "i");
 // "Ippudu call cheyakandi, evening cheyandi" is a when, not a no.
 const NOT_NOW = /\b(ippudu|ipudu|now|ee roju|ivala|evening|sayantram|saayantram|udayam|morning|night|tarvata|taruvata|later|repu|duty|office|ofc|busy|meeting|class|free ayyaka)\b|ఇప్పుడు|తర్వాత|రేపు/i;
+// A bare "cheyodhu" / "vaddu" answering our own "… ippudu call chestunnaru"
+// or "rendu sarlu call chesam" is a no to calls: "Cheppaga andi cheyodhu ani"
+// (19 Nov) named no call and no message, because ours just had.
+const DONT_RE = new RegExp(DONT, "i");
+const OUR_CALL = /ippudu call chestunnaru|call chesam|call chestam|call cheyyamantara|call chestaru/i;
+const refusesCall = (t, lastOut) => OUR_CALL.test(String(lastOut || "")) && DONT_RE.test(String(t || "")) && !NOT_NOW.test(String(t || ""));
 const asksToStop = (t) => { const s = String(t || ""); return OPT_OUT.test(s) || (NO_CONTACT.test(s) && !NOT_NOW.test(s.replace(/\bastamanam\b/gi, ""))); };
 
 const norm = (s) => String(s || "").replace(/[\s*_~`]+/g, " ").replace(/[.!?,:;–-]+/g, "").trim().toLowerCase();
@@ -362,4 +368,4 @@ async function check(cfg, out, patientText, recent, opts) {
   return res.out;
 }
 
-module.exports = { lintReply, rewrite, check, cutMidWord, dropLabel, isMetaPrefill, asksToStop, ALLOWED_RUPEES, stripTreatmentPrices, amountsIn, CONSULT_LINE, consultLine };
+module.exports = { lintReply, rewrite, check, cutMidWord, dropLabel, isMetaPrefill, asksToStop, refusesCall, ALLOWED_RUPEES, stripTreatmentPrices, amountsIn, CONSULT_LINE, consultLine };

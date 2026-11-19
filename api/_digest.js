@@ -221,6 +221,23 @@ async function buildDigest(cfg, live) {
     if (goalLines.length) lines.push("", "🎯 *Goals*", ...goalLines);
   } catch (e) { console.error("digest: goals", e && e.message); }
 
+  // WhatsApp messages that did not reach the phone yesterday, with Meta's
+  // reason (whatsapp.js recordStatuses, since 19 Nov) — "agent message
+  // pamputundi kani atu person ki ravatledu" now has an answer each morning.
+  try {
+    const yday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now - 86400000));
+    const d = await guard.kvCommand(cfg, ["HGETALL", `wa:dlv:${yday}`]).catch(() => ({}));
+    const raw = (d && d.result) || {};
+    const c = Array.isArray(raw) ? Object.fromEntries(raw.reduce((a, v, i) => (i % 2 ? a[a.length - 1].push(v) : a.push([v]), a), [])) : raw;
+    const failed = Number(c.failed || 0), delivered = Number(c.delivered || 0);
+    if (failed || delivered) {
+      const f = await guard.kvCommand(cfg, ["LRANGE", "wa:fail", "0", "199"]).catch(() => ({}));
+      const since = now - 86400000 * 1.5, why = {};
+      for (const x of ((f && f.result) || [])) { try { const r = JSON.parse(x); if (r.ts >= since) why[r.code + " " + r.title] = (why[r.code + " " + r.title] || 0) + 1; } catch (e) {} }
+      lines.push("", `📨 Ninna WhatsApp: *${delivered}* cherayi${failed ? `, *${failed}* cheraledu ❌` : ""}`);
+      Object.entries(why).sort((a, b) => b[1] - a[1]).slice(0, 3).forEach(([k, n]) => lines.push(`   — ${k} ×${n}`));
+    }
+  } catch (e) {}
   lines.push("", "Dashboard: dermaluxe.ai/leads.html");
   return {
     body: lines.join("\n").slice(0, 3200),

@@ -1033,6 +1033,26 @@ async function overtaken(cfg, phone, myTs) {
     && !MEDIA_LINE.test(String(m.text || "")) && !require("./_staffask.js").isAsk(m.text) && !lint.asksToStop(m.text));
 }
 
+// KV: wa:dlv:<YYYY-MM-DD> hash sent/delivered/read/failed counts;
+//     wa:fail list of {ts, ph, code, title, detail, id} (last 500).
+async function recordStatuses(cfg, statuses) {
+  const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  for (const st of statuses.slice(0, 20)) {
+    const kind = String((st && st.status) || "");
+    if (!["sent", "delivered", "read", "failed"].includes(kind)) continue;
+    await guard.kvCommand(cfg, ["HINCRBY", `wa:dlv:${day}`, kind, "1"]).catch(() => {});
+    if (kind !== "failed") continue;
+    const er = (Array.isArray(st.errors) && st.errors[0]) || {};
+    const ph = String(st.recipient_id || "").replace(/\D/g, "").slice(-10);
+    const row = { ts: Date.now(), ph, code: Number(er.code) || 0, title: String(er.title || er.message || "").slice(0, 120),
+      detail: String((er.error_data && er.error_data.details) || "").slice(0, 200), id: String(st.id || "").slice(-24) };
+    console.error("wa: delivery failed", row.code, row.title, ph.slice(-4));
+    await guard.kvCommand(cfg, ["LPUSH", "wa:fail", JSON.stringify(row)]).catch(() => {});
+    await guard.kvCommand(cfg, ["LTRIM", "wa:fail", "0", "499"]).catch(() => {});
+  }
+  await guard.kvCommand(cfg, ["EXPIRE", `wa:dlv:${day}`, String(60 * 86400)]).catch(() => {});
+}
+
 // Meta Cloud API: send a text reply via the Graph API.
 async function sendCloud(phoneNumberId, to, text) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -1096,7 +1116,15 @@ module.exports = async (req, res) => {
     }
 
     const msg = (value.messages && value.messages[0]) || null;
-    // delivery/read status callbacks etc. — acknowledge and ignore
+    // Delivery receipts. Meta accepts a message with a 200 and only says later,
+    // here, whether it reached the phone. Until 19 Nov these were thrown away,
+    // so when the owner said "agent message pamputundi kani atu person ki
+    // ravatledu" nothing anywhere could say which, or why. Every receipt is
+    // counted by day; every failure is kept with Meta's own code and reason.
+    if (!msg && Array.isArray(value.statuses) && value.statuses.length && cfg) {
+      try { await recordStatuses(cfg, value.statuses); } catch (e) { console.error("wa: status record", e && e.message); }
+    }
+    // delivery/read status callbacks etc. — acknowledge
     if (!msg) return res.status(200).json({ ok: true });
 
     // De-dup: Meta redelivers the same message id if we respond slowly.
@@ -1326,7 +1354,9 @@ module.exports = async (req, res) => {
     // "Calls, messages cheyakandi" in their own words: the same no as STOP —
     // off the nudges and broadcasts, a D for the desk — but the agent still
     // answers them in one line (the editor makes sure there is no question).
-    if (!/^(stop|unsubscribe|opt\s*out)$/i.test(text.trim()) && lint.asksToStop(text)) {
+    let lastOut = "";
+    try { const lr = await guard.kvCommand(cfg, ["LRANGE", `ib:m:${digits}`, "0", "5"]).catch(() => ({})); const o0 = ((lr && lr.result) || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).find((m) => m && m.dir === "out"); lastOut = (o0 && o0.text) || ""; } catch (e) {}
+    if (!/^(stop|unsubscribe|opt\s*out)$/i.test(text.trim()) && (lint.asksToStop(text) || lint.refusesCall(text, lastOut))) {
       await guard.kvCommand(cfg, ["SADD", "optout", digits]).catch(() => {});
       try { await qualify.absorb(cfg, digits, {}, { opted_out: true, text }); } catch (e) {}
       console.log("wa: asked not to be called or messaged — opted out", digits.slice(-4));
@@ -1846,3 +1876,4 @@ module.exports.confirmAppt = confirmAppt;
 module.exports.askClaude = askClaude;
 module.exports.recordRating = recordRating;
 module.exports.nowIstCtx = nowIstCtx;
+module.exports.recordStatuses = recordStatuses;

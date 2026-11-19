@@ -83,6 +83,23 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   is(st.code, 200, "and the agent's own booking (no id) can be marked from it");
   is(((await h.call(schedule, { a: "due-marks" })).body.list || []).length, 0, "after which it is not asked again");
 
+  console.log("\n  — no call heads-up to somebody who said stop —");
+  h.sent.length = 0;
+  const cn = await post("call-notice", { phone: "9876500901", name: "Lakshmi" });
+  is([cn.body.sent, cn.body.why, h.sent.length], [false, "optout", 0], "\"ippudu call chestunnaru\" does not go to an opted-out number");
+
+  console.log("\n  — delivery receipts —");
+  const wa = h.load("whatsapp");
+  await wa.recordStatuses({ kind: "pg" }, [
+    { id: "wamid.A", status: "sent", recipient_id: "919876500921" },
+    { id: "wamid.A", status: "delivered", recipient_id: "919876500921" },
+    { id: "wamid.B", status: "failed", recipient_id: "919876500922", errors: [{ code: 131026, title: "Message undeliverable", error_data: { details: "Receiver is incapable of receiving this message" } }] },
+  ]);
+  const dayK = "wa:dlv:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
+  is([h.run(["HGET", dayK, "sent"]), h.run(["HGET", dayK, "delivered"]), h.run(["HGET", dayK, "failed"])].map(Number), [1, 1, 1], "every receipt is counted for the day");
+  const fl = JSON.parse(h.run(["LRANGE", "wa:fail", "0", "0"])[0] || "{}");
+  is([fl.ph, fl.code, /undeliverable/i.test(fl.title)], ["9876500922", 131026, true], "a failure is kept with the number and Meta's own code and reason");
+
   console.log("\n  — wired into the screen —");
   const html = require("fs").readFileSync(path.join(API, "..", "staff.html"), "utf8");
   is([/data-act="send-slots"/.test(html), /"o:dnd"/.test(html), /schapi\("due-marks"\)/.test(html)], [true, true, true], "the lead card, the status list and the Leads screen carry them");

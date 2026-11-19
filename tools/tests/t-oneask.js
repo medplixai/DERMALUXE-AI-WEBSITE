@@ -66,6 +66,10 @@ for (const [t, want, why] of [
   ["Repu call cheyandi", false, "and \"call tomorrow\" is a yes"],
 ]) is(L.asksToStop(t), want, why);
 
+is(L.refusesCall("Cheppaga andi cheyodhu ani", "Suma garu 🙏 DermaLuxe nunchi hemasri ippudu call chestunnaru"), true, "\"cheyodhu\" right after our call heads-up is a no to calls (19 Nov)");
+is(L.refusesCall("Cheppaga andi cheyodhu ani", "Mee concern cheppandi"), false, "but not after anything else");
+is(L.asksToStop("Calls cheyodhu"), true, "and the \"cheyodhu\" spelling counts too");
+
 console.log("\n  — an appointment they do not have —");
 is(has("Namaste 🙏 Mee appointment ivala 6:30 PM ki hold ayyi undi. Location pampistunnanu.", "false_appointment", {}, "Hi"), true, "\"mee appointment hold lo undi\" to a bare \"Hi\" is caught (18 Nov)");
 is(L.lintReply({ reply: "Mee appointment ivala 6:30 PM ki hold lo ne undi 🙏 Location pampistunnanu." }, "Location ekkada", [], { booked: true }).map((f) => f.code).includes("false_appointment"), false, "but not for somebody who has one");

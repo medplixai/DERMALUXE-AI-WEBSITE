@@ -920,6 +920,10 @@ module.exports = async (req, res) => {
     if (!rlCn.allowed) return json(res, 429, { error: "Konchem aagandi" });
     // The value is when it went, so the "rendu sarlu" message can wait a
     // quarter hour after it (_noans.js).
+    // Not to somebody who asked us to stop: on 19 Nov a patient who had said
+    // "call, msg cheyakandi" the day before got "hemasri ippudu call
+    // chestunnaru" and wrote back "cheppaga andi cheyodhu ani".
+    if (await guard.setHas(cfg, "optout", phone).catch(() => false)) return json(res, 200, { ok: true, sent: false, why: "optout" });
     const nx = await guard.kvCommand(cfg, ["SET", `ntf:callhd:${phone}`, String(Date.now()), "NX", "EX", "7200"]).catch(() => ({}));
     if (!nx || !nx.result) return json(res, 200, { ok: true, sent: false, why: "recent" });
     const first = require("./_greet.js").greetName(clean(b.name, 40)) || "Namaste";
