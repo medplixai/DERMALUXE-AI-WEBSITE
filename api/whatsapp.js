@@ -1033,6 +1033,14 @@ async function overtaken(cfg, phone, myTs) {
     && !MEDIA_LINE.test(String(m.text || "")) && !require("./_staffask.js").isAsk(m.text) && !lint.asksToStop(m.text));
 }
 
+// Meta errors that stop every message from the number, in the owner's words.
+const ACCOUNT_WIDE = {
+  131042: "Meta Business lo WhatsApp billing / currency set avvaledu — Billing & payments lo payment method + currency (INR) pettandi",
+  131031: "WhatsApp Business account lock ayyindi — Meta Business Suite lo chudandi",
+  131048: "Spam limit — chala mandi block/report chesaru, Meta messages aapindi",
+  131056: "Okate number ki chala messages — konchem aagandi",
+  368: "Meta policy valla account restrict ayyindi",
+};
 // KV: wa:dlv:<YYYY-MM-DD> hash sent/delivered/read/failed counts;
 //     wa:fail list of {ts, ph, code, title, detail, id} (last 500).
 async function recordStatuses(cfg, statuses) {
@@ -1049,6 +1057,19 @@ async function recordStatuses(cfg, statuses) {
     console.error("wa: delivery failed", row.code, row.title, ph.slice(-4));
     await guard.kvCommand(cfg, ["LPUSH", "wa:fail", JSON.stringify(row)]).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", "wa:fail", "0", "499"]).catch(() => {});
+    // Account-wide failures stop every message, not one patient's. 19 Nov,
+    // 4:45 PM: 131042 "Business eligibility payment issue — currency is not
+    // configured", every send. WhatsApp itself cannot carry the warning, so
+    // it goes to the owners' phones as an app notification, once in 6 hours.
+    if (ACCOUNT_WIDE[row.code]) {
+      const nx = await guard.kvCommand(cfg, ["SET", `ntf:wafail:${row.code}`, "1", "NX", "EX", "21600"]).catch(() => ({}));
+      if (nx && nx.result) {
+        try {
+          const push = require("./_push.js");
+          if (push.enabled()) await push.notifyCap(cfg, "settings.manage", { title: "🚨 WhatsApp messages patients ki vellatledu", body: `${ACCOUNT_WIDE[row.code]} (Meta ${row.code}). Agent replies, reminders anni aagipoyayi — ventane sari cheyyali.`.slice(0, 180), tab: "inbox", urgent: true, data: { kind: "wafail", code: String(row.code) } });
+        } catch (e) { console.error("push: wa fail", e && e.message); }
+      }
+    }
   }
   await guard.kvCommand(cfg, ["EXPIRE", `wa:dlv:${day}`, String(60 * 86400)]).catch(() => {});
 }

@@ -100,6 +100,12 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   const fl = JSON.parse(h.run(["LRANGE", "wa:fail", "0", "0"])[0] || "{}");
   is([fl.ph, fl.code, /undeliverable/i.test(fl.title)], ["9876500922", 131026, true], "a failure is kept with the number and Meta's own code and reason");
 
+  const push = require(path.join(API, "_push.js")), pushed = [];
+  push.enabled = () => true; push.notifyCap = async (c, cap, m) => { pushed.push([cap, m.title, m.urgent]); return { ok: true }; };
+  const billing = { status: "failed", recipient_id: "919876500923", errors: [{ code: 131042, title: "Business eligibility payment issue" }] };
+  await wa.recordStatuses({ kind: "pg" }, [billing, Object.assign({}, billing, { recipient_id: "919876500924" })]);
+  is([pushed.length, pushed[0] && pushed[0][0], pushed[0] && pushed[0][2]], [1, "settings.manage", true], "a billing failure (19 Nov, 131042) rings the owners' phones at once — once, not per message");
+
   console.log("\n  — wired into the screen —");
   const html = require("fs").readFileSync(path.join(API, "..", "staff.html"), "utf8");
   is([/data-act="send-slots"/.test(html), /"o:dnd"/.test(html), /schapi\("due-marks"\)/.test(html)], [true, true, true], "the lead card, the status list and the Leads screen carry them");
