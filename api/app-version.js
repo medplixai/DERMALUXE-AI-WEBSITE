@@ -4,13 +4,13 @@
 // Public on purpose: it carries a version number and a download link, nothing
 // else, and the app has to reach it before anyone has logged in.
 const LATEST = {
-  version: "1.73.0",
-  versionCode: 83,
+  version: "1.74.0",
+  versionCode: 84,
   // Below this, the app is too old to trust — it nags until they update.
   minVersionCode: 6,
   url: "https://www.dermaluxe.ai/assets/app/DermaLuxe-Staff.apk",
   page: "https://www.dermaluxe.ai/staff-app.html",
-  notes: "Ads screen lo kotha Marketing part: 14 rojula graph — prathi roju leads ekkada nunchi (mana ads, Instagram boost, WhatsApp, desk); prathi ad / boost ki leads, book, vachcharu, okko lead ki kharchu; boost aagipothe, leads taggithe owner ki alert; e time lo, e problem tho vastunnaro. 1.72 lo vachinavi anni idi lo unnayi.",
+  notes: "Leads lo 3 kotha buttons: ⏰ Slots pampu — okka tap tho free times patient WhatsApp ki velthayi, vaallu tap cheste agent book chestundi; 🔕 Calls/msgs vaddu — status lo, aa patient ki calls, messages, offers anni aagipothayi; Leads pina time ayipoyina appointments ki ✅ Vacharu / ❌ Raaledu — okka tap. 1.73 lo vachinavi anni idi lo unnayi.",
 };
 
 module.exports = async (req, res) => {
