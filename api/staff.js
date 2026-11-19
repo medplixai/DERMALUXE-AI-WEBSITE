@@ -19,7 +19,9 @@ const OUTCOMES = { noanswer: "contacted", callback: "contacted", thinking: "cont
   // Academy enquiries have their own steps (8 Nov, point 3): asked about the
   // course and slots, waiting to say yes, being processed, payment pending,
   // slot booked, paid and confirmed.
-  a_enquiry: "contacted", a_waiting: "contacted", a_process: "contacted", a_paypend: "contacted", a_booked: "booked", a_paid: "booked" };
+  a_enquiry: "contacted", a_waiting: "contacted", a_process: "contacted", a_paypend: "contacted", a_booked: "booked", a_paid: "booked",
+  // "Calls, messages vaddu" (18 Nov): closed, and off every nudge and broadcast.
+  dnd: "closed" };
 // A client-supplied timestamp, clamped so a wrong phone clock cannot file a
 // note in the future or resurrect a very old one.
 function stamp(v) {
@@ -831,6 +833,16 @@ module.exports = async (req, res) => {
     else await guard.kvCommand(cfg, ["HDEL", "dl_fu", key]).catch(() => {});
     await regrade(cfg, key, OUTCOMES[o], o);
     const out = { ok: true, status: OUTCOMES[o], outcome: o, fu, at };
+    // Asked not to be called or messaged: the same as their own STOP — the
+    // opt-out set every nudge, follow-up and broadcast reads, and a D grade.
+    if (o === "dnd") {
+      const ph = await leadPhoneOf(cfg, key);
+      if (/^[6-9]\d{9}$/.test(ph)) {
+        await guard.kvWrite(cfg, ["SADD", "optout", ph], "do-not-contact");
+        try { await require("./_qualify.js").absorb(cfg, ph, {}, { opted_out: true }); } catch (e) {}
+        out.optedOut = true;
+      }
+    }
     // Two unanswered calls and the desk stops ringing a number that does not
     // pick up: 80 of 121 desk outcomes up to 9 November were "no answer", and
     // the third call to a stranger's number goes the way of the first two.
@@ -854,6 +866,45 @@ module.exports = async (req, res) => {
       }
     }
     return json(res, 200, out);
+  }
+  // "⏰ Slots pampu": the next free times, to the patient's WhatsApp, as a
+  // list they tap. In the fortnight to 18 Nov, 97 of 133 A/B chats that never
+  // booked stopped right after the agent asked "e time convenient?" — the
+  // desk had no way to put times in front of them but to ring. Inside the
+  // 24-hour window it goes as a tap list; outside it, as the clinic_update
+  // template naming the times (a template cannot carry a list), and the
+  // reply comes back to the agent, which reads a time and books it. Once per
+  // patient per two hours.
+  if (a === "send-slots") {
+    if (!allow("leads.edit")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
+    const phone = digits10(b.phone) || (key ? await leadPhoneOf(cfg, key) : "");
+    if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit number ledu" });
+    if (await guard.setHas(cfg, "optout", phone).catch(() => false)) return json(res, 409, { error: "Ee patient messages vaddannaru (STOP) — pampalem" });
+    const slots = await require("./schedule.js").nextFree(cfg, 6);
+    if (!slots.length) return json(res, 409, { error: "Ee vaaram lo free slots levu" });
+    // What was offered rides along, so the agent knows the patient's tap is a pick.
+    const nx = await guard.kvCommand(cfg, ["SET", `slots:sent:${phone}`, JSON.stringify({ at: Date.now(), by: me.name, slots }), "NX", "EX", "7200"]).catch(() => ({}));
+    if (!nx || !nx.result) return json(res, 409, { error: "Ee patient ki 2 gantala lopu already slots pampam" });
+    const greet = require("./_greet.js").greetName(clean(b.name, 40)) || require("./_greet.js").greetName(key ? await leadNameOf(cfg, key) : "");
+    const labels = slots.map((x) => x.label);
+    const text = `${greet ? greet + " garu" : "Namaste"} 🙏 DermaLuxe nunchi — meeku kudirite ee times lo okati select cheyandi, slot hold chestam 😊`;
+    let via = "";
+    if (await notify.windowOpen(cfg, phone) && await notify.sendWaList(phone, text, labels)) via = "list";
+    else {
+      const line = `Meeku kudirite ee times lo okati reply cheyandi, slot hold chestam: ${labels.join(" · ")}`.slice(0, 250);
+      const t = await notify.sendWaTemplate(phone, "clinic_update", [greet || "Namaste", line]).catch(() => ({}));
+      if (t && t.ok) via = "template";
+    }
+    if (!via) { await guard.kvCommand(cfg, ["DEL", `slots:sent:${phone}`]).catch(() => {}); return json(res, 502, { error: "WhatsApp vellaledu — malli try cheyandi" }); }
+    const logged = `${text}\n${labels.map((l) => "• " + l).join("\n")}`;
+    try { await require("./_inbox.js").log(cfg, phone, { dir: "out", text: logged, by: me.name }); } catch (e) {}
+    if (key) {
+      const cur = await guard.kvCommand(cfg, ["HGET", NOTES, key]).catch(() => ({}));
+      let list = []; try { list = JSON.parse(cur.result || "[]"); } catch (e) {}
+      list.unshift({ ts: Date.now(), by: me.name, text: `⏰ Slots pampanu: ${labels.join(", ")}` });
+      await guard.kvCommand(cfg, ["HSET", NOTES, key, JSON.stringify(list.slice(0, 30))]).catch(() => {});
+    }
+    return json(res, 200, { ok: true, via, slots: labels });
   }
   // A WhatsApp a moment before the desk rings. Patients do not lift calls
   // from a number they do not know — 80 of 121 desk outcomes up to 9 November

@@ -83,6 +83,32 @@ async function freeSlots(cfg, day, rows) {
   return { slots, per, free: out, closed: false };
 }
 
+// The next free times worth offering a patient: what is left of today (from
+// an hour from now), then the next open days — at most three a day, two hours
+// apart, so the list reads as a real choice rather than every half hour.
+// Labels are what the agent reads back when one is tapped: "Ivala 6:30 PM",
+// "Repu 11:00 AM", "Sat 4:00 PM".
+async function nextFree(cfg, max) {
+  const want = Math.max(1, Math.min(9, Number(max) || 6));
+  const rows = (await readQ(cfg)).map((r) => r.a);
+  const now = Date.now(), out = [];
+  const today = istDay(now);
+  for (let i = 0; i < 7 && out.length < want; i++) {
+    const day = istDay(now + i * DAY_MS);
+    const cap = await freeSlots(cfg, day, rows.filter((r) => istDay(r.at) === day));
+    if (cap.closed) continue;
+    let last = 0, n = 0;
+    for (const f of cap.free) {
+      if (f.at < now + 3600000 || f.at - last < 2 * 3600000) continue;
+      const word = day === today ? "Ivala" : day === istDay(now + DAY_MS) ? "Repu" : new Intl.DateTimeFormat("en-IN", { timeZone: "Asia/Kolkata", weekday: "short" }).format(new Date(f.at));
+      out.push({ at: f.at, label: `${word} ${istTime(f.at).replace(/\s*([ap])m$/i, (m, x) => " " + x.toUpperCase() + "M")}` });
+      last = f.at;
+      if (++n >= 3 || out.length >= want) break;
+    }
+  }
+  return out;
+}
+
 // Who the desk could ring to fill them, newest problem first. Each line says
 // why this person and nothing more, so it can be acted on without thinking.
 async function whoToBook(cfg, day) {
@@ -418,6 +444,18 @@ module.exports = async (req, res) => {
   const a = String(q.a || b.a || "day");
   if (req.method === "POST" && await guard.idem(cfg, b, res)) return json(res, 200, { ok: true, dup: true });
 
+  // ---- appointments whose time has passed and nobody has said whether the
+  // patient came. 22 of 35 in the fortnight to 18 Nov were never marked, so
+  // the clinic could not tell a no-show from a visit, and the no-shows never
+  // got the rebook message. The Leads screen asks about these at the top.
+  if (a === "due-marks") {
+    const now = Date.now();
+    const list = (await readQ(cfg)).map((r) => r.a)
+      .filter((x) => x.at < now - 30 * MIN && x.at > now - 48 * 3600000 && !["done", "noshow", "cancelled", "unmarked"].includes(String(x.status || "booked")))
+      .sort((x, y) => x.at - y.at).slice(0, 20).map(shape);
+    return json(res, 200, { ok: true, list });
+  }
+
   // ---- the day, or the week ----
   if (a === "day" || a === "week") {
     const rl = await guard.rateLimit(cfg, `rl:sch:${me.phone}`, 300, 3600);
@@ -646,3 +684,4 @@ module.exports = async (req, res) => {
 };
 
 module.exports.createAppt = createAppt;
+module.exports.nextFree = nextFree;

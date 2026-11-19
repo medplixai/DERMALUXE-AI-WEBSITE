@@ -66,6 +66,31 @@ async function sendWaButtons(digits, text, titles) {
   } catch (e) { console.error("notify: buttons error", to, e && e.message); return false; }
 }
 
+// A tap-to-pick list (up to 10 rows) — the desk's "⏰ Slots pampu". Inside
+// the 24-hour window only; false when it did not go (the caller falls back to
+// a template, which cannot carry a list).
+async function sendWaList(digits, text, rowsIn, button) {
+  const token = process.env.WA_CLOUD_TOKEN;
+  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
+  const to = String(digits || "").replace(/\D/g, "").slice(-10);
+  const rows = Array.from(new Set((rowsIn || []).map((s) => String(s || "").trim().slice(0, 24)).filter(Boolean))).slice(0, 10);
+  if (!token || !phoneId || to.length !== 10 || !rows.length) return false;
+  try {
+    const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify({ messaging_product: "whatsapp", to: `91${to}`, type: "interactive", interactive: {
+        type: "list", body: { text: String(text || "").slice(0, 1024) },
+        action: { button: String(button || "🗓 Slot select").slice(0, 20), sections: [{ title: "Available times", rows: rows.map((t, i) => ({ id: `slot_${i}`, title: t })) }] },
+      } }),
+    });
+    if (r.ok) return true;
+    let d = ""; try { d = (await r.text()).slice(0, 200); } catch (e) {}
+    console.error("notify: list failed", to, r.status, d);
+    return false;
+  } catch (e) { console.error("notify: list error", to, e && e.message); return false; }
+}
+
 // Template message send (works OUTSIDE the 24h window — reminders/broadcasts).
 // params = array of strings for {{1}}, {{2}}... in the template body.
 // params: body variables. opts.urlSuffix: value for a dynamic URL button ({{1}} at the end of the link).
@@ -410,4 +435,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, notifyTargets, aiFailed, teamSend, markWindow, windowOpen, alertLine, sendWa, sendWaButtons, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
+module.exports = { leadAlert, notifyTargets, aiFailed, teamSend, markWindow, windowOpen, alertLine, sendWa, sendWaButtons, sendWaList, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };

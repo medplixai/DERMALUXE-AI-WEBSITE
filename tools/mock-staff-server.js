@@ -374,6 +374,12 @@ http.createServer((req, res) => {
       ["Padma", 15, 30, 45, "9000000002", "Laser — face", "booked", false], ["Suresh", 17, 0, 30, "", "Hair fall", "booked", false],
       ["Meena", 18, 0, 60, "9000000003", "Chemical peel", "booked", true],
     ].map((r, i) => ({ id: "s" + i, name: r[0], ph: "98765432" + String(10 + i), atH: r[1], atM: r[2], mins: r[3], staff: r[4], staffName: (team.find((t) => t.phone === r[4]) || {}).name || "", concern: r[5], status: r[6], cf: r[7], room: r[5] === "Hydrafacial" ? "Hydrafacial" : r[5].startsWith("Laser") ? "Laser room" : "" }));
+    // Passed and unmarked — the Leads screen's ✅/❌ strip (19 Nov).
+    if (a === "due-marks") {
+      if (!global.mockDue) global.mockDue = [["Bhavani", 3, "Skin glow"], ["…0970 (WhatsApp peru)", 20, "Consultation"]].map((r, i) => ({ id: "d" + i, name: r[0], ph: "98765400" + (10 + i), at: Date.now() - r[1] * 3600000, concern: r[2] }))
+        .map((r) => Object.assign(r, { day: istDayS(r.at), time: tm(r.at), status: "booked" }));
+      return send(200, { ok: true, list: global.mockDue });
+    }
     if (a === "week") {
       // The real week carries "soon" (this week's rows) and "pending" (booked,
       // not yet confirmed, oldest booking first) — the Confirm-pending strip at

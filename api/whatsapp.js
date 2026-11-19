@@ -1466,6 +1466,22 @@ module.exports = async (req, res) => {
   let extraCtx = nowIstCtx() + apptLine + acadLine + (profile && profile.name
     ? `[returning patient — name: ${profile.name}${profile.concern ? ", last concern: " + profile.concern : ""}] `
     : "");
+  // The desk sent this patient times to pick from (staff "⏰ Slots pampu") and
+  // they have tapped one: say so, so the agent holds that slot rather than
+  // asking what the "Repu 11:00 AM" is about.
+  let deskPick = null;
+  if (cfg) {
+    try {
+      const sr = await guard.kvCommand(cfg, ["GET", `slots:sent:${digits}`]).catch(() => ({}));
+      const offer = sr && sr.result ? JSON.parse(sr.result) : null;
+      const pick = offer && Array.isArray(offer.slots) ? offer.slots.find((x) => String(x.label).toLowerCase() === String(text || "").trim().toLowerCase()) : null;
+      if (pick) {
+        const iso = new Intl.DateTimeFormat("sv-SE", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(new Date(pick.at));
+        deskPick = { label: pick.label, iso };
+        extraCtx += `[OUR TEAM SENT THIS PATIENT TIMES TO PICK FROM, AND THEY PICKED "${pick.label}". Hold exactly that slot now: say it is held and the team will call to confirm, and put "slot_ts":"${iso}" in lead. Ask their name in the same reply only if it is not known.] `;
+      }
+    } catch (e) {}
+  }
   // What the qualifier already knows (how far they are, what is still unasked),
   // where the chat came from, and whether this "message" is Meta's ad prefill
   // rather than the patient's own words.
@@ -1664,6 +1680,11 @@ module.exports = async (req, res) => {
   }
 
   let justBooked = 0;
+  // A tap on a time the desk offered is a booking, whatever the model wrote.
+  if (deskPick && !(out.lead && out.lead.slot_ts)) {
+    out.lead = Object.assign({ name: "", concern: "Consultation", heat: "hot" }, out.lead || {}, { slot: deskPick.label, slot_ts: deskPick.iso });
+    console.log("wa: desk-offered slot picked", digits.slice(-4), deskPick.iso);
+  }
   // The model said a slot is held but sent no time with it: read the slot from
   // the patient's own words, so the booking reaches the desk (7 Nov, Prasanthi).
   // Then from the reply itself, when it names exactly one time and says it is

@@ -144,6 +144,16 @@ process.env.ANTHROPIC_API_KEY = "test";
   const ctx = asked[0] || "";
   is([/filled by OTHER patients/.test(ctx), /NOT this patient's appointment/.test(ctx), /This patient has NO appointment booked/.test(ctx)], [true, true, true], "the agent is told whose slots are full, and that this patient has none");
 
+  console.log("\n  — a tap on a time the desk sent —");
+  const pickAt = Date.now() + 26 * 3600000 - (Date.now() % 1800000);
+  h.run(["SET", "slots:sent:9876500314", JSON.stringify({ at: Date.now(), by: "Hemasri", slots: [{ at: pickAt, label: "Repu 11:00 AM" }] })]);
+  nextReply = "Sare andi 🙏";   // the model forgets to hold it
+  asked.length = 0;
+  await say("9876500314", "Repu 11:00 AM");
+  is(/THEY PICKED .{0,3}Repu 11:00 AM/.test(asked[0] || ""), true, "the agent is told the patient picked one of the desk's times");
+  const bk = h.run(["LRANGE", "appt:q", "0", "-1"]).map((x) => JSON.parse(x)).filter((a2) => a2.ph === "9876500314");
+  is([bk.length, bk[0] && Math.abs(bk[0].at - pickAt) < 60000], [1, true], "and it is booked at that time even when the reply forgets to say so");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe conversation is tidy");
   process.exit(fails ? 1 : 0);
 })();

@@ -244,6 +244,8 @@
     .fu-line{font-size:.76rem;color:var(--muted2);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 10px}
     .fu-line b{color:var(--text);font-weight:500}
     .oc{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:100px;border:1px solid var(--line);color:var(--g2);margin-left:6px}
+    .mk-row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:-4px 0 8px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+    .mk-row .mk-btns{display:flex;gap:6px}
     .fu-due{margin:0 0 10px;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
     .seatlist{margin-top:10px;display:grid;gap:6px}
     .seatlist .batch{border:1px solid var(--line);border-radius:12px;padding:10px}
@@ -1820,6 +1822,7 @@
           : '<span class="meta">No phone (DM lead)</span>')) +
         statusSelect(l) +
         '<button class="btn btn--sm" data-act="cscript" data-key="' + esc(l.key) + '" data-name="' + esc(l.name || "") + '">' + (l.script ? "🤖 Note malli raayi" : "🤖 Em matladali") + "</button>" +
+        (l.phone && state.allow("leads.edit") && (l.status === "new" || l.status === "contacted") && l.outcome !== "dnd" ? '<button class="btn btn--sm btn--gold" data-act="send-slots" data-key="' + esc(l.key) + '" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '" title="Free times WhatsApp lo pampu — patient okka tap tho select chestaru">⏰ Slots pampu</button>' : '') +
         (l.phone && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="share" data-kind="location" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">📍 Location</button>' +
           '<button class="btn btn--sm" data-act="share" data-kind="pay" data-phone="' + esc(l.phone) + '" data-name="' + esc(l.name || "") + '">💳 QR</button>' : '') +
         (NATIVE && state.allow("leads.edit") ? '<button class="btn btn--sm" data-act="photo" data-kind="lead" data-ref="' + esc(l.key) + '" data-who="' + esc(l.name || "") + '">📷 Photo</button>' : '') +
@@ -1837,7 +1840,7 @@
         ? [["new", "New"], ["o:a_enquiry", "📋 Slot / course gurinchi adigaru"], ["o:a_waiting", "⏳ Slot confirmation kosam waiting"], ["o:a_process", "🔄 Under process"], ["o:a_paypend", "💳 Payment pending"],
            ["o:a_booked", "🎟 Slot booked"], ["o:a_paid", "✅ Payment done & slot confirmed"], ["o:noanswer", "📵 Not answering"], ["o:followup", "📅 Need follow up"], ["o:notinterested", "🚫 Not interested"], ["closed", "Closed"]]
         : [["new", "New"], ["contacted", "Contacted"], ["o:noanswer", "📵 Not answering"], ["o:followup", "📅 Need follow up"], ["o:thinking", "🤔 Consultation kosam alochistunnaru"],
-        ["o:notinterested", "🚫 Not interested"], ["o:notravel", "🚗 Not willing to travel"], ["booked", "Booked"], ["visited", "Visited"], ["closed", "Closed"]];
+        ["o:notinterested", "🚫 Not interested"], ["o:notravel", "🚗 Not willing to travel"], ["o:dnd", "🔕 Calls/msgs vaddu"], ["booked", "Booked"], ["visited", "Visited"], ["closed", "Closed"]];
       if (isAcad(l) && cur === "contacted") cur = "o:a_enquiry";
       return '<select class="s-' + l.status + '" data-act="status" data-key="' + esc(l.key) + '">' + opts.map(function (o) {
         return '<option value="' + o[0] + '"' + (o[0] === cur ? " selected" : "") + ">" + o[1] + "</option>";
@@ -1986,9 +1989,9 @@
     function needsCallAcad(l) { return !!callWhy(l, true); }
     function dayStartMs() { var t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); }
     function fuDue(l) { return l.outcome === "followup" && l.fu && l.fu <= istToday() && (l.status === "new" || l.status === "contacted"); }
-    var OUT_LABEL = { noanswer: "📵 Not answering", callback: "🔁 Malli call", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Need follow up", notinterested: "🚫 Not interested", notravel: "🚗 Not willing to travel", booked: "✅ Booked for consultation",
+    var OUT_LABEL = { dnd: "🔕 Calls/msgs vaddu", noanswer: "📵 Not answering", callback: "🔁 Malli call", thinking: "🤔 Consultation kosam alochistunnaru", followup: "📅 Need follow up", notinterested: "🚫 Not interested", notravel: "🚗 Not willing to travel", booked: "✅ Booked for consultation",
       a_enquiry: "📋 Slot / course gurinchi adigaru", a_waiting: "⏳ Slot confirmation kosam waiting", a_process: "🔄 Under process", a_paypend: "💳 Payment pending", a_booked: "🎟 Slot booked", a_paid: "✅ Payment done & slot confirmed" };
-    var OUT_STATUS = { noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked",
+    var OUT_STATUS = { dnd: "closed", noanswer: "contacted", callback: "contacted", thinking: "contacted", followup: "contacted", notinterested: "closed", notravel: "closed", booked: "booked",
       a_enquiry: "contacted", a_waiting: "contacted", a_process: "contacted", a_paypend: "contacted", a_booked: "booked", a_paid: "booked" };
     // Skin or hair, read from what they asked about (owner, 7 Nov: "leads skin
     // and hair separate"). Laser hair removal is a skin treatment, so it is
@@ -2235,11 +2238,34 @@
         var parts = CALL_WHY.filter(function (x) { return wc[x[0]]; }).map(function (x) { return "<b>" + wc[x[0]] + "</b> " + x[1]; });
         if (parts.length) whyLine = '<div class="callwhy">🔥 Ivala ' + counts[0] + " mandiki call cheyyali — " + parts.join(" · ") + '<br><span class="meta">Waiting = evaru inka touch cheyyanivi matrame. Call list lo vaatitho paatu ettanivi, follow-up date vachinavi kuda untayi. Ivala matladina / note raasina lead repati varaku list nunchi vellipotundi.</span></div>';
       }
-      $("leadList").innerHTML = summaryBar(people, d.leads) + periodLine + whyLine + banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts)) +
+      $("leadList").innerHTML = '<div id="dueMarks">' + marksBanner() + '</div>' + summaryBar(people, d.leads) + periodLine + whyLine + banner + (list.length ? list.map(function (l) { return leadCard(l); }).join("") : emptyLeads(seg, counts)) +
         (moreCards ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="lead-more">Inka ' + moreCards + " leads chupinchu</button></div>" : "") +
         (moreCalls ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Inka ' + moreCalls + " mandi chupinchu</button></div>" :
           (seg === "call" && callShowAll && list.length > 10 ? '<div style="text-align:center;margin:10px 0"><button class="btn btn--sm" data-act="call-all">Top 10 matrame chupinchu</button></div>' : ""));
       paintMore();
+      loadMarks(false);
+    }
+    // Appointments whose time has passed with nobody saying whether the
+    // patient came — 22 of 35 in the fortnight to 18 Nov. Asked about at the
+    // top of the screen the desk lives on, one tap each; "Raaledu" sends the
+    // patient the rebook message as it always has.
+    var dueMarks = [], dueMarksAt = 0, dueMarksBusy = false;
+    function marksBanner() {
+      if (!state.allow("appts.edit") || !dueMarks.length) return "";
+      return '<div class="fu-due"><span>📋 <b>' + dueMarks.length + " appointment" + (dueMarks.length > 1 ? "s" : "") + "</b> time ayipoyindi — vaccharo ledo cheppandi</span></div>" +
+        dueMarks.slice(0, 6).map(function (r) {
+          return '<div class="mk-row"><span><b>' + esc(r.name || "Patient") + "</b> · " + esc(r.time || "") + (r.day && r.day !== istToday() ? " (" + esc(dmy(r.day)) + ")" : "") + (r.concern ? ' <span class="meta">· ' + esc(r.concern) + "</span>" : "") + "</span>" +
+            '<span class="mk-btns"><button class="btn btn--sm btn--gold" data-act="mk-came" data-id="' + esc(r.id || "") + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '">✅ Vacharu</button>' +
+            '<button class="btn btn--sm" data-act="mk-noshow" data-id="' + esc(r.id || "") + '" data-ph="' + esc(r.ph) + '" data-at="' + r.at + '" data-name="' + esc(r.name || "") + '">❌ Raaledu</button></span></div>';
+        }).join("");
+    }
+    function loadMarks(force) {
+      if (!state.allow("appts.edit") || dueMarksBusy || (!force && Date.now() - dueMarksAt < 180000)) return;
+      dueMarksBusy = true;
+      schapi("due-marks").then(function (j) {
+        dueMarks = (j && j.list) || []; dueMarksAt = Date.now();
+        var box = $("dueMarks"); if (box) box.innerHTML = marksBanner();
+      }).catch(function () {}).then(function () { dueMarksBusy = false; });
     }
     // ---- the clinic day --------------------------------------------------
     var schDay = null, schData = null, schWeek = null, schMine = false, schShow = "all";
@@ -6206,6 +6232,7 @@
       { k: "followup",      label: "📅 Need follow up", note: "Call — follow-up" },
       { k: "notravel",      label: "🚗 Raalemu (dooram)", note: "Call — travel cheyyalemu annaru" },
       { k: "notinterested", label: "🚫 Vaddannaru",    note: "Call — interest ledu" },
+      { k: "dnd",           label: "🔕 Calls/msgs vaddu", note: "Calls, messages vaddannaru — anni aapesam" },
     ];
     // The academy's own steps, for the call sheet and the card (8 Nov, point 3).
     var ACAD_OUTCOMES = [
@@ -6708,6 +6735,13 @@
         var ko = el.dataset.key, ov = el.value.slice(2);
         var lo = state.data.leads.find(function (x) { return x.key === ko; });
         if (ov === "followup") { askFollowUp(ko, lo && lo.name, function (ok) { if (!ok) renderLeads(); }); return; }
+        // "Naaku call, message cheyakandi" — every nudge, follow-up and
+        // broadcast stops, as if they had sent STOP (18 Nov).
+        if (ov === "dnd") {
+          if (!confirm(((lo && lo.name) || "Ee patient") + " ki calls, WhatsApp messages anni aapestam (follow-ups, offers kuda).\n\nSare na?")) { renderLeads(); return; }
+          saveOutcome(ko, "dnd", "", "");
+          return;
+        }
         var why0 = "";
         if (ov === "notinterested" || ov === "notravel") {
           why0 = (prompt("Enduku? Reason raayandi (avasaram):", "") || "").trim();
@@ -6870,6 +6904,24 @@
             .catch(function (x) { var b2 = wrap.querySelector("#csBody"); if (b2) b2.textContent = "⚠️ " + x.message; });
         };
         showScript(false);
+        return;
+      }
+      // "⏰ Slots pampu": the next free times to their WhatsApp, as a tap list.
+      if (el.dataset.act === "send-slots") {
+        if (!confirm((el.dataset.name || "Ee patient") + " ki free slots WhatsApp lo pampala?\nVaallu okka tap tho time select chestaru, agent book chestundi.")) return;
+        el.disabled = true;
+        api("send-slots", { key: el.dataset.key, phone: el.dataset.phone, name: el.dataset.name })
+          .then(function (j) { toast("⏰ Pampam" + (j.via === "template" ? " (template)" : "") + ": " + (j.slots || []).join(", ")); return load(true); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
+        return;
+      }
+      if (el.dataset.act === "mk-came" || el.dataset.act === "mk-noshow") {
+        var noshow = el.dataset.act === "mk-noshow";
+        if (noshow && !confirm((el.dataset.name || "Patient") + " raaledu ani mark cheyyanaa?\n\nVaallaki 'malli book chesukondi' ani message veltundi.")) return;
+        el.disabled = true;
+        schapi("status", { id: el.dataset.id || undefined, ph: el.dataset.ph, at: Number(el.dataset.at), status: noshow ? "noshow" : "done" })
+          .then(function () { toast(noshow ? "Raaledu ani mark chesam — rebook message pampam" : "Vacharu ani mark chesam ✅"); dueMarks = dueMarks.filter(function (r) { return !(r.ph === el.dataset.ph && String(r.at) === el.dataset.at); }); var box = $("dueMarks"); if (box) box.innerHTML = marksBanner(); loadMarks(true); })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
         return;
       }
       if (el.dataset.act === "share") {

@@ -112,6 +112,7 @@ stub("_notify.js", {
   aiFailed: async (r) => { try { return String(await r.text()); } catch (e) { return ""; } },
   sendWaTemplate: async (...a) => { sent.push(["tpl", ...a]); return { ok: true }; },
   sendWaButtons: async (...a) => { sent.push(["btn", ...a]); return true; },       // boolean, like sendWa
+  sendWaList: async (...a) => { sent.push(["list", ...a]); return true; },         // boolean, like sendWa
   sendWaImageLink: async (...a) => { sent.push(["img", ...a]); return true; },
   notifyOwner: async (...a) => { sent.push(["owner", ...a]); return { ok: true }; },
   waOwner: async (...a) => { sent.push(["owner", ...a]); return { ok: true }; },
