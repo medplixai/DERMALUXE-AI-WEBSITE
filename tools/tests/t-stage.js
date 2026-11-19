@@ -63,14 +63,19 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   is(notYet.percent, 0, "and is at 0%");
   is(/40,000 balance/.test(notYet.where), true, "and leads with the money still owed: " + notYet.where);
 
-  const mid = progressOf({ duration: "1 month", startISO: iso(12), fee: 50000, paid: 50000, onboarded: true, created: Date.now() });
+  // Days by course, not by the months written down (owner, 19 Nov — the
+  // desk's 13 Nov list, point 3): skin or hair alone 15, both 30.
+  const mid = progressOf({ course: "both", duration: "2 months", startISO: iso(12), fee: 99999, paid: 99999, onboarded: true, created: Date.now() });
   is(mid.day, 13, "day 13 of a course that began 12 days ago");
-  is(mid.totalDays, 30, "a one-month course is 30 days");
+  is(mid.totalDays, 30, "skin + hair is 30 days, whatever the months field says");
   is(mid.daysLeft, 17, "17 to go");
   is(mid.percent, 43, "43% through");
+  is(mid.where, "Training nadustondi — day 13 / 30", "and the card says day 13 / 30");
 
-  const long = progressOf({ duration: "3 months", startISO: iso(40), fee: 90000, paid: 90000, created: Date.now() });
-  is(long.totalDays, 90, "a three-month course is 90 days, not 30");
+  const skin = progressOf({ course: "skin", duration: "2 months", startISO: iso(3), fee: 49999, paid: 47500, created: Date.now() });
+  is([skin.totalDays, skin.where], [15, "Training nadustondi — day 4 / 15"], "skin alone is 15 days — \"day 4 / 60\" on 14 Nov is now day 4 / 15");
+  const hair = progressOf({ course: "hair", duration: "1 month", startISO: iso(3), fee: 49999, paid: 49999, created: Date.now() });
+  is(hair.totalDays, 15, "hair alone is 15 days too");
 
   const done = progressOf({ duration: "1 month", startISO: iso(40), fee: 50000, paid: 50000, onboarded: true, created: Date.now() });
   is(/certificate pending/.test(done.where), true, "a finished course that has no certificate says exactly that");
@@ -86,7 +91,7 @@ const is = (got, want, what) => { const ok = JSON.stringify(got) === JSON.string
   is(tr.where, "Training nadustondi", "marked in training before the batch date, the line says training, not 'modalu kaledu'");
 
   const silly = progressOf({ duration: "", startISO: "", fee: 0, paid: 0, created: Date.now() });
-  is(silly.totalDays, 30, "a student with nothing filled in still gets a sane answer");
+  is(silly.totalDays, 15, "a student with nothing filled in still gets a sane answer");
   is(silly.percent, 0, "and no invented progress");
 
   // Recording a payment or issuing a certificate is exactly when somebody is

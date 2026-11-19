@@ -108,7 +108,12 @@ function progressOf(s) {
     const m = String(s.duration || "1 month").match(/(\d+)/);
     return Math.max(1, Math.min(12, m ? Number(m[1]) : 1));
   })();
-  const totalDays = months * 30;
+  // Days of training by course, for the students list only (owner, 19 Nov:
+  // "students list lo rojula lekka matrame marchu", from the desk's 13 Nov
+  // list, point 3): skin alone or hair alone is 15 days, skin + hair is 30
+  // (15 + 15). The website, the agent's brief, the daily material and the
+  // certificate keep the published course length.
+  const totalDays = s.course === "both" ? 30 : 15;
   const start = Date.parse(String(s.startISO || "") + "T00:00:00+05:30");
   const started = Number.isFinite(start) && start <= Date.now();
   const day = started ? Math.min(totalDays, Math.max(1, Math.ceil((Date.now() - start) / DAY))) : 0;
