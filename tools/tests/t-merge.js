@@ -31,13 +31,14 @@ process.env.ANTHROPIC_API_KEY = "test";
   stub("_voice.js", { VOICE_CTX: "", stripForTts: (s) => s, synthesize: async () => null, transcribe: async () => null });
   stub("_push.js", { enabled: () => false, notifyCap: async () => ({ ok: true }), send: async () => ({ ok: true }) });
   const asked = [];
-  let nextReply = "Sare andi 🙏", cutNext = 0;
+  let nextReply = "Sare andi 🙏", cutNext = 0, slow = 0;
   global.fetch = async (url, opt) => {
     const u = String(url);
     if (u.includes("api.anthropic.com")) {
       const body = String((opt && opt.body) || "");
       if (/You fix one WhatsApp reply/.test(body)) return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: "ok" }] }) };
       asked.push(body);
+      if (slow) await new Promise((r) => setTimeout(r, slow));
       if (cutNext > 0) { cutNext--; return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: '{"reply":"Hi 🙏' }], stop_reason: "max_tokens", usage: { output_tokens: 2000 } }) }; }
       return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify({ reply: nextReply, lead: null }) }] }) };
     }
@@ -108,6 +109,40 @@ process.env.ANTHROPIC_API_KEY = "test";
   await say("9876500308", "Hi");
   const lastOut = h.run(["LRANGE", "ib:m:9876500308", "0", "0"]).map((x) => JSON.parse(x))[0] || {};
   is([asked.length, /Skin aa leda hair aa/.test(lastOut.text || ""), /twaralo/.test(lastOut.text || "")], [2, true, false], "it is asked once more, and the patient gets the real answer, not the fallback card");
+
+  console.log("\n  — overtaken while writing —");
+  // 16 Nov: "1 year+", then 13 seconds later "How much cost" — while the
+  // first reply was still being written. Two replies went, the first asking
+  // the town as if the cost had not been asked.
+  nextReply = "Hair fall ki doctor scalp chusi plan istaru 🙏 Meeru e ooru nundi andi?"; slow = 250; asked.length = 0;
+  const o1 = say("9876500309", "1 year+");
+  await new Promise((r) => setTimeout(r, 140));
+  const o2 = say("9876500309", "How much cost");
+  const [x1, x2] = await Promise.all([o1, o2]);
+  const outs9 = h.run(["LRANGE", "ib:m:9876500309", "0", "-1"]).map((x) => JSON.parse(x)).filter((m) => m.dir === "out");
+  is([!!(x1.body && x1.body.overtaken), outs9.length], [true, 1], "the first reply stays quiet, and the patient gets one reply");
+  is(/1 year\+/.test(lastUser()) && /How much cost/.test(lastUser()), true, "and that one reply is to both messages");
+  const o3 = say("9876500310", "Pimples undi");
+  await new Promise((r) => setTimeout(r, 140));
+  await Promise.all([o3, say("9876500310", "staff")]);
+  const outs10 = h.run(["LRANGE", "ib:m:9876500310", "0", "-1"]).map((x) => JSON.parse(x)).filter((m) => m.dir === "out" && m.by === "ai");
+  is(outs10.some((m) => /e ooru nundi/.test(m.text)), true, "a \"staff\" request in between does not swallow the answer to the first message");
+  slow = 0;
+
+  console.log("\n  — \"don't call, don't message\" is a no —");
+  nextReply = "Sare andi 🙏 Ika calls, messages pampamu — kavalante ikkade message cheyandi.";
+  await say("9876500311", "Please kavalante nenne vasta ok astamanam cheya kandi call s msg");
+  is(h.run(["SMEMBERS", "optout"]).includes("9876500311"), true, "they are opted out, as STOP would do");
+  await say("9876500312", "Ippudu call cheyakandi, evening cheyandi");
+  is(h.run(["SMEMBERS", "optout"]).includes("9876500312"), false, "\"not now, evening\" is not");
+
+  console.log("\n  — a full slot is not their appointment —");
+  const at = Date.now() + 5 * 3600000;
+  for (const ph of ["9876500391", "9876500392"]) h.run(["LPUSH", "appt:q", JSON.stringify({ ph, name: "X", at, ts: Date.now() })]);
+  asked.length = 0;
+  await say("9876500313", "Hi");
+  const ctx = asked[0] || "";
+  is([/filled by OTHER patients/.test(ctx), /NOT this patient's appointment/.test(ctx), /This patient has NO appointment booked/.test(ctx)], [true, true, true], "the agent is told whose slots are full, and that this patient has none");
 
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nthe conversation is tidy");
   process.exit(fails ? 1 : 0);

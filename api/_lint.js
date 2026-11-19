@@ -28,7 +28,17 @@ const REASSURE = /(bhayapadoddu|bhayapadakandi|kangaru padakandi|tension vaddu|w
 const META_PREFILL = /^(hello|hi|hey)?[\s!.,]*(can i get more info(rmation)?( (on|about) this)?|i want to know more( about this)?|please tell me more( about this)?|tell me more about this|i'?m interested in this|i have a question about this|is this available|i would like to know more)[\s?.!]*$/i;
 const isMetaPrefill = (line) => META_PREFILL.test(String(line || "").trim());
 const OPT_OUT = /^\s*(stop|unsubscribe)\s*$|\b(mes+a?g?e?s?|msgs?|mesg|sms)\s*(cheyakandi|cheyyakandi|cheyakudadhu|pampakandi|pampoddu|vaddu|vadhu)\b|\bdon'?t\s+(message|msg|text)\b|మెసేజ్(‌?లు)?\s*(చేయకండి|పంపకండి|వద్దు)/i;
-const asksToStop = (t) => OPT_OUT.test(String(t || ""));
+// Calls and messages together, in either order, as people actually type it.
+// 18 Nov: "kavalante nenne vasta ok astamanam cheya kandi call s msg" — "if I
+// want I'll come myself, stop calling and messaging" — was answered politely
+// and then nothing changed: no opt-out, the desk's card still said
+// "contacted", the nudges kept coming.
+const CALL_OR_MSG = "(calls?|phone|ph|msgs?|mes+a?g?e?s?|mesg|sms|కాల్|మెసేజ్)";
+const DONT = "(cheyakandi|cheya\\s*kandi|cheyyakandi|cheyakudadhu|cheyoddu|pampakandi|pampoddu|vaddu|vadhu|చేయకండి|చేయొద్దు|పంపకండి|వద్దు)";
+const NO_CONTACT = new RegExp(`${CALL_OR_MSG}[\\s\\S]{0,25}?${DONT}|${DONT}[\\s\\S]{0,25}?${CALL_OR_MSG}|\\b(stop|don'?t|do not|no more)\\s+(calling|call|messaging|messages?|texting)\\b`, "i");
+// "Ippudu call cheyakandi, evening cheyandi" is a when, not a no.
+const NOT_NOW = /\b(ippudu|ipudu|now|ee roju|ivala|evening|sayantram|saayantram|udayam|morning|night|tarvata|taruvata|later|repu|duty|office|ofc|busy|meeting|class|free ayyaka)\b|ఇప్పుడు|తర్వాత|రేపు/i;
+const asksToStop = (t) => { const s = String(t || ""); return OPT_OUT.test(s) || (NO_CONTACT.test(s) && !NOT_NOW.test(s.replace(/\bastamanam\b/gi, ""))); };
 
 const norm = (s) => String(s || "").replace(/[\s*_~`]+/g, " ").replace(/[.!?,:;–-]+/g, "").trim().toLowerCase();
 function similar(a, b) {
@@ -74,6 +84,9 @@ function asksIn(prose, out) {
   return list;
 }
 const MAX_BODY = 420;
+// The rest of a WhatsApp profile name after its first word: "Phani Madhavi
+// garu" was sent on 16 Nov because only "Phani garu" was looked for.
+const SURNAME = "(?:\\s+[A-Za-z.]+){0,2}";
 // The reply without links and without the quiet first-reply AI line.
 const bodyOf = (prose) => String(prose || "").split("\n").filter((l) => !/^\s*_.*_\s*$/.test(l)).join("\n").trim();
 
@@ -137,7 +150,7 @@ function lintReply(out, patientText, recent, opts) {
   // Greeting by a WhatsApp profile label the patient never typed.
   const gaveName = /(peru|per\b|name|పేరు|my name|i am |nenu |naa peru)/i.test(said);
   const label = String(o.profileName || "").trim().split(/\s+/)[0] || "";
-  if (!gaveName && label.length >= 2 && new RegExp(`\\b${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\s+garu`, "i").test(prose) && !said.includes(label)) {
+  if (!gaveName && label.length >= 2 && new RegExp(`\\b${label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}${SURNAME}\\s+garu`, "i").test(prose) && !said.includes(label)) {
     faults.push({ code: "profile_name_used", note: `"${label} garu" anedi WhatsApp profile label, patient cheppina peru kaadu — peru lekunda greet chesi, peru adugu` });
   }
 
@@ -164,6 +177,28 @@ function lintReply(out, patientText, recent, opts) {
   const strayTelugu = replyTelugu > 0 && replyTelugu < 25 && replyEnglish > 40 && replyEnglish > replyTelugu * 4 && !hasTelugu(said);
   if (mixedWord || strayTelugu) faults.push({ code: "mixed_script", note: "Telugu aksharalu English letters reply madhyalo kalisayi (udaharana 'chestాను') — motham reply English letters lo (Tenglish) raayi, Telugu script okka aksharam kuda vaddu" });
 
+  // An appointment this patient does not have. 18 Nov: a bare "Hi" was
+  // answered "Mee appointment ivala 6:30 PM ki hold ayyi undi" — the 6:30 PM
+  // in the context was a slot other patients had filled.
+  if (!o.booked && /(appointment|slot)[^.\n]{0,40}(hold ayyi undi|hold lo (ne )?undi|book ayyi undi|confirm ayyi undi|already (booked|confirmed)|fix ayyi undi)/i.test(prose)
+    && !/\b\d{1,2}(:\d{2})?\s*(am|pm)\b|repu|ivala|monday|tuesday|wednesday|thursday|friday|saturday/i.test(said)) {
+    faults.push({ code: "false_appointment", note: "ee patient ki appointment LEDU — 'mee appointment hold lo undi' ani cheppaku; time adigi slot book cheyyi" });
+  }
+
+  // The same phrase in reply after reply: "Jangareddygudem nunchi oke trip
+  // avvela…" opened five answers in a row to one patient on 18 Nov.
+  const shingles = (t) => { const w = norm(t).split(" ").filter(Boolean); const out = new Set(); for (let i = 0; i + 5 <= w.length; i++) out.add(w.slice(i, i + 5).join(" ")); return out; };
+  const mine = shingles(bodyOf(prose));
+  const lastTwo = (Array.isArray(recent) ? recent : []).slice(-2).map((r) => shingles(bodyOf(r)));
+  const stale = lastTwo.length === 2 ? [...mine].find((g) => lastTwo.every((r) => r.has(g)) && !/dermaluxe|staff ani type/.test(g)) : null;
+  if (stale) faults.push({ code: "same_phrase", note: `"${stale}" ide maata gata rendu replies lo kuda undi — malli raayaku, kotha maata lo cheppu` });
+
+  // A word from another alphabet: "makeup или cream" went to a patient on
+  // 17 Nov — Russian for "or", mid-sentence. Devanagari is left alone: Hindi
+  // speakers are answered in Hindi.
+  const foreign = prose.match(/[\u0400-\u04FF\u0600-\u06FF\u0E00-\u0E7F\u3040-\u30FF\u4E00-\u9FFF]+/);
+  if (foreign) faults.push({ code: "foreign_script", note: `"${foreign[0]}" vere bhasha aksharalu — teesey, aa maata Tenglish/English lo raayi` });
+
   if (rec.some((p) => similar(p, reply))) faults.push({ code: "repeat", note: "ide maata already cheppam — malli kaadu; kotha angle: oppukunte first slot book chesi cheppu, 'tarvata' ante okasari sare ani mugincha" });
 
   return faults;
@@ -185,8 +220,8 @@ function dropLabel(out, label) {
   if (!label) return out;
   const esc = label.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   let r = String(out.reply || "")
-    .replace(new RegExp(`(^|\\n)\\s*${esc}\\s+garu\\s*[,—–-]?\\s*`, "gi"), "$1")
-    .replace(new RegExp(`\\s*,?\\s*\\b${esc}\\s+garu\\b`, "gi"), "")
+    .replace(new RegExp(`(^|\\n)\\s*${esc}${SURNAME}\\s+garu\\s*[,—–-]?\\s*`, "gi"), "$1")
+    .replace(new RegExp(`\\s*,?\\s*\\b${esc}${SURNAME}\\s+garu\\b`, "gi"), "")
     .replace(/(^|\n)([a-z])/g, (m, a, b) => a + b.toUpperCase());
   return Object.assign({}, out, { reply: r });
 }

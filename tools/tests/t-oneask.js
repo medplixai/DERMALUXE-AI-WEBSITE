@@ -39,6 +39,42 @@ is(has(wall, "too_long", SLOTS, "", { academy: true }), false, "an academy answe
 is(has(wall, "too_long", SLOTS, "", { analysis: true }), false, "and a photo analysis may run longer");
 is(has(wall.replace("Kaikaluru nunchi", "Appointment confirm ✅ —"), "too_long"), false, "a booking confirmation with the address may too");
 
+console.log("\n  — a WhatsApp profile name is not their name —");
+is(L.lintReply({ reply: "Namaste 🙏 Phani Madhavi garu, meeku skin problem aa leda hair problem aa?" }, "Hi, can I get more information", [], { profileName: "Phani Madhavi" }).map((f) => f.code).includes("profile_name_used"), true, "\"Phani Madhavi garu\" is caught, not only \"Phani garu\" (16 Nov)");
+is(L.dropLabel({ reply: "Phani Madhavi garu, meeku skin aa hair aa?" }, "Phani").reply, "Meeku skin aa hair aa?", "and taken out whole");
+
+console.log("\n  — a nudge in the patient's own language —");
+const R = h.load("_reengage");
+const M = (a) => a.map((text) => ({ dir: "in", text }));
+is(R.langOf(M(["మేడం ఆయిల్ స్కిన్ గా ఉంటుంది మొహం", "6 నెలల లోపు", "Money cost"])), "telugu", "Telugu script in, Telugu script out (she got English on 16 Nov)");
+is(R.langOf(M(["How do I get skin analysis?", "[📷 photo]"])), "english", "English in, English out (she got Tenglish)");
+is(R.langOf(M(["Hi", "Skin", "Hair fall undi", "Chala kalam", "Eluru"])), "tenglish", "button taps and Tenglish stay Tenglish");
+is(R.langOf(M(["ఏమిటి ధర?", "Skin"])), "tenglish", "the ad's own \"ఏమిటి ధర?\" is not the patient's English — Tenglish, not English (17 Nov)");
+is(R.langOf(M(["చికిత్స ఖర్చు ఎంత?", "Skin", "పర్మినెంట్ గా glowing skin chestara"])), "telugu", "but Telugu script they typed themselves still counts");
+
+console.log("\n  — another alphabet —");
+is(has("Vacchetappudu mukham meeda makeup или cream emi lekunda randi. Repu 6:30 PM ok na?", "foreign_script"), true, "\"makeup или cream\" is caught (17 Nov)");
+is(has("नमस्ते 🙏 आपकी समस्या क्या है?", "foreign_script", {}, "मुझे बाल झड़ने की समस्या है"), false, "Hindi to a Hindi speaker is not");
+
+console.log("\n  — \"don't call, don't message\" —");
+for (const [t, want, why] of [
+  ["Please kavalante nenne vasta ok astamanam cheya kandi call s msg", true, "the 18 Nov message — calls and messages, words in any order"],
+  ["Stop calling me", true, "in English"],
+  ["కాల్ చేయకండి", true, "in Telugu script"],
+  ["Ippudu call cheyakandi, evening cheyandi", false, "\"not now, evening\" is a when, not a no"],
+  ["Office lo unna call cheyakandi", false, "\"I'm at the office\" too"],
+  ["Repu call cheyandi", false, "and \"call tomorrow\" is a yes"],
+]) is(L.asksToStop(t), want, why);
+
+console.log("\n  — an appointment they do not have —");
+is(has("Namaste 🙏 Mee appointment ivala 6:30 PM ki hold ayyi undi. Location pampistunnanu.", "false_appointment", {}, "Hi"), true, "\"mee appointment hold lo undi\" to a bare \"Hi\" is caught (18 Nov)");
+is(L.lintReply({ reply: "Mee appointment ivala 6:30 PM ki hold lo ne undi 🙏 Location pampistunnanu." }, "Location ekkada", [], { booked: true }).map((f) => f.code).includes("false_appointment"), false, "but not for somebody who has one");
+
+console.log("\n  — the same phrase every time —");
+const prev = ["Glow 3-4 vaaralu untundi. Jangareddygudem nunchi oke trip avvela morning better?", "Sare andi. Jangareddygudem nunchi oke trip avvela ee times lo edi set avutundi?"];
+is(L.lintReply({ reply: "Hydrafacial 45 nimishalu. Jangareddygudem nunchi oke trip avvela ee times lo edi convenient?" }, "Okey", prev, {}).map((f) => f.code).includes("same_phrase"), true, "a phrase in each of the last two replies is not said a third time");
+is(L.lintReply({ reply: "Afternoon slots: 2:30 PM leda 4:30 PM — edi convenient?" }, "Afternoon", prev, {}).map((f) => f.code).includes("same_phrase"), false, "a fresh reply passes");
+
 console.log("\n  — the editor's own instructions —");
 const src = require("fs").readFileSync(require("path").join(process.env.DL_API || require("path").resolve("api"), "_lint.js"), "utf8");
 is(/do not also ask the name or town/.test(src) && /2–4 short lines, under \$\{MAX_BODY\} characters/.test(src), true, "the rewrite is told the same two rules");

@@ -62,6 +62,10 @@ async function run(cfg, opts) {
     const msgs = (th && th.msgs) || [];
     const ins = msgs.filter((m) => m.dir === "in");
     if (!ins.length || !ins.every((m) => saidNothing(m.text))) continue;          // they said something real
+    // Only the opener has gone to them. 18 Nov: a "Hi" got the opener, then
+    // the re-engagement nudge, then this one an hour later — three unanswered
+    // messages to somebody who had said one word.
+    if (msgs.filter((m) => m.dir === "out").length > 1) continue;
     if (msgs.some((m) => m.dir === "out" && m.by && m.by !== "ai")) continue;    // a colleague has been in this chat
     if (await guard.setHas(cfg, "optout", ph).catch(() => false)) continue;
     const [hrS, hrSt, acad] = await Promise.all(["hr:s:", "hr:st:", "acad:ph:"].map((k) => guard.kvCommand(cfg, ["GET", k + ph]).catch(() => ({}))));

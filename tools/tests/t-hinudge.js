@@ -35,6 +35,7 @@ const cfg = { kind: "pg" };
   await chat("9876500706", ["Hi"]); h.run(["SET", "hr:st:9876500706", JSON.stringify({ status: "applied" })]);
   await chat("9876500707", ["Hi"]); h.run(["LPUSH", "dl_leads", JSON.stringify({ ts: Date.now(), name: "Known", phone: "9876500707", concern: "Acne" })]);
   await chat("9010427777", ["Hi"]);                                       // the owner
+  await chat("9876500709", ["Hi"]); await ib.log(cfg, "9876500709", { dir: "out", text: "Clinic Rama Mahal lo undi — e time set avutundi?", by: "ai" });   // already nudged once (18 Nov)
 
   console.log("  — who gets it —");
   is(N.saidNothing("Hiii mam 🙏"), true, "\"Hiii mam 🙏\" says nothing yet");

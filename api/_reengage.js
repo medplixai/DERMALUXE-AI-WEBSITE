@@ -44,6 +44,36 @@ async function candidates(cfg, ctx) {
   return out;
 }
 
+// The language to write the nudge in, from what the patient themselves typed.
+//
+// The nudge is asked for with an English instruction, and the model answered
+// in the instruction's language: on 16 Nov a patient who wrote only in
+// Telugu script got "Just a small tip — the skin under the eyes…", and one
+// who wrote in English got Tenglish. Button taps ("Skin", "6 nelala lopu")
+// say nothing about how a person writes, so they are left out.
+const TAPS = /^(skin|hair|📅 book now|💆 services|📸 skin check|glow \/ facial|6 nelala lopu|1 year\+|chala kalam|ivala .*|repu .*|\[(📷|🎤|🎬|📄).*)$/i;
+const EN_WORDS = /\b(the|is|are|i|my|have|has|since|please|can|could|you|what|how|and|for|with|this|it|me|do|does|get|want|need|when|where|which|much|cost)\b/gi;
+const TE_WORDS = /\b(meeru|mee|naaku|naku|undi|unnai|ledu|kavali|cheppandi|enti|ela|eppudu|entha|andi|garu|chesthe|chestara|vastanu|ravachu|kuda)\b/gi;
+// The questions Meta's ads put in the patient's mouth ("ఏమిటి ధర?", "Hello! Can
+// I get more info on this?"). They say which ad was tapped, not how the person
+// writes: on 17 Nov a dozen people whose only words were "ఏమిటి ధర?" were
+// nudged in English.
+const META_TE = /^(ఏమిటి ధర|ఖర్చు ఎంత|చికిత్స ఖర్చు ఎంత|ఎలా బుక్ చేస్తారు|బుక్ చేయడం ఎలా|హలో|లేజర్ హెయిర్ రిమూవల్\u200c?కు ముందు ఏమి చేయాలి)\s*[?？]?$/;
+function langOf(msgs) {
+  const isPrefill = (t) => META_TE.test(t) || require("./_lint.js").isMetaPrefill(t);
+  const own = (msgs || []).filter((m) => m.dir === "in").map((m) => String(m.text || "").trim()).filter((t) => t && !TAPS.test(t) && !isPrefill(t));
+  if (!own.length) return "tenglish";
+  const all = own.join("\n");
+  if (/[ఀ-౿]/.test(all)) return "telugu";
+  const en = (all.match(EN_WORDS) || []).length, te = (all.match(TE_WORDS) || []).length;
+  return en >= 3 && te === 0 ? "english" : "tenglish";
+}
+const LANG_RULE = {
+  telugu: "Telugu script, as the patient writes (times and numbers in digits)",
+  english: "simple English, as the patient writes",
+  tenglish: "Tenglish (Telugu words in English letters), as the patient writes",
+};
+
 // `until`: see _recover. One Claude call per person, one after another — on a
 // busy hour that alone can outlast the whole function.
 async function run(cfg, max, until, ctx) {
@@ -68,9 +98,13 @@ async function run(cfg, max, until, ctx) {
         if (msgs[i].dir === "in" && msgs[i + 1].dir === "out") { hist.push({ u: msgs[i].text, a: msgs[i + 1].text }); i++; }
       }
       const hrs = Math.round((Date.now() - c.lastIn) / 3600000);
-      const ask = wa.nowIstCtx() + `[The patient has gone quiet for about ${hrs} hour(s) after our last message. Write ONE short caring message (2-4 lines) that picks up exactly where this chat stopped, adds one genuinely useful thing, and ends with ONE easy question or two slots. No greeting, no introduction, do not repeat what we already said, no pressure. "lead" must be null.]`;
+      const lang = langOf(msgs);
+      const ask = wa.nowIstCtx() + `[The patient has gone quiet for about ${hrs} hour(s) after our last message. Write ONE short caring message (2-4 lines) that picks up exactly where this chat stopped, adds one genuinely useful thing, and ends with ONE easy question or two slots. No greeting, no introduction, do not repeat what we already said, no pressure. "lead" must be null. Write it in ${LANG_RULE[lang]}.]`;
       const out = await wa.askClaude(hist, ask, c.name, "", sys);
-      const checked = await lint.check(cfg, out, ask, msgs.filter((m) => m.dir === "out").map((m) => m.text), { channel: "re", profileName: c.name });
+      // The editor checks the language against what the patient wrote, not
+      // against this English instruction.
+      const theirs = msgs.filter((m) => m.dir === "in").map((m) => m.text).slice(-3).join("\n");
+      const checked = await lint.check(cfg, out, theirs, msgs.filter((m) => m.dir === "out").map((m) => m.text), { channel: "re", profileName: c.name });
       const text = String(checked.reply || "").trim();
       if (!text) continue;
       if (!(await notify.sendWa(c.phone, text))) continue;
@@ -83,4 +117,4 @@ async function run(cfg, max, until, ctx) {
   return res;
 }
 
-module.exports = { run, candidates, GAPS_MIN };
+module.exports = { run, candidates, langOf, GAPS_MIN };

@@ -514,7 +514,10 @@ async function apptCtx(cfg, digits) {
     } catch (e) {}
 
     return (mine ? `[This patient's upcoming appointment: ${apptFmtIst(mine)}] ` : "")
-      + (full.length ? `[FULL slots — do not offer these times: ${full.join(", ")}] ` : "")
+      // "FULL slots: Wed 6:30 PM" alone was read, on 18 Nov, as this
+      // patient's own appointment. Whose slots they are is said outright.
+      + (full.length ? `[Times already filled by OTHER patients — never offer these, and they are NOT this patient's appointment: ${full.join(", ")}] ` : "")
+      + (!mine ? "[This patient has NO appointment booked.] " : "")
       + blocked;
   } catch (e) { return ""; }
 }
@@ -1018,6 +1021,18 @@ async function mergeBurst(cfg, phone, myTs, myText) {
   return { text: mine.join("\n").slice(0, 1000) };
 }
 
+// A newer plain message from the patient, within the minute the merge joins,
+// that the agent itself will answer: not a photo (it answers itself), not a
+// "staff" request or a STOP (each has its own short reply, which would leave
+// this message unanswered).
+async function overtaken(cfg, phone, myTs) {
+  if (!(Number(process.env.WA_MERGE_MS == null ? 2500 : process.env.WA_MERGE_MS) > 0)) return false;
+  const r = await guard.kvCommand(cfg, ["LRANGE", `ib:m:${phone}`, "0", "5"]).catch(() => ({}));
+  const rows = ((r && r.result) || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean);
+  return rows.some((m) => m.dir === "in" && Number(m.ts) > myTs && Number(m.ts) - myTs <= 60000
+    && !MEDIA_LINE.test(String(m.text || "")) && !require("./_staffask.js").isAsk(m.text) && !lint.asksToStop(m.text));
+}
+
 // Meta Cloud API: send a text reply via the Graph API.
 async function sendCloud(phoneNumberId, to, text) {
   const token = process.env.WA_CLOUD_TOKEN;
@@ -1308,6 +1323,14 @@ module.exports = async (req, res) => {
   // Marketing opt-out/in: STOP blocks broadcast templates (the optout set);
   // utility appointment reminders and normal chat keep working.
   if (cfg && !imageId && !audioId) {
+    // "Calls, messages cheyakandi" in their own words: the same no as STOP —
+    // off the nudges and broadcasts, a D for the desk — but the agent still
+    // answers them in one line (the editor makes sure there is no question).
+    if (!/^(stop|unsubscribe|opt\s*out)$/i.test(text.trim()) && lint.asksToStop(text)) {
+      await guard.kvCommand(cfg, ["SADD", "optout", digits]).catch(() => {});
+      try { await qualify.absorb(cfg, digits, {}, { opted_out: true, text }); } catch (e) {}
+      console.log("wa: asked not to be called or messaged — opted out", digits.slice(-4));
+    }
     if (/^(stop|unsubscribe|opt\s*out)$/i.test(text.trim())) {
       await guard.kvCommand(cfg, ["SADD", "optout", digits]).catch(() => {});
       // STOP is a no to the desk as well: off the A list, out of the call queue.
@@ -1464,7 +1487,7 @@ module.exports = async (req, res) => {
       if (!acad) acad = AM.detect({ text, hist, concern: (last && last.concern) || f0.problem || "", type: last && last.type, ad: acadAd });
       const g = require("./_goal.js").goalFor({
         concern: acad === "lead" ? "Academy course enquiry" : (last && last.concern) || f0.problem || "", type: last && last.type, km: qrec0 ? qrec0.km : null, intent: f0.intent,
-        status: stR && stR.result, outcome: ocR && ocR.result, booked: !!apptLine, treatedBefore: !!known,
+        status: stR && stR.result, outcome: ocR && ocR.result, booked: /upcoming appointment/.test(apptLine), treatedBefore: !!known,
         name: (last && last.name) || f0.name || (profile && profile.name) || "", slot: last && (last.slot || last.date),
       });
       // A student has no sales goal — the student line below says what to do.
@@ -1584,6 +1607,19 @@ module.exports = async (req, res) => {
   // three buttons ride on it whether or not the model remembered them.
   if (firstTurn && fast && !(Array.isArray(out.buttons) && out.buttons.length)) out.buttons = ["Skin", "Hair", "📅 Book Now"];
 
+  // Overtaken while writing. The merge above waits 2.5 seconds, but a reply
+  // takes ten or fifteen to write, and patients type in between: on 16 Nov
+  // "1 year+" was answered "meeru e ooru nundi?" a second after "How much
+  // cost" arrived, and the cost came in a second reply; a laser question got
+  // the same answer twice. If they wrote again (in words, within the minute
+  // the merge joins) while this reply was being written, this one stays
+  // quiet: the newer message's handler reads everything since our last word
+  // and answers it all at once.
+  if (isMeta && cfg && loggedAt && text && !imageId && !audioId && !videoId && !docId && await overtaken(cfg, digits, loggedAt)) {
+    console.log("wa: reply dropped — the patient wrote again while it was being written", digits.slice(-4));
+    return res.status(200).json({ ok: true, merged: true, overtaken: true });
+  }
+
   // Save what the agent learned, re-score, tell the desk if it just became an A.
   let qrec = null;
   if (cfg) {
@@ -1595,7 +1631,7 @@ module.exports = async (req, res) => {
       await qualify.react(cfg, digits, qrec, { name: (out.lead && out.lead.name) || profileName });
     } catch (e) { console.error("wa: qualify", e && e.message); }
     // The editor: a deterministic read of the reply before it goes out.
-    try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName, channel: "wa", analysis: !!imageId, academy: !!acadLine, booked: /appointment/i.test(apptLine) }); }
+    try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName, channel: "wa", analysis: !!imageId, academy: !!acadLine, booked: /upcoming appointment/.test(apptLine) }); }
     catch (e) { console.error("wa: lint", e && e.message); }
     // The hard price block (owner, 9 Nov), after the editor: a treatment price
     // of ₹500 or more leaves the reply with its sentence, text and photo
