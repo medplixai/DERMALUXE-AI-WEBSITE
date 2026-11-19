@@ -154,6 +154,7 @@ async function build(cfg, phone, opts) {
     since: first,
     dob: extra.dob || "",
     allergies: extra.allergies || "",
+    age: extra.age || "", address: extra.address || "", phone2: extra.phone2 || "",
     stage: extra.stage || "",
     stageAt: extra.stageAt || 0,
     stageBy: extra.stageBy || "",
@@ -202,11 +203,24 @@ module.exports = async (req, res) => {
     const rl = await guard.rateLimit(cfg, `rl:ptl:${me.phone}`, 120, 3600);
     if (!rl.allowed) return json(res, 429, { error: "Too many requests" });
     const term = clean(q.q || b.q, 40).toLowerCase();
-    const [all, st] = await Promise.all([
+    const [all, st, stTs, doneR] = await Promise.all([
       readLeads(cfg),
       guard.kvCommand(cfg, ["HGETALL", STATUS]).catch(() => ({})),
+      guard.kvCommand(cfg, ["HGETALL", "dl_status_ts"]).catch(() => ({})),
+      guard.kvCommand(cfg, ["LRANGE", "appt:done", "0", "499"]).catch(() => ({})),
     ]);
-    const statuses = hash(st);
+    const statuses = hash(st), statusAt = hash(stTs);
+    // When each person last came: a visit the desk marked on an appointment,
+    // or a lead set to "visited". 14 Nov, point 6: Rajendra spoke on the 12th
+    // and came on the 14th, and the list filed him under the 12th — "last in
+    // touch" went by the enquiry alone.
+    const cameAt = new Map();
+    const came = (ph, at) => { if (ph && at > (cameAt.get(ph) || 0)) cameAt.set(ph, at); };
+    for (const x of ((doneR && doneR.result) || [])) {
+      const a2 = parse(x, null);
+      if (!a2 || !a2.at || a2.ns || a2.status === "noshow" || a2.status === "cancelled" || a2.status === "unmarked") continue;
+      if (a2.v || a2.status === "done" || a2.status === "arrived") came(digits10(a2.ph), Number(a2.arrived) || Number(a2.at));
+    }
     const by = new Map();
     for (const l of all) {
       const phone = digits10(l.phone);
@@ -218,10 +232,13 @@ module.exports = async (req, res) => {
       row.first = Math.min(row.first, l.ts);
       if (l.ts >= row.last) { row.last = l.ts; row.concern = l.concern || row.concern; if (l.name) row.name = l.name; }
       row.statuses.push(statuses[k] || "new");
+      if (statuses[k] === "visited") came(phone, Number(statusAt[k]) || l.ts);
       by.set(phone, row);
     }
     let rows = Array.from(by.values()).map((r) => ({
-      phone: r.phone, name: r.name, visits: r.visits, first: r.first, last: r.last,
+      phone: r.phone, name: r.name, visits: r.visits, first: r.first,
+      last: Math.max(r.last, cameAt.get(r.phone) || 0),
+      cameAt: cameAt.get(r.phone) || 0,
       concern: r.concern,
       repeat: r.visits > 1,
       everBooked: r.statuses.some((s) => s === "booked" || s === "visited"),
@@ -286,6 +303,11 @@ module.exports = async (req, res) => {
       name: clean(b.name, 80) || cur.name || "",
       dob: clean(b.dob, 12) || cur.dob || "",
       allergies: clean(b.allergies, 200),
+      // Age, address and another number (14 Nov, point 7). The number the
+      // records are filed under stays: changing it would split the history.
+      age: b.age === undefined ? (cur.age || "") : (Number(b.age) >= 1 && Number(b.age) <= 110 ? String(Math.round(Number(b.age))) : ""),
+      address: b.address === undefined ? (cur.address || "") : clean(b.address, 160),
+      phone2: b.phone2 === undefined ? (cur.phone2 || "") : (/^[6-9]\d{9}$/.test(digits10(b.phone2)) && digits10(b.phone2) !== phone ? digits10(b.phone2) : ""),
       tags: Array.isArray(b.tags) ? b.tags.map((t) => clean(t, 24)).filter(Boolean).slice(0, 8) : (cur.tags || []),
       since: cur.since || Date.now(),
       by: me.phone,

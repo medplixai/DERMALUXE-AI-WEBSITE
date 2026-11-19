@@ -93,6 +93,7 @@
     .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
     .filters input,.filters select{background:var(--panel);border:1px solid var(--line);border-radius:100px;padding:8px 12px;font-size:.88rem;outline:none}
     .filters input{flex:1;min-width:140px}
+    .filters input[type=date]{flex:0 0 auto;min-width:0}
     .list{display:grid;gap:12px;padding-bottom:40px}
     .lead{background:var(--panel);border:1.5px solid var(--line2);box-shadow:0 1px 4px rgba(0,0,0,.07);border-radius:var(--r);padding:12px 12px 10px;display:grid;gap:8px}
     .lead.hot{border-left:3px solid var(--hot)}
@@ -244,6 +245,9 @@
     .fu-line{font-size:.76rem;color:var(--muted2);margin-top:6px;display:flex;flex-wrap:wrap;gap:4px 10px}
     .fu-line b{color:var(--text);font-weight:500}
     .oc{display:inline-block;font-size:.75rem;padding:2px 8px;border-radius:100px;border:1px solid var(--line);color:var(--g2);margin-left:6px}
+    .lead.st-dropped{border-color:var(--bad);border-left:5px solid var(--bad);background:linear-gradient(90deg,rgba(190,40,40,.10),var(--panel) 60%)}
+    .lead.st-dropped h3::after{content:" · DISCONTINUED";color:var(--bad);font-size:.75rem;letter-spacing:.06em}
+    .lead.st-inactive{opacity:.7;border-left:5px solid var(--muted)}
     .mk-row{display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin:-4px 0 8px;padding:8px 12px;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
     .mk-row .mk-btns{display:flex;gap:6px}
     .fu-due{margin:0 0 10px;padding:10px 12px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
@@ -1030,6 +1034,15 @@
         <div class="field" id="pwdField"><label>Password</label><div class="pwbox"><input id="pwd" type="password" placeholder="••••••••" autocomplete="current-password" style="width:100%;padding-right:40px" /><button type="button" class="pweye" data-eye="pwd" aria-label="Password chupinchu">👁</button></div></div>
         <button class="btn btn--gold btn--full" id="loginBtn">Login</button>
         <button class="btn btn--full" style="margin-top:8px" id="sendBtn">Password ledha? WhatsApp OTP pampandi</button>
+        <button class="btn btn--full" style="margin-top:8px" id="forgotBtn">🔑 Password marchipoyara? Kotha password pettandi</button>
+      </div>
+      <!-- Forgot password (13 Nov, point 4): OTP, then a new password twice. -->
+      <div id="stepNewPwd" class="hide">
+        <p style="margin:0 0 8px">✅ OTP sari. Ippudu mee <b>kotha password</b> pettandi.</p>
+        <div class="field"><label for="np1">Kotha password (kaneesam 8 aksharalu)</label><input id="np1" type="password" autocomplete="new-password" /></div>
+        <div class="field"><label for="np2">Confirm password — malli same type cheyandi</label><input id="np2" type="password" autocomplete="new-password" /></div>
+        <button class="btn btn--gold btn--full" id="npSave">Save</button>
+        <button class="btn btn--full" style="margin-top:8px" id="npSkip">Tarvata — ippudu login avvu</button>
       </div>
       <div id="stepOtp" class="hide">
         <div class="field"><label>OTP (6 digits)</label><input id="otp" type="text" inputmode="numeric" maxlength="6" placeholder="••••••" autocomplete="one-time-code" /></div>
@@ -1043,7 +1056,7 @@
   <!-- APP -->
   <div id="app" class="hide">
   <aside class="side" id="side" aria-label="Screens">
-    <a href="index.html" class="side-brand" aria-label="DermaLuxe"><img class="bm-i" src="assets/app/icon-192.png" alt="" /><span class="bm-t"><b>DermaLuxe</b><small>Staff · Eluru</small></span></a>
+    <a href="index.html" class="side-brand" aria-label="DermaLuxe"><img class="bm-i" src="assets/app/icon-192.png" alt="" /><span class="bm-t"><b>DermaLuxe</b><small>Staff · Eluru <span id="appVer"></span></small></span></a>
     <div class="tabs" id="tabs">
         <button class="tab on" data-t="leads"><span>Leads</span><i id="nLeads">0</i></button>
         <button class="tab hide" data-t="inbox" id="inboxTab"><span>Inbox</span><i id="nInbox">0</i></button>
@@ -1093,6 +1106,7 @@
           <select id="fStatus"><option value="">All status</option><option value="new">New</option><option value="contacted">Contacted</option><option value="o:noanswer">📵 Not answering</option><option value="fu:due">📅 Follow-up — ivala / late</option><option value="o:followup">📅 Need follow up (anni)</option><option value="o:thinking">🤔 Consultation kosam alochistunnaru</option><option value="o:notinterested">🚫 Not interested</option><option value="o:notravel">🚗 Not willing to travel</option><option value="booked">Booked</option><option value="visited">Visited</option><option value="closed">Closed</option><optgroup label="🎓 Academy"><option value="o:a_enquiry">📋 Slot / course gurinchi adigaru</option><option value="o:a_waiting">⏳ Slot confirmation kosam waiting</option><option value="o:a_process">🔄 Under process</option><option value="o:a_paypend">💳 Payment pending</option><option value="o:a_booked">🎟 Slot booked</option><option value="o:a_paid">✅ Payment done &amp; slot confirmed</option></optgroup></select>
           <select id="fSrc"><option value="">All sources</option><option value="whatsapp">WhatsApp</option><option value="instagram">Instagram</option><option value="facebook">Facebook</option><option value="web">Website</option><option value="walkin">Walk-in / call</option></select>
           <select id="fDays"><option value="7">Last 7 days</option><option value="1">Today</option><option value="30">Last 30 days</option><option value="365" selected>All</option></select>
+          <input type="date" id="fDate" title="Oka specific date leads" aria-label="Oka specific date leads" />
           <button class="btn btn--sm btn--gold hide" id="leadAdd">+ Kotha lead</button>
         </div>
         <div class="lmode" id="lmode" aria-label="DermaLuxe / Academy leads">
@@ -1617,13 +1631,26 @@
       api("send", { phone: p }).then(function (j) { $("stepPhone").classList.add("hide"); $("stepOtp").classList.remove("hide"); $("otp").focus(); toast("OTP WhatsApp lo pampam" + (j && j.via === "template" ? "" : " (message ga)")); })
         .catch(function (e) { $("loginErr").textContent = e.message; }).finally(function () { $("sendBtn").disabled = false; });
     };
+    var resetMode = false;
+    $("forgotBtn").onclick = function () { resetMode = true; $("sendBtn").click(); };
+    $("npSkip").onclick = function () { resetMode = false; $("stepNewPwd").classList.add("hide"); boot(); };
+    $("npSave").onclick = function () {
+      var a1 = $("np1").value, a2 = $("np2").value; $("loginErr").textContent = "";
+      if (a1.length < 8) { $("loginErr").textContent = "Password kaneesam 8 aksharalu undali"; return; }
+      if (a1 !== a2) { $("loginErr").textContent = "Rendu passwords okela levu — malli type cheyandi"; return; }
+      $("npSave").disabled = true;
+      api("set-password", { password: a1 }).then(function () { toast("Kotha password save ayindi ✅"); resetMode = false; $("np1").value = ""; $("np2").value = ""; $("stepNewPwd").classList.add("hide"); boot(); })
+        .catch(function (e) { $("loginErr").textContent = e.message; }).finally(function () { $("npSave").disabled = false; });
+    };
     $("verifyBtn").onclick = function () {
       var p = $("phone").value.replace(/\D/g, ""), c = $("otp").value.trim(); $("loginErr").textContent = "";
       $("verifyBtn").disabled = true;
-      api("verify", { phone: p, code: c }).then(function (j) { tok = j.token; try { localStorage.setItem(TOK, tok); } catch (e) {} boot(); })
+      api("verify", { phone: p, code: c }).then(function (j) { tok = j.token; try { localStorage.setItem(TOK, tok); } catch (e) {}
+        if (resetMode) { $("stepOtp").classList.add("hide"); $("stepNewPwd").classList.remove("hide"); $("np1").focus(); return; }
+        boot(); })
         .catch(function (e) { $("loginErr").textContent = e.message; }).finally(function () { $("verifyBtn").disabled = false; });
     };
-    $("backBtn").onclick = function () { $("stepOtp").classList.add("hide"); $("stepPhone").classList.remove("hide"); };
+    $("backBtn").onclick = function () { resetMode = false; $("stepOtp").classList.add("hide"); $("stepPhone").classList.remove("hide"); };
     $("otp").addEventListener("keydown", function (e) { if (e.key === "Enter") $("verifyBtn").click(); });
     $("phone").addEventListener("keydown", function (e) { if (e.key === "Enter") $("pwd").focus(); });
     $("logoutBtn").onclick = function () {
@@ -1738,19 +1765,20 @@
       var dayStart = new Date(); dayStart.setHours(0, 0, 0, 0);
       // People, not rows: the tile said "4" over a list of three because one
       // person had enquired twice that morning (11 Nov, point 4).
-      var today = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime(); }).length;
+      var todayAll = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime() && !!l.phone; }).length;
+      var today = groupPeople(d.leads).filter(function (l) { return todayPending(l, dayStart.getTime()); }).length;
       // The tile and the "Ippude call" group used to count different things —
       // the tile went by the agent's old hot/warm guess, the group by the
       // grade — so the screen could say "2 to call" over an empty list.
       var hot = groupPeople(d.leads).filter(needsCall).length;   // people, not rows
       // "15 call ayyayi" over "Leads today 13" read as a wrong count (11 Nov,
       // point 7): calls were counted per row, leads per person. Both per person.
-      var todayDone = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime() && (l.lastCall || l.status !== "new"); }).length;
+      var todayDone = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime() && !!l.phone && (l.lastCall || l.status !== "new" || l.outcome); }).length;
       // The tile counts clinic and academy together; the Leads list shows one
       // side at a time. Say the split, or "4" over a list of three looks wrong
       // — and each half is a tap that opens that side's list (12 Nov, point 3).
-      var acadToday = groupPeople(d.leads).filter(function (l) { return l.ts >= dayStart.getTime() && catOf(l) === "academy"; }).length;
-      $("sTodayDone").innerHTML = [todayDone ? "✓ " + todayDone + " call ayyayi" : "",
+      var acadToday = groupPeople(d.leads).filter(function (l) { return todayPending(l, dayStart.getTime()) && catOf(l) === "academy"; }).length;
+      $("sTodayDone").innerHTML = [todayDone ? "✓ " + todayDone + " call ayyayi · motham " + todayAll : "",
         acadToday ? '<u data-act="seg-go" data-seg="today" data-cat="">' + (today - acadToday) + ' clinic</u> · <u data-act="seg-go" data-seg="today" data-cat="academy">' + acadToday + " academy</u>" : ""].filter(Boolean).join(" · ");
       $("sToday").textContent = today; $("sHot").textContent = hot; $("sAppt").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
       $("sSeats").textContent = d.academy.booked + "/10";
@@ -1761,7 +1789,11 @@
       if ($("doneList") && !$("doneList").classList.contains("hide")) drawDone();
       $("nLeads").textContent = d.leads.filter(function (l) { return l.status === "new"; }).length;
       $("nAppts").textContent = d.appts.filter(function (a) { return a.at > Date.now(); }).length;
-      $("nAcad").textContent = d.academy.leads.length;
+      // The badge counted academy enquiries, and was read as seats — "3 + 1
+      // booked, but Academy says 5" (14 Nov, point 4). It shows the seats
+      // booked in the running batch, the same number as the seats tile and the
+      // seat boxes on the Academy screen.
+      $("nAcad").textContent = Number(d.academy.booked || 0);
       // Patients and Students said 0 until their tabs were opened (11 Nov,
       // point 4). The server now sends both counts with the first load; the
       // tabs overwrite them with their own when they open.
@@ -1800,9 +1832,11 @@
       return '<article class="lead ' + esc(heat) + (late ? " late" : "") + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + (l.lang === "hi" ? '<span class="lang">🗣 हिंदी</span>' : '') + (catOf(l) ? '<span class="cat ' + catOf(l) + '">' + ({ hair: "💇 Hair", skin: "💆 Skin", ht: "🌱 Hair transplant", academy: "🎓 Academy" }[catOf(l)]) + "</span>" : "") + '</h3><div class="meta">' + esc(dmyt(l.ts)) + ' · ' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
         '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
-        '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc oc-' + esc(l.outcome) + '">' + esc(OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
+        '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc oc-' + esc(l.outcome) + '">' + esc(l.outcome === "followup" && l.fu && l.fu > istToday() ? "⏭ Upcoming follow-up" : OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
         (l.lastCall || l.fu ? '<div class="fu-line"><span>🗓 Lead: <b>' + esc(dmy(l.ts)) + "</b></span>" + (l.lastCall ? "<span>📞 Call: <b>" + esc(dmy(l.lastCall)) + "</b></span>" : "") +
-          (l.fu ? '<span>⏭ Next follow-up: <b style="color:' + (l.fu <= istToday() ? "var(--hot)" : "var(--text)") + '">' + esc(dmy(l.fu)) + "</b></span>" : "") + "</div>" : "") +
+          // Upcoming apart from due (14 Nov, point 9): "Upcoming follow-up 16 Nov"
+          // is not today's work; "Follow-up ivala" and a late one are.
+          (l.fu ? '<span>' + (l.fu > istToday() ? '⏭ <b>Upcoming follow-up</b>: <b>' : l.fu === istToday() ? '📅 <b style="color:var(--hot)">Follow-up ivala</b>: <b style="color:var(--hot)">' : '⚠️ <b style="color:var(--hot)">Follow-up late</b>: <b style="color:var(--hot)">') + esc(dmy(l.fu)) + "</b></span>" : "") + "</div>" : "") +
         ((l.grade || l.village) ? '<div class="why">' + [l.village ? '📍 <b>' + esc(l.village) + '</b>' + (l.km != null ? ' · ' + l.km + ' km' : '') : '', l.since ? '⏳ <b>' + esc(l.since) + '</b>' : '', l.prefers ? '📅 <b>' + esc(l.prefers) + '</b>' : ''].filter(Boolean).join(' &nbsp;·&nbsp; ') +
           ((l.why || []).length ? (l.village || l.since || l.prefers ? '<br>' : '') + esc((l.why || []).slice(0, 3).join(" · ")) : '') + '</div>' : '') +
         (l.next && l.status !== "closed" ? '<div class="nxt ' + esc(l.next.kind) + '">' + esc(l.next.text) +
@@ -1973,10 +2007,14 @@
       if (!acad && isAcad(l)) return "";
       if (!(l.status === "new" || l.status === "contacted")) return "";
       var age = Date.now() - (l.ts || 0), last = Math.max(l.lastCall || 0, l.touched || 0);
-      if (l.outcome === "followup") return l.fu && l.fu <= istToday() ? "fu" : "";
-      // Ettaledu: try again three hours later, not tomorrow (7 Nov, point 10).
-      if (l.outcome === "noanswer") return age < 14 * DAYMS && (!l.lastCall || Date.now() - l.lastCall > 3 * 3600000) ? "retry" : "";
+      // Called or given a status today: off the list until tomorrow, whatever
+      // the reason (14 Nov, point 1 — "already call chesinavi, status update
+      // chesinavi malli chupistundi"). Until then a follow-up dated today and
+      // a "not answering" three hours old came straight back after the call.
       if (last && last >= dayStartMs()) return "";
+      if (l.outcome === "followup") return l.fu && l.fu <= istToday() ? "fu" : "";
+      // Ettaledu: the next day, for a fortnight (was three hours — 7 Nov, point 10).
+      if (l.outcome === "noanswer") return age < 14 * DAYMS ? "retry" : "";
       if (l.outcome === "callback") return "callback";
       var hot = acad || (l.grade ? l.grade === "A" : l.heat === "hot");
       if (!hot) return "";
@@ -1986,6 +2024,11 @@
     }
     var CALL_WHY = [["fresh", "evaru inka matladanivi"], ["retry", "ettaledu — malli try"], ["fu", "follow-up ivala"], ["callback", "malli call cheyyamannaru"], ["again", "2+ rojula kritam matladaru, inka decide avvaledu"]];
     function needsCall(l) { return !!callWhy(l, false); }
+    // "Leads today" is the day's leads nobody has dealt with yet. Once a call
+    // is logged or a status picked, the lead moves to that status's own list
+    // (14 Nov, point 4), and an Instagram or Facebook comment with no number
+    // is not a lead to ring (14 Nov, point 3) — it has its own Insta / FB group.
+    function todayPending(l, t0) { return (l.ts || 0) >= t0 && !!l.phone && l.status === "new" && !l.outcome && !l.lastCall; }
     function needsCallAcad(l) { return !!callWhy(l, true); }
     function dayStartMs() { var t = new Date(); t.setHours(0, 0, 0, 0); return t.getTime(); }
     function fuDue(l) { return l.outcome === "followup" && l.fu && l.fu <= istToday() && (l.status === "new" || l.status === "contacted"); }
@@ -2044,17 +2087,35 @@
     // Cards are drawn forty at a time: drawing all 170 on every tap and every
     // letter typed was most of a second on the desk's phones (8 Nov).
     var LEAD_PAGE_N = 40, leadShow = 40, leadSig = "";
+    // Two people on one number are two cards (14 Nov, point 1: "Ramesh k" and
+    // "Suresh" on 9010700463 showed as one, and a search for Suresh found
+    // nothing). One person's enquiries still ride together: the card is the
+    // number plus the first word of the name, and a row with no real name
+    // ("… (WhatsApp peru)") joins that number's newest named card.
+    function nameKey(l) {
+      var n = String(l.name || "").toLowerCase();
+      if (/\((whatsapp peru|peru cheppaledu)\)/.test(n)) return "";
+      var w = (n.trim().split(/\s+/)[0] || "").replace(/[^a-z\u0c00-\u0c7f]/g, "");
+      return w.length >= 2 && w !== "unknown" && w !== "namaste" && w !== "patient" ? w : "";
+    }
     function groupPeople(leads) {
       var sorted = leads.slice().sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
-      var by = {}, out = [];
+      var by = {}, named = {}, out = [];
       sorted.forEach(function (l) {
         // Not enumerable, so the offline cache does not store every lead twice.
         Object.defineProperty(l, "_older", { value: [], writable: true, configurable: true, enumerable: false });
         var p = l.phone;
         if (!p) { out.push(l); return; }
-        if (!by[p]) { by[p] = l; out.push(l); } else by[p]._older.push(l);
+        var k = p + "|" + nameKey(l);
+        if (!by[k]) { by[k] = l; out.push(l); if (nameKey(l) && !named[p]) named[p] = l; } else by[k]._older.push(l);
       });
-      return out;
+      // a nameless card folds into the newest named card on its number
+      return out.filter(function (l) {
+        if (!l.phone || nameKey(l) || !named[l.phone]) return true;
+        var to = named[l.phone];
+        to._older = to._older.concat([l], l._older).sort(function (a, b) { return (b.ts || 0) - (a.ts || 0); });
+        return false;
+      });
     }
     // Who to ring first, and why — every point is a fact on the card.
     function priority(l) {
@@ -2120,6 +2181,9 @@
     function renderLeads() {
       var d = state.data, q = $("q").value.trim().toLowerCase(), fs = $("fStatus").value, fsrc = $("fSrc").value, days = Number($("fDays").value);
       var since = Date.now() - days * 86400000; if (days === 1) { var t0 = new Date(); t0.setHours(0, 0, 0, 0); since = t0.getTime(); }
+      // One day picked on the calendar (14 Nov, point 2): only that day's leads.
+      var dPick = ($("fDate") && $("fDate").value) || "", dFrom = 0, dTo = 0;
+      if (dPick) { dFrom = Date.parse(dPick + "T00:00:00+05:30"); dTo = dFrom + 86400000; }
       var seg = (document.querySelector("#segs button.on") || {}).dataset; seg = seg ? seg.seg : "all";
       var acadMode = leadCat === "academy";
       var isHotLead = acadMode ? needsCallAcad : needsCall, isUntouched = acadMode ? untouchedAcad : untouched;
@@ -2143,7 +2207,8 @@
       // counts on the chips, so "Last 7 days" still said "Ippude call 31" over
       // a list of six — the desk read it as the filter not working (9 Nov).
       // Follow-ups keep their own date and are never cut by the period.
-      base = base.filter(function (l) { return l.ts >= since || (l.outcome === "followup" && (l.status === "new" || l.status === "contacted")); });
+      base = dPick ? base.filter(function (l) { return l.ts >= dFrom && l.ts < dTo; })
+        : base.filter(function (l) { return l.ts >= since || (l.outcome === "followup" && (l.status === "new" || l.status === "contacted")); });
       // The two mode buttons counted every lead while the list below obeyed
       // the period — "Academy leads 22" over a list of one (11 Nov, point 2).
       // They count what the period shows; the line above the list says how
@@ -2162,7 +2227,7 @@
       var isMine = function (l) { return l.owner && l.owner === myPhone && (l.status === "new" || l.status === "contacted"); };
       var isBooked = function (l) { return l.status === "booked" || l.status === "visited"; };
       var isFu = function (l) { return l.outcome === "followup" && (l.status === "new" || l.status === "contacted"); };
-      var counts = [base.filter(isHotLead).length, base.filter(function (l) { return l.ts >= t00.getTime(); }).length,
+      var counts = [base.filter(isHotLead).length, base.filter(function (l) { return todayPending(l, t00.getTime()); }).length,
         base.filter(function (l) { return l.status === "new" || l.status === "contacted"; }).length, base.filter(isMine).length,
         base.filter(isUntouched).length, base.filter(isBooked).length, base.filter(isFu).length, base.length, base.filter(igOnly).length];
       counts.forEach(function (n, i) { var el = $("segN" + i); if (el) el.textContent = n ? String(n) : ""; });
@@ -2184,14 +2249,15 @@
       });
       var list = people.filter(function (l) {
         if (seg === "call" && !isHotLead(l)) return false;
-        if (seg === "today" && l.ts < t00.getTime()) return false;
+        if (seg === "today" && !todayPending(l, t00.getTime())) return false;
         if (seg === "open" && !(l.status === "new" || l.status === "contacted")) return false;
         if (seg === "mine" && !isMine(l)) return false;
         if (seg === "wait" && !isUntouched(l)) return false;
         if (seg === "ig" && !igOnly(l)) return false;
         if (seg === "booked" && !isBooked(l)) return false;
         if (seg === "fu" && !isFu(l)) return false;
-        if (seg !== "fu" && l.ts < since && !isFu(l)) return false;   // the same rule the chip counts use
+        if (dPick) { if (l.ts < dFrom || l.ts >= dTo) return false; }
+        else if (seg !== "fu" && l.ts < since && !isFu(l)) return false;   // the same rule the chip counts use
         if (fs === "fu:due") { if (!fuDue(l)) return false; }
         else if (fs && fs.indexOf("o:") === 0) { if (l.outcome !== fs.slice(2)) return false; }
         else if (fs && l.status !== fs) return false;
@@ -4587,13 +4653,16 @@
         // One heading per day, newest day first (11 Nov, point 6).
         var byDay = {}, order = [];
         ptRows.forEach(function (r) { var d = istDayOf(r.last || 0); if (!byDay[d]) { byDay[d] = []; order.push(d); } byDay[d].push(r); });
+        // Within a day, the people who came that day first (14 Nov, point 8).
+        var cameOn = function (r, day) { return r.cameAt && istDayOf(r.cameAt) === day; };
+        order.forEach(function (day) { byDay[day].sort(function (a, b) { return (cameOn(b, day) ? 1 : 0) - (cameOn(a, day) ? 1 : 0) || (b.last || 0) - (a.last || 0); }); });
         $("ptList").innerHTML = ptRows.length ? order.map(function (day) {
           return '<div class="grp-h" style="margin:14px 0 6px"><h2 style="font-size:1rem">' + esc(ptDayHead(day)) + "</h2><i>" + byDay[day].length + "</i></div>" + byDay[day].map(function (r) {
           return '<article class="ptrow" data-act="pt-open" data-phone="' + esc(r.phone) + '">' +
             '<div class="row1"><h3>' + esc(r.name) + ' <span class="meta">· ' + esc(r.phone) + "</span></h3>" +
             "<div>" + (r.stageLabel ? '<span class="chip ok">' + esc(r.stageLabel) + "</span> " : "") +
             (r.repeat ? '<span class="chip">' + r.visits + " sarlu</span> " : "") +
-            (r.everBooked ? '<span class="chip ok">visited</span>' : "") + "</div></div>" +
+            (r.cameAt ? '<span class="chip ok">vacharu ' + esc(dmy(r.cameAt)) + "</span>" : r.everBooked ? '<span class="chip ok">visited</span>' : "") + "</div></div>" +
             '<div class="meta">' + esc(String(r.concern || "").slice(0, 70)) + " · chivari sari " + esc(dmyt(r.last)) + " (" + ago(r.last) + ")</div></article>";
           }).join("");
         }).join("") : '<div class="empty">' + (ptWho === "visited" ? "Ee period lo vachina vaaru levu." : rg ? "Aa roju evaru raaledu." : "Evaru dorakaledu.") + "</div>";
@@ -4666,7 +4735,8 @@
       $("ptBody").innerHTML =
         '<div class="sheet-grip"></div>' +
         '<div class="pt-head"><div><h2>' + esc(p.name) + "</h2>" +
-        '<div class="meta">' + esc(p.phone) + " · modati sari " + fmtDay(p.since) + "</div>" +
+        '<div class="meta">' + esc(p.phone) + (p.phone2 ? ' · 📱 <a href="tel:+91' + esc(p.phone2) + '">' + esc(p.phone2) + "</a>" : "") + " · modati sari " + fmtDay(p.since) + "</div>" +
+        (p.age || p.address ? '<div class="meta">' + [p.age ? "🎂 " + esc(p.age) + " yrs" : "", p.address ? "📍 " + esc(p.address) : ""].filter(Boolean).join(" · ") + "</div>" : "") +
         (p.allergies ? '<div class="meta" style="color:var(--hot);margin-top:4px">⚠️ ' + esc(p.allergies) + "</div>" : "") +
         "</div><button class=\"btn btn--sm\" data-act=\"pt-close\">Close</button></div>" +
 
@@ -6506,11 +6576,15 @@
     }
 
     // ---- is this APK still current? --------------------------------------
+    // Which version this is, under the name in the side bar (14 Nov, point 2),
+    // so the desk can say which app they are on when something looks wrong.
+    function showAppVersion(v) { var el = $("appVer"); if (el) el.textContent = v ? (v === "web" ? "· web" : "· v" + v) : ""; }
     function checkAppVersion() {
-      if (!NATIVE) return;
+      if (!NATIVE) { showAppVersion("web"); return; }
       var A = plug("App");
       if (!A || !A.getInfo) return;
       A.getInfo().then(function (info) {
+        showAppVersion(info.version || "");
         return fetch(ORIGIN + "/api/app-version").then(function (r) { return r.json(); }).then(function (v) {
           var mine = Number(info.build || 0), newest = Number(v.versionCode || 0);
           if (!newest || mine >= newest) return;
@@ -6710,7 +6784,8 @@
     // A status picked while "Ippude call" was on showed nothing — that group is
     // already only new/contacted A's (7 Nov, "filters not working"). Picking a
     // filter now looks across every lead.
-    ["q", "fStatus", "fSrc", "fDays"].forEach(function (id) {
+    $("fDate").addEventListener("change", function () { if ($("fDate").value) loadRest(); });
+    ["q", "fStatus", "fSrc", "fDays", "fDate"].forEach(function (id) {
       var qTimer = null;
       $(id).addEventListener(id === "q" ? "input" : "change", function () {
         if (id === "q") { clearTimeout(qTimer); qTimer = setTimeout(run, 220); return; }
@@ -6719,7 +6794,7 @@
       function run() {
         var on = document.querySelector("#segs button.on");
         var narrow = on && ["call", "wait", "mine", "today", "open", "booked", "fu"].indexOf(on.dataset.seg) !== -1;
-        if (narrow && (id !== "q" || $("q").value.trim().length > 1) && (id !== "fDays")) {
+        if (narrow && (id !== "q" || $("q").value.trim().length > 1) && (id !== "fDays") && (id !== "fDate")) {
           document.querySelectorAll("#segs button").forEach(function (x) { x.classList.toggle("on", x.dataset.seg === "all"); });
         }
         renderLeads();
@@ -7594,15 +7669,30 @@
           .catch(function (x) { toast(x.message); });
         return;
       }
+      // Name, another number, age, address and allergies in one sheet
+      // (14 Nov, point 7 — only the name could be edited, one prompt at a time).
       if (el.dataset.act === "pt-edit") {
         var p0 = ptOpen || {};
-        var nm2 = prompt("Peru:", p0.name || "") ;
-        if (nm2 === null) return;
-        var al = prompt("Allergies leda jagratta vishayalu (khaali unte vadileyandi):", p0.allergies || "");
-        if (al === null) return;
-        ptapi("save", { phone: el.dataset.phone, name: nm2, allergies: al })
-          .then(function (j) { ptOpen = j.patient; renderPatient(); loadPatients(); toast("Save ayindi"); })
-          .catch(function (x) { toast(x.message); });
+        var ed = document.createElement("div");
+        ed.className = "sheet open";
+        var fld = function (id, label, val, type, extra) { return '<label class="meta" for="' + id + '" style="display:block;margin-top:8px">' + label + '</label><input id="' + id + '" type="' + (type || "text") + '" value="' + esc(val || "") + '"' + (extra || "") + ' style="width:100%;background:var(--ink2);border:1px solid var(--line);border-radius:12px;padding:10px 12px" />'; };
+        ed.innerHTML = '<div class="sheet-bg"></div><div class="sheet-in"><div class="sheet-grip"></div><h2>✎ ' + esc(p0.name || "Patient") + " details</h2>" +
+          '<p class="meta">Main number: <b>' + esc(el.dataset.phone) + "</b> — records anni deeni meeda untayi, maaradu.</p>" +
+          fld("edName", "Peru", p0.name) + fld("edPhone2", "Inko mobile number (optional)", p0.phone2, "tel", ' inputmode="numeric" maxlength="10"') +
+          fld("edAge", "Age", p0.age, "number", ' min="1" max="110"') + fld("edAddr", "Address / ooru", p0.address) +
+          fld("edAll", "Allergies leda jagratta vishayalu", p0.allergies) +
+          '<div class="acts" style="margin-top:14px"><button class="btn btn--gold" id="edSave">Save</button><button class="btn" id="edCancel">Cancel</button></div></div>';
+        document.body.appendChild(ed);
+        var shut = function () { ed.remove(); };
+        ed.querySelector(".sheet-bg").onclick = shut; ed.querySelector("#edCancel").onclick = shut;
+        ed.querySelector("#edSave").onclick = function () {
+          var p2 = ed.querySelector("#edPhone2").value.replace(/\D/g, "");
+          if (p2 && !/^[6-9]\d{9}$/.test(p2)) { toast("Inko number 10 digits undali"); return; }
+          var body = { phone: el.dataset.phone, name: ed.querySelector("#edName").value, phone2: p2, age: ed.querySelector("#edAge").value, address: ed.querySelector("#edAddr").value, allergies: ed.querySelector("#edAll").value };
+          ptapi("save", body)
+            .then(function (j) { shut(); ptOpen = j.patient; renderPatient(); loadPatients(); toast("Save ayindi"); })
+            .catch(function (x) { toast(x.message); });
+        };
         return;
       }
       if (el.dataset.act === "seat-reserve") {
@@ -7725,7 +7815,8 @@
       $("studList").innerHTML = shown.length ? shown.map(function (s) {
         var bal = Math.max(0, (s.fee || 0) - (s.paid || 0)), cn = { skin: "Skin Care", hair: "Hair Care", both: "Skin + Hair" }[s.course] || s.course;
         var notes = (s.notes || []).slice(0, 2).map(function (n) { return '<div class="note"><b>' + esc(n.by) + '</b> · ' + ago(n.ts) + ' — ' + esc(n.text) + '</div>'; }).join("");
-        return '<article class="lead ' + (bal > 0 ? "warm" : "") + '">' +
+        // Discontinued in red, inactive greyed (14 Nov, point 3).
+        return '<article class="lead ' + (s.status === "dropped" ? "st-dropped" : s.status === "inactive" ? "st-inactive" : bal > 0 ? "warm" : "") + '">' +
           '<div class="row"><div><h3>' + esc(s.name) + ' <span class="meta">· ' + esc(s.id) + '</span></h3>' +
           '<div class="meta">' + esc(cn) + ' · ' + esc(s.duration || "") + ' · ' + esc(s.phone) + (s.onboarded ? " · form ✓" : " · form pending") + '</div></div>' +
           '<div style="text-align:right">' + studentStatusChip(s) + '</div></div>' +
@@ -7733,7 +7824,7 @@
           // Days in class (owner PDF 12 Nov, second copy, point 3).
           (s.attSum && String(s.startISO || "") <= s.attSum.day && s.status !== "completed" && s.status !== "dropped" ?
             '<div class="att-row"><span>📅 Present <b>' + s.attSum.present + '</b> · Absent <b>' + s.attSum.absent + '</b>' + (s.attSum.unmarked ? ' · mark cheyyani <b>' + s.attSum.unmarked + '</b>' : "") + '</span>' +
-            (state.allow("academy.edit") ? '<span class="att-btns">Ee roju: <button class="btn btn--sm' + (s.attSum.today === "p" ? " on-p" : "") + '" data-sact="att" data-m="' + (s.attSum.today === "p" ? "" : "p") + '" data-id="' + esc(s.id) + '">✅ Vacharu</button><button class="btn btn--sm' + (s.attSum.today === "a" ? " on-a" : "") + '" data-sact="att" data-m="' + (s.attSum.today === "a" ? "" : "a") + '" data-id="' + esc(s.id) + '">❌ Raaledu</button></span>' : "") + "</div>" : "") +
+            (state.allow("academy.edit") ? '<span class="att-btns">Ee roju: <button class="btn btn--sm' + (s.attSum.today === "p" ? " on-p" : "") + '" data-sact="att" data-want="p" data-m="p" data-id="' + esc(s.id) + '">✅ Vacharu</button><button class="btn btn--sm' + (s.attSum.today === "a" ? " on-a" : "") + '" data-sact="att" data-want="a" data-m="a" data-id="' + esc(s.id) + '">❌ Raaledu</button></span>' : "") + "</div>" : "") +
           '<div class="concern">Fee ' + (s.discount ? '<s style="opacity:.6">' + money(s.feeList) + "</s> " + money(s.fee) + ' <span class="chip">discount ' + money(s.discount) + "</span>" : money(s.fee)) + ' · Paid <b style="color:var(--ok)">' + money(s.paid) + '</b> · Balance <b style="color:' + (bal ? "var(--hot)" : "var(--ok)") + '">' + money(bal) + '</b>' + (s.certNo ? ' · Cert ' + esc(s.certNo) : "") + '</div>' +
           '<div class="acts">' +
           '<a class="btn btn--sm btn--wa" target="_blank" rel="noopener" href="https://wa.me/91' + esc(s.phone) + '">💬 WhatsApp</a>' +
@@ -7769,7 +7860,8 @@
     var ST_FEE = { skin: 49999, hair: 49999, both: 99999 };
     function stSum() {
       var fee = ST_FEE[$("stCourse").value] || 0, d = Number(($("stDisc").value || "").replace(/\D/g, "")) || 0, p = Number(($("stPaid").value || "").replace(/\D/g, "")) || 0;
-      $("stSum").innerHTML = "Fee " + money(fee) + (d ? " − discount " + money(d) + " = <b>" + money(Math.max(0, fee - d)) + "</b>" : "") + " · advance " + money(p) + " · balance <b style=\"color:var(--hot)\">" + money(Math.max(0, fee - d - p)) + "</b>";
+      // "Pay this amount" said in so many words once a discount is given (13 Nov, point 2).
+      $("stSum").innerHTML = "Fee " + money(fee) + (d ? " − discount " + money(d) + ' → <b style="color:var(--text);font-size:1.02rem">Kattalsina motham (pay this amount): ' + money(Math.max(0, fee - d)) + "</b>" : "") + " · advance " + money(p) + " · balance <b style=\"color:var(--hot)\">" + money(Math.max(0, fee - d - p)) + "</b>";
     }
     ["stCourse", "stDisc", "stPaid"].forEach(function (k) { $(k).addEventListener("input", stSum); $(k).addEventListener("change", stSum); });
     stSum();
@@ -7790,6 +7882,12 @@
         '<div class="acts" style="margin-top:6px"><button class="btn btn--gold" id="pySave" style="flex:1">💰 Save</button><button class="btn" data-close="1">Cancel</button></div></div>';
       var n = function (k) { return Number((wrap.querySelector("#" + k).value || "").replace(/\D/g, "")) || 0; };
       var left = function () { var l = (sp.fee || 0) - (sp.paid || 0) - n("pyAmt") - n("pyDisc"); wrap.querySelector("#pyLeft").innerHTML = "Save chesaka balance: <b style=\"color:" + (l > 0 ? "var(--hot)" : "var(--ok)") + "\">" + money(Math.max(0, l)) + "</b>" + (l < 0 ? ' <span style="color:var(--bad)">— fee kante ' + money(-l) + " ekkuva</span>" : l === 0 ? " — fee mottam ✅" : ""); };
+      // A discount takes the amount still to come down with it (13 Nov, point
+      // 1): the box opened at the full balance, so ₹2,499 balance + ₹2,499
+      // discount read as ₹2,499 over the fee and the discount looked refused.
+      var amtTouched = false;
+      wrap.querySelector("#pyAmt").addEventListener("input", function () { amtTouched = true; });
+      wrap.querySelector("#pyDisc").addEventListener("input", function () { if (!amtTouched) wrap.querySelector("#pyAmt").value = String(Math.max(0, owed - n("pyDisc"))); });
       ["pyAmt", "pyDisc"].forEach(function (k) { wrap.querySelector("#" + k).addEventListener("input", left); });
       wrap.addEventListener("click", function (ev) { if (ev.target.classList.contains("sheet-bg") || ev.target.closest("[data-close]")) wrap.remove(); });
       wrap.querySelector("#pySave").onclick = function () {
@@ -7818,7 +7916,15 @@
       // The amount offered is what is still owed, not a fixed ₹40,000 — a
       // Skin + Hair student owes ₹99,999 less what she has paid (12 Nov, point 4).
       if (act === "pay") { var sp = students.filter(function (x) { return x.id === id; })[0] || {}; return paySheet(sp); }
+      // A confirmation that says the day (14 Nov, point 5), and a second
+      // "Vacharu" says they are already marked instead of quietly unmarking.
       if (act === "att") {
+        var sA = students.filter(function (x) { return x.id === id; })[0] || {};
+        var nowM = (sA.attSum || {}).today || "", want = el.dataset.want || el.dataset.m;
+        var dayTxt = new Date().toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
+        if (want && nowM === want) { alert((sA.name || "Student") + " ni ee roju (" + dayTxt + ") already " + (want === "p" ? "PRESENT ✅" : "ABSENT ❌") + " ani mark chesaru."); return; }
+        if (!confirm((sA.name || "Student") + " — ee roju (" + dayTxt + ") " + (want === "p" ? "VACHARU ✅" : "RAALEDU ❌") + " ani mark cheyyanaa?")) return;
+        el.dataset.m = want;
         return sapi("attend", { id: id, mark: el.dataset.m }).then(function (j) { students = students.map(function (x) { return x.id === id ? j.student : x; }); renderStudents(); toast(el.dataset.m === "p" ? "Present ✅" : el.dataset.m === "a" ? "Absent ❌" : "Teesesam"); }).catch(function (x) { toast(x.message); });
       }
       if (act === "material") { return sapi("material", { id: id }).then(function (j) { if (!j.paid) { toast("Payment record ledu — material lock lo undi"); return; } return copyText(j.day1, "Day 1 material link copy ayindi — roju material automatic ga veltundi"); }).catch(function (x) { toast(x.message); }); }
