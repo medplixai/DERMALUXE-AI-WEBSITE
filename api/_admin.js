@@ -833,7 +833,7 @@ async function handle(cfg, digits, text, photo, video) {
       if (!role) role = "staff";
       const caps = roleBook[role].caps.includes("*") ? "anni" : roleBook[role].caps.map((c) => staffMod.CAPS[c] || c).join(", ");
       await guard.kvCommand(cfg, ["HSET", "staff:users", ph, JSON.stringify({ name: clean, role, extra: [], revoked: [], off: false, added: Date.now(), by: digits })]);
-      notify.sendWa(ph, `👋 Hi ${clean}! Meeru DermaLuxe staff dashboard ki *${roleBook[role].label}* ga add ayyaru.\nLogin: www.dermaluxe.ai/staff.html — mee number ${ph} tho OTP leda password.\n\n📋 Mee access: ${caps}`).catch(() => {});
+      notify.teamSend(cfg, ph, `👋 Hi ${clean}! Meeru DermaLuxe staff dashboard ki *${roleBook[role].label}* ga add ayyaru.\nLogin: www.dermaluxe.ai/staff.html — mee number ${ph} tho OTP leda password.\n\n📋 Mee access: ${caps}`).catch(() => {});
       return `✅ ${clean} (${ph}) — *${roleBook[role].label}*\n📋 ${caps}\n\nRole marchalante: dashboard → ⚙ Control panel. Roles list ki: *staff roles*`;
     }
     if (sub === "remove" || sub === "delete") {

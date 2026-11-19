@@ -240,7 +240,7 @@ module.exports = async (req, res) => {
     await audit(cfg, me, `cash close ${day}: expected ₹${expected}, counted ₹${rec.counted}, diff ₹${rec.diff}`);
     if (rec.diff !== 0) {
       for (const ph of guard.ownerPhones()) {
-        await notify.sendWa(ph, `💰 *Cash close — ${day}*\n\nUndalsindi ₹${expected.toLocaleString("en-IN")}\nDrawer lo ₹${rec.counted.toLocaleString("en-IN")}\n*Teda ₹${rec.diff.toLocaleString("en-IN")}*${rec.note ? "\n📝 " + rec.note : ""}\n\n— ${me.name}`).catch(() => {});
+        await notify.teamSend(cfg, ph, `💰 *Cash close — ${day}*\n\nUndalsindi ₹${expected.toLocaleString("en-IN")}\nDrawer lo ₹${rec.counted.toLocaleString("en-IN")}\n*Teda ₹${rec.diff.toLocaleString("en-IN")}*${rec.note ? "\n📝 " + rec.note : ""}\n\n— ${me.name}`).catch(() => {});
       }
     }
     return json(res, 200, { ok: true, close: rec });
@@ -267,7 +267,7 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["LREM", "cash:closes", "0", day]).catch(() => {});
     await audit(cfg, me, `cash close ${day} undone (was counted ₹${rec.counted}, diff ₹${rec.diff}, by ${rec.by})${gone.undone.why ? ": " + gone.undone.why : ""}`);
     for (const ph of guard.ownerPhones()) {
-      await notify.sendWa(ph, `🧮 *Cash close ${day} teesesaru*\n\n${me.name} teesesaru. Undi: drawer ₹${Number(rec.counted).toLocaleString("en-IN")}, teda ₹${Number(rec.diff).toLocaleString("en-IN")} (${rec.by}).${gone.undone.why ? "\n📝 " + gone.undone.why : ""}\n\nAa roju malli close cheyyochu.`).catch(() => {});
+      await notify.teamSend(cfg, ph, `🧮 *Cash close ${day} teesesaru*\n\n${me.name} teesesaru. Undi: drawer ₹${Number(rec.counted).toLocaleString("en-IN")}, teda ₹${Number(rec.diff).toLocaleString("en-IN")} (${rec.by}).${gone.undone.why ? "\n📝 " + gone.undone.why : ""}\n\nAa roju malli close cheyyochu.`).catch(() => {});
     }
     return json(res, 200, { ok: true, day });
   }

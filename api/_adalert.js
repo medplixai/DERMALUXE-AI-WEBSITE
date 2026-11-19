@@ -123,7 +123,7 @@ async function say(cfg, res, p, ttl) {
   // Free-form only reaches somebody who wrote to us in the last 24 hours.
   // Whether it landed is written down beside the alert, either way.
   let sent = false;
-  if (to) sent = !!(await notify.sendWa(to, `${line}\n\nAds screen lo chudandi: dermaluxe.ai/staff.html#ads`).catch(() => false));
+  if (to) sent = !!(await notify.teamSend(cfg, to, `${line}\n\nAds screen lo chudandi: dermaluxe.ai/staff.html#ads`).catch(() => false));
   if (sent) res.sent++;
   await guard.kvCommand(cfg, ["LPUSH", "ads:alerts", JSON.stringify({
     ts: Date.now(), kind: p.kind, id: p.id, name: p.name, text: p.text, sent,

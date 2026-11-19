@@ -91,7 +91,7 @@ async function run(cfg, day) {
       lint.checked ? `\n✍️ Editor: ${lint.checked} replies sarichesindi (${lint.rewritten} rewritten)` : "",
       "\nApp → Inbox lo full review undi.",
     ].filter((l) => l !== undefined).join("\n").slice(0, 3500);
-    for (const ph of guard.ownerPhones()) await notify.sendWa(ph, body).catch(() => {});
+    for (const ph of guard.ownerPhones()) await notify.teamSend(cfg, ph, body).catch(() => {});
   }
   return review;
 }

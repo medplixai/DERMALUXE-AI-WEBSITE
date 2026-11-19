@@ -72,15 +72,16 @@ const feed = () => h.run(["LRANGE", "ads:alerts", "0", "29"]).map((x) => JSON.pa
   is(r4.skipped, "too soon", "the next one a minute later does not: " + r4.skipped);
 
   console.log("\n  — when WhatsApp will not take it —");
-  // Free-form only reaches somebody who wrote in the last 24 hours. A feed
-  // that showed "sent" for a message nobody got would be worse than no feed.
+  // A feed that showed "sent" for a message nobody got would be worse than no
+  // feed. The window check and its template live in notify.teamSend (tested
+  // on the real module in t-channels); here neither road goes through.
   h.run(["DEL", "ads:alerts"]);
   ["ads:alert:c1:nochat", "ads:alert:c2:dear", "ads:alert:run"].forEach((k) => h.run(["DEL", k]));
   const notify = require(path.join(API, "_notify.js"));
-  const realSend = notify.sendWa;
-  notify.sendWa = async () => false;
+  const realSend = notify.teamSend;
+  notify.teamSend = async () => false;
   const r5 = await al.run(cfg, { force: true });
-  notify.sendWa = realSend;
+  notify.teamSend = realSend;
   is([r5.alerts, r5.sent], [2, 0], "the alert still happens, the message does not");
   is(feed().every((a) => a.sent === false), true, "and every row says so, rather than claiming it was sent");
 

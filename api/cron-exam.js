@@ -37,7 +37,7 @@ module.exports = async (req, res) => {
   if (!r) return res.status(200).json({ ok: false });
   if (q.dry !== "1" && !ids.length) {
     const notify = require("./_notify.js");
-    for (const to of guard.ownerPhones()) await notify.sendWa(to, exam.summary(r)).catch(() => {});
+    for (const to of guard.ownerPhones()) await notify.teamSend(cfg, to, exam.summary(r)).catch(() => {});
   }
   return res.status(200).json(Object.assign({ ok: true }, r));
 };

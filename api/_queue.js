@@ -200,16 +200,14 @@ async function alertOverdue(cfg) {
   const lines = behind.map((b) => `• ${b.name}: ${b.untouched} leads${b.oldest > 3600000 ? ` (chala paatavi ${Math.round(b.oldest / 3600000)}h)` : ""}`).join("\n");
   const total = behind.reduce((n, b) => n + b.untouched, 0);
   const text = `📞 *Calls inka cheyyaledu* (${when})\n${lines}\n\nCall chesaka app lo note raayandi — note lekapothe call cheyyanattule lekka.`;
+  // A plain text to a shut window is dropped after Meta says 200, so the
+  // template is chosen up front, by the window (notify.teamSend), not after.
   for (const to of guard.ownerPhones()) {
-    if (!(await notify.sendWa(to, text).catch(() => false))) {
-      await notify.sendWaTemplate(to, "staff_calls_pending", [when, behind.map((b) => `${b.name} – ${b.untouched}`).join(", ").slice(0, 200), String(total)]).catch(() => {});
-    }
+    await notify.teamSend(cfg, to, text, { name: "staff_calls_pending", params: [when, behind.map((b) => `${b.name} – ${b.untouched}`).join(", ").slice(0, 200), String(total)] }).catch(() => {});
   }
   for (const b of behind) {
     const own = `📞 ${b.name} garu, meeku ichchina ${b.untouched} leads inka call cheyyaledu.\n\nApp → Leads → "Ippude call" lo unnaru. Call chesi note raayandi 🙏`;
-    if (!(await notify.sendWa(b.phone, own).catch(() => false))) {
-      await notify.sendWaTemplate(b.phone, "staff_calls_pending", [when, `${b.name} – ${b.untouched}`, String(b.untouched)]).catch(() => {});
-    }
+    await notify.teamSend(cfg, b.phone, own, { name: "staff_calls_pending", params: [when, `${b.name} – ${b.untouched}`, String(b.untouched)] }).catch(() => {});
   }
   return { behind: behind.length, total, listed };
 }

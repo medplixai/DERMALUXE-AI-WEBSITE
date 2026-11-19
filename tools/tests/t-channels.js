@@ -150,6 +150,18 @@ const hook = { token: "hook" };
   is([shut.type, shut.template && shut.template.name, JSON.stringify(shut).includes("\\n"), JSON.stringify(shut).includes("Ravi · 📱 9876543210")],
     ["template", "daily_digest_ping", false, true], "a team member who hasn't written in 24 hours still gets the alert, on one line, through the template");
   is([open.type || "text", open.text && open.text.body], ["text", alert], "once they have written, the full alert goes as plain text");
+  // 19 Nov, 6:45 PM: "calls inka cheyyaledu" went as plain text to the owner
+  // and three managers, none of whom had written that day — five alerts
+  // dropped by Meta after a 200. An alert with a template of its own uses it.
+  graph.length = 0;
+  global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
+  await realNotify.teamSend({}, "9876500901", "📞 *Calls inka cheyyaledu* (6 PM)\n• Hema: 3 leads", { name: "staff_calls_pending", params: ["6 PM", "Hema – 3", "3"] });
+  const own = graph.shift() || {};
+  global.fetch = stubFetch;
+  is([own.type, own.template && own.template.name, graph.length], ["template", "staff_calls_pending", 0], "a calls-pending alert to a shut window goes as its own template, once, not as plain text");
+  const fs = require("fs");
+  const bare = ["_queue.js", "cron-backup.js", "_review.js", "cron-exam.js"].filter((f) => /notify\.sendWa\(/.test(fs.readFileSync(path.join(API, f), "utf8")));
+  is(bare, [], "the calls, backup, review and exam messages to the team never go as bare plain text");
   graph.length = 0;
   global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
   const broke = { text: async () => '{"type":"error","error":{"message":"Your credit balance is too low to access the Anthropic API."}}' };

@@ -194,12 +194,12 @@ process.env.LEAD_NOTIFY_PHONES = "9989325777";
   console.log("\n  — the morning report (9 AM) —");
   process.env.DIGEST_PHONES = "9010427777,9876500751";
   const n = require(path.join(API, "_notify.js"));
-  const wa = n.sendWa;
-  n.sendWa = async (ph, text) => { h.sent.push(["wa", ph, text]); return ph === "9010427777"; };
+  const wo = n.windowOpen;
+  n.windowOpen = async (cfg, ph) => ph === "9010427777";   // the window decides before anything is sent (19 Nov)
   h.sent.length = 0;
   now = at(9, 0);
   const d = await run(digest);
-  n.sendWa = wa;
+  n.windowOpen = wo;
   is([d.body.sent, d.body.pinged], [1, 1], "whoever's WhatsApp window is open gets the report; the other gets the template ping");
   is(to("9876500751").some((s) => s[0] === "tpl" && s[2] === "daily_digest_ping"), true, "which asks them to reply 'report'");
   is((await h.call(digest, { key: "guess" })).code, 401, "and nobody else can trigger it");

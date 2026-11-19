@@ -27,7 +27,9 @@ module.exports = async (req, res) => {
   const out = await dg.buildDigest(cfg, true);
   let sent = 0, pinged = 0;
   for (const to of targets) {
-    if (await notify.sendWa(to, out.body)) { sent++; continue; }
+    // The window decides, before sending: a plain text to a shut window comes
+    // back 200 and is dropped later, so "it said ok" never meant delivered.
+    if (await notify.windowOpen(cfg, to)) { if (await notify.sendWa(to, out.body)) sent++; continue; }
     const t = await notify.sendWaTemplate(to, "daily_digest_ping", [out.oneLine]);
     if (t.ok) pinged++;
   }
@@ -37,8 +39,7 @@ module.exports = async (req, res) => {
     if (new Date(Date.now() + 330 * 60000).getUTCDay() === 1) {
       const rep = await wk.buildWeekly(cfg);
       for (const to of targets) {
-        if (await notify.sendWa(to, rep.body)) { weekly++; continue; }
-        await notify.sendWaTemplate(to, "daily_digest_ping", [rep.oneLine]).catch(() => {});
+        if (await notify.teamSend(cfg, to, rep.body, { name: "daily_digest_ping", params: [rep.oneLine] }).catch(() => false)) weekly++;
       }
     }
   } catch (e) { console.error("cron-digest: weekly", e && e.message); }

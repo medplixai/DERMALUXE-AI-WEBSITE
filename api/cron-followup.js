@@ -54,7 +54,7 @@ module.exports = async (req, res) => {
     health = String((e && e.message) || e).slice(0, 200);
     console.error("DATABASE HEALTH CHECK FAILED —", health);
     for (const ph of guard.ownerPhones()) {
-      await notify.sendWa(ph,
+      await notify.teamSend(cfg, ph,
         `\u26a0\ufe0f *DermaLuxe — database andatledu*\n\n${health}\n\nIppudu kotha leads save avvakapovachu. WhatsApp agent reply istune untundi, kaani dashboard lo kanipinchakapovachu.`
       ).catch(() => {});
     }
@@ -612,9 +612,7 @@ module.exports = async (req, res) => {
       if (nx && nx.result) {
         const rep = await require("./_closing.js").build(cfg, day);
         for (const ph of guard.ownerPhones()) {
-          if (await notify.sendWa(ph, rep.body)) { closing++; continue; }
-          const t = await notify.sendWaTemplate(ph, "daily_digest_ping", [rep.oneLine]).catch(() => ({ ok: false }));
-          if (t && t.ok) closing++;
+          if (await notify.teamSend(cfg, ph, rep.body, { name: "daily_digest_ping", params: [rep.oneLine] }).catch(() => false)) closing++;
         }
       }
     }

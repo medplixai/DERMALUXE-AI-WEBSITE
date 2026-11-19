@@ -107,7 +107,7 @@ async function alertTeam(cfg, app) {
     "Follow-up: 'jobs report' ani ee number ki pampandi",
   ].join("\n");
   for (const to of targets) {
-    await notify.sendWa(to, body);
+    await notify.teamSend(cfg, to, body);
     if (app.cvId) await notify.sendWaDocument(to, app.cvId, app.cvName || `CV-${app.name}.pdf`, `CV — ${app.name} (${app.role})`);
   }
 }

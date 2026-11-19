@@ -162,7 +162,7 @@ module.exports = async (req, res) => {
       console.error("BACKUP INCOMPLETE —", made.failed.join(", "));
       try {
         const notify = require("./_notify.js");
-        for (const ph of guard.ownerPhones()) await notify.sendWa(ph, `⚠️ DermaLuxe backup: ${made.keys} records copy ayyayi, kani ${made.failed.length} chadavalekapoyam:\n${made.failed.slice(0, 5).join("\n")}`).catch(() => {});
+        for (const ph of guard.ownerPhones()) await notify.teamSend(cfg, ph, `⚠️ DermaLuxe backup: ${made.keys} records copy ayyayi, kani ${made.failed.length} chadavalekapoyam:\n${made.failed.slice(0, 5).join("\n")}`).catch(() => {});
       } catch (x) {}
     }
     return res.status(200).json({ ok: true, day, ...made, removed, ms: Date.now() - t0 });
@@ -173,7 +173,7 @@ module.exports = async (req, res) => {
     try {
       const notify = require("./_notify.js");
       for (const ph of guard.ownerPhones()) {
-        await notify.sendWa(ph, `⚠️ DermaLuxe: ee raatri backup avvaledu.\n\n${String(e.message || e).slice(0, 200)}\n\nOkasari chudandi.`).catch(() => {});
+        await notify.teamSend(cfg, ph, `⚠️ DermaLuxe: ee raatri backup avvaledu.\n\n${String(e.message || e).slice(0, 200)}\n\nOkasari chudandi.`).catch(() => {});
       }
     } catch (x) {}
     return res.status(500).json({ ok: false, error: String((e && e.message) || e).slice(0, 300) });

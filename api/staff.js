@@ -508,7 +508,7 @@ module.exports = async (req, res) => {
           const told = await guard.kvCommand(cfg, ["SET", `rl:miss:told:${phone}`, "1", "NX", "EX", "3600"]).catch(() => ({}));
           if (told && told.result) {
             for (const ownerPh of ownerPhones()) {
-              await notify.sendWa(ownerPh,
+              await notify.teamSend(cfg, ownerPh,
                 `\u26a0\ufe0f *DermaLuxe* — ${u.name} (${phone}) account ki 5 saarlu tappu password try chesaru (last 1 hour).\n\nVaalle ayithe parledu. Kaakapothe Control panel lo aa login ni off cheyyandi.`
               ).catch(() => {});
             }
@@ -1133,7 +1133,7 @@ module.exports = async (req, res) => {
     await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify({ name, role, extra: [], revoked: [], off: false, added: (existing && existing.added) || Date.now(), by: me.phone, branch: br.valid(b.branch) ? b.branch : ((existing && existing.branch) || "") })]);
     const what = capsOf(role, roles).includes("*") ? "anni" : capsOf(role, roles).map((c) => CAPS[c] || c).join(", ");
     await audit(cfg, me, `${existing ? "Updated" : "Added"} login ${name} (${phone}) — ${roles[role].label}`);
-    notify.sendWa(phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki *${roles[role].label}* ga add ayyaru.\n\n🔗 www.dermaluxe.ai/staff.html\n📱 Mee number: ${phone}\n🔐 Password leda OTP tho login cheyandi.\n\n📋 Mee access: ${what}`).catch(() => {});
+    notify.teamSend(cfg, phone, `👋 Hi ${name}! Meeru DermaLuxe staff dashboard ki *${roles[role].label}* ga add ayyaru.\n\n🔗 www.dermaluxe.ai/staff.html\n📱 Mee number: ${phone}\n🔐 Password leda OTP tho login cheyandi.\n\n📋 Mee access: ${what}`).catch(() => {});
     return json(res, 200, { ok: true, team: await users(cfg) });
   }
   // Your own password, nobody else's. An owner cannot set a password for a
@@ -1196,7 +1196,7 @@ module.exports = async (req, res) => {
     all[phone].role = role;
     await guard.kvCommand(cfg, ["HSET", USERS, phone, JSON.stringify(all[phone])]);
     await audit(cfg, me, `${all[phone].name} (${phone}) role → ${roles[role].label}`);
-    notify.sendWa(phone, `🔁 Mee DermaLuxe dashboard role ippudu *${roles[role].label}*.`).catch(() => {});
+    notify.teamSend(cfg, phone, `🔁 Mee DermaLuxe dashboard role ippudu *${roles[role].label}*.`).catch(() => {});
     return json(res, 200, { ok: true, team: await users(cfg) });
   }
   // Give or take away ONE power for ONE person, without touching their role.
@@ -1226,7 +1226,7 @@ module.exports = async (req, res) => {
     // their phones should stop getting notifications too
     try { const push = require("./_push.js"); for (const t of await push.devicesOf(cfg, phone)) await push.dropDevice(cfg, t); } catch (e) {}
     await audit(cfg, me, `${(all[phone] && all[phone].name) || phone} — anni devices nunchi logout chesaru`);
-    notify.sendWa(phone, "🔒 Mee DermaLuxe app anni phones nunchi logout ayindi. Malli login cheyyalante owner ni adagandi.").catch(() => {});
+    notify.teamSend(cfg, phone, "🔒 Mee DermaLuxe app anni phones nunchi logout ayindi. Malli login cheyyalante owner ni adagandi.").catch(() => {});
     return json(res, 200, { ok: true, epoch: n });
   }
   if (a === "team-suspend") {
@@ -1241,7 +1241,7 @@ module.exports = async (req, res) => {
       try { const push = require("./_push.js"); for (const t of await push.devicesOf(cfg, phone)) await push.dropDevice(cfg, t); } catch (e) {}
     }
     await audit(cfg, me, `${all[phone].name} (${phone}) access ${off ? "OFF chesaru" : "malli ON chesaru"}`);
-    notify.sendWa(phone, off
+    notify.teamSend(cfg, phone, off
       ? "🔒 Mee DermaLuxe dashboard access ippudu off lo undi. Doubt unte owner ni adagandi."
       : "🔓 Mee DermaLuxe dashboard access malli on ayindi — www.dermaluxe.ai/staff.html").catch(() => {});
     return json(res, 200, { ok: true, team: await users(cfg) });

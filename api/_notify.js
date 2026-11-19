@@ -268,10 +268,22 @@ function alertLine(text) {
     .join(" · ").replace(/\s{2,}/g, " ").slice(0, 900);
 }
 
-async function teamSend(cfg, to, text) {
+// 19 Nov, 6:45 PM: the "calls inka cheyyaledu" alert went to the owner and
+// three managers as plain text, with a template fallback that never ran —
+// sendWa says true the moment Meta answers 200, and the 131047 comes later on
+// the status webhook. Five alerts, none delivered. The cash-close, backup,
+// database, exam, review, ads, HR, digest and evening-report messages to the
+// team were built the same way. Every message to a team phone comes through
+// here now. tpl = {name, params}: a template of its own for a shut window
+// (staff_calls_pending, say); daily_digest_ping carries anything else.
+async function teamSend(cfg, to, text, tpl) {
   const d = String(to || "").replace(/\D/g, "").slice(-10);
   if (d.length !== 10) return false;
   if (await windowOpen(cfg, d)) return sendWa(d, text);
+  if (tpl && tpl.name) {
+    const own = await sendWaTemplate(d, tpl.name, tpl.params || []).catch(() => null);
+    if (own && own.ok) return true;
+  }
   const t = await sendWaTemplate(d, "daily_digest_ping", [alertLine(text)]);
   return !!(t && t.ok);
 }
