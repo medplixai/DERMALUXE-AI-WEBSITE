@@ -62,7 +62,9 @@ function run(c) {
     case "HGETALL": { const h = H(k); const out = []; for (const [f, v] of h) out.push(f, v); return out; }
     case "HDEL": { const h = H(k); let n = 0; for (const f of c.slice(2)) if (h.delete(String(f))) n++; return n; }
     case "HLEN": return H(k).size;
-    case "HINCRBY": { const h = H(k); const v = Number(h.get(String(c[2])) || 0) + Number(c[3]); h.set(String(c[2]), String(v)); return v; }
+    // The real store refuses HINCRBY too (19 Nov: the delivery counts were
+    // never written, and every test passed against this harness).
+    case "HINCRBY": throw new Error("unsupported command HINCRBY — use INCR on a key per field");
     case "SADD": { const s = T(k); let n = 0; for (const v of c.slice(2)) { if (!s.has(String(v))) n++; s.add(String(v)); } return n; }
     case "SREM": { const s = T(k); let n = 0; for (const v of c.slice(2)) if (s.delete(String(v))) n++; return n; }
     case "SMEMBERS": return [...T(k)];

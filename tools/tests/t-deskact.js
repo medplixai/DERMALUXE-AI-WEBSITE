@@ -96,7 +96,7 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
     { id: "wamid.B", status: "failed", recipient_id: "919876500922", errors: [{ code: 131026, title: "Message undeliverable", error_data: { details: "Receiver is incapable of receiving this message" } }] },
   ]);
   const dayK = "wa:dlv:" + new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
-  is([h.run(["HGET", dayK, "sent"]), h.run(["HGET", dayK, "delivered"]), h.run(["HGET", dayK, "failed"])].map(Number), [1, 1, 1], "every receipt is counted for the day");
+  is([h.run(["GET", dayK + ":sent"]), h.run(["GET", dayK + ":delivered"]), h.run(["GET", dayK + ":failed"])].map(Number), [1, 1, 1], "every receipt is counted for the day");
   const fl = JSON.parse(h.run(["LRANGE", "wa:fail", "0", "0"])[0] || "{}");
   is([fl.ph, fl.code, /undeliverable/i.test(fl.title)], ["9876500922", 131026, true], "a failure is kept with the number and Meta's own code and reason");
 

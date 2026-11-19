@@ -226,10 +226,8 @@ async function buildDigest(cfg, live) {
   // pamputundi kani atu person ki ravatledu" now has an answer each morning.
   try {
     const yday = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(now - 86400000));
-    const d = await guard.kvCommand(cfg, ["HGETALL", `wa:dlv:${yday}`]).catch(() => ({}));
-    const raw = (d && d.result) || {};
-    const c = Array.isArray(raw) ? Object.fromEntries(raw.reduce((a, v, i) => (i % 2 ? a[a.length - 1].push(v) : a.push([v]), a), [])) : raw;
-    const failed = Number(c.failed || 0), delivered = Number(c.delivered || 0);
+    const d = await guard.kvCommand(cfg, ["MGET", `wa:dlv:${yday}:delivered`, `wa:dlv:${yday}:failed`]).catch(() => ({}));
+    const [delivered, failed] = ((d && d.result) || []).map((x) => Number(x || 0));
     if (failed || delivered) {
       const f = await guard.kvCommand(cfg, ["LRANGE", "wa:fail", "0", "199"]).catch(() => ({}));
       const since = now - 86400000 * 1.5, why = {};

@@ -1041,14 +1041,17 @@ const ACCOUNT_WIDE = {
   131056: "Okate number ki chala messages — konchem aagandi",
   368: "Meta policy valla account restrict ayyindi",
 };
-// KV: wa:dlv:<YYYY-MM-DD> hash sent/delivered/read/failed counts;
+// KV: wa:dlv:<YYYY-MM-DD>:<sent|delivered|read|failed> counts (60 days);
 //     wa:fail list of {ts, ph, code, title, detail, id} (last 500).
 async function recordStatuses(cfg, statuses) {
   const day = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Kolkata", year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date());
   for (const st of statuses.slice(0, 20)) {
     const kind = String((st && st.status) || "");
     if (!["sent", "delivered", "read", "failed"].includes(kind)) continue;
-    await guard.kvCommand(cfg, ["HINCRBY", `wa:dlv:${day}`, kind, "1"]).catch(() => {});
+    // INCR on a key per kind: the store refuses HINCRBY (19 Nov, the first
+    // day of counts was lost to it).
+    const n = await guard.kvCommand(cfg, ["INCR", `wa:dlv:${day}:${kind}`]).catch(() => ({}));
+    if (n && Number(n.result) === 1) await guard.kvCommand(cfg, ["EXPIRE", `wa:dlv:${day}:${kind}`, String(60 * 86400)]).catch(() => {});
     if (kind !== "failed") continue;
     const er = (Array.isArray(st.errors) && st.errors[0]) || {};
     const ph = String(st.recipient_id || "").replace(/\D/g, "").slice(-10);
@@ -1071,7 +1074,6 @@ async function recordStatuses(cfg, statuses) {
       }
     }
   }
-  await guard.kvCommand(cfg, ["EXPIRE", `wa:dlv:${day}`, String(60 * 86400)]).catch(() => {});
 }
 
 // Meta Cloud API: send a text reply via the Graph API.
