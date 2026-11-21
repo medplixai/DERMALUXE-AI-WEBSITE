@@ -26,6 +26,18 @@ async function waImage(to, url, caption) {
     return r.ok;
   } catch (e) { return false; }
 }
+// The poster to the owners. 20 Nov, 7 AM: it went as a picture to phones
+// whose 24-hour window was shut, Meta took it and dropped it, and the text
+// fallback beside it (which a shut window drops too) never ran. A shut window
+// now gets the caption on one line through the team template.
+async function toTeam(cfg, ph, url, caption) {
+  const notify = require("./_notify.js");
+  if (await notify.windowOpen(cfg, String(ph).replace(/\D/g, "").slice(-10))) {
+    if (await waImage(ph, url, caption)) return true;
+    return waText(ph, caption);
+  }
+  return notify.teamSend(cfg, ph, caption).catch(() => false);
+}
 async function waText(to, text) {
   const token = process.env.WA_CLOUD_TOKEN;
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
@@ -71,7 +83,7 @@ module.exports = async (req, res) => {
     console.error("cron-daily: build failed", e && e.message);
     if (!force) await guard.kvCommand(cfg, ["DEL", `dp:done:${daily.todayIst()}`]).catch(() => {});
     const to = guard.ownerPhones()[0];
-    if (to) await waText(to, `❌ Daily poster generate avvaledu: ${(e && e.message) || "unknown"}. 'daily post now' tho malli try cheyandi.`);
+    if (to) await require("./_notify.js").teamSend(cfg, to, `❌ Daily poster generate avvaledu: ${(e && e.message) || "unknown"}. 'daily post now' tho malli try cheyandi.`);
     return res.status(500).json({ ok: false, error: (e && e.message) || "failed" });
   }
 
@@ -79,7 +91,7 @@ module.exports = async (req, res) => {
   let published = null, storyOut = null, boosted = null;
   if (previewOnly) {
     const cap = `👀 *Preview only — idi ekkadiki veLLaledu.*\n${out.topic.h1}${out.hadImage ? "" : "\n⚠️ Photo raaledu — background matrame"}\n\n${out.caption}`.slice(0, 900);
-    for (const ph of out.notify) { if (!(await waImage(ph, url, cap))) await waText(ph, cap); }
+    for (const ph of out.notify) await toTeam(cfg, ph, url, cap);
     return res.status(200).json({ ok: true, preview: true, imgId: out.imgId, topic: out.topic.key,
       headline: out.topic.h1, sub: out.topic.sub, hadImage: out.hadImage, sentTo: out.notify.length, ms: Date.now() - t0 });
   }
@@ -115,9 +127,6 @@ module.exports = async (req, res) => {
   // posters and find out by noticing.
   const noPhoto = out.hadImage ? "" : "\n⚠️ Photo raaledu — background matrame. Gemini key / billing chudandi.";
   const caption = `${preview}${noPhoto}\n\n${out.caption}`.slice(0, 900);
-  for (const ph of out.notify) {
-    const ok = await waImage(ph, url, caption);
-    if (!ok) await waText(ph, caption);
-  }
+  for (const ph of out.notify) await toTeam(cfg, ph, url, caption);
   return res.status(200).json({ ok: true, imgId: out.imgId, storyId: out.storyId || "", topic: out.topic.key, due: out.due, hadImage: out.hadImage, published, boosted, ms: Date.now() - t0 });
 };

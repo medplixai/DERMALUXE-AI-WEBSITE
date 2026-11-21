@@ -159,8 +159,23 @@ const hook = { token: "hook" };
   const own = graph.shift() || {};
   global.fetch = stubFetch;
   is([own.type, own.template && own.template.name, graph.length], ["template", "staff_calls_pending", 0], "a calls-pending alert to a shut window goes as its own template, once, not as plain text");
+  // 20 Nov: twenty messages written as "plain text, else the template" went
+  // as plain text to shut windows; Meta said 200, dropped them, and the
+  // template never ran. A free-form send to a shut window is now a false.
+  graph.length = 0;
+  global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
+  const shutText = await realNotify.sendWa("9876500902", "Mee follow-up");
+  const shutPic = await realNotify.sendWaImageLink("9876500902", "https://www.dermaluxe.ai/x.jpg", "poster");
+  const shutPdf = await realNotify.sendWaDocLink("9876500902", "https://www.dermaluxe.ai/x.pdf", "Day-1.pdf", "material");
+  const shutBtn = await realNotify.sendWaButtons("9876500902", "Vastunnara?", ["✅ Vastunnanu"]);
+  const nothing = graph.length;
+  await realNotify.markWindow({}, "9876500902");
+  const openText = await realNotify.sendWa("9876500902", "Mee follow-up");
+  global.fetch = stubFetch;
+  is([shutText, shutPic, shutPdf, shutBtn, nothing], [false, false, false, false, 0], "text, picture, PDF or buttons to a shut window: nothing is sent, and the caller hears no — so its template runs");
+  is([openText, graph.length], [true, 1], "once they have written, the same text goes");
   const fs = require("fs");
-  const bare = ["_queue.js", "cron-backup.js", "_review.js", "cron-exam.js"].filter((f) => /notify\.sendWa\(/.test(fs.readFileSync(path.join(API, f), "utf8")));
+  const bare =["_queue.js", "cron-backup.js", "_review.js", "cron-exam.js"].filter((f) => /notify\.sendWa\(/.test(fs.readFileSync(path.join(API, f), "utf8")));
   is(bare, [], "the calls, backup, review and exam messages to the team never go as bare plain text");
   graph.length = 0;
   global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };

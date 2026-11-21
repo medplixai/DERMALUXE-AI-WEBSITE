@@ -70,6 +70,13 @@ module.exports = async (req, res) => {
       if (dry) { out.trainer = "would send " + ph; continue; }
       const nx = await guard.kvCommand(cfg, ["SET", `acad:manual:${ph}:${docs.BATCH.no}`, "1", "NX", "EX", "15552000"]).catch(() => ({}));
       if (!nx || !nx.result) continue;
+      // PDFs only travel inside an open 24-hour window. A shut one gets a
+      // one-line ask to reply, and the manual is tried again tomorrow.
+      if (!(await notify.windowOpen(cfg, ph))) {
+        await notify.teamSend(cfg, ph, `👩‍🏫 DermaLuxe Academy — Batch ${docs.BATCH.no} trainer manual ready. 'hi' ani reply cheyandi, repu udayam PDFs vastayi.`).catch(() => {});
+        await guard.kvCommand(cfg, ["DEL", `acad:manual:${ph}:${docs.BATCH.no}`]).catch(() => {});
+        continue;
+      }
       await notify.sendWa(ph, `👩‍🏫 *DermaLuxe Academy — Trainer material*\n\nBatch ${docs.BATCH.no} starts *${docs.BATCH.start}*.\nMottham 30 rojula study material (Skin + Hair) ikkada pampistunnanu — okkasare download chesukondi 📚\n\nRoju students ki aa roju material automatic ga veltundi (Sunday holiday).`);
       await notify.sendWaDocLink(ph, MANUAL(ph, "skin"), "DermaLuxe-Academy-Skin-30-Day-Trainer-Manual.pdf", "📘 Skin Care — 30-day trainer manual (all days)");
       await notify.sendWaDocLink(ph, MANUAL(ph, "hair"), "DermaLuxe-Academy-Hair-30-Day-Trainer-Manual.pdf", "📗 Hair Care — 30-day trainer manual (all days)");

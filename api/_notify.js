@@ -12,12 +12,31 @@ const guard = require("./_guard.js");
 
 const DEFAULT_TO = "9989325777,9949134666";
 
-// Bare Cloud-API text send to a local 10-digit number. Returns true on 2xx.
+// Meta takes a plain message to a shut 24-hour window with a 200 and drops it
+// a moment later (131047, on the status webhook). So "sendWa said true" never
+// meant delivered, and the code all over the app that reads
+//   if (!(await sendWa(...))) await sendWaTemplate(...)
+// never reached its template. 20 Nov: twenty messages lost that way — the
+// morning poster and digest to the owners, the academy material, patients'
+// follow-ups — with a working template beside each one. Every free-form send
+// now asks first; a shut window is a false, and the caller's template runs.
+// When the store cannot be read the message goes anyway, as it used to.
+async function windowShut(to) {
+  try {
+    const cfg = guard.kvConfig();
+    if (!cfg) return false;
+    return !(await windowOpen(cfg, to));
+  } catch (e) { return false; }
+}
+
+// Bare Cloud-API text send to a local 10-digit number. True when Meta took it
+// for a window that is open; false otherwise.
 async function sendWa(digits, text) {
   const token = process.env.WA_CLOUD_TOKEN;
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
   const to = String(digits || "").replace(/\D/g, "").slice(-10);
   if (!token || !phoneId || to.length !== 10) return false;
+  if (await windowShut(to)) return false;
   try {
     const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
       method: "POST",
@@ -47,6 +66,7 @@ async function sendWaButtons(digits, text, titles) {
   const btns = Array.from(new Set((titles || []).map((s) => String(s || "").trim().slice(0, 20)).filter(Boolean))).slice(0, 3);
   if (!token || !phoneId || to.length !== 10) return false;
   if (!btns.length) return sendWa(to, text);
+  if (await windowShut(to)) return false;
   let body = String(text || "");
   if (body.length > 1000) { if (!(await sendWa(to, body))) return false; body = "👇"; }
   try {
@@ -75,6 +95,7 @@ async function sendWaList(digits, text, rowsIn, button) {
   const to = String(digits || "").replace(/\D/g, "").slice(-10);
   const rows = Array.from(new Set((rowsIn || []).map((s) => String(s || "").trim().slice(0, 24)).filter(Boolean))).slice(0, 10);
   if (!token || !phoneId || to.length !== 10 || !rows.length) return false;
+  if (await windowShut(to)) return false;
   try {
     const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
       method: "POST",
@@ -147,6 +168,7 @@ async function sendWaDocument(digits, mediaId, filename, caption) {
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
   const to = String(digits || "").replace(/\D/g, "").slice(-10);
   if (!token || !phoneId || to.length !== 10 || !mediaId) return false;
+  if (await windowShut(to)) return false;
   try {
     const doc = { id: mediaId };
     if (filename) doc.filename = String(filename).slice(0, 120);
@@ -174,6 +196,7 @@ async function sendWaDocLink(digits, url, filename, caption) {
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
   const to = String(digits || "").replace(/\D/g, "").slice(-10);
   if (!token || !phoneId || to.length !== 10 || !url) return false;
+  if (await windowShut(to)) return false;
   try {
     const document = { link: url };
     if (filename) document.filename = String(filename).slice(0, 120);
@@ -193,6 +216,7 @@ async function sendWaImageLink(digits, url, caption) {
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
   const to = String(digits || "").replace(/\D/g, "").slice(-10);
   if (!token || !phoneId || to.length !== 10 || !url) return false;
+  if (await windowShut(to)) return false;
   try {
     const image = { link: url };
     if (caption) image.caption = String(caption).slice(0, 900);
@@ -210,6 +234,7 @@ async function sendWaLocation(digits) {
   const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
   const to = String(digits || "").replace(/\D/g, "").slice(-10);
   if (!token || !phoneId || to.length !== 10) return false;
+  if (await windowShut(to)) return false;
   try {
     const r = await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
       method: "POST",
