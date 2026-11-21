@@ -117,6 +117,36 @@ const post = (a, b) => call({ a }, Object.assign({ a }, b), OWNER);
   n.windowOpen = realOpen;
   is([c3.code, c3.body.sent, c3.body.via], [200, true, "template"], "outside the window it goes as the approved clinic_update template");
   is(h.sent.some((s) => s[0] === "tpl" && s[1] === "9876500602" && s[2] === "clinic_update" && s[3][0] === "Ravi"), true, "still addressed by first name");
+
+  // 21 Nov: one patient got the template heads-up seven times in eight days
+  // without answering, and Meta began refusing it (131049).
+  n.windowOpen = async () => false;
+  const tplTo = (ph) => h.sent.filter((s) => s[0] === "tpl" && s[1] === ph).length;
+  const PH = "9876500604", HDT = `ntf:callhdt:${PH}`;
+  const tap = async () => { h.run(["DEL", `ntf:callhd:${PH}`]); return (await post("call-notice", { phone: PH, name: "Suresh" })).body; };
+  h.sent.length = 0;
+  is((await tap()).sent, true, "a shut window: the first template heads-up goes");
+  const t2 = await tap();
+  is([t2.sent, t2.why, tplTo(PH)], [false, "recent", 1], "two hours later, the same day, no second template");
+  h.run(["SET", HDT, JSON.stringify([Date.now() - 4 * 86400000])]);
+  is((await tap()).sent, true, "four days on, one more goes");
+  h.run(["SET", HDT, JSON.stringify([Date.now() - 9 * 86400000, Date.now() - 5 * 86400000])]);
+  const t4 = await tap();
+  is([t4.sent, t4.why], [false, "unanswered"], "after two unanswered, none more, however many days pass");
+  h.run(["SET", `ib:t:${PH}`, JSON.stringify({ lastIn: Date.now() - 4 * 86400000 })]);
+  is((await tap()).sent, true, "once the patient writes back, the count starts again");
+  n.windowOpen = realOpen;
+  h.run(["SET", HDT, JSON.stringify([Date.now() - 3600000, Date.now() - 1800000])]);
+  is((await tap()).sent, true, "inside the 24-hour window the cap does not apply — it is plain text");
+
+  // Malli pampu on a 131049: another template only deepens it.
+  h.run(["SET", `wa:failph:${PH}`, JSON.stringify({ ts: Date.now() - 3600000, code: 131049, title: "healthy ecosystem" })]);
+  n.windowOpen = async () => false;
+  const r1 = await post("wa-retry", { phone: PH, name: "Suresh" });
+  is([r1.code, /call cheyandi/.test(r1.body.error || "")], [409, true], "Malli pampu on a Meta 131049 refusal is stopped for a day, and says to call");
+  h.run(["SET", `wa:failph:${PH}`, JSON.stringify({ ts: Date.now() - 3600000, code: 131042, title: "billing" })]);
+  is((await post("wa-retry", { phone: PH, name: "Suresh" })).code, 200, "a billing failure can still be sent again");
+  n.windowOpen = realOpen;
   h.run(["HSET", "staff:users", "9876500052", JSON.stringify({ name: "Accounts", role: "accounts" })]);
   const ACCOUNTS = mk({ p: "9876500052", n: "Accounts", r: "accounts", e: 0, exp: Date.now() + 86400000 });
   is((await call({ a: "call-notice" }, { a: "call-notice", phone: "9876500603", name: "Z" }, ACCOUNTS)).code, 403, "accounts, who cannot edit leads, cannot send one");

@@ -927,6 +927,12 @@ module.exports = async (req, res) => {
     const wf = require("./_wafail.js");
     const f = await wf.read(cfg, phone);
     if (!f) return json(res, 409, { error: "Ee number ki fail ayina message ledu — chivari message cherindi" });
+    // 131049 is Meta refusing templates to someone who has been ignoring
+    // them; another template the same day only deepens it. Until they write
+    // (window open) or a day has passed, the desk calls instead.
+    if (Number(f.code) === 131049 && Date.now() - Number(f.ts) < 24 * 3600000 && !(await notify.windowOpen(cfg, phone))) {
+      return json(res, 409, { error: "Meta ee number ki messages aapindi (chala messages, reply ledu) — ippudu call cheyandi, repu malli try cheyandi" });
+    }
     const nx = await guard.kvCommand(cfg, ["SET", `wa:retry:${phone}`, "1", "NX", "EX", "1800"]).catch(() => ({}));
     if (!nx || !nx.result) return json(res, 409, { error: "30 nimishala lopu already malli pampam — receipt kosam aagandi" });
     const greet = require("./_greet.js").greetName(clean(b.name, 40)) || require("./_greet.js").greetName(key ? await leadNameOf(cfg, key) : "");
@@ -986,6 +992,24 @@ module.exports = async (req, res) => {
     const clinicNo = require("./_docs.js").BRAND.wa;
     const line = `${first} garu 🙏 DermaLuxe by Medicare (📞 ${clinicNo}) nunchi ${me.name} ippudu call chestunnaru — teliyani number ayina lift cheyandi 😊 Convenient kakapothe reply lo mee time cheppandi.`;
     const open = await notify.windowOpen(cfg, phone);
+    // Outside the 24-hour window the heads-up is a template, and Meta counts
+    // templates a person ignores. One patient who had said "No … nenu repu
+    // ralenu" got it seven times in eight days, one per Call tap; on 21 Nov
+    // Meta began refusing it (131049, "healthy ecosystem engagement") to him
+    // and three others. So a template heads-up goes at most once in three
+    // days, and not at all after two that were not answered: a reply from
+    // the patient (ib:t lastIn) clears the count. Inside the window nothing
+    // changes — they are talking to us, and that message is free text.
+    const HDT = `ntf:callhdt:${phone}`;
+    let past = [];
+    if (!open) {
+      try { past = JSON.parse(((await guard.kvCommand(cfg, ["GET", HDT])) || {}).result || "[]"); } catch (e) { past = []; }
+      let lastIn = 0;
+      try { const t = JSON.parse(((await guard.kvCommand(cfg, ["GET", `ib:t:${phone}`])) || {}).result || "null"); lastIn = Number(t && t.lastIn) || 0; } catch (e) {}
+      past = (Array.isArray(past) ? past : []).map(Number).filter((ts) => ts > lastIn);
+      const why = past.length >= 2 ? "unanswered" : past.some((ts) => Date.now() - ts < 3 * 86400000) ? "recent" : "";
+      if (why) return json(res, 200, { ok: true, sent: false, why });
+    }
     let sent = false;
     if (open) sent = !!(await notify.sendWa(phone, line).catch(() => false));
     else sent = !!(((await notify.sendWaTemplate(phone, "clinic_update", [first, line.slice(0, 250)]).catch(() => ({}))) || {}).ok);
@@ -994,6 +1018,7 @@ module.exports = async (req, res) => {
       await guard.kvCommand(cfg, ["DEL", `ntf:callhd:${phone}`]).catch(() => {});
       return json(res, 200, { ok: true, sent: false, why: "failed", via: open ? "text" : "template" });
     }
+    if (!open) await guard.kvCommand(cfg, ["SET", HDT, JSON.stringify([...past, Date.now()].slice(-4)), "EX", String(30 * 86400)]).catch(() => {});
     try { await require("./_inbox.js").log(cfg, phone, { dir: "out", text: line, by: me.name }); } catch (e) {}
     // On the lead's card, in the same shape as a typed note, so the caller
     // sees the heads-up went before the call.
