@@ -331,14 +331,30 @@ function alertLine(text) {
 // that they are held (tq:hold) and arrive in full the moment that phone
 // writes in (markWindow → flushHeld). An open window is not counted: those
 // go as text, as many as there are.
-const TEAM_TPL_CAP = 3;
+//
+// 21 Nov, evening: the cap held back 32 new-lead alerts — HOT ones and two
+// "ippude call cheyandi" among them — from the clinic phone, which had never
+// been refused and was receiving every one. The cap now applies only to a
+// phone Meta has refused with 131049 (wa:failph, set by the status webhook
+// and cleared by the next delivered receipt). A phone that receives fine gets
+// every alert. The held list keeps the last 60, not 30, so an evening's leads
+// are not cut.
+const TEAM_TPL_CAP = 3, HOLD_KEEP = 60;
+async function metaRefused(cfg, d) {
+  if (!cfg) return false;
+  try {
+    const r = await guard.kvCommand(cfg, ["GET", `wa:failph:${d}`]);
+    const f = r && r.result ? JSON.parse(r.result) : null;
+    return !!(f && Number(f.code) === 131049);
+  } catch (e) { return false; }
+}
 const eluruDay = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 async function teamSend(cfg, to, text, tpl) {
   const d = String(to || "").replace(/\D/g, "").slice(-10);
   if (d.length !== 10) return false;
   if (await windowOpen(cfg, d)) return sendWa(d, text);
   let n = 0;
-  if (cfg) {
+  if (cfg && await metaRefused(cfg, d)) {
     try {
       const k = `tq:n:${d}:${eluruDay()}`;
       n = Number(((await guard.kvCommand(cfg, ["INCR", k])) || {}).result) || 0;
@@ -349,7 +365,7 @@ async function teamSend(cfg, to, text, tpl) {
     const k = `tq:hold:${d}`;
     const held = await guard.kvWrite(cfg, ["RPUSH", k, JSON.stringify({ ts: Date.now(), text: String(text || "").slice(0, 3000) })], "held team alert");
     if (held) {
-      await guard.kvCommand(cfg, ["LTRIM", k, "-30", "-1"]).catch(() => {});
+      await guard.kvCommand(cfg, ["LTRIM", k, String(-HOLD_KEEP), "-1"]).catch(() => {});
       await guard.kvCommand(cfg, ["EXPIRE", k, String(3 * 86400)]).catch(() => {});
       if (n === TEAM_TPL_CAP + 1) {
         const t = await sendWaTemplate(d, "daily_digest_ping", ["📥 Inka alerts aagi unnayi — ee number ki 'ok' ani reply cheyandi, anni okesari vastayi."]).catch(() => null);

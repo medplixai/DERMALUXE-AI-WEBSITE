@@ -164,11 +164,20 @@ const hook = { token: "hook" };
   graph.length = 0;
   global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
   const TP = "9876500905", cap = realNotify.TEAM_TPL_CAP;
+  const g = require(path.join(API, "_guard.js"));
+  // 21 Nov evening: the cap held 32 lead alerts from the clinic phone, which
+  // Meta had never refused. A phone that receives fine gets every one.
+  const FINE = "9876500906";
+  for (let i = 1; i <= cap + 5; i++) await realNotify.teamSend({}, FINE, `🚨 *New Lead!* (whatsapp)\n👤 Fine ${i}`);
+  is(graph.filter((x) => x.type === "template" && /Fine \d/.test(JSON.stringify(x))).length, cap + 5,
+    "a team phone Meta has never refused gets every alert, however many leads come in");
+  graph.length = 0;
+  await g.kvCommand({}, ["SET", `wa:failph:${TP}`, JSON.stringify({ ts: Date.now(), code: 131049, title: "healthy ecosystem" })]);
   const outs = [];
   for (let i = 1; i <= cap + 3; i++) outs.push(await realNotify.teamSend({}, TP, `🚨 *New Lead!* (whatsapp)\n👤 Lead ${i}`));
   const tpls = graph.filter((g) => g.type === "template");
   is([cap, tpls.length, tpls.slice(0, cap).every((g) => /Lead \d/.test(JSON.stringify(g))), /aagi unnayi.*ok/.test(JSON.stringify(tpls[cap] || {}))], [3, 4, true, true],
-    "a shut window gets three alert templates a day, then one saying more are waiting and asking for an ok — and nothing more");
+    "a phone Meta has refused (131049) gets three alert templates a day, then one saying more are waiting and asking for an ok — and nothing more");
   is(outs.every(Boolean), true, "the callers hear the alerts were taken (they are held, not lost)");
   graph.length = 0;
   await realNotify.markWindow({}, TP);
