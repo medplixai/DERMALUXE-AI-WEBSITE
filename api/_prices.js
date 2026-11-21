@@ -9,6 +9,7 @@
 //   none     — the old rule, nothing is said (default)
 //   consult  — the consultation fee may be told when asked
 //   bands    — the fee, plus "starts from" ranges for a few named treatments
+//   list     — the fee, plus the clinic's whole price list (api/_pricelist.js)
 //
 // Whatever is chosen reaches the agent's prompt, the editor's list of numbers
 // it may let through, and the judges that score it — from the same record.
@@ -17,7 +18,8 @@
 const guard = require("./_guard.js");
 
 const KEY = "agent:prices";
-const MODES = ["none", "consult", "bands"];
+const MODES = ["none", "consult", "bands", "list"];
+const pricelist = require("./_pricelist.js");
 // The consultation used to be advertised as free in four places while the rate
 // card billed ₹500. It is ₹300, and NMC 8.1(x) is explicit that a lawful
 // disclosure of charges "shall be factual, transparent and not misleading" —
@@ -31,7 +33,11 @@ const MODES = ["none", "consult", "bands"];
 // ended on "later". Always said as "starts from", always with the exact plan
 // left to the consultation (block() below). These are the rate card's own
 // numbers (money.js DEFAULT_RATES), so the bill and the chat agree.
-const DEFAULT = { mode: "bands", consult: 300, bands: [
+//
+// 21 Nov 2026: the owner sent the full price list "for agent and web". The
+// default is now that list (mode "list"); the seven bands stay below as what
+// the control panel offers if somebody switches back to "bands".
+const DEFAULT = { mode: "list", consult: 300, bands: [
   { name: "HydraFacial", from: 3500, to: 0 },
   { name: "Chemical peel", from: 2500, to: 0 },
   { name: "Laser hair removal — face, per sitting", from: 2500, to: 0 },
@@ -72,7 +78,7 @@ async function save(cfg, input, by) {
     bands: Array.isArray(input.bands) ? input.bands.map((b) => ({ name: String(b.name || "").trim().slice(0, 40), from: money(b.from), to: money(b.to) })).filter((b) => b.name && b.from > 0).slice(0, 8) : cur.bands,
     by: String(by || "").slice(0, 40), ts: Date.now(),
   };
-  if (next.mode === "consult" && !next.consult) return { ok: false, error: "Consultation fee ivvandi" };
+  if ((next.mode === "consult" || next.mode === "list") && !next.consult) return { ok: false, error: "Consultation fee ivvandi" };
   if (next.mode === "bands" && !next.bands.length) return { ok: false, error: "Kaneesam oka treatment range ivvandi" };
   for (const b of next.bands) if (b.to && b.to < b.from) return { ok: false, error: `${b.name}: 'to' 'from' kanna takkuva undi` };
   const r = await guard.kvCommand(cfg, ["SET", KEY, JSON.stringify(next)]);
@@ -87,6 +93,13 @@ function block(p) {
   if (!p || p.mode === "none") return "";
   const lines = [`\n\nPRICE POLICY — set by the owner; this overrides the "never quote prices" rule EXACTLY this far and no further:`];
   if (p.consult) lines.push(`- The consultation fee is ${rupee(p.consult)}. Say it when asked about consultation cost or "free na?" — in one line, adding that it is charged separately and is NOT adjusted against treatment cost. Never volunteer it. NEVER say it is free, adjusted, waived or refunded — the one exception is the hair transplant consultation from 6 Nov to 6 Dec 2026, which the HAIR TRANSPLANT PACKAGE block covers.`);
+  if (p.mode === "list") {
+    lines.push(`- The clinic's price list is below (owner, ${pricelist.AS_OF}). When the patient asks the price of a treatment ON IT, give that line exactly as written — the per-sitting price, and the package if it has one. One or two lines per reply, never the whole list. In the same message say which treatment and how many sittings suit them is decided by the doctor at the consultation, then ask the slot question.`);
+    lines.push("- A general \"rates enti? / price list\": name the two or three lines closest to their concern and say the full list is at www.dermaluxe.ai/price-list.html.");
+    lines.push("- A package is \"N sittings ₹X\" — never call any sitting free or extra, never offer a discount, never a number that is not written here. A treatment not on the list: no number at all — the old rule.");
+    lines.push("- Injections, vaccines and minor procedures (biopsy, I&D, Inj. ...) only when the patient names them; never suggest one.");
+    lines.push("PRICE LIST:\n" + pricelist.text());
+  }
   if (p.mode === "bands" && p.bands.length) {
     lines.push(`- When asked the price of one of THESE treatments, you may give the range, always as "starts from / approx", always followed by "exact plan & cost doctor consultation lo" and the slot question in the same message: ${p.bands.map(bandText).join(" · ")}.`);
     lines.push("- Any treatment NOT in that list: no number at all — the old rule. Never a discount, never a package total, never a per-session figure the list does not carry.");
@@ -101,13 +114,24 @@ async function allowed(cfg) {
   const out = new Set();
   if (p.mode !== "none" && p.consult) out.add(p.consult);
   if (p.mode === "bands") for (const b of p.bands) { out.add(b.from); if (b.to) out.add(b.to); }
+  if (p.mode === "list") for (const n of pricelist.amounts()) out.add(n);
+  return out;
+}
+// The same set from a policy already loaded (whatsapp.js's hard block).
+function allowSet(p) {
+  const out = new Set();
+  if (!p || p.mode === "none") return out;
+  if (p.consult) out.add(p.consult);
+  if (p.mode === "bands") for (const b of p.bands || []) { out.add(b.from); if (b.to) out.add(b.to); }
+  if (p.mode === "list") for (const n of pricelist.amounts()) out.add(n);
   return out;
 }
 
 // One line for the reviewer and the exam judge, so a permitted price is not a fault.
 function judgeNote(p) {
   if (!p || p.mode === "none") return "";
+  if (p.mode === "list") return `\nOWNER PRICE POLICY (a permitted number is NOT a fault): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked; any price on the clinic's list below may be given when the patient asks about that treatment. A number not on it, a discount, or a "free" sitting is a fault; reciting the whole list unasked is a fault.\n${pricelist.text()}`;
   return `\nOWNER PRICE POLICY (a permitted number is NOT a fault): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked${p.mode === "bands" && p.bands.length ? `; these ranges may be given when asked: ${p.bands.map(bandText).join(" · ")}` : ""}. Any other treatment price is still a fault.`;
 }
 
-module.exports = { load, save, block, blockFor, allowed, judgeNote, MODES, KEY };
+module.exports = { load, save, block, blockFor, allowed, allowSet, judgeNote, MODES, KEY };

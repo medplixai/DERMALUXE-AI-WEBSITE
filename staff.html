@@ -1413,10 +1413,11 @@
               <div class="err" id="abErr"></div>
             </div></div>
           <div class="box"><h2>Price policy <span class="te" style="font-size:.9rem;color:var(--g3)">· <span lang="te">ధరల నియమం</span></span></h2>
-            <p>Patient "entha avutundi?" ani adigithe agent em cheppali — mee decision. Default: emi cheppadu (consultation lo doctor cheptaru).</p>
+            <p>Patient "entha avutundi?" ani adigithe agent em cheppali — mee decision. Default: clinic price list (21 Nov) — adigina treatment rate + package cheptundi, plan doctor consultation lo.</p>
             <div style="margin-top:10px;display:grid;gap:8px">
               <label class="meta"><input type="radio" name="pmode" value="none"> Emi cheppaku (paata rule)</label>
               <label class="meta"><input type="radio" name="pmode" value="consult"> Consultation fee matrame cheppu — ₹ <input id="pConsult" inputmode="numeric" style="width:90px" placeholder="500"></label>
+              <label class="meta"><input type="radio" name="pmode" value="list"> Consultation fee + clinic price list motham (110 treatments) — <a href="https://www.dermaluxe.ai/price-list.html" target="_blank" rel="noopener">list chudandi</a></label>
               <label class="meta"><input type="radio" name="pmode" value="bands"> Consultation fee + ee treatments ki "starts from" range:</label>
               <div id="pBands" style="display:grid;gap:6px"></div>
               <div><button class="btn btn--sm" id="pBandAdd" type="button">+ Treatment</button> <button class="btn btn--gold btn--sm" id="pSave" type="button">Save</button></div>

@@ -256,13 +256,13 @@ async function sendCloudButtons(phoneNumberId, to, bodyText) {
 const MENU = [
   { s: "Skin", t: "Acne & scars", d: "Pimples, marks, scars — peels, MNRF, CO2" },
   { s: "Skin", t: "Pigmentation", d: "Dark spots, melasma, tan — PICO, peels" },
-  { s: "Skin", t: "Hydrafacial", d: "Instant glow, zero downtime, 45 min" },
-  { s: "Skin", t: "Laser hair removal", d: "Diode laser, safe for Indian skin" },
+  { s: "Skin", t: "Hydrafacial", d: "Instant glow, zero downtime, 45 min", p: /hydrafacial/i },
+  { s: "Skin", t: "Laser hair removal", d: "Diode laser, safe for Indian skin", p: /^Laser hair reduction/ },
   { s: "Skin", t: "Skin diseases", d: "Eczema, psoriasis, vitiligo, fungal, warts" },
   { s: "Hair", t: "Hair fall / PRP", d: "PRP, GFC, mesotherapy — hair roots ki" },
   { s: "Hair", t: "Hair transplant", d: "FUE / DHI / Bio-FUE, natural hairline" },
-  { s: "Anti-ageing", t: "Botox & fillers", d: "Lines, volume, jawline — MD dermatologist" },
-  { s: "Anti-ageing", t: "HIFU / skin tightening", d: "Non-surgical lift, single session" },
+  { s: "Anti-ageing", t: "Botox & fillers", d: "Lines, volume, jawline — MD dermatologist", p: /botox/i },
+  { s: "Anti-ageing", t: "HIFU / skin tightening", d: "Non-surgical lift, single session", p: /hifu/i },
   { s: "Anti-ageing", t: "Weight loss", d: "Doctor-supervised, body contouring" },
 ];
 // A first message that says nothing yet — shared with the "Hi" follow-up.
@@ -271,11 +271,15 @@ const MENU_ASK = /^(💆 services|services|menu|treatments?|treatment list|price
 async function sendCloudMenu(phoneNumberId, to, cfg) {
   const token = process.env.WA_CLOUD_TOKEN;
   if (!token || !phoneNumberId || !to) return false;
-  let bands = [];
-  try { const p = await require("./_prices.js").load(cfg); if (p.mode === "bands") bands = p.bands; } catch (e) {}
+  let bands = [], list = false;
+  try { const p = await require("./_prices.js").load(cfg); if (p.mode === "bands") bands = p.bands; list = p.mode === "list"; } catch (e) {}
   const desc = (row) => {
-    const b = bands.find((x) => new RegExp(x.name.split(/\s+/)[0], "i").test(row.t));
-    return (b ? `₹${b.from.toLocaleString("en-IN")}+ · ` : "") + row.d;
+    // Under the price list, only the rows that map cleanly onto it carry a
+    // "from" figure (21 Nov); "Acne & scars" spans a ₹3,500 lip peel to a
+    // ₹56,000 package, and a lowest number there would mislead.
+    const from = list ? (row.p ? require("./_pricelist.js").fromFor(row.p) : 0)
+      : ((bands.find((x) => new RegExp(x.name.split(/\s+/)[0], "i").test(row.t)) || {}).from || 0);
+    return (from ? `₹${from.toLocaleString("en-IN")}+ · ` : "") + row.d;
   };
   const sections = [];
   for (const row of MENU) {
@@ -1716,8 +1720,7 @@ module.exports = async (req, res) => {
       // 14 Nov this whole block was skipped in bands mode, so a figure the
       // model made up for a treatment not on the list would have gone out.
       if (!acadLine) {
-        const allow = new Set(pol.mode !== "none" && pol.consult ? [pol.consult] : []);
-        if (pol.mode === "bands") for (const b of pol.bands || []) { allow.add(b.from); if (b.to) allow.add(b.to); }
+        const allow = require("./_prices.js").allowSet(pol);
         // The closing line names the consultation fee only when the policy
         // has one, and never for a hair transplant chat — that assessment is
         // the owner's own package offer and the brief says what it costs.

@@ -134,7 +134,9 @@ module.exports = async (req, res) => {
         // Telugu script, the opening details and the qual block did not fit,
         // the JSON broke, and salvageReply sent the half that had arrived.
         max_tokens: 6000,   // room for the model's thinking before the JSON (see whatsapp.js askClaude)
-        system: sysBlocks(CLINIC_FACTS),
+        // The owner's price policy and list (21 Nov: "price list for agent
+        // and web") — after the cached brief, so it cannot break the cache.
+        system: sysBlocks(CLINIC_FACTS, cfg ? await require("./_prices.js").blockFor(cfg).catch(() => "") : ""),
         messages,
       }),
     });

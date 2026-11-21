@@ -134,12 +134,12 @@ const cfg = { kind: "pg" };
   const same = "Repu 6 PM slot pettamantara andi?";
   is(L.lintReply({ reply: same }, "hmm", [same]).map((f) => f.code), ["repeat"], "saying the same thing again is caught");
   rewrites.length = 0; h.sent.length = 0;
-  claude.push({ reply: "PICO laser ₹8,000 per session andi. Repu vastara?", lead: null });
+  claude.push({ reply: "PICO laser ₹8,800 per session andi. Repu vastara?", lead: null });
   await say("9876501905", "pico laser entha");
   is(rewrites.length, 1, "a faulty reply is sent back to the model once, with the fault named");
-  is(/price_quoted|₹8,000/.test(rewrites[0]) || /treatment prices/.test(rewrites[0]), true, "");
+  is(/price_quoted|₹8,800/.test(rewrites[0]) || /treatment prices/.test(rewrites[0]), true, "");
   const lastOut = [...h.sent].reverse().find((s) => s[0] === "wa" && s[1] === "9876501905");
-  is(JSON.parse(h.run(["LRANGE", "ib:m:9876501905", "0", "0"])[0]).text.includes("₹8,000"), false, "and what the patient gets has no price in it");
+  is(JSON.parse(h.run(["LRANGE", "ib:m:9876501905", "0", "0"])[0]).text.includes("₹8,800"), false, "and what the patient gets has no price in it");
   is(JSON.parse(h.run(["LRANGE", "lint:log", "0", "0"])[0]).rewritten, true, "the editor's log says it was rewritten");
 
   console.log("\n  — stranded chats —");

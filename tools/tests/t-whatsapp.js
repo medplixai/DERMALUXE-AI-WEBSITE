@@ -300,10 +300,10 @@ const clear = () => { sent.length = 0; h.sent.length = 0; };
   const priced = (lastText("9876500023") || {}).text || "";
   is([/59,999/.test(priced), priced.endsWith(NO_FEE), /₹300/.test(priced), /Surgeon garu scalp chusi cheptaru/.test(priced)], [false, true, false, true],
     "₹59,999 and its sentence are gone, the rest stays, and a hair transplant chat ends with the consultation line WITHOUT a ₹300 clause (the owner's HT assessment is its own offer)");
-  claude.push({ reply: "Pigmentation ki PICO laser sessions ₹18,000 avutayi andi. Eppudu ravagalaru?", lead: null });
+  claude.push({ reply: "Pigmentation ki PICO laser sessions ₹18,800 avutayi andi. Eppudu ravagalaru?", lead: null });
   await say("9876500026", "pigmentation laser cost?");
   const pico = (lastText("9876500026") || {}).text || "";
-  is([/18,000/.test(pico), pico.includes(CONSULT)], [false, true], "any other treatment price is struck and the line names the ₹300 consultation (a first chat also carries the AI line after it)");
+  is([/18,800/.test(pico), pico.includes(CONSULT)], [false, true], "any other treatment price is struck and the line names the ₹300 consultation (a first chat also carries the AI line after it)");
   // The spoken reply is cut out of the text before the editor runs; the
   // review of 9 Nov found the voice note could still say the price.
   spoken.length = 0;

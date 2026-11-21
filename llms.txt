@@ -124,12 +124,13 @@
 - [ఏలూరులో PICO లేజర్ టాటూ రిమూవల్](https://www.dermaluxe.ai/tattoo-removal-eluru-telugu.html)
 - [ఏలూరులో థ్రెడ్ లిఫ్ట్](https://www.dermaluxe.ai/thread-lift-eluru-telugu.html)
 - [DermaLuxe Academy](https://www.dermaluxe.ai/academy.html): advanced skin & hair aesthetics training centre for cosmetologists and therapists — 1-month and 2-month hands-on courses (laser hair removal, pigmentation, acne, chemical peels, lasers, PRP/GFC, dandruff & hair fall, skin & hair analysis), 10 seats per batch, MD dermatologist trainer Dr. Meghana Valeti, jobs at our clinics; admissions from 10 Sep 2026, batch 1 starts 20 Oct 2026; enquire on WhatsApp +91 99591 34666 (message ACADEMY)
+- [Price list](https://www.dermaluxe.ai/price-list.html): treatment prices per sitting and per package — peels, laser hair reduction, HydraFacial, hair treatments, lasers, injections, dermatosurgery; consultation ₹300
 - [Careers](https://www.dermaluxe.ai/careers.html): open roles, 1-minute WhatsApp application
 - [Privacy Policy](https://www.dermaluxe.ai/privacy.html)
 
 ## WhatsApp AI assistant (+91 99591 34666)
 - Replies instantly 24x7 in Telugu or English; understands voice notes and replies with voice; gives a quick pre-assessment of skin/hair photos.
-- Explains every treatment (process, sessions, downtime, results timeline), never quotes prices — exact plan only after a doctor consultation.
+- Explains every treatment (process, sessions, downtime, results timeline) and, when asked, gives the clinic's listed price for it (per sitting and package) — which treatment and how many sittings is decided at a doctor consultation (₹300, charged separately).
 - Books, reschedules and cancels appointments in the chat with tappable time slots; sends automatic reminders, post-visit care check-ins and follow-ups.
 - Does not send before/after photographs (NMC 8.1(v)); explains results honestly in words, handles urgent cases by escalating to the care team, and runs a patient referral programme (reply REFER for a personal code).
 - A website chat widget on dermaluxe.ai uses the same assistant; walk-in patients can scan the clinic QR to start a chat.
