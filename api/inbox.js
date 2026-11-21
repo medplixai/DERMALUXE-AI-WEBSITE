@@ -107,6 +107,10 @@ module.exports = async (req, res) => {
       for (const t of rows) enrich(t, qualify.settle(recs[t.phone], leads[t.phone]), leads[t.phone], now);
     } catch (e) { console.error("inbox: triage", e && e.message); for (const t of rows) if (!t.stage) enrich(t, null, null, now); }
     rows.sort(require("./_triage.js").order);
+    try {
+      const fails = await require("./_wafail.js").forPhones(cfg, rows.map((t) => t.phone));
+      for (const t of rows) { const f = fails[ten(t.phone)]; if (f) t.waFail = f; }
+    } catch (e) {}
     const counts = { need: 0, human: 0, ai: 0, booked: 0, quiet: 0 };
     for (const t of rows) counts[t.bucket] = (counts[t.bucket] || 0) + 1;
     // yesterday's agent review rides along, one tap away behind the list
@@ -148,7 +152,8 @@ module.exports = async (req, res) => {
         leadStatus: lead ? lead.status : "", slot: lead ? lead.slot || "" : "",
       };
     } catch (e) { console.error("inbox: card", e && e.message); }
-    return json(res, 200, Object.assign({ ok: true, open: inbox.windowOpen(t.meta), canReply, card }, t));
+    const waFail = await require("./_wafail.js").read(cfg, ph).catch(() => null);
+    return json(res, 200, Object.assign({ ok: true, open: inbox.windowOpen(t.meta), canReply, card, waFail }, t));
   }
 
   if (req.method !== "POST") return json(res, 405, { error: "POST" });

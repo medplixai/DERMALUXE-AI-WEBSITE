@@ -670,6 +670,11 @@ module.exports = async (req, res) => {
     const page = await leadPage(cfg, q.offset, LEAD_PAGE);
     const brq = require("./_branch.js"), scq = brq.scope(me, q);
     if (scq) page.leads = page.leads.filter(brq.keep(scq));
+    // Whose last WhatsApp did not arrive (_wafail.js), for the red badge.
+    try {
+      const fails = await require("./_wafail.js").forPhones(cfg, page.leads.map((l) => l.phone));
+      for (const l of page.leads) { const f = fails[digits10(l.phone)]; if (f) l.wa_fail = f; }
+    } catch (e) {}
     return json(res, 200, Object.assign({ ok: true }, page));
   }
 
@@ -905,6 +910,51 @@ module.exports = async (req, res) => {
       await guard.kvCommand(cfg, ["HSET", NOTES, key, JSON.stringify(list.slice(0, 30))]).catch(() => {});
     }
     return json(res, 200, { ok: true, via, slots: labels });
+  }
+  // "🔁 Malli pampu" on the "❌ WhatsApp cheraledu" badge (_wafail.js).
+  // Inside the 24-hour window, a failure from the last 12 hours is sent again
+  // word for word — it was an answer to something they asked. Anything older,
+  // or a "hemasri ippudu call chestunnaru" whose moment has passed, becomes a
+  // short line asking them to reply; outside the window that line goes as the
+  // clinic_update template, which delivers. The badge stays, marked "malli
+  // pampam", until a delivered receipt takes it off. Once per patient per 30
+  // minutes.
+  if (a === "wa-retry") {
+    if (!allow("leads.edit") && !allow("inbox.reply")) return json(res, 403, { error: "Mee role ki idi cheyye permission ledu" });
+    const phone = digits10(b.phone) || (key ? await leadPhoneOf(cfg, key) : "");
+    if (!/^[6-9]\d{9}$/.test(phone)) return json(res, 400, { error: "Valid 10-digit number ledu" });
+    if (await guard.setHas(cfg, "optout", phone).catch(() => false)) return json(res, 409, { error: "Ee patient messages vaddannaru (STOP) — pampalem" });
+    const wf = require("./_wafail.js");
+    const f = await wf.read(cfg, phone);
+    if (!f) return json(res, 409, { error: "Ee number ki fail ayina message ledu — chivari message cherindi" });
+    const nx = await guard.kvCommand(cfg, ["SET", `wa:retry:${phone}`, "1", "NX", "EX", "1800"]).catch(() => ({}));
+    if (!nx || !nx.result) return json(res, 409, { error: "30 nimishala lopu already malli pampam — receipt kosam aagandi" });
+    const greet = require("./_greet.js").greetName(clean(b.name, 40)) || require("./_greet.js").greetName(key ? await leadNameOf(cfg, key) : "");
+    const line = `${greet ? greet + " garu" : "Namaste"} 🙏 DermaLuxe nunchi — mana mundu message meeku cheraledu. Mee doubt leda appointment kosam ikkade reply cheyandi, ventane details pamputam 😊`;
+    const open = await notify.windowOpen(cfg, phone);
+    let text = line, via = "";
+    if (open && Date.now() - Number(f.ts) < 12 * 3600000) {
+      try {
+        const t = await require("./_inbox.js").thread(cfg, phone);
+        const lost = [...((t && t.msgs) || [])].reverse().find((m) => m.dir === "out" && Number(m.ts) <= Number(f.ts) + 5000);
+        if (lost && lost.text && !/ippudu call chestunnaru/.test(lost.text)) text = String(lost.text).slice(0, 3500);
+      } catch (e) {}
+    }
+    if (open && await notify.sendWa(phone, text)) via = text === line ? "text" : "same";
+    else if (!open) {
+      const t = await notify.sendWaTemplate(phone, "clinic_update", [greet || "Namaste", line.replace(/^\S+( garu)? 🙏 /, "").slice(0, 250)]).catch(() => ({}));
+      if (t && t.ok) { via = "template"; text = line; }
+    }
+    if (!via) { await guard.kvCommand(cfg, ["DEL", `wa:retry:${phone}`]).catch(() => {}); return json(res, 502, { error: "WhatsApp vellaledu — malli try cheyandi" }); }
+    try { await require("./_inbox.js").log(cfg, phone, { dir: "out", text, by: me.name }); } catch (e) {}
+    await wf.noteRetry(cfg, phone, me.name, via);
+    if (key) {
+      const cur = await guard.kvCommand(cfg, ["HGET", NOTES, key]).catch(() => ({}));
+      let list = []; try { list = JSON.parse((cur && cur.result) || "[]"); } catch (e) { list = []; }
+      list.unshift({ ts: Date.now(), by: me.name, text: via === "same" ? "🔁 Cheraledu ani malli pampanu (ade message)" : "🔁 Cheraledu ani malli pampanu" });
+      await guard.kvCommand(cfg, ["HSET", NOTES, key, JSON.stringify(list.slice(0, 30))]).catch(() => {});
+    }
+    return json(res, 200, { ok: true, via });
   }
   // A WhatsApp a moment before the desk rings. Patients do not lift calls
   // from a number they do not know — 80 of 121 desk outcomes up to 9 November

@@ -782,6 +782,11 @@
     .ib-who{display:inline-block;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.78rem;font-weight:600;border-radius:99px;padding:3px 10px;background:#eef2ff;color:#3730a3}
     .ib-who.human{background:var(--gd);color:var(--gd-ink)}
     .ib-alert{flex:none;display:flex;align-items:center;gap:10px;padding:9px 12px;font-size:.84rem;font-weight:600;border-bottom:1px solid var(--line)}
+    /* "❌ WhatsApp cheraledu" — our last message did not reach them (21 Nov) */
+    .wafail{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:8px;padding:7px 10px;border-radius:10px;border:1px solid #f0c4c4;background:#fff5f5;color:#9b1c1c;font-size:.8rem;font-weight:600}
+    .wafail.tried{border-color:var(--line);background:var(--ink2);color:var(--muted)}
+    .ib-fail{flex:none;border-radius:0;margin:0;border-width:0 0 1px}
+    .ib-failtag{display:inline-block;margin-left:6px;font-size:.75rem;font-weight:700;color:#9b1c1c}
     .ib-alert.n1{background:#fee2e2;color:#991b1b}.ib-alert.n2{background:#ffedd5;color:#9a3412}.ib-alert.n4{background:var(--gd);color:var(--gd-ink)}.ib-alert.n6{background:var(--lav);color:var(--lav-ink)}
     .ib-alert span{flex:1;min-width:0}
     .ib-alert .btn{flex:none}
@@ -1173,6 +1178,7 @@
               <button class="btn btn--sm hide" id="ibPt" title="Patient file">📋</button></div>
             <div class="ib-hold hide" id="ibHold"><span class="ib-who" id="ibWho"></span><button class="btn btn--sm hide" id="ibTake"></button></div>
             <div class="ib-alert hide" id="ibAlert"></div>
+            <div class="hide" id="ibFail"></div>
             <div class="ib-card hide" id="ibCard"></div>
             <div class="ib-msgs hide" id="ibMsgs"></div>
             <div class="ib-note hide" id="ibNote"></div>
@@ -1832,6 +1838,7 @@
       return '<article class="lead ' + esc(heat) + (late ? " late" : "") + '" data-key="' + esc(l.key) + '">' +
         '<div class="row"><div><h3' + (l.phone ? ' data-act="pt-open" data-phone="' + esc(l.phone) + '" style="cursor:pointer;text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px"' : '') + '>' + esc(l.name || "Unknown") + (l.phone ? ' <span class="meta">· ' + esc(l.phone) + '</span>' : '') + (l.lang === "hi" ? '<span class="lang">🗣 हिंदी</span>' : '') + (catOf(l) ? '<span class="cat ' + catOf(l) + '">' + ({ hair: "💇 Hair", skin: "💆 Skin", ht: "🌱 Hair transplant", academy: "🎓 Academy" }[catOf(l)]) + "</span>" : "") + '</h3><div class="meta">' + esc(dmyt(l.ts)) + ' · ' + ago(l.ts) + (l.slot ? ' · 📅 ' + esc(l.slot) : '') + (l.mode ? ' · ' + esc(l.mode) : '') + (l.ownerName ? ' · 🙋 ' + esc(l.ownerName) : '') + '</div></div>' +
         '<div>' + (l.grade ? '<span class="gr ' + esc(l.grade) + '" data-act="gr-why" data-key="' + esc(l.key) + '" title="Enduku ee grade?">' + esc(l.grade) + ' <small>' + (l.score || 0) + '</small></span> ' : (heat ? '<span class="badge ' + esc(heat) + '">' + esc(heat) + '</span> ' : '')) + '<span class="badge src">' + s + '</span></div></div>' +
+        waFailBox(l.wa_fail, l.phone, l.name, l.key) +
         '<div class="concern">' + esc(l.concern || l.message || "") + (l.outcome && OUT_LABEL[l.outcome] ? '<span class="oc oc-' + esc(l.outcome) + '">' + esc(l.outcome === "followup" && l.fu && l.fu > istToday() ? "⏭ Upcoming follow-up" : OUT_LABEL[l.outcome]) + "</span>" : "") + '</div>' +
         (l.lastCall || l.fu ? '<div class="fu-line"><span>🗓 Lead: <b>' + esc(dmy(l.ts)) + "</b></span>" + (l.lastCall ? "<span>📞 Call: <b>" + esc(dmy(l.lastCall)) + "</b></span>" : "") +
           // Upcoming apart from due (14 Nov, point 9): "Upcoming follow-up 16 Nov"
@@ -3838,6 +3845,17 @@
     }
     function ibInitial(t) { return String(t.name || t.phone || "?").trim().charAt(0).toUpperCase() || "?"; }
     // The one line that says what a chat needs, or where it stands.
+    // Our last WhatsApp to them failed (api/_wafail.js): the reason, when, and
+    // one button to send again. After a retry it greys out until the receipt
+    // comes back; a delivered receipt removes it.
+    function waFailBox(f, phone, name, key, extra) {
+      if (!f || !phone) return "";
+      var when = dmyt(f.ts);
+      if (f.retried) return '<div class="wafail tried' + (extra || "") + '">🔁 Malli pampam ' + esc(dmyt(f.retried.ts)) + (f.retried.by ? " · " + esc(f.retried.by) : "") + " — cherindo ledo receipt kosam aagutunnam</div>";
+      var can = state.allow("leads.edit") || state.allow("inbox.reply");
+      return '<div class="wafail' + (extra || "") + '">❌ WhatsApp cheraledu · ' + esc(f.why || "") + " · " + esc(when) +
+        (can ? ' <button class="btn btn--sm" data-act="wa-retry" data-phone="' + esc(phone) + '" data-name="' + esc(name || "") + '" data-key="' + esc(key || "") + '">🔁 Malli pampu</button>' : "") + "</div>";
+    }
     function ibTag(t) {
       if (t.need) return '<span class="ib-tag ' + (NEED_CLS[t.need.pri] || "n4") + '">' + esc((t.need.icon || "") + " " + t.need.text) + "</span>";
       if (t.stage) return '<span class="ib-tag st-' + esc(t.stage.kind) + '">' + esc(t.stage.text) + "</span>";
@@ -3851,7 +3869,7 @@
         '<span class="ib-av ' + esc(t.grade || "") + '">' + esc(ibInitial(t)) + (t.unread ? '<i class="ib-dot"></i>' : "") + "</span>" +
         '<span class="ib-mid"><span class="ib-l1"><b>' + esc(nm) + "</b>" + (t.grade ? '<span class="gr ' + esc(t.grade) + '">' + esc(t.grade) + "</span>" : "") + "<time>" + ibTime(t.ts) + "</time></span>" +
         (about ? '<span class="ib-l2">' + esc(about) + "</span>" : "") + ibTag(t) +
-        '<p class="ib-last">' + esc(who + (t.last || "")) + "</p></span></button>";
+        '<p class="ib-last">' + (t.waFail && !t.waFail.retried ? '<span class="ib-failtag">❌ cheraledu</span> ' : "") + esc(who + (t.last || "")) + "</p></span></button>";
     }
     function ibBucket(t) { return t.bucket || (t.need ? "need" : t.stage && (t.stage.kind === "booked" || t.stage.kind === "visited") ? "booked" : t.stage && (t.stage.kind === "quiet" || t.stage.kind === "closed") ? "quiet" : t.stage && t.stage.kind === "human" ? "human" : "ai"); }
     function loadInbox(quiet) {
@@ -3990,6 +4008,8 @@
       // WhatsApp lets us write freely for 24 hours after the patient's last
       // message; after that only the approved template goes through, 250
       // letters of it. The strip says which, and how long is left.
+      var fl = $("ibFail");
+      if (fl) { var fb = waFailBox(j.waFail, ib.phone, (j.meta && j.meta.name) || "", "", " ib-fail"); fl.outerHTML = fb ? fb.replace('<div class="', '<div id="ibFail" class="') : '<div class="hide" id="ibFail"></div>'; }
       var note = $("ibNote"), left = j.meta && j.meta.lastIn ? j.meta.lastIn + 86400000 - Date.now() : 0;
       note.className = "ib-note" + (j.open ? "" : " warn");
       note.textContent = j.open
@@ -4062,7 +4082,7 @@
         // line, or a number with no thread, the old header and composer
         // stayed up under the new name (review, 9 Nov).
         ib.lastCount = -1;
-        ["ibHold", "ibAlert", "ibCard", "ibNote", "ibQuick", "ibForm"].forEach(function (id) { $(id).classList.add("hide"); });
+        ["ibHold", "ibAlert", "ibFail", "ibCard", "ibNote", "ibQuick", "ibForm"].forEach(function (id) { $(id).classList.add("hide"); });
         $("ibHead").classList.remove("hide"); $("ibName").textContent = phone; $("ibSub").textContent = "";
         var av0 = $("ibAv"); av0.textContent = ibInitial({ phone: phone }); av0.className = "ib-av";
         $("ibCall").href = "tel:+91" + phone; $("ibPt").classList.add("hide");
@@ -4077,7 +4097,7 @@
     }
     function closeThread() {
       ib.phone = null; $("ib").classList.remove("open");
-      ["ibHead", "ibHold", "ibMsgs", "ibForm", "ibNote", "ibQuick", "ibCard", "ibAlert"].forEach(function (id) { $(id).classList.add("hide"); });
+      ["ibHead", "ibHold", "ibMsgs", "ibForm", "ibNote", "ibQuick", "ibCard", "ibAlert", "ibFail"].forEach(function (id) { $(id).classList.add("hide"); });
       $("ibEmpty").classList.remove("hide");
       renderIbBoard();
       loadInbox(true);
@@ -6979,6 +6999,19 @@
             .catch(function (x) { var b2 = wrap.querySelector("#csBody"); if (b2) b2.textContent = "⚠️ " + x.message; });
         };
         showScript(false);
+        return;
+      }
+      // "🔁 Malli pampu" on the "❌ WhatsApp cheraledu" badge.
+      if (el.dataset.act === "wa-retry") {
+        if (!confirm((el.dataset.name || el.dataset.phone) + " ki WhatsApp malli pampala?\n\nWindow open aite ade message, lekapothe 'mana message cheraledu — reply cheyandi' ani template veltundi.")) return;
+        el.disabled = true;
+        api("wa-retry", { key: el.dataset.key || undefined, phone: el.dataset.phone, name: el.dataset.name })
+          .then(function (j) {
+            toast(j.via === "same" ? "🔁 Ade message malli pampam" : j.via === "template" ? "🔁 Template pampam — reply kosam aagandi" : "🔁 Pampam");
+            if (ib.phone === el.dataset.phone) openThread(ib.phone, true);
+            return Promise.all([load(true), loadInbox(true)]);
+          })
+          .catch(function (x) { toast(x.message); el.disabled = false; });
         return;
       }
       // "⏰ Slots pampu": the next free times to their WhatsApp, as a tap list.

@@ -4,13 +4,13 @@
 // Public on purpose: it carries a version number and a download link, nothing
 // else, and the app has to reach it before anyone has logged in.
 const LATEST = {
-  version: "1.75.0",
-  versionCode: 85,
+  version: "1.76.0",
+  versionCode: 86,
   // Below this, the app is too old to trust — it nags until they update.
   minVersionCode: 6,
   url: "https://www.dermaluxe.ai/assets/app/DermaLuxe-Staff.apk",
   page: "https://www.dermaluxe.ai/staff-app.html",
-  notes: "Staff list (13, 14 Nov) lo points: ivala call chesina leads Ippude call lo malli raavu; Leads today lo touch cheyyanivi matrame; calendar tho oka roju leads; Upcoming follow-up label; okate number lo iddaru unte rendu cards; patients vachina roju kinda, vachinavaallu paina; age / address / inko number edit; discount tho amount automatic ga taggutundi; Discontinued red lo; attendance popup; Academy badge = booked seats; app version side bar lo; Password marchipoyara option. 1.74 lo vachinavi anni idi lo unnayi.",
+  notes: "Kotha: ❌ WhatsApp cheraledu badge — patient ki mana message vellakapothe Leads card lo, Inbox lo red ga kanipistundi, kaaranam (Meta billing / 24 gantala window) tho. 🔁 Malli pampu okka tap — window open aite ade message, lekapothe template. Message cherina ventane badge potundi. 1.75 lo vachinavi anni idi lo unnayi.",
 };
 
 module.exports = async (req, res) => {

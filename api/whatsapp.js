@@ -1052,6 +1052,9 @@ async function recordStatuses(cfg, statuses) {
     // day of counts was lost to it).
     const n = await guard.kvCommand(cfg, ["INCR", `wa:dlv:${day}:${kind}`]).catch(() => ({}));
     if (n && Number(n.result) === 1) await guard.kvCommand(cfg, ["EXPIRE", `wa:dlv:${day}:${kind}`, String(60 * 86400)]).catch(() => {});
+    // The desk's "❌ WhatsApp cheraledu" badge (_wafail.js): a delivered or
+    // read receipt means the newest message reached them, so it comes off.
+    if (kind === "delivered" || kind === "read") { await require("./_wafail.js").clear(cfg, st && st.recipient_id).catch(() => {}); continue; }
     if (kind !== "failed") continue;
     const er = (Array.isArray(st.errors) && st.errors[0]) || {};
     const ph = String(st.recipient_id || "").replace(/\D/g, "").slice(-10);
@@ -1059,6 +1062,7 @@ async function recordStatuses(cfg, statuses) {
       detail: String((er.error_data && er.error_data.details) || "").slice(0, 200), id: String(st.id || "").slice(-24) };
     console.error("wa: delivery failed", row.code, row.title, ph.slice(-4));
     await guard.kvCommand(cfg, ["LPUSH", "wa:fail", JSON.stringify(row)]).catch(() => {});
+    await require("./_wafail.js").mark(cfg, ph, row).catch(() => {});
     await guard.kvCommand(cfg, ["LTRIM", "wa:fail", "0", "499"]).catch(() => {});
     // Account-wide failures stop every message, not one patient's. 19 Nov,
     // 4:45 PM: 131042 "Business eligibility payment issue — currency is not

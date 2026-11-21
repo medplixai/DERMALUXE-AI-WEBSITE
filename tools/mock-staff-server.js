@@ -76,9 +76,16 @@ const mockHms = { ok: true, connected: true, host: "clinic.medicare-hms.in", ten
 const CAPS = ["leads.view", "leads.edit", "appts.view", "appts.edit", "academy.view", "academy.edit",
   "posts.view", "reviews.view", "reports.view", "money.view", "money.bill", "money.expense", "stock.view", "stock.edit", "attend.manage", "consent.take", "pkg.log", "ai.use", "msg.send", "team.manage", "settings.manage"];
 
+// "❌ WhatsApp cheraledu" (api/_wafail.js, 21 Nov): two leads and one chat
+// whose last message failed — one on Meta billing, one on a shut window.
+const mockFail = {
+  [leads[1].phone]: { ts: Date.now() - 14 * 3600000, code: 131042, title: "Business eligibility payment issue", why: "Meta billing problem" },
+  [leads[3].phone]: { ts: Date.now() - 3 * 3600000, code: 131047, title: "Re-engagement message", why: "24 gantala window close" },
+  "9876543210": { ts: Date.now() - 11 * 60000, code: 131042, title: "Business eligibility payment issue", why: "Meta billing problem" },
+};
 function page(offset) {
   const from = Math.max(0, offset | 0);
-  const slice = leads.slice(from, from + PAGE).map(trim);
+  const slice = leads.slice(from, from + PAGE).map(trim).map((l) => (mockFail[l.phone] ? Object.assign({}, l, { wa_fail: mockFail[l.phone] }) : l));
   return { leads: slice, leadsTotal: leads.length, offset: from, more: from + slice.length < leads.length };
 }
 function data() {
@@ -142,7 +149,8 @@ function ibRows() {
     const lead = MOCK_LEAD[t.phone] || {}, q = MOCK_QUAL[t.phone] || {};
     const row = { phone: t.phone, name: t.name, last: last.text, lastDir: last.dir, lastBy: last.by || "", ts: last.ts, unread: t.unread, human: t.human, open: t.open,
       lastIn: lastIn ? lastIn.ts : 0, lastInText: lastIn ? lastIn.text : "", lastHuman: lastHum ? lastHum.ts : 0, grade: q.grade, score: q.score, village: q.village, km: q.km,
-      concern: lead.concern || "", leadStatus: lead.status || "", goal: goal.goalFor({ concern: lead.concern || "", status: lead.status, km: q.km, name: t.name, slot: lead.slot }).label };
+      concern: lead.concern || "", leadStatus: lead.status || "", goal: goal.goalFor({ concern: lead.concern || "", status: lead.status, km: q.km, name: t.name, slot: lead.slot }).label,
+      waFail: mockFail[t.phone] || undefined };
     return Object.assign(row, triage.triage(row, lead, Date.now()));
   });
   return rows.sort(triage.order);
@@ -177,6 +185,17 @@ http.createServer((req, res) => {
       me: { phone: "9010427777", name: "Owner (mock)", role: "owner", caps: ["*"] },
     });
     if (a === "login" || a === "verify") return send(200, { ok: true, token: "mock.token" });
+    if (a === "wa-retry") {
+      let body = ""; req.on("data", (c) => (body += c));
+      return req.on("end", () => {
+        const b2 = (() => { try { return JSON.parse(body || "{}"); } catch (e) { return {}; } })();
+        const f = mockFail[String(b2.phone || "")];
+        if (!f) return send(409, { error: "Ee number ki fail ayina message ledu — chivari message cherindi" });
+        if (f.retried) return send(409, { error: "30 nimishala lopu already malli pampam — receipt kosam aagandi" });
+        f.retried = { ts: Date.now(), by: "Owner (mock)", via: f.code === 131047 ? "template" : "same" };
+        return send(200, { ok: true, via: f.retried.via });
+      });
+    }
     if (a === "lead-add") {
       let body = ""; req.on("data", (c) => (body += c));
       return req.on("end", () => {
@@ -461,7 +480,7 @@ http.createServer((req, res) => {
       if (!t) return send(404, { error: "Ee number tho chat ledu" });
       t.unread = 0;
       const row = ibRows().find((x) => x.phone === t.phone) || {};
-      return send(200, { ok: true, phone: t.phone, msgs: t.msgs, meta: { name: t.name, lastIn: t.msgs.filter((m) => m.dir === "in").pop().ts }, human: t.human, open: t.open, canReply: true,
+      return send(200, { ok: true, phone: t.phone, msgs: t.msgs, meta: { name: t.name, lastIn: t.msgs.filter((m) => m.dir === "in").pop().ts }, human: t.human, open: t.open, canReply: true, waFail: mockFail[t.phone] || null,
         card: { grade: row.grade, score: row.score, problem: row.concern, village: row.village, km: row.km, since: "6 nelalu", next: { kind: "book", text: "Slot pettandi — Saturday evening" }, goal: row.goal, stage: row.stage, need: row.need, concern: row.concern, visits: 0 } });
     }
     let raw = ""; req.on("data", (c) => { raw += c; });
