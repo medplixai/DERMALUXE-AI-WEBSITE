@@ -159,6 +159,27 @@ const hook = { token: "hook" };
   const own = graph.shift() || {};
   global.fetch = stubFetch;
   is([own.type, own.template && own.template.name, graph.length], ["template", "staff_calls_pending", 0], "a calls-pending alert to a shut window goes as its own template, once, not as plain text");
+  // 21 Nov: team phones were sent template after template nobody answered,
+  // and Meta began refusing them (131049), the manager's login code with them.
+  graph.length = 0;
+  global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
+  const TP = "9876500905", cap = realNotify.TEAM_TPL_CAP;
+  const outs = [];
+  for (let i = 1; i <= cap + 3; i++) outs.push(await realNotify.teamSend({}, TP, `🚨 *New Lead!* (whatsapp)\n👤 Lead ${i}`));
+  const tpls = graph.filter((g) => g.type === "template");
+  is([cap, tpls.length, tpls.slice(0, cap).every((g) => /Lead \d/.test(JSON.stringify(g))), /aagi unnayi.*ok/.test(JSON.stringify(tpls[cap] || {}))], [3, 4, true, true],
+    "a shut window gets three alert templates a day, then one saying more are waiting and asking for an ok — and nothing more");
+  is(outs.every(Boolean), true, "the callers hear the alerts were taken (they are held, not lost)");
+  graph.length = 0;
+  await realNotify.markWindow({}, TP);
+  const flushed = graph.filter((g) => g.text).map((g) => g.text.body).join("\n");
+  is([/Aagi unna alerts \(3\)/.test(flushed), /Lead 4/.test(flushed) && /Lead 5/.test(flushed) && /Lead 6/.test(flushed), /Lead 1\b/.test(flushed)], [true, true, false],
+    "the moment that phone writes in, the three held alerts arrive in full, with their times; the ones already sent do not repeat");
+  graph.length = 0;
+  await realNotify.markWindow({}, TP);
+  is(graph.length, 0, "a second message from them sends nothing twice");
+  await realNotify.teamSend({}, TP, "🚨 *New Lead!* (whatsapp)\n👤 Lead 7");
+  is([graph.length, !!(graph[0] || {}).text], [1, true], "with the window open, alerts go as text and are not counted");
   // 20 Nov: twenty messages written as "plain text, else the template" went
   // as plain text to shut windows; Meta said 200, dropped them, and the
   // template never ran. A free-form send to a shut window is now a false.

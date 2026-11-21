@@ -269,6 +269,27 @@ async function markWindow(cfg, digits) {
   const d = String(digits || "").replace(/\D/g, "").slice(-10);
   if (!cfg || d.length !== 10) return;
   await guard.kvCommand(cfg, ["SET", `win:${d}`, String(Date.now()), "EX", String(WIN_SECS)]).catch(() => {});
+  await flushHeld(cfg, d).catch(() => {});
+}
+
+// Team alerts held back by teamSend's daily cap, sent the moment that phone
+// writes in (its window is open now, so they go as full text, free). Taken
+// off the list before sending, so two quick messages cannot send them twice.
+async function flushHeld(cfg, d) {
+  const k = `tq:hold:${d}`;
+  const r = await guard.kvCommand(cfg, ["LRANGE", k, "0", "-1"]).catch(() => null);
+  const rows = ((r && r.result) || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter((x) => x && x.text);
+  if (!rows.length) return 0;
+  await guard.kvCommand(cfg, ["DEL", k]).catch(() => {});
+  const at = (ts) => new Date(ts).toLocaleTimeString("en-IN", { hour: "numeric", minute: "2-digit", hour12: true, timeZone: "Asia/Kolkata" });
+  const parts = rows.map((x) => `🕐 ${at(x.ts)}\n${x.text}`);
+  let chunk = `📥 *Aagi unna alerts (${rows.length})*`, sent = 0;
+  for (const p of parts) {
+    if ((chunk + "\n\n———\n\n" + p).length > 3500) { if (await sendWa(d, chunk)) sent++; chunk = p; }
+    else chunk += "\n\n———\n\n" + p;
+  }
+  if (await sendWa(d, chunk)) sent++;
+  return sent;
 }
 
 async function windowOpen(cfg, digits) {
@@ -301,10 +322,44 @@ function alertLine(text) {
 // team were built the same way. Every message to a team phone comes through
 // here now. tpl = {name, params}: a template of its own for a shut window
 // (staff_calls_pending, say); daily_digest_ping carries anything else.
+//
+// 21 Nov: with every alert now a template, the owner's, the manager's and the
+// clinic phones were sent several a day that nobody answered, and Meta began
+// refusing them (131049) — the manager's login code among them. So a shut
+// window gets at most TEAM_TPL_CAP templates a day per phone. The next alert
+// sends one more, saying alerts are waiting and asking for an "ok"; after
+// that they are held (tq:hold) and arrive in full the moment that phone
+// writes in (markWindow → flushHeld). An open window is not counted: those
+// go as text, as many as there are.
+const TEAM_TPL_CAP = 3;
+const eluruDay = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
 async function teamSend(cfg, to, text, tpl) {
   const d = String(to || "").replace(/\D/g, "").slice(-10);
   if (d.length !== 10) return false;
   if (await windowOpen(cfg, d)) return sendWa(d, text);
+  let n = 0;
+  if (cfg) {
+    try {
+      const k = `tq:n:${d}:${eluruDay()}`;
+      n = Number(((await guard.kvCommand(cfg, ["INCR", k])) || {}).result) || 0;
+      if (n === 1) await guard.kvCommand(cfg, ["EXPIRE", k, String(2 * 86400)]).catch(() => {});
+    } catch (e) { n = 0; }   // the store cannot count: send, as before
+  }
+  if (n > TEAM_TPL_CAP) {
+    const k = `tq:hold:${d}`;
+    const held = await guard.kvWrite(cfg, ["RPUSH", k, JSON.stringify({ ts: Date.now(), text: String(text || "").slice(0, 3000) })], "held team alert");
+    if (held) {
+      await guard.kvCommand(cfg, ["LTRIM", k, "-30", "-1"]).catch(() => {});
+      await guard.kvCommand(cfg, ["EXPIRE", k, String(3 * 86400)]).catch(() => {});
+      if (n === TEAM_TPL_CAP + 1) {
+        const t = await sendWaTemplate(d, "daily_digest_ping", ["📥 Inka alerts aagi unnayi — ee number ki 'ok' ani reply cheyandi, anni okesari vastayi."]).catch(() => null);
+        if (!(t && t.ok)) console.error("notify: held-alerts notice failed", d.slice(-4));
+        return true;
+      }
+      return true;
+    }
+    // Could not hold it: better one template too many than an alert lost.
+  }
   if (tpl && tpl.name) {
     const own = await sendWaTemplate(d, tpl.name, tpl.params || []).catch(() => null);
     if (own && own.ok) return true;
@@ -472,4 +527,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, notifyTargets, aiFailed, teamSend, markWindow, windowOpen, alertLine, sendWa, sendWaButtons, sendWaList, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
+module.exports = { leadAlert, notifyTargets, aiFailed, teamSend, markWindow, flushHeld, TEAM_TPL_CAP, windowOpen, alertLine, sendWa, sendWaButtons, sendWaList, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
