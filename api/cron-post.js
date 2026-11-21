@@ -6,17 +6,16 @@ const guard = require("./_guard.js");
 const admin = require("./_admin.js");
 const notify = require("./_notify.js");
 
+// "Post live" / "post fail" / "broadcast done" to the owner. Until 21 Nov this
+// was its own plain-text send, and at 8:30 AM the live-post message to the
+// owner, the clinic phone and a manager came back 131047 — their 24-hour
+// windows were shut, Meta took the text and dropped it. It goes through
+// notify.teamSend now: plain text to an open window, the team template to a
+// shut one.
 async function notifyAdmin(digits, text) {
-  const token = process.env.WA_CLOUD_TOKEN;
-  const phoneId = String(process.env.WA_PHONE_ID_ALLOWLIST || "1237387512796539").split(",")[0].trim();
-  if (!token || !phoneId || !digits) return;
-  try {
-    await fetch(`https://graph.facebook.com/v21.0/${phoneId}/messages`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      body: JSON.stringify({ messaging_product: "whatsapp", to: `91${digits}`, text: { body: String(text).slice(0, 900) } }),
-    });
-  } catch (e) {}
+  const d = String(digits || "").replace(/\D/g, "").slice(-10);
+  if (d.length !== 10) return;
+  await notify.teamSend(guard.kvConfig(), d, String(text).slice(0, 900)).catch(() => {});
 }
 
 // Who at the desk hears about a slot that has passed: the reception phones

@@ -177,6 +177,12 @@ const hook = { token: "hook" };
   const fs = require("fs");
   const bare =["_queue.js", "cron-backup.js", "_review.js", "cron-exam.js"].filter((f) => /notify\.sendWa\(/.test(fs.readFileSync(path.join(API, f), "utf8")));
   is(bare, [], "the calls, backup, review and exam messages to the team never go as bare plain text");
+  // 21 Nov, 8:30 AM: cron-post had its own WhatsApp send, and the "post live"
+  // message to three team phones was dropped. Only these may talk to Meta
+  // directly: notify itself, the agent's in-window replies, Instagram, and
+  // the poster cron, which checks the window first.
+  const direct = fs.readdirSync(API).filter((f) => f.endsWith(".js") && /graph\.facebook\.com\/v[\d.]+\/\$\{[^}]+\}\/messages/.test(fs.readFileSync(path.join(API, f), "utf8")));
+  is(direct.filter((f) => !["_notify.js", "whatsapp.js", "instagram.js", "cron-daily.js"].includes(f)), [], "no other file sends WhatsApp messages around notify's window check");
   graph.length = 0;
   global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
   const broke = { text: async () => '{"type":"error","error":{"message":"Your credit balance is too low to access the Anthropic API."}}' };
