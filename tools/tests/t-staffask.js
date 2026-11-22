@@ -53,7 +53,7 @@ const SA = h.load("_staffask");
     const u = String(url);
     if (u.includes("api.anthropic.com")) {
       modelCalls++;
-      return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify({ reply: "Chin area ki diode laser chestam andi.", lead: null }) }] }) };
+      return { ok: true, status: 200, json: async () => ({ content: [{ type: "text", text: JSON.stringify({ reply: ["Chin area ki diode laser chestam andi.", "Chin ki 15–20 nimishalu padutundi andi."][(modelCalls - 1) % 2], lead: null }) }] }) };
     }
     if (u.includes("graph.facebook.com")) { const b = opt && opt.body ? JSON.parse(opt.body) : {}; if (b.text) outs.push(b.text.body); }
     return { ok: true, status: 200, json: async () => ({}), text: async () => "" };

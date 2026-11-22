@@ -102,11 +102,12 @@ const hook = { token: "hook" };
   is([GF(["hi", "hair transplant cost entha?"]).key, GF(["academy course details kavali"]).key, GF(["acne undi"], { name: "Sita" }).next],
     ["ht_consult", "academy_seat", "10-digit mobile number adugu (WhatsApp lo slot confirm kosam)"],
     "Instagram, Messenger and the website read the same goal from what was written, and ask the number before the slot");
-  const hi = "Namaste andi, mee concern cheppandi.";
-  is([facts.withAiLine(hi, true).endsWith(facts.AI_LINE), facts.withAiLine(hi, false), facts.withAiLine("Nenu clinic AI assistant ni andi.", true)],
-    [true, hi, "Nenu clinic AI assistant ni andi."], "the first reply of a chat always says an AI is answering, once, even when the model forgets");
-  is(/Is chat mein DermaLuxe AI/.test(facts.withAiLine("Namaste ji, aapki problem kya hai? Batayein, main aapki madad karta hoon, aap kitne time se pareshan hain?", true)), true,
-    "a Hindi first reply gets the AI notice in Hindi");
+  // 22 Nov 2026, owner: "AI assistant ani asalu cheppakudadhu". The first
+  // reply carries no AI notice; asked, the agent still tells the truth.
+  is([typeof facts.withAiLine, typeof facts.AI_LINE], ["undefined", "undefined"], "the first reply of a chat no longer has an AI line added to it");
+  const brief = facts.clinicFacts("WhatsApp", "");
+  is([/never claim to be a person/.test(brief), /tell the truth/.test(brief), /Ee chat lo DermaLuxe AI help/.test(brief)], [true, true, false],
+    "the agent is told not to announce it, never to claim to be a person, and to tell the truth when asked");
   const lint = require(path.join(API, "_lint.js")), stubFetch = global.fetch, realKey = process.env.ANTHROPIC_API_KEY;
   process.env.ANTHROPIC_API_KEY = realKey || "test";
   const whole = { reply: "Hair transplant cost grafts batti untundi andi. Doctor garu scalp chusi exact ga cheptaru. Meeru e ooru nundi? Mee peru enti?" };

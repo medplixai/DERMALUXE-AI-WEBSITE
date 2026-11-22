@@ -389,13 +389,17 @@ ok(badName.length === 0, badName.length
   : `8.1(v) \u00b7 ${txFiles.length} condition images, none named as a before, after or comparison`);
 
 // 7.2(c): where the artificial nature of the content is material to the
-// audience, disclosure is required. A patient asking a "receptionist" about
-// their skin plainly qualifies, and the website widget already discloses.
+// audience, disclosure is required. Until 22 Nov 2026 every chat's first
+// reply and every call's greeting said an AI was answering. The owner decided
+// on 22 Nov that they should not ("AI assistant ani asalu cheppakudadhu —
+// nmc rules teesai"), and this line says so on every run, so the decision is
+// never mistaken for compliance. What is still enforced: the agent never
+// claims to be a person, and tells the truth when asked.
 const facts = read("api/_facts.js");
-ok(/AI assistant/.test(facts) && /NMC 7\.2\(c\)/.test(facts),
-  "7.2(c) \u00b7 the chat agent is told to say it is an AI");
-ok(/AI assistant ni/.test(read("api/voice-call.js")),
-  "7.2(c) \u00b7 the phone receptionist says it is an AI");
+ok(/never claim to be a person/.test(facts) && /never deny being an AI/.test(facts) && /tell the truth/.test(facts),
+  "7.2(c) \u00b7 NOT disclosed up front, by the owner's decision of 22 Nov 2026 \u2014 but the agents never claim to be a person and tell the truth when asked");
+ok(!/withAiLine|Nenu clinic AI assistant ni\./.test(read("api/whatsapp.js") + read("api/voice-call.js")),
+  "7.2(c) \u00b7 chats and calls no longer open with an AI notice (owner, 22 Nov 2026)");
 
 // 8.1(x), last sentence: "Any lawful disclosure of charges, packages or fees
 // shall be factual, transparent and not misleading." The consultation fee was
@@ -479,6 +483,6 @@ console.log("");
 // "nothing a patient should not read" over a published before/after would be
 // the audit telling a comfortable lie once a week.
 console.log(bad ? `${bad} problem(s) — a patient can still read these`
-  : decided.length || ownerOffer.length || ownerCases.length ? "clean except what the owner decided to publish: " + [decided.length ? "the before/after photograph (8.1(v), 27 Oct)" : "", ownerOffer.length ? "a free hair transplant consultation (8.1(x), 7 Nov)" : "", ownerCases.length ? "the surgeon's case count (8.1(iii), 9 Nov)" : ""].filter(Boolean).join(", ")
+  : decided.length || ownerOffer.length || ownerCases.length ? "clean except what the owner decided to publish: " + [decided.length ? "the before/after photograph (8.1(v), 27 Oct)" : "", ownerOffer.length ? "a free hair transplant consultation (8.1(x), 7 Nov)" : "", ownerCases.length ? "the surgeon's case count (8.1(iii), 9 Nov)" : "", "chats and calls not saying they are AI (7.2(c), 22 Nov)"].filter(Boolean).join(", ")
   : "nothing a patient should not read");
 process.exit(bad ? 1 : 0);

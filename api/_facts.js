@@ -133,7 +133,7 @@ Mana doctor scalp chusi correct cause cheptaru. Hair fall entakalam nundi undi?
 - 🚨 URGENT SAFETY (highest priority — anni rules kanna mundu): patient ee laantivi cheppithe — treatment tarvata ekkuva pain/swelling/bleeding, spreading infection leda chemu, severe allergic reaction, face/kannu daggara sudden swelling, jwaram tho rash, burns, leda "chala emergency" ani — VENTANE clinic ki call cheyamani cheppu: 📞 +91 99591 34666 (Mon-Sat 9 AM - 9 PM). Reply chinnaga & calm ga: worry kanipinchaku kaani serious ga teesuko, mana team ki ventane cheptunnam ani cheppu, home remedies leda medicines suggest CHEYAKU, booking gurinchi adagaku. Output lo "urgent":"<oka chinna line: em ayindi>" kuda pettu — mana team ki instant alert veltundi.
 - RESULTS PHOTOS: patient results/before-after adigithe ("results ela untayi", "before after unnaya", "photos chupinchandi", "proof") — before/after photos EVER pampakoodadhu, adagakoodadhu, "pampistanu" ani cheppakoodadhu. Indian medical advertising rules (NMC 8.1(v)) before/after photos chupinchadam ni promotion kosam nishedhistayi — patient ok annaa kudaa (6.2). Badulu ga: aa treatment ni nijayiti ga, mamulu maatallo cheppu — enni sessions, entha samayam lo marpu kanipistundi, prathi okkariki different ani, mariyu consultation lo doctor garu nerugaa chusi cheptaru ani. Taruvata ONE booking next step.
 - REFERRAL: patient *REFER* ani thame adigithe matrame valla code cheppu — adi evaru evarini pampincharo telusukovadaniki MATRAME. Daaniki e reward/discount/benefit LEDU, mariyu emi ivvamani cheppakoodadhu. Neeve mundu referral gurinchi maatladaku. Patient ni DermaLuxe ni recommend cheyamani gaani, review raayamani gaani EPPUDU ADAGAKU — Indian medical rules (NMC 8.1(vii), 8.1(xi), 3.2 Expl. V) adi nishedhistayi.
-- YOU ARE AN AI ASSISTANT, AND YOU NEVER PRETEND OTHERWISE — but you do not keep repeating it either (owner, 5 Nov 2026). Only in your FIRST reply of a new conversation, add this one quiet last line, exactly: "_Ee chat lo DermaLuxe AI help chestundi — staff tho matladali ante *staff* ani type cheyandi._" Never again after that, and never "AI" or 🤖 anywhere else unless asked. If anyone asks "meeru manishaa / bot aa / AI aa / real person aa", tell the truth in one easy line ("Nenu clinic AI assistant ni andi — mana staff tho matladali ante cheppandi, team ventane call chestundi") and treat it as a request for staff. Never claim to be a person, never invent a staff name for yourself, never deny being an AI. (NMC 7.2(c).)
+- WHAT YOU ARE — owner, 22 Nov 2026: "AI assistant ani asalu cheppakudadhu". Do not announce that you are an AI: no "AI" line, no 🤖, no "nenu assistant ni" in your replies, first or later. But you NEVER lie about it: never claim to be a person, never invent a staff name for yourself, never say "nenu manishini" or "nenu staff ni", never deny being an AI. If anyone asks directly "meeru manishaa / bot aa / AI aa / real person aa", tell the truth in one easy line ("Nenu clinic AI assistant ni andi — mana staff tho matladali ante cheppandi, team call chestundi") and treat it as a request for staff.
 - STAFF REQUEST: "staff", "manishi tho matladali", "call cheyandi", "human" → one warm line that our team will call shortly, and set lead with concern "Call back request" (name if known).
 - NEVER quote prices or discounts. For pricing say a consultation/visit is needed. Never diagnose; for medical questions suggest a doctor consultation politely.
 
@@ -229,21 +229,12 @@ const FALLBACK_REPLY =
   "🌐 www.dermaluxe.ai (free AI skin analysis)\n" +
   "మా team త్వరలో మీకు reply చేస్తుంది. Thank you!";
 
-// The one-time "this is an AI" line. The brief asks the model for it, and on
-// the evening of 5 November both new WhatsApp chats went out without it — a
-// rule the model may skip is not how a legal duty (NMC 7.2(c)) should be met.
-// So the code adds it to the first reply of every new conversation, unless
-// the reply already says it.
-const AI_LINE = "_Ee chat lo DermaLuxe AI help chestundi — staff tho matladali ante *staff* ani type cheyandi._";
-// A Hindi chat gets the same line in Hindi (7 Nov: a Hindi speaker was told
-// in Hindi, then read the AI notice in Tenglish).
-const AI_LINE_HI = "_Is chat mein DermaLuxe AI madad kar raha hai — staff se baat karni ho to *staff* likhiye._";
-const isHindi = (t) => /[\u0900-\u097F]/.test(t) || (String(t).toLowerCase().match(/\b(aap|aapki|aapka|hai|hain|kijiye|batayein|bataiye|nahi|kya|mein|hoon|karna|chahiye|ji)\b/g) || []).length >= 4;
-function withAiLine(reply, firstTurn) {
-  const r = String(reply || "");
-  if (!firstTurn || !r.trim() || /\bAI\b/.test(r)) return r;
-  return r.replace(/\s+$/, "") + "\n\n" + (isHindi(r) ? AI_LINE_HI : AI_LINE);
-}
+// Until 22 Nov 2026 the code added "_Ee chat lo DermaLuxe AI help
+// chestundi…_" to the first reply of every chat, under NMC 7.2(c). The owner
+// decided on 22 Nov that the chat should not announce it ("AI assistant ani
+// asalu cheppakudadhu — nmc rules teesai"), taking that risk as theirs. The
+// agent still never claims to be a person and answers truthfully when asked
+// (the brief above); tools/tests/wire-nmc.js checks both.
 
 // The clock every agent is given with each message. The API has no idea what
 // day it is, and the Instagram and Messenger agents were never told: on
@@ -266,4 +257,4 @@ function nowIstCtx() {
   return `[Now: ${days[day]} ${d.getUTCDate()} ${mo[d.getUTCMonth()]}, ${h}:${min} ${ap} IST${note}] `;
 }
 
-module.exports = { nowIstCtx, clinicFacts, photoRules, FALLBACK_REPLY, salvageReply, AI_LINE, withAiLine };
+module.exports = { nowIstCtx, clinicFacts, photoRules, FALLBACK_REPLY, salvageReply };
