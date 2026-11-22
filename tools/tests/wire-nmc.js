@@ -400,6 +400,11 @@ ok(/never claim to be a person/.test(facts) && /never deny being an AI/.test(fac
   "7.2(c) \u00b7 NOT disclosed up front, by the owner's decision of 22 Nov 2026 \u2014 but the agents never claim to be a person and tell the truth when asked");
 ok(!/withAiLine|Nenu clinic AI assistant ni\./.test(read("api/whatsapp.js") + read("api/voice-call.js")),
   "7.2(c) \u00b7 chats and calls no longer open with an AI notice (owner, 22 Nov 2026)");
+// The fixed replies too: on 23 Nov two of them still said "AI pre-assessment
+// istanu" / "AI విశ్లేషణ ఇస్తాను" in the agent's own voice. The only place
+// the agent says it is AI is the truthful answer when asked, in _facts.js.
+ok(!/AI pre-assessment istanu|AI విశ్లేషణ ఇస్తాను|AI help chestundi/.test(["api/whatsapp.js", "api/instagram.js", "api/messenger.js", "api/chat.js", "api/voice-call.js"].map(read).join("\n")),
+  "7.2(c) \u00b7 no fixed reply announces the agent as AI in its own voice (owner, 22 Nov 2026)");
 
 // 8.1(x), last sentence: "Any lawful disclosure of charges, packages or fees
 // shall be factual, transparent and not misleading." The consultation fee was

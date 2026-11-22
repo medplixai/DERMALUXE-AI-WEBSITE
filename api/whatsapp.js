@@ -1229,7 +1229,7 @@ module.exports = async (req, res) => {
     } else if (["location", "contacts"].indexOf(msg.type) !== -1) {
       // Steer to what the agent CAN handle: text, voice notes, skin/hair photos.
       await sendCloud(cloud.phoneNumberId, cloud.to,
-        "Namaste! 🙏 Text, voice note leda skin/hair photo pampandi — photo ki instant AI pre-assessment istanu. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే AI విశ్లేషణ ఇస్తాను.");
+        "Namaste! 🙏 Text, voice note leda skin/hair photo pampandi — photo pampithe ventane oka chinna skin/hair pre-assessment vastundi. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే ప్రాథమిక విశ్లేషణ వస్తుంది.");
       return res.status(200).json({ ok: true });
     } else {
       // reaction / sticker / system / unsupported — ignore silently
@@ -1330,7 +1330,7 @@ module.exports = async (req, res) => {
   if (videoId) {
     return respond(admin.isAdmin(digits)
       ? "🎬 Reel post cheyali ante video tho paatu caption lo 'post: <idea>' ani pampandi (leda 'schedule: repu 6pm | <idea>')."
-      : "Namaste! 🙏 Video ki analysis cheyalenu — text, voice note leda skin/hair photo pampandi. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే AI విశ్లేషణ ఇస్తాను.");
+      : "Namaste! 🙏 Video ki analysis kudaradu andi — text, voice note leda skin/hair photo pampandi. 📸\n· టెక్స్ట్, వాయిస్ నోట్ లేదా ఫోటో పంపండి — ఫోటోకి వెంటనే ప్రాథమిక విశ్లేషణ వస్తుంది.");
   }
 
   // ---- Referral program: personal code out, friend's code in -------------
