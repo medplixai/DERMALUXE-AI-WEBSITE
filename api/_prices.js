@@ -88,6 +88,13 @@ async function save(cfg, input, by) {
 
 const bandText = (b) => `${b.name} ${rupee(b.from)}${b.to && b.to !== b.from ? "–" + rupee(b.to) : "+"}`;
 
+// Owner, 22 Nov 2026: "prices cheppe tappudu offers untaai clinic ki visit
+// cheyyandi, Dr Vinitha ni kalavandi manchi offer istundhi ani cheppali".
+// The agent says an offer exists and who gives it — never a number or a
+// percentage of its own, since only Dr. Vinitha decides it at the clinic.
+const OFFER_LINE = "Clinic lo offers unnayi andi — clinic ki vachi Dr. Vinitha garini kalavandi, meeku manchi offer istaru.";
+const OFFER_RULE = `- EVERY time you give a treatment price, add this in the same message, in your own words but with the same meaning: "${OFFER_LINE}" Same when anyone asks "offer / discount undha?". NEVER name a discount amount, a percentage, a lower price or a "free" sitting yourself — the offer is Dr. Vinitha's to give at the clinic. Then the slot question.`;
+
 // The paragraph the agent reads. Empty under "none" — the standing rule stands.
 function block(p) {
   if (!p || p.mode === "none") return "";
@@ -96,13 +103,15 @@ function block(p) {
   if (p.mode === "list") {
     lines.push(`- The clinic's price list is below (owner, ${pricelist.AS_OF}). When the patient asks the price of a treatment ON IT, give that line exactly as written — the per-sitting price, and the package if it has one. One or two lines per reply, never the whole list. In the same message say which treatment and how many sittings suit them is decided by the doctor at the consultation, then ask the slot question.`);
     lines.push("- A general \"rates enti? / price list\": name the two or three lines closest to their concern and say the full list is at www.dermaluxe.ai/price-list.html.");
-    lines.push("- A package is \"N sittings ₹X\" — never call any sitting free or extra, never offer a discount, never a number that is not written here. A treatment not on the list: no number at all — the old rule.");
+    lines.push("- A package is \"N sittings ₹X\" — never call any sitting free or extra, never a number that is not written here. A treatment not on the list: no number at all — the old rule.");
+    lines.push(OFFER_RULE);
     lines.push("- Injections, vaccines and minor procedures (biopsy, I&D, Inj. ...) only when the patient names them; never suggest one.");
     lines.push("PRICE LIST:\n" + pricelist.text());
   }
   if (p.mode === "bands" && p.bands.length) {
     lines.push(`- When asked the price of one of THESE treatments, you may give the range, always as "starts from / approx", always followed by "exact plan & cost doctor consultation lo" and the slot question in the same message: ${p.bands.map(bandText).join(" · ")}.`);
-    lines.push("- Any treatment NOT in that list: no number at all — the old rule. Never a discount, never a package total, never a per-session figure the list does not carry.");
+    lines.push("- Any treatment NOT in that list: no number at all — the old rule. Never a package total, never a per-session figure the list does not carry.");
+    lines.push(OFFER_RULE);
   }
   return lines.join("\n");
 }
@@ -130,8 +139,8 @@ function allowSet(p) {
 // One line for the reviewer and the exam judge, so a permitted price is not a fault.
 function judgeNote(p) {
   if (!p || p.mode === "none") return "";
-  if (p.mode === "list") return `\nOWNER PRICE POLICY (a permitted number is NOT a fault): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked; any price on the clinic's list below may be given when the patient asks about that treatment. A number not on it, a discount, or a "free" sitting is a fault; reciting the whole list unasked is a fault.\n${pricelist.text()}`;
-  return `\nOWNER PRICE POLICY (a permitted number is NOT a fault): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked${p.mode === "bands" && p.bands.length ? `; these ranges may be given when asked: ${p.bands.map(bandText).join(" · ")}` : ""}. Any other treatment price is still a fault.`;
+  if (p.mode === "list") return `\nOWNER PRICE POLICY (a permitted number is NOT a fault): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked; any price on the clinic's list below may be given when the patient asks about that treatment. A number not on it, a discount amount or percentage, or a "free" sitting is a fault; reciting the whole list unasked is a fault. Saying the clinic has offers and Dr. Vinitha gives them at the clinic is the owner's rule (22 Nov) and NOT a fault.\n${pricelist.text()}`;
+  return `\nOWNER PRICE POLICY (a permitted number is NOT a fault): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked${p.mode === "bands" && p.bands.length ? `; these ranges may be given when asked: ${p.bands.map(bandText).join(" · ")}` : ""}. Any other treatment price is still a fault. Saying the clinic has offers and Dr. Vinitha gives them at the clinic is the owner's rule (22 Nov) and NOT a fault; a discount amount or percentage is.`;
 }
 
-module.exports = { load, save, block, blockFor, allowed, allowSet, judgeNote, MODES, KEY };
+module.exports = { OFFER_LINE, load, save, block, blockFor, allowed, allowSet, judgeNote, MODES, KEY };
