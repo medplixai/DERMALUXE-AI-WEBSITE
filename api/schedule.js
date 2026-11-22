@@ -387,11 +387,14 @@ async function tellRebook(ph, first) {
   } catch (e) { console.error("schedule: rebook", e && e.message); return false; }
 }
 
-async function tellPatient(ph, text) {
+// name: the patient's name, for the template's greeting slot. It used to take
+// the message's first word, which for a booking is "📅".
+async function tellPatient(ph, text, name) {
   if (!ph) return;
   try {
     if (await notify.sendWa(ph, text)) return;
-    await notify.sendWaTemplate(ph, "clinic_update", [String(text).split(" ")[0] || "Hi", String(text).slice(0, 250)]);
+    const first = String(name || "").trim().split(/\s+/)[0] || "andi";
+    await notify.sendWaTemplate(ph, "clinic_update", [first, String(text).slice(0, 250)]);
   } catch (e) { console.error("schedule: notify", e && e.message); }
 }
 
@@ -426,7 +429,7 @@ async function createAppt(cfg, me, b) {
     } };
   }
   await guard.kvCommand(cfg, ["LPUSH", Q, JSON.stringify(next)]);
-  await tellPatient(ph, `📅 ${next.name}, mee appointment book ayindi — ${istTime(at)}, ${new Date(at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })}.\nDermaLuxe by Medicare, Eluru.`);
+  await tellPatient(ph, `📅 ${next.name}, mee appointment book ayindi — ${istTime(at)}, ${new Date(at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })}.\nDermaLuxe by Medicare, Eluru.`, next.name);
   return { code: 200, body: { ok: true, appt: shape(next) } };
 }
 
@@ -595,7 +598,7 @@ module.exports = async (req, res) => {
     if (!at) return json(res, 400, { error: "E time offer chestunnaro ivvandi" });
     const first = String(w.name || "").trim().split(" ")[0] || "andi";
     const when = `${istTime(at)}, ${new Date(at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", weekday: "short", day: "numeric", month: "short" })}`;
-    await tellPatient(w.ph, `Namaste ${first} garu 🙏 DermaLuxe lo ${when} ki oka slot khali ayindi${w.concern ? " (" + w.concern + ")" : ""}.\n\nKavalante ee message ki *YES* ani reply cheyandi — mee peru meeda book chestam 😊`);
+    await tellPatient(w.ph, `Namaste ${first} garu 🙏 DermaLuxe lo ${when} ki oka slot khali ayindi${w.concern ? " (" + w.concern + ")" : ""}.\n\nKavalante ee message ki *YES* ani reply cheyandi — mee peru meeda book chestam 😊`, w.name);
     const next = Object.assign({}, w, { offered: (w.offered || []).concat([{ at, ts: Date.now(), by: me.name }]).slice(-5) });
     delete next.raw;
     await guard.kvCommand(cfg, ["LREM", WAIT, "1", w.raw]).catch(() => {});
@@ -628,7 +631,7 @@ module.exports = async (req, res) => {
     const cl = clash(rows, shape(next), cur.id);
     if (cl && !b.force) return json(res, 409, { error: `Aa time lo already undi (${cl.at}). Vere time chudandi.`, clash: cl });
     await replace(cfg, found.raw, next);
-    await tellPatient(cur.ph, `📅 ${cur.name || "Hi"}, mee appointment ${istTime(at)} ki marchamu (${new Date(at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })}). Ibbandi unte cheppandi.`);
+    await tellPatient(cur.ph, `📅 ${cur.name || "Hi"}, mee appointment ${istTime(at)} ki marchamu (${new Date(at).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short" })}). Ibbandi unte cheppandi.`, cur.name);
     return json(res, 200, { ok: true, appt: shape(next) });
   }
 
@@ -657,7 +660,7 @@ module.exports = async (req, res) => {
       await guard.kvCommand(cfg, ["LREM", Q, "1", found.raw]).catch(() => {});
       await guard.kvCommand(cfg, ["LPUSH", DONE, JSON.stringify(next)]).catch(() => {});
       await guard.kvCommand(cfg, ["LTRIM", DONE, "0", "499"]).catch(() => {});
-      await tellPatient(cur.ph, `${cur.name || "Hi"}, mee appointment cancel chesamu. Kotha time kavalante ee message ki reply cheyandi 🙏`);
+      await tellPatient(cur.ph, `${cur.name || "Hi"}, mee appointment cancel chesamu. Kotha time kavalante ee message ki reply cheyandi 🙏`, cur.name);
       return json(res, 200, { ok: true, cancelled: true, freed: { at: cur.at, mins: cur.mins || 30 }, waitMatches: cur.at > Date.now() ? await freedSlot(cfg, cur) : [] });
     }
     try { await require("./_memory.js").forget(cfg, cur.ph); } catch (e) {}

@@ -112,6 +112,14 @@ async function sendWaList(digits, text, rowsIn, button) {
   } catch (e) { console.error("notify: list error", to, e && e.message); return false; }
 }
 
+// Meta refuses a whole template (error 132018) when any variable holds a new
+// line, a tab, or more than 4 spaces in a row. On 22 Nov 2026 four booking
+// confirmations never reached patients because the message had "\n" in it.
+// So every variable is flattened here, once, for every caller.
+function tplText(v) {
+  return String(v == null ? "" : v).replace(/\s*[\r\n\t]+\s*/g, " ").replace(/ {2,}/g, " ").trim().slice(0, 500);
+}
+
 // Template message send (works OUTSIDE the 24h window — reminders/broadcasts).
 // params = array of strings for {{1}}, {{2}}... in the template body.
 // params: body variables. opts.urlSuffix: value for a dynamic URL button ({{1}} at the end of the link).
@@ -128,7 +136,7 @@ async function sendWaTemplate(digits, templateName, params, lang, opts) {
         language: { code: lang || "en" },
         components: (() => {
           const c = [];
-          if (params && params.length) c.push({ type: "body", parameters: params.map((v) => ({ type: "text", text: String(v).slice(0, 500) })) });
+          if (params && params.length) c.push({ type: "body", parameters: params.map((v) => ({ type: "text", text: tplText(v) })) });
           if (opts && opts.urlSuffix) c.push({ type: "button", sub_type: "url", index: "0", parameters: [{ type: "text", text: String(opts.urlSuffix).slice(0, 200) }] });
           return c;
         })(),
@@ -543,4 +551,4 @@ async function waHandoff(cfg, lead, channel) {
   return out;
 }
 
-module.exports = { leadAlert, notifyTargets, aiFailed, teamSend, markWindow, flushHeld, TEAM_TPL_CAP, windowOpen, alertLine, sendWa, sendWaButtons, sendWaList, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
+module.exports = { tplText, leadAlert, notifyTargets, aiFailed, teamSend, markWindow, flushHeld, TEAM_TPL_CAP, windowOpen, alertLine, sendWa, sendWaButtons, sendWaList, sendWaAuthCode, sendWaDocument, sendWaDocLink, sendWaImageLink, sendWaLocation, sendWaTemplate, sendAcademyTemplate, waHandoff };
