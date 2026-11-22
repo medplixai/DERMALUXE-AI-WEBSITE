@@ -74,9 +74,9 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   is((await prices.load(cfg)).mode, "list", "with nothing set, the agent may state the consultation fee and the clinic's price list (21 Nov)");
   const pb = await prices.blockFor(cfg);
   is(/HydraFacial: ₹6,000\/sitting; 4 sittings ₹22,000/.test(pb) && /decided by the doctor at the consultation/.test(pb) && /never call any sitting free/.test(pb), true, "the exact line from the list, the plan left to the doctor, and no sitting ever called free");
-  // 22 Nov, owner: "prices cheppe tappudu offers untaai clinic ki visit cheyyandi, Dr Vinitha ni kalavandi manchi offer istundhi ani cheppali".
-  is([/EVERY time you give a treatment price/.test(pb), pb.includes(prices.OFFER_LINE), /NEVER name a discount amount, a percentage/.test(pb), /Dr\. Vinitha .*NOT a fault/.test(prices.judgeNote(await prices.load(cfg)))], [true, true, true, true],
-    "with every price the agent says the clinic has offers and to meet Dr. Vinitha there — never a discount number of its own — and the judge does not mark it down");
+  // 22 Nov, owner: "prices cheppe tappudu offers untaai clinic ki visit cheyyandi, Dr Vinitha ni kalavandi…", then "dr nikitha ni kalavamanu".
+  is([/EVERY time you give a treatment price/.test(pb), pb.includes(prices.OFFER_LINE), /NEVER name a discount amount, a percentage/.test(pb), /Dr\. Nikhitha .*NOT a fault/.test(prices.judgeNote(await prices.load(cfg)))], [true, true, true, true],
+    "with every price the agent says the clinic has offers and to meet Dr. Nikhitha there — never a discount number of its own — and the judge does not mark it down");
   is((await prices.allowed(cfg)).has(22000) && !(await prices.allowed(cfg)).has(8800), true, "a listed number passes the editor; one not on the list does not");
   is(/consultation fee is \u20b9300/.test(await prices.blockFor(cfg)), true, "and the fee it states is \u20b9300");
   is(/Never volunteer it/.test(await prices.blockFor(cfg)), true, "but it never brings the price up itself");
