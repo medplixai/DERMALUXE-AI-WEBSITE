@@ -34,10 +34,15 @@ const pricelist = require("./_pricelist.js");
 // left to the consultation (block() below). These are the rate card's own
 // numbers (money.js DEFAULT_RATES), so the bill and the chat agree.
 //
-// 21 Nov 2026: the owner sent the full price list "for agent and web". The
-// default is now that list (mode "list"); the seven bands stay below as what
-// the control panel offers if somebody switches back to "bands".
-const DEFAULT = { mode: "list", consult: 300, bands: [
+// 21 Nov 2026: the owner sent the full price list "for agent and web", and
+// the default became that list (mode "list"). 24 Nov 2026, the owner again:
+// "WhatsApp agent price em cheppakunda clinic consultation cheyyamani
+// cheppamanu, akkada vachhaka doctor chusi price cheptundhi ani cheppamanu,
+// offers unnai ani cheppamanu". So the default is "consult": no treatment
+// price at all — come for the consultation, the doctor tells the price after
+// seeing you, and the clinic has offers. The list stays in _pricelist.js (the
+// website page and the "list" setting in the control panel still use it).
+const DEFAULT = { mode: "consult", consult: 300, bands: [
   { name: "HydraFacial", from: 3500, to: 0 },
   { name: "Chemical peel", from: 2500, to: 0 },
   { name: "Laser hair removal — face, per sitting", from: 2500, to: 0 },
@@ -101,6 +106,10 @@ function block(p) {
   if (!p || p.mode === "none") return "";
   const lines = [`\n\nPRICE POLICY — set by the owner; this overrides the "never quote prices" rule EXACTLY this far and no further:`];
   if (p.consult) lines.push(`- The consultation fee is ${rupee(p.consult)}. Say it when asked about consultation cost or "free na?" — in one line, adding that it is charged separately and is NOT adjusted against treatment cost. Never volunteer it. NEVER say it is free, adjusted, waived or refunded — the one exception is the hair transplant consultation from 6 Nov to 6 Dec 2026, which the HAIR TRANSPLANT PACKAGE block covers.`);
+  if (p.mode === "consult") {
+    lines.push(`- NO TREATMENT PRICES (owner, 24 Nov 2026). When anyone asks the price, cost, rate or package of ANY treatment — "entha?", "price?", "rates enti?", "package entha?" — give no number, no range, no "starts from". Instead, in your own words, in one or two short lines: the right treatment and its price are told by the doctor after seeing their skin or hair at the consultation, so please come to the clinic for a consultation; and: "${OFFER_LINE}" Then the slot question. If they push for "at least an idea", say kindly once more that the doctor gives the exact price at the clinic and that there are offers — still no number.`);
+    lines.push(`- Same when anyone asks "offer / discount undha?": "${OFFER_LINE}" NEVER name a discount amount, a percentage, a lower price or a "free" sitting yourself — the offer is Dr. Nikhitha's to give at the clinic.`);
+  }
   if (p.mode === "list") {
     lines.push(`- The clinic's price list is below (owner, ${pricelist.AS_OF}). When the patient asks the price of a treatment ON IT, give that line exactly as written — the per-sitting price, and the package if it has one. One or two lines per reply, never the whole list. In the same message say which treatment and how many sittings suit them is decided by the doctor at the consultation, then ask the slot question.`);
     lines.push("- A general \"rates enti? / price list\": name the two or three lines closest to their concern and say the full list is at www.dermaluxe.ai/price-list.html.");
@@ -141,6 +150,7 @@ function allowSet(p) {
 function judgeNote(p) {
   if (!p || p.mode === "none") return "";
   if (p.mode === "list") return `\nOWNER PRICE POLICY (a permitted number is NOT a fault): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked; any price on the clinic's list below may be given when the patient asks about that treatment. A number not on it, a discount amount or percentage, or a "free" sitting is a fault; reciting the whole list unasked is a fault. Saying the clinic has offers and Dr. Nikhitha gives them at the clinic is the owner's rule (22 Nov) and NOT a fault.\n${pricelist.text()}`;
+  if (p.mode === "consult") return `\nOWNER PRICE POLICY (24 Nov 2026): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked. NO treatment price may be given — any treatment price, range or package figure is a fault. Answering a price question with "the doctor tells the price at the consultation, please come to the clinic, the clinic has offers and Dr. Nikhitha gives them" is the owner's rule and is the RIGHT answer, NOT a dodge or a fault; a discount amount or percentage is a fault.`;
   return `\nOWNER PRICE POLICY (a permitted number is NOT a fault): consultation fee ${p.consult ? rupee(p.consult) : "not set"} may be told when asked${p.mode === "bands" && p.bands.length ? `; these ranges may be given when asked: ${p.bands.map(bandText).join(" · ")}` : ""}. Any other treatment price is still a fault. Saying the clinic has offers and Dr. Nikhitha gives them at the clinic is the owner's rule (22 Nov) and NOT a fault; a discount amount or percentage is.`;
 }
 

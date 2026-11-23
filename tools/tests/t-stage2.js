@@ -71,13 +71,17 @@ const DESK = { name: "Sowmya", phone: "9876500901", role: "reception" };
   // before. NMC 8.1(x): a disclosure of fees "shall be factual, transparent and
   // not misleading" \u2014 so the fee is told when asked, and only when asked.
   // 14 Nov: seven starting prices; 21 Nov: the owner's whole price list.
-  is((await prices.load(cfg)).mode, "list", "with nothing set, the agent may state the consultation fee and the clinic's price list (21 Nov)");
+  // 24 Nov, owner: "price em cheppakunda clinic consultation cheyyamani… doctor chusi price cheptundhi… offers unnai ani cheppamanu".
+  is((await prices.load(cfg)).mode, "consult", "with nothing set, the agent gives no treatment price — only the consultation fee when asked (24 Nov)");
   const pb = await prices.blockFor(cfg);
-  is(/HydraFacial: ₹6,000\/sitting; 4 sittings ₹22,000/.test(pb) && /decided by the doctor at the consultation/.test(pb) && /never call any sitting free/.test(pb), true, "the exact line from the list, the plan left to the doctor, and no sitting ever called free");
-  // 22 Nov, owner: "prices cheppe tappudu offers untaai clinic ki visit cheyyandi, Dr Vinitha ni kalavandi…", then "dr nikitha ni kalavamanu".
-  is([/EVERY time you give a treatment price/.test(pb), pb.includes(prices.OFFER_LINE), /NEVER name a discount amount, a percentage/.test(pb), /Dr\. Nikhitha .*NOT a fault/.test(prices.judgeNote(await prices.load(cfg)))], [true, true, true, true],
-    "with every price the agent says the clinic has offers and to meet Dr. Nikhitha there — never a discount number of its own — and the judge does not mark it down");
-  is((await prices.allowed(cfg)).has(22000) && !(await prices.allowed(cfg)).has(8800), true, "a listed number passes the editor; one not on the list does not");
+  is([/NO TREATMENT PRICES/.test(pb), /doctor after seeing their skin or hair at the consultation/.test(pb), pb.includes(prices.OFFER_LINE), /HydraFacial: ₹6,000/.test(pb)], [true, true, true, false],
+    "asked a price, it says the doctor tells it at the consultation and that the clinic has offers — and the price list is not in its prompt");
+  is([/NEVER name a discount amount, a percentage/.test(pb), /RIGHT answer, NOT a dodge/.test(prices.judgeNote(await prices.load(cfg)))], [true, true],
+    "never a discount number of its own, and the judge does not mark the no-price answer down");
+  is((await prices.allowed(cfg)).has(300) && !(await prices.allowed(cfg)).has(22000), true, "the consultation fee passes the editor; a treatment price does not");
+  // The list is still there for anyone who switches the control panel to it.
+  const lb = prices.block({ mode: "list", consult: 300, bands: [] });
+  is(/HydraFacial: ₹6,000\/sitting; 4 sittings ₹22,000/.test(lb) && /EVERY time you give a treatment price/.test(lb), true, "switched to \"list\", the agent quotes the list with the offer line, as before");
   is(/consultation fee is \u20b9300/.test(await prices.blockFor(cfg)), true, "and the fee it states is \u20b9300");
   is(/Never volunteer it/.test(await prices.blockFor(cfg)), true, "but it never brings the price up itself");
   is((await prices.save(cfg, { mode: "consult" }, "Owner")).ok, false, "a consultation policy without a fee is refused");
