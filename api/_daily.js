@@ -79,6 +79,9 @@ const TOPICS = [
   { key: "psoriasis", pillar: "edu", h1: "Psoriasis flares can be controlled", te: "సోరియాసిస్ — అదుపులో ఉంచొచ్చు", sub: "Modern treatments · Long remissions · Stop the itch cycle", page: "psoriasis-treatment-eluru.html", img: "Calm South Indian person's relaxed hands resting on a dark surface in warm golden light, serene mood." },
   { key: "monsoon", pillar: "season", h1: "Monsoon skin & hair care", te: "వర్షాకాలం చర్మం & జుట్టు సంరక్షణ", sub: "Fungal infections · Frizz & hair fall · Sticky skin", page: "fungal-infection-treatment-eluru.html", img: "A young South Indian woman laughing under a big umbrella in light rain, droplets on her glowing skin and glossy hair, warm street lights behind." },
   { key: "festive", pillar: "season", h1: "Festival-ready glow in 2 weeks", te: "పండుగకు 2 వారాల్లో గ్లో", sub: "Hydrafacial · Peel · Carbon laser — plan it early", page: "hydrafacial-eluru.html", img: "Elegant South Indian woman in a silk saree with glowing skin beside warm golden diya lights, dark background." },
+  { key: "eczema", pillar: "edu", h1: "Itchy, dry patches again?", te: "దురద, పొడి మచ్చలు మళ్ళీ మళ్ళీ?", sub: "Eczema needs the right cream and the right routine · Children and adults", page: "eczema-dry-skin-treatment-eluru.html", img: "Close-up of a South Indian woman gently applying a plain white moisturiser to the inside of her elbow, calm, soft golden light, dark background." },
+  { key: "allergy", pillar: "edu", h1: "Itching, rashes or hives?", te: "దురద, దద్దుర్లు వస్తున్నాయా?", sub: "Find the trigger · Food, soap, medicines, weather · Treat the cause", page: "skin-allergy-treatment-eluru.html", img: "A South Indian man resting his forearm on a dark table, a hand lightly touching the forearm as if it itches, warm golden light, tasteful, no visible rash detail." },
+  { key: "nail", pillar: "edu", h1: "Thick, discoloured or broken nails?", te: "గోళ్ళు మందం, రంగు మారడం, విరగడం?", sub: "Often a fungal infection or a sign of something else · A dermatologist checks", page: "nail-problems-treatment-eluru.html", img: "Close-up of clean well-kept South Indian hands resting on folded cotton cloth, natural nails, soft golden light, dark background." },
   { key: "review", pillar: "trust", h1: "MD dermatologists · 10 clinics in AP", te: "ఏలూరులో ఇప్పుడు · AP లో 10 బ్రాంచ్‌లు", sub: "DermaLuxe by Medicare, Eluru · Mon–Sat 9 AM – 9 PM", page: "index.html", img: "A South Indian mother and her grown-up daughter laughing together, both with healthy glowing skin, a warm candid moment at home." },
 ];
 
@@ -195,6 +198,28 @@ function todayAtIst(h, m) {
 function phones(list) { return String(list || "").split(",").map((s) => s.replace(/\D/g, "").slice(-10)).filter(Boolean); }
 
 // ---- 1. Topic ------------------------------------------------------------
+// Disease and beauty, turn and turn about. Owner, 23 Nov 2026: "disease and
+// beauty kuda portrait avvali". Left to the planner, the posters followed what
+// patients asked about — pigmentation, tan, glow — and only about 5 in 20 were
+// about a skin or hair disease. So a clinic poster now alternates: the day
+// after a beauty poster is a disease poster, and the other way round. Trust and
+// booking topics (doctors, machines, online consult) count as neither.
+const DISEASE = new Set(["acne", "pimples-back", "hair-fall", "dandruff", "fungal", "vitiligo", "psoriasis", "warts", "kids", "steroid-cream", "female-hair", "grey-hair", "eczema", "allergy", "nail", "myth-oil"]);
+const NEITHER = new Set(["online", "ai", "doctor", "tech", "review", "mens", "monsoon", "weight"]);
+const kindOf = (key) => DISEASE.has(key) ? "disease" : NEITHER.has(key) ? "neither" : "beauty";
+// The owner's own list, 23 Nov 2026: "pigmentation, acne, tan, dull skin,
+// ageing, fairness ni kuda baga promote cheyyali". These may come round again
+// after 6 days (every other topic waits 20), and are picked first when free.
+const PRIORITY = new Set(["pigmentation", "acne", "pimples-back", "tan", "hydrafacial", "carbon", "glutathione", "anti-ageing", "peel"]);
+const PRIORITY_GAP = 6;
+// recent: newest first. Academy posts and neither-kind posts are skipped; the
+// last disease-or-beauty clinic poster decides today.
+function wantKind(recent) {
+  const last = (recent || []).find((k) => !/^acad/.test(k) && TOPICS.some((t) => t.key === k) && kindOf(k) !== "neither");
+  if (!last) return "disease";
+  return kindOf(last) === "disease" ? "beauty" : "disease";
+}
+
 async function pickTopic(cfg, forceKey) {
   if (forceKey) {
     const t = TOPICS.concat(ACADEMY_TOPICS).find((x) => x.key === forceKey);
@@ -207,7 +232,10 @@ async function pickTopic(cfg, forceKey) {
   // The academy posters run as their own campaign and must never fall out of
   // the ordinary rotation by chance — a seats-are-going poster on a random
   // Tuesday after the batch has started would be a lie.
-  const ordinary = TOPICS.filter((t) => t.pillar !== "academy");
+  const want = wantKind(recent);
+  const ordinary = TOPICS.filter((t) => t.pillar !== "academy" && (kindOf(t.key) === want || kindOf(t.key) === "neither"));
+  const pri = ordinary.filter((t) => PRIORITY.has(t.key) && recent.slice(0, PRIORITY_GAP).indexOf(t.key) === -1);
+  if (pri.length && Math.random() < 0.7) return pri[Math.floor(Math.random() * pri.length)];
   let pool = ordinary.filter((t) => t.pillar === pillar && recent.indexOf(t.key) === -1);
   if (!pool.length) pool = ordinary.filter((t) => recent.indexOf(t.key) === -1);
   if (!pool.length) pool = ordinary;
@@ -276,15 +304,20 @@ async function planTopic(cfg) {
   const month = d.getUTCMonth() + 1;
   const season = (SEASONS.find((x) => x[0] === month) || [0, ""])[1];
   const insights = await leadInsights(cfg);
-  const lib = TOPICS.filter((t) => recent.indexOf(t.key) === -1).map((t) => `${t.key} [${t.pillar}] — ${t.h1}`).join("\n");
+  const want = wantKind(recent);
+  const fresh = (t) => PRIORITY.has(t.key) ? recent.slice(0, PRIORITY_GAP).indexOf(t.key) === -1 : recent.indexOf(t.key) === -1;
+  const lib = TOPICS.filter((t) => fresh(t) && (kindOf(t.key) === want || kindOf(t.key) === "neither")).map((t) => `${t.key} [${t.pillar}]${PRIORITY.has(t.key) ? " ★" : ""} — ${t.h1}`).join("\n");
   const sys = `You are the content strategist for DermaLuxe by Medicare — a skin, hair & aesthetics clinic in Eluru, Andhra Pradesh (MD dermatologists, USFDA lasers, part of Medicare Skin & Hair, 10 branches in Andhra Pradesh). Goal of every post: make a local Telugu patient message the clinic on WhatsApp today. Rules: no prices, no "guaranteed"/"permanent cure", no before/after claims, medically accurate, warm not salesy. Output ONLY JSON.`;
   const user = `Today: ${d.toISOString().slice(0, 10)} (${dow}, IST). Season/context for this month: ${season}.
 Patient demand signal: ${insights || "no lead data yet"}.
-Last 20 posts (do not repeat these keys): ${recent.join(", ") || "none"}.
+Last 20 posts (do not repeat these keys, except ★ topics after 6 days): ${recent.join(", ") || "none"}.
 Weekday pillar hint: ${PILLAR_BY_DAY[d.getUTCDay()]} (edu=education, tx=treatment spotlight, myth=myth-buster, trust=doctors/tech, cta=free AI analysis/booking, season=seasonal, tips=daily tips).
 Available library topics:
 ${lib}
 
+Today's poster must be about a ${want === "disease" ? "SKIN OR HAIR DISEASE / MEDICAL PROBLEM (yesterday's was beauty) — speak to someone who is suffering with it, not someone who wants to look good" : "BEAUTY / AESTHETIC treatment (yesterday's was a disease)"}; every key below is that kind, except a few doctor / clinic / booking topics: pick one of those only when the pillar hint asks for it.
+Topics marked ★ are the owner's priority (pigmentation, acne, tan, dull skin, ageing, fairness / brightening) — pick a ★ topic most days, unless something else is clearly more timely.
+Facts you must not get wrong: the doctor's consultation costs ₹300 — it is NOT free, so never write "free consultation", "free skin check" or "free" anything except the free AI skin & hair analysis on the website. Write whole words, no slang abbreviations like "dermat".
 Pick the single best topic key for today (prefer what patients are asking about, the season, and the pillar hint) and write today's poster copy — fresh, specific, scroll-stopping, not generic:
 - h1: English headline, max 34 characters, no emoji, no exclamation
 - te: Telugu line (Telugu script, natural spoken Telugu, max 30 characters)
@@ -310,8 +343,14 @@ JSON: {"key":"...","h1":"...","te":"...","sub":"...","img":"...","why":"..."}`;
     const p = JSON.parse((t.match(/\{[\s\S]*\}/) || [t])[0]);
     const lib2 = TOPICS.find((x) => x.key === String(p.key || "").toLowerCase());
     if (!lib2) throw new Error("planner picked unknown key " + p.key);
+    if (kindOf(lib2.key) !== want && kindOf(lib2.key) !== "neither") throw new Error("planner picked " + lib2.key + ", a " + kindOf(lib2.key) + " topic, on a " + want + " day");
     const clean = (v, max) => String(v || "").replace(/\s+/g, " ").trim().slice(0, max);
-    const h1 = clean(p.h1, 34), te = clean(p.te, 32), sub = clean(p.sub, 80), img = clean(p.img, 300);
+    // "free skin check" went out on 22 Nov; a consultation is ₹300. A line
+    // that promises something free (other than the AI analysis) is dropped.
+    const freeLie = (x) => /\bfree\b|ఉచిత|ఫ్రీ/i.test(x) && !/\bAI\b/.test(x);
+    const subOk = (x) => x.split(/\s*·\s*/).filter((f) => f && !freeLie(f)).join(" · ");
+    const h1 = clean(p.h1, 34), te = clean(p.te, 32), sub = subOk(clean(p.sub, 80)), img = clean(p.img, 300);
+    if (freeLie(h1) || freeLie(te)) throw new Error("planner promised something free: " + h1 + " / " + te);
     return Object.assign({}, lib2, {
       h1: h1.length >= 8 ? h1 : lib2.h1,
       te: /[ఀ-౿]/.test(te) ? te : lib2.te,
@@ -793,4 +832,4 @@ async function createDailyPost(cfg, opts = {}) {
   return { imgId, storyId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
 }
 
-module.exports = { isAcademyDay, LOOKS, pickLook, DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
+module.exports = { PRIORITY, kindOf, wantKind, isAcademyDay, LOOKS, pickLook, DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
