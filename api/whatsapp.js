@@ -1179,7 +1179,7 @@ module.exports = async (req, res) => {
         // lives in an account we cannot read, and its "headline" is often just
         // "api.whatsapp.com". Its own words, its link and its picture are not.
         body: String(R.body || "").replace(/\s+/g, " ").slice(0, 200), url: String(R.source_url || "").slice(0, 300),
-        thumb: String(R.thumbnail_url || R.image_url || "").slice(0, 500) };
+        thumb: String(R.thumbnail_url || R.image_url || "").slice(0, 2000) };
       if (rph.length === 10 && ref.ad) {
         await guard.kvCommand(cfg, ["SET", `ad:ref:${rph}`, JSON.stringify(ref), "EX", String(30 * 86400)]).catch(() => {});
         // The ad already told us the concern: the grade starts from it, and the

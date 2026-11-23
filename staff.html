@@ -562,6 +562,9 @@
     .adcard{border:1px solid var(--line);border-radius:12px;padding:12px;min-width:0}
     .adtop{display:flex;gap:10px;align-items:flex-start;min-width:0}
     .adthumb{flex:none;width:58px;height:58px;border-radius:8px;object-fit:cover;background:var(--g6,#eee)}
+    .adthumb--e{display:grid;place-items:center;font-size:1.4rem}
+    .adname{min-width:0;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+    .adnote{margin-top:8px;padding:7px 9px;border-radius:8px;background:rgba(31,150,90,.09);color:var(--text);font-size:.85rem;line-height:1.4}
     .adverdict{margin-top:8px;border-radius:8px;padding:7px 10px;font-size:.86rem}
     .adcells{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-top:8px}
     .adcell{border:1px solid var(--line);border-radius:8px;padding:6px 8px;min-width:0;text-align:center}
@@ -3473,17 +3476,23 @@
       var STATE = { live: ["🟢 Nadustondi", "var(--ok)"], slow: ["🟠 Taggindi", "var(--hot)"], stopped: ["🔴 Aagipoyindi", "var(--bad)"], none: ["—", "var(--muted)"] };
       var KIND = { ours: "Mana ad", boost: "Instagram boost", post: "Post button" };
       var spark = function (w) { var m = Math.max(1, Math.max.apply(null, w)); return '<span class="gspark" title="Gata 7 rojulu">' + w.map(function (n) { return '<i style="height:' + Math.max(8, n / m * 100) + '%;opacity:' + (n ? 1 : .25) + '"></i>'; }).join("") + "</span>"; };
-      var cell = function (t, v) { return '<div class="adcell"><div class="meta">' + esc(t) + "</div><b>" + esc(v) + "</b></div>"; };
+      var cell = function (t, v, sub) { return '<div class="adcell"><div class="meta">' + esc(t) + "</div><b>" + esc(v) + "</b>" + (sub ? '<div class="meta" style="font-size:.75rem">' + esc(sub) + "</div>" : "") + "</div>"; };
       var cards = A.map(function (r) {
         var s = STATE[r.state] || STATE.none;
-        return '<div class="adcard' + (j.winner === r.id ? " gwin" : "") + '"><div class="adtop">' +
-          (r.thumb ? '<img class="adthumb" src="' + esc(r.thumb) + '" alt="" onerror="this.style.visibility=\'hidden\'">' : '<div class="adthumb" style="display:grid;place-items:center;font-size:1.4rem">' + (r.kind === "boost" ? "📣" : r.kind === "post" ? "📌" : "🎯") + "</div>") +
-          '<div style="min-width:0;flex:1"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><b style="min-width:0;overflow-wrap:anywhere">' + esc(nameOf(r)) + "</b>" +
+        var emo = r.kind === "boost" ? "📣" : r.kind === "post" ? "📌" : "🎯";
+        // How many of the people it brought booked. 51 leads and 1 booking is
+        // a different ad from 17 leads and 2, and the count alone hid that.
+        var rate = r.leads >= 5 ? Math.round(r.booked / r.leads * 100) : null;
+        var win = j.winner === r.id;
+        return '<div class="adcard' + (win ? " gwin" : "") + '"><div class="adtop">' +
+          (r.thumb ? '<img class="adthumb" src="' + esc(r.thumb) + '" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.outerHTML=\'<div class=&quot;adthumb adthumb--e&quot;>' + emo + '</div>\'">' : '<div class="adthumb adthumb--e">' + emo + "</div>") +
+          '<div style="min-width:0;flex:1"><div style="display:flex;justify-content:space-between;gap:8px;align-items:start"><b class="adname" title="' + esc(nameOf(r)) + '">' + esc(nameOf(r)) + "</b>" +
           (j.winner === r.id ? '<span class="badge">🏆 Top</span>' : "") + "</div>" +
           '<div class="meta" style="margin-top:2px">' + esc(KIND[r.kind] || r.kind) + ' · <span style="color:' + s[1] + '">' + s[0] + "</span>" + (r.last ? " · last lead " + ago(r.sinceH) : "") + "</div>" +
           '<div class="meta" style="margin-top:2px">7 rojulu ' + spark(r.week || []) + "</div></div></div>" +
-          '<div class="adcells">' + cell("Leads", String(r.leads)) + cell("Book", String(r.booked)) + cell("Vachcharu", String(r.came)) +
+          '<div class="adcells">' + cell("Leads", String(r.leads)) + cell("Book", String(r.booked), rate != null ? rate + "% book" : "") + cell("Vachcharu", String(r.came)) +
             cell("Okko lead ki", r.perLead ? money0(r.perLead) : "—") + "</div>" +
+          (win && r.state === "stopped" ? '<div class="adnote">🏆 Ee ad ekkuva bookings tecchindi, kaani chivari lead ' + ago(r.sinceH) + ' — boost aagipoyi undochu. Malli boost cheste leads vastayi.</div>' : "") +
           (r.concerns && r.concerns.length ? '<div class="meta" style="margin-top:6px">Adigindi: ' + r.concerns.map(function (c) { return esc(c.name) + " " + c.n; }).join(" · ") + "</div>" : "") +
           (r.towns ? '<div class="meta" style="margin-top:2px">📍 ' + r.local + "/" + r.towns + " Eluru 40 km lopu" + (r.far ? ' · <span style="color:var(--bad)">' + r.far + " chaala dooram</span>" : "") + "</div>" : "") +
           (r.jobs ? '<div class="meta" style="margin-top:2px;color:var(--hot)">' + r.jobs + " mandi patient kaadu (job etc.) — vaallani leads lo lekkapettaledu</div>" : "") +

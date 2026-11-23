@@ -80,6 +80,14 @@ const lead = (ts, extra) => Object.assign({ ts, name: "P" + (++n), phone: "98765
   const s1 = G.adRows(slow, {}, { now: NOW })[0];
   is([s1.state, s1.sinceH], ["slow", 30], "busy until 30 hours ago and silent since → slowing");
   is(G.quietAds([s1]).map((x) => x.id), ["S1"], "and that is worth a word");
+  // The ad's picture: Meta's signed link is ~560 characters. Cut short it is a
+  // broken picture, which is how every card on the Ads screen showed until
+  // 23 Nov 2026. A saved link exactly 500 long is one of the old cut ones.
+  const longPic = "https://instagram.fhyd1-1.fna.fbcdn.net/v/x.jpg?" + "a".repeat(540) + "&oe=6B078075";
+  const cutPic = "https://instagram.fhyd1-1.fna.fbcdn.net/v/y.jpg?" + "b".repeat(500 - 48);
+  const pics = G.adRows([lead(NOW - 2 * HOUR, { ad_id: "P1", ad_src: "ad", ad_thumb: cutPic }), lead(NOW - 5 * HOUR, { ad_id: "P1", ad_src: "ad", ad_thumb: longPic })], {}, { now: NOW })[0];
+  is(cutPic.length, 500, "(the test's cut link is 500 long)");
+  is(pics.thumb, longPic, "the ad's picture link reaches the screen whole, and a cut one is passed over");
   const trickle = G.adRows([lead(NOW - 30 * HOUR, { ad_id: "T1", ad_src: "ad" })], {}, { now: NOW })[0];
   is(trickle.state, "live", "one lead a day and a quiet day is not a stopped ad");
   is(G.quietAds([Object.assign({}, s1, { kind: "post" })]).length, 0, "an organic post has nothing to switch back on — no alert");

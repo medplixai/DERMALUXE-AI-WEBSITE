@@ -260,8 +260,8 @@ http.createServer((req, res) => {
       const add = (ago, x) => { const l = Object.assign({ ts: now - ago, phone: "98480" + String(10000 + (++k)), type: "whatsapp", concern: "hair fall" }, x); L.push(l); return l; };
       const C = ["hair fall", "acne", "pigmentation", "laser hair removal", "hair transplant"];
       for (let d = 0; d < 14; d++) {
-        for (let i = 0; i < (d >= 2 ? 6 : 0); i++) { const l = add(d * 24 * H + (9 + i * 2) * H, { ad_id: "120214000001", ad_src: "ad", ad_headline: "api.whatsapp.com", ad_body: "Hair fall ki doctor consultation — Eluru", ad_url: "https://www.instagram.com/p/DQx1/", concern: C[i % 2], km: i === 5 ? 220 : 8 }); if (i < 2) st[`${l.ts}|${l.phone}`] = i ? "booked" : "visited"; }
-        for (let i = 0; i < 3; i++) { const l = add(d * 24 * H + (11 + i * 3) * H, { ad_id: "120214000002", ad_src: "ad", ad_headline: "api.whatsapp.com", ad_body: "Acne, marks & pigmentation — dermatologist", concern: C[1 + i % 2], km: 12 }); if (!i && d % 2) st[`${l.ts}|${l.phone}`] = "booked"; }
+        for (let i = 0; i < (d >= 2 ? 6 : 0); i++) { const l = add(d * 24 * H + (9 + i * 2) * H, { ad_id: "120214000001", ad_src: "ad", ad_headline: "api.whatsapp.com", ad_body: "Hair fall ki doctor consultation — Eluru", ad_thumb: "/assets/favicon.png", ad_url: "https://www.instagram.com/p/DQx1/", concern: C[i % 2], km: i === 5 ? 220 : 8 }); if (i < 2) st[`${l.ts}|${l.phone}`] = i ? "booked" : "visited"; }
+        for (let i = 0; i < 3; i++) { const l = add(d * 24 * H + (11 + i * 3) * H, { ad_id: "120214000002", ad_src: "ad", ad_headline: "api.whatsapp.com", ad_body: "Acne, marks & pigmentation — dermatologist", ad_thumb: "/no-such-picture.jpg", concern: C[1 + i % 2], km: 12 }); if (!i && d % 2) st[`${l.ts}|${l.phone}`] = "booked"; }
         for (let i = 0; i < 4; i++) add(d * 24 * H + (10 + i * 2) * H, { concern: C[i % 5] });
         if (d % 3 === 0) add(d * 24 * H + 12 * H, { type: "walkin", concern: "acne" });
         if (d % 2 === 0) add(d * 24 * H + 15 * H, { type: "job", concern: "Beauty therapist job" });

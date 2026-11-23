@@ -124,7 +124,12 @@ function adRows(leads, st, opts) {
     if (!r.label && h && !/^(api\.)?whatsapp\.com$|^wa\.me/i.test(h)) r.label = h.slice(0, 80);
     if (!r.body && l.ad_body) r.body = String(l.ad_body).slice(0, 140);
     if (!r.link && l.ad_url) r.link = String(l.ad_url).slice(0, 300);
-    if (!r.thumb && l.ad_thumb) r.thumb = String(l.ad_thumb).slice(0, 400);
+    // Meta's picture link is signed and runs to ~560 characters; cut short it
+    // is a broken picture. Until 23 Nov 2026 it was cut at 400 here and 500
+    // when saved, so no ad on the Ads screen ever showed its picture. A saved
+    // link exactly 500 long is one of those cut ones — skip it for a newer one.
+    const th = String(l.ad_thumb || "");
+    if (!r.thumb && th && th.length !== 500) r.thumb = th.slice(0, 2000);
     if (isJob(l)) { r.jobs++; continue; }
     r.leads++;
     const s = statusOf(st, l);
