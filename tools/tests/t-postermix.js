@@ -66,6 +66,13 @@ const hist = (...keys) => { h.run(["DEL", "dp:hist"]); keys.reverse().forEach((k
   for (let i = 0; i < 40; i++) if (D.PRIORITY.has((await D.pickTopic(cfg)).key)) pri++;
   is(pri >= 20, true, "without the planner, most beauty days land on a priority topic (" + pri + " of 40)");
 
+  // Owner: every picture a before/after on one face.
+  const pig = D.imagePrompt(Object.assign({}, D.TOPICS.find((t) => t.key === "pigmentation"), { look: D.LOOKS[0] }));
+  is(/SPLIT BEFORE \/ AFTER/.test(pig) && /LEFT half shows the problem: patchy brown melasma/.test(pig), true, "a pigmentation picture is one face, melasma on one half and clear on the other");
+  const doc = D.imagePrompt(Object.assign({}, D.TOPICS.find((t) => t.key === "doctor"), { look: D.LOOKS[0] }));
+  is(/SPLIT/.test(doc), false, "a doctors / clinic poster keeps its ordinary picture");
+  is(D.TOPICS.filter((t) => D.kindOf(t.key) !== "neither" && !D.SPLIT[t.key]).map((t) => t.key), [], "every disease and beauty topic has its before/after described");
+
   console.log(fails ? `\n${fails} FAILURE(S)` : "\nposters alternate disease and beauty");
   process.exit(fails ? 1 : 0);
 })();

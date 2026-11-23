@@ -464,6 +464,60 @@ async function gemini(model, body, key) {
 // says and asked to illustrate exactly that — and told, in as many words, not
 // to letter it, because a quoted headline in a prompt is an open invitation to
 // paint the words in. The vision check still catches any that slip through.
+// One face, two halves. Owner, 23 Nov 2026: "oka face lo face pigmentation,
+// ikopakka beautiful face unde la — prathi image before after oke face lo
+// chupinche portrait create cheyyali". For every topic with something you can
+// see, the picture is one person: the viewer's left half shows the problem,
+// the right half the same skin clear. The owner was told that a before/after
+// reads as a result and that these are AI pictures, not patients; they asked
+// that the posters not be held to the NMC rules. Topics with nothing to show
+// (doctors, machines, online consult) keep their ordinary picture.
+// [where, the problem half, the clear half]
+const FACE = "face, seen straight on";
+const SPLIT = {
+  "pigmentation": [FACE, "patchy brown melasma and dark pigmentation spots across the cheek and forehead", "even, clear, luminous skin with no patches"],
+  "acne": [FACE, "active red pimples, a few whiteheads and marks on the cheek and jaw", "calm, clear, smooth skin"],
+  "pimples-back": [FACE, "a cluster of red inflamed pimples and dark acne marks on the cheek and jaw", "clear, calm skin"],
+  "tan": [FACE, "sun tan — darker, uneven, dull skin tone with a tan line", "her natural even, bright skin tone"],
+  "glutathione": [FACE, "dull, uneven, slightly darker patchy skin tone", "bright, even, glowing skin"],
+  "hydrafacial": [FACE, "dull, tired, congested skin with visible pores and dryness", "fresh, plump, dewy, glowing skin"],
+  "carbon": [FACE, "oily, dull skin with open pores and a greasy shine", "matte, refined, glowing skin"],
+  "peel": [FACE, "rough uneven texture, dullness and faint marks", "smooth, refined, radiant skin"],
+  "anti-ageing": ["face of a South Indian woman in her early 40s, seen straight on", "fine lines at the eye corner and forehead and slightly dull skin", "smooth, firm, rested-looking skin"],
+  "hifu": ["face of a South Indian woman in her 40s, seen straight on", "slightly sagging jawline and soft jowl", "a lifted, defined jawline"],
+  "mnrf": [FACE, "pitted acne scars and uneven texture on the cheek", "smooth, even skin texture"],
+  "dark-circles": [FACE, "dark, hollow under-eye circles and a tired look", "bright, rested under-eye skin"],
+  "pores": [FACE, "large open pores and oily shine on the cheek and nose", "refined, smooth, matte skin"],
+  "bridal": ["South Indian bride in light bridal jewellery, face seen straight on", "dull, tired, uneven skin", "bridal glow — luminous, even, radiant skin"],
+  "festive": ["South Indian woman in festive jewellery, face seen straight on", "dull, tired, uneven skin", "festive glow — bright, even, radiant skin"],
+  "sunscreen": [FACE, "sun damage — freckles, dark spots and uneven tan", "protected, even, healthy skin"],
+  "steroid-cream": [FACE, "steroid-cream damage — redness, thin shiny skin and small pimples", "healthy, calm, natural skin"],
+  "lhr": ["smooth bare forearm of a South Indian woman, laid across the frame", "dark visible unwanted hair", "smooth, hair-free, glowing skin"],
+  "stretch": ["waist and hip of a South Indian woman, tasteful", "visible stretch marks", "smooth, even skin"],
+  "hair-fall": ["close-up looking down at the top of a South Indian woman's head, her centre parting running straight down the middle of the frame, the head filling the middle of the picture (her face not shown)", "obviously thin, sparse hair — a wide parting with lots of scalp showing through", "thick, dense, glossy hair with a narrow parting and no scalp showing"],
+  "myth-oil": ["close-up looking down at the top of a South Indian woman's head, her centre parting running straight down the middle of the frame, the head filling the middle of the picture (her face not shown)", "obviously thin, sparse hair — a wide parting with lots of scalp showing through", "thick, dense, glossy hair with a narrow parting and no scalp showing"],
+  "female-hair": ["close-up looking down at the top of a South Indian woman's head, her centre parting running straight down the middle of the frame, the head filling the middle of the picture (her face not shown)", "obviously thin hair with a very wide parting and lots of scalp showing", "thick, full hair with a narrow parting"],
+  "prp": ["South Indian man's head from the front, hairline visible", "thinning hair and a receding hairline", "dense, healthy hair and a full hairline"],
+  "hair-transplant": ["South Indian man's head, slightly from above, hairline and crown visible", "a bald, receding hairline and thin crown", "a full, natural, dense hairline"],
+  "beard": ["South Indian man's face, seen straight on", "a patchy, uneven beard with gaps", "a full, even, well-groomed beard"],
+  "grey-hair": ["South Indian woman in her 20s, head and face from the front", "premature grey and white strands", "glossy, dark black hair"],
+  "dandruff": ["South Indian man's hair and dark-shirted shoulder", "white dandruff flakes in the hair and on the shoulder", "clean, healthy hair and a clean shoulder"],
+  "fungal": ["side of a South Indian man's neck and jaw", "a red, ring-shaped fungal (ringworm) patch with a scaly edge", "clear, healthy skin"],
+  "vitiligo": [FACE, "white depigmented vitiligo patches around the mouth and cheek", "even, natural skin tone"],
+  "psoriasis": ["elbow and forearm of a South Indian adult", "thick red psoriasis plaques with silvery scale", "calm, clear, healthy skin"],
+  "eczema": ["inside of the elbow of a South Indian woman", "dry, red, rough, itchy eczema patches", "soft, calm, moisturised skin"],
+  "allergy": [FACE, "raised red hives and an allergic rash on the cheek and neck", "calm, clear skin"],
+  "warts": ["side of a South Indian woman's neck", "small skin tags and a few warts", "smooth, clear skin"],
+  "nail": ["a South Indian hand resting on cloth, fingers spread", "thick, yellowed, crumbling fungal nails", "clean, healthy, natural nails"],
+  "kids": ["cheek of a smiling South Indian child", "a dry, red, patchy rash", "soft, clear, healthy skin"],
+  "mens": ["South Indian man's face, seen straight on", "acne marks, oily skin and uneven tone", "clear, even, healthy skin"],
+};
+function splitSubject(key) {
+  const x = SPLIT[key];
+  if (!x) return "";
+  return ` SPLIT BEFORE / AFTER — the most important instruction: ONE single person, ${x[0]}, divided exactly down the vertical centre line. The viewer's LEFT half shows the problem: ${x[1]} — realistic and clearly visible, but not frightening. The viewer's RIGHT half shows the very same person clear and beautiful: ${x[2]}. Same person, same pose, same light on both halves; the change happens along the centre line itself. It is one continuous photograph — no line, gap, border or panel is drawn, and the background is the same on both sides.`;
+}
+
 function imagePrompt(topic) {
   const says = `This photograph is the background of a poster whose headline reads: "${topic.h1}"` +
     (topic.sub ? ` (supporting line: "${topic.sub}")` : "") +
@@ -475,7 +529,8 @@ function imagePrompt(topic) {
   // waive by accident in a one-line note).
   const note = String(topic.note || "").replace(/\s+/g, " ").trim().slice(0, 300);
   const owner = note ? ` Owner's change request for this picture (follow it): "${note}". Still no words in the image and no doctor's face.` : "";
-  return STYLE + " " + look + " " + says + " Subject: " + topic.img + COMPOSITION + owner;
+  const sp = splitSubject(topic.key);
+  return STYLE + " " + look + " " + says + (sp || " Subject: " + topic.img) + COMPOSITION + owner;
 }
 
 async function drawImage(topic, key) {
@@ -505,7 +560,7 @@ async function measureImage(img, key) {
     const d = await gemini(process.env.DAILY_CHECK_MODEL || "gemini-3.5-flash", {
       contents: [{ parts: [
         { inlineData: { mimeType: img.mime, data: img.b64 } },
-        { text: 'Look at this portrait-format image. Reply ONLY JSON: {"face":true|false,"faceTop":0-1,"faceBottom":0-1,"text":true|false,"band":true|false}. faceTop/faceBottom = top and bottom edge of the main human face (forehead to chin) as a fraction of image height, 0 = top. text = any letters, words, logos or watermarks visible. band = a hard-edged horizontal strip, letterbox bar, border or split panel (a sharp straight line where the background changes).' },
+        { text: 'Look at this portrait-format image. Reply ONLY JSON: {"face":true|false,"faceTop":0-1,"faceBottom":0-1,"text":true|false,"band":true|false}. faceTop/faceBottom = top and bottom edge of the main human face (forehead to chin) as a fraction of image height, 0 = top. text = any letters, words, logos or watermarks visible. band = a hard-edged HORIZONTAL strip, letterbox bar or border (a sharp straight horizontal line where the background changes). A before/after change running vertically down the middle of one face or body part is intended and is NOT a band.' },
       ] }],
       generationConfig: { responseMimeType: "application/json", temperature: 0 },
     }, key);
@@ -832,4 +887,4 @@ async function createDailyPost(cfg, opts = {}) {
   return { imgId, storyId, caption, topic, due, by, notify: notifyList, hadImage: !!img, queued: opts.queue !== false };
 }
 
-module.exports = { PRIORITY, kindOf, wantKind, isAcademyDay, LOOKS, pickLook, DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };
+module.exports = { SPLIT, PRIORITY, kindOf, wantKind, isAcademyDay, LOOKS, pickLook, DOCTORS, pickDoctor, imagePrompt, TOPICS, ACADEMY_TOPICS, academyTopic, academyState, academySub, createDailyPost, pickTopic, planTopic, leadInsights, posterHtml, renderPoster, genImage, writeCaption, todayAtIst, todayIst, phones };

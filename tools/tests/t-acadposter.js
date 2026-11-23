@@ -178,7 +178,9 @@ const keys = daily.ACADEMY_TOPICS.map((t) => t.key);
   is(/Meghana/.test(trainer.sub), true, "her name is set in type instead");
 
   console.log("\n  — the picture is drawn for the headline —");
-  const clinic = daily.TOPICS.find((t) => t.key === "hydrafacial");
+  // A topic with no before/after (since 23 Nov the disease and beauty
+  // topics are drawn as one split face instead of their scene).
+  const clinic = daily.TOPICS.find((t) => t.key === "tech");
   const pr = daily.imagePrompt(clinic);
   is(pr.includes(clinic.h1), true, "the image model is told the headline");
   is(pr.includes(clinic.img), true, "as well as the scene");

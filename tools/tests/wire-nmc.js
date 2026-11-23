@@ -202,7 +202,7 @@ const RULES = [
     // records who asked for it. Narrow on purpose: a second before/after, under
     // any other name, still fails, and the asset check below lists this one on
     // every run so it is never mistaken for a clean site.
-    allow: /planning with the surgeon|ముందు-తర్వాత ప్లానింగ్|NEVER|forbids|8\.1\(v\)|used to|pampakoodadhu|before\/after claim|ht-before-after|owner asked for the before\/after/i },
+    allow: /planning with the surgeon|ముందు-తర్వాత ప్లానింగ్|NEVER|forbids|8\.1\(v\)|used to|pampakoodadhu|before\/after claim|ht-before-after|owner asked for the before\/after|before\/after change running vertically/i },
 ];
 
 console.log("WHAT THE CLINIC IS ALLOWED TO SAY\n");
@@ -307,6 +307,12 @@ const badAssets = assetDirs.filter((d) => fs.existsSync(path.join(ROOT, d)))
 // their clinic and their call, so this check states it on every run instead of
 // pretending the site is clean, and fails the moment a SECOND one appears.
 const DECIDED = ["assets/ht-before-after.jpg", "assets/ht-before-after.webp"];
+// Owner, 23 Nov 2026: every daily poster picture is a before/after on one
+// face. Told that it reads as a result and the pictures are AI, not patients;
+// they asked that the posters not be held to the NMC rules. Printed on every
+// run so it is never mistaken for a clean audit.
+const splitPosters = /SPLIT BEFORE \/ AFTER/.test(read("api/_daily.js"));
+if (splitPosters) console.log("  !   8.1(v) \u00b7 the daily poster pictures ARE split-face before/after images, by the owner's decision of 23 Nov 2026");
 const decided = badAssets.filter((f) => DECIDED.includes(f));
 const unexpected = badAssets.filter((f) => !DECIDED.includes(f));
 if (decided.length) console.log("  !   8.1(v) \u00b7 a before/after photograph IS published, by the owner's decision of 27 Oct 2026: " + decided.join(", "));
@@ -488,6 +494,6 @@ console.log("");
 // "nothing a patient should not read" over a published before/after would be
 // the audit telling a comfortable lie once a week.
 console.log(bad ? `${bad} problem(s) — a patient can still read these`
-  : decided.length || ownerOffer.length || ownerCases.length ? "clean except what the owner decided to publish: " + [decided.length ? "the before/after photograph (8.1(v), 27 Oct)" : "", ownerOffer.length ? "a free hair transplant consultation (8.1(x), 7 Nov)" : "", ownerCases.length ? "the surgeon's case count (8.1(iii), 9 Nov)" : "", "chats and calls not saying they are AI (7.2(c), 22 Nov)"].filter(Boolean).join(", ")
+  : decided.length || ownerOffer.length || ownerCases.length ? "clean except what the owner decided to publish: " + [decided.length ? "the before/after photograph (8.1(v), 27 Oct)" : "", ownerOffer.length ? "a free hair transplant consultation (8.1(x), 7 Nov)" : "", ownerCases.length ? "the surgeon's case count (8.1(iii), 9 Nov)" : "", "chats and calls not saying they are AI (7.2(c), 22 Nov)", splitPosters ? "split-face before/after poster pictures (8.1(v), 23 Nov)" : ""].filter(Boolean).join(", ")
   : "nothing a patient should not read");
 process.exit(bad ? 1 : 0);
