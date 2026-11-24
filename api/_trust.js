@@ -52,7 +52,7 @@ async function send(cfg, phone, opts) {
   // 3.2 Expl. III asks for, and they are what the patient actually wanted.
   if (await notify.sendWa(ph, DOCTOR.caption())) n++;
   const text = `🩺 *Consultation lo em jarugutundi?*\n🔬 Doctor garu skin/hair ni dermoscope tho chusi cause cheptaru\n📋 Meeku correct treatment plan + exact cost — ade roju\n🙂 Treatment teesukovala vaddaa — mee ishtam, pressure ledu\n\nEppudu convenient andi?`;
-  const ok = await notify.sendWaButtons(ph, text, ["📅 Slot chudandi", "🎥 Video consult", "❓ Inka doubt undi"]);
+  const ok = await notify.sendWaButtons(ph, text, ["📅 Slot chudandi", "📍 Clinic location", "❓ Inka doubt undi"]);
   if (ok) n++;
   if (!n) await guard.kvCommand(cfg, ["DEL", `trust:${ph}`]).catch(() => {});   // nothing went — let it try again
   await guard.kvCommand(cfg, ["LPUSH", "trust:log", JSON.stringify({ ts: Date.now(), ph: ph.slice(-4), phone: ph, n })]).catch(() => {});

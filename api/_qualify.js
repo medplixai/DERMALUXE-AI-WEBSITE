@@ -85,7 +85,7 @@ function scoreLead(q) {
   if (ring === "local") add("near", 25, `${place.label} — ${km} km, daggare`);
   else if (ring === "district") add("district", 14, `${place.label} — ${km} km`);
   else if (ring === "region") add("far", -8, `${place.label} — ${km} km, raavadam kashtam`);
-  else if (ring === "far") add("very_far", -20, `${place.label} — ${km} km, video consult matrame`);
+  else if (ring === "far") add("very_far", -20, `${place.label} — ${km} km, okka planned visit adagandi`);
 
   if (q.intent === "book_now") add("intent", 30, "raavadaniki ready");
   else if (q.intent === "considering") add("intent", 16, "alochistunnaru");
@@ -233,7 +233,7 @@ function nextAction(rec, lead) {
   if (l.optedOut) return { kind: "skip", text: "STOP chesaru — messages vaddu" };
   const noteCount = (l.notes || []).length;
   if (rec && rec.grade === "A" && !noteCount) return { kind: "call", text: "Ippude call cheyandi 🔥" };
-  if (rec && rec.km != null && rec.km > 80) return { kind: "video", text: `${rec.km} km — video consultation offer cheyandi` };
+  if (rec && rec.km != null && rec.km > 80) return { kind: "video", text: `${rec.km} km — okka planned clinic visit adagandi; raalemu ante video consultation` };
   if (!f.problem_since) return { kind: "ask", text: "Adagandi: entakalam nundi undi?" };
   if (!f.village) return { kind: "ask", text: "Adagandi: e ooru nundi?" };
   if (f.prefers && st === "new") return { kind: "book", text: `Slot pettandi — ${String(f.prefers).slice(0, 24)}` };
@@ -349,9 +349,9 @@ function contextLine(rec) {
   const bits = [];
   if (rec.km != null) {
     bits.push(`patient is from ${rec.place}, ~${rec.km} km from Eluru`);
-    if (rec.ring === "far" || rec.km > 150) bits.push("very far — offer a VIDEO consultation first, never chase clinic slots");
-    else if (rec.km > 80) bits.push("far — offer video consultation, or one planned morning visit; say the real km, never guess travel time");
-    else if (rec.km > 25) bits.push("offer a morning or afternoon slot so it is one trip; mention video consultation as an option");
+    if (rec.ring === "far" || rec.km > 150) bits.push("very far — still ask for ONE planned clinic visit (owner: clinic visit is compulsory); a video consultation only if they say plainly they cannot come");
+    else if (rec.km > 80) bits.push("far — ask for one planned morning visit so it is one trip; say the real km, never guess travel time; video only if they say they cannot come");
+    else if (rec.km > 25) bits.push("offer a morning or afternoon slot so it is one trip");
   }
   const missing = ["problem", "problem_since", "village", "prefers"].filter((k) => !(rec.facts || {})[k]);
   if (missing.length) bits.push(`still unknown: ${missing.join(", ")} — ask the next one, riding on something useful`);

@@ -2138,7 +2138,7 @@
       if (l.ts >= dayStartMs()) { s += 10; why.push("🆕 ivala vachindi"); }
       if (l.outcome === "noanswer") { s -= 5; why.push("📵 mundu ettaledu — malli try"); }
       if (l._older && l._older.length) { s += 5; why.push("🔄 " + (l._older.length + 1) + " saarlu adigaru"); }
-      if (l.km != null && l.km > 80) { s -= 10; why.push("🎥 " + l.km + " km — video consult offer cheyyandi"); }
+      if (l.km != null && l.km > 80) { s -= 10; why.push("🚗 " + l.km + " km — okka planned visit adagandi"); }
       else if (l.km != null && l.km <= 25) { s += 5; why.push("📍 daggare (" + l.km + " km)"); }
       return { s: s, why: why };
     }

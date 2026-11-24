@@ -16,7 +16,7 @@ const GOALS = {
   return_visit:  { label: "Next session / follow-up book", rule: "Treated here before. Ask how they are doing, then the next session or review." },
   academy_seat:  { label: "Academy counselling / ₹9,999 seat", rule: "Academy enquiry. Course fit, the counselling visit or call, then the ₹9,999 seat reservation." },
   ht_consult:    { label: "Hair transplant consultation book (scalp assessment)", rule: "Hair transplant enquiry, baldness or a receding hairline (owner, 7 Nov: promote it freely). Recommend hair transplant warmly as the main solution — FUE, natural hairline from their own hair, the ₹59,999 all-inclusive package (up to 3,000 grafts; ₹20 per graft beyond that) while it is on — and book the surgeon's scalp assessment. The one thing not to do: promise a result or tell them they definitely need it; say the surgeon confirms suitability at the assessment." },
-  video_consult: { label: "Video consultation book", rule: "They are far from Eluru. Book a video consultation first; a clinic visit only if they ask." },
+  video_consult: { label: "Okka clinic visit book (dooram)", rule: "They are far from Eluru (owner, 24 Nov 2026: the clinic visit is compulsory). Ask for ONE planned visit to the clinic — a day and a morning or afternoon slot, so it is one trip. A video consultation only if they say plainly that they cannot come." },
   clinic_consult:{ label: "Clinic consultation slot book (₹300)", rule: "Book a doctor consultation at the clinic." },
 };
 
