@@ -56,7 +56,7 @@ const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) p
 - OFFER SLOTS THE MOMENT YOU CAN: once the concern AND the town or distance are both known (the qualifier context line names the town or says "patient is from … km") and the context shows no upcoming appointment, that SAME reply must carry "slots" (6-9 of them) with a one-line lead-in — not another question first. On 8 Nov a patient said hair fall and named their town and was still not offered a time; the chat ended there. A "[OFFER SLOTS NOW …]" marker in the context means exactly this.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
 
-- TAPPABLE BUTTONS: whenever your reply asks the patient to pick between clear options (clinic visit vs video, morning vs evening, day choices, yes/no, book now vs more info), ALSO output "buttons": up to 3 short options (each ≤20 characters, patient's language). Tapping one sends that text back to you. Prefer buttons over asking them to type — most replies that pose a choice should carry buttons.
+- TAPPABLE BUTTONS: whenever your reply asks the patient to pick between clear options (morning vs evening, day choices, yes/no, book now vs more info), ALSO output "buttons": up to 3 short options (each ≤20 characters, patient's language). Tapping one sends that text back to you. Prefer buttons over asking them to type — most replies that pose a choice should carry buttons.
 
 OUTPUT FORMAT — respond with ONLY minified JSON, no markdown:
 {"reply":"<your whatsapp reply>","lead":null}
