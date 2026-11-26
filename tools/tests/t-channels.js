@@ -222,6 +222,12 @@ const hook = { token: "hook" };
   global.fetch = stubFetch;
   is([firstWave > 0, graph.length, JSON.stringify(graph[0] || {}).includes("credits aipoyayi")], [true, firstWave, true],
     "when the AI account runs dry the team is told, once, not on every message");
+  // 25 Nov: the monthly spend limit, in words the check did not know — 16 hours, nobody told.
+  h.run(["DEL", "ai:down"]); graph.length = 0;
+  global.fetch = async (url, opt) => { graph.push(JSON.parse(opt.body)); return { ok: true, status: 200, json: async () => ({ messages: [{ id: "m" }] }), text: async () => "" }; };
+  await realNotify.aiFailed({ text: async () => '{"type":"error","error":{"type":"invalid_request_error","message":"You have reached your specified API usage limits. You will regain access on 2026-12-01 at 00:00 UTC."}}' });
+  global.fetch = stubFetch;
+  is([graph.length > 0, JSON.stringify(graph[0] || {}).includes("spend limit")], [true, true], "when the account's spend limit is reached the team is told too, and where to raise it");
 
   console.log("\n  — Instagram —");
   claudeCalls = 0;

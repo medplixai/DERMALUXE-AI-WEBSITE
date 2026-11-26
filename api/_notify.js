@@ -400,12 +400,16 @@ async function teamSend(cfg, to, text, tpl) {
 async function aiFailed(resp) {
   let text = "";
   try { text = String(await resp.text()).replace(/\s+/g, " ").slice(0, 200); } catch (e) {}
-  if (/credit balance|billing|quota/i.test(text)) {
+  // 25 Nov 2026: the account's monthly spend limit was reached and Anthropic
+  // said "You have reached your specified API usage limits" — none of the
+  // words below, so for 16 hours 19 patients got the fixed card and nobody
+  // on the team was told.
+  if (/credit balance|billing|quota|usage limit|spend limit|regain access/i.test(text)) {
     try {
       const cfg = guard.kvConfig();
       const nx = cfg ? await guard.kvCommand(cfg, ["SET", "ai:down", String(Date.now()), "NX", "EX", "10800"]).catch(() => ({})) : {};
       if (nx && nx.result) {
-        const msg = "⚠️ *AI agent aagipoyindi*\n\nAnthropic account lo credits aipoyayi — WhatsApp, Instagram, website agents patients ki fixed message matrame pampistunnayi.\n\nconsole.anthropic.com → Plans & Billing lo recharge cheyandi. Appatidaka staff app → Inbox lo patients ki meere reply cheyandi.";
+        const msg = "⚠️ *AI agent aagipoyindi*\n\nAnthropic account lo credits aipoyayi leda monthly spend limit dati poyindi — WhatsApp, Instagram, website agents patients ki fixed message matrame pampistunnayi.\n\nplatform.claude.com → Settings → Limits (spend limit) leda Billing (credits) chudandi. Appatidaka staff app → Inbox lo patients ki meere reply cheyandi.";
         const to = new Set(String(process.env.LEAD_NOTIFY_PHONES || DEFAULT_TO).split(",").concat(guard.ownerPhones()).map((x) => String(x).replace(/\D/g, "").slice(-10)).filter((x) => x.length === 10));
         for (const t of to) await teamSend(cfg, t, msg).catch(() => {});
       }
