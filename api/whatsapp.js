@@ -54,6 +54,7 @@ const WA_RULES = `- Booking flow: collect (1) name, (2) concern/treatment, (3) p
 - When you have at least name + concern, fill "lead" in your output (keep collecting missing bits in the reply). ALSO fill "lead" the moment the patient picks a day/time, even if they have not told their name yet — then leave "name" as "" (never invent one, never use the WhatsApp profile name) and ask the name in the reply. Otherwise "lead" must be null.
 - Quick-menu button taps arrive as plain text: "📅 Book Now" → start the booking flow; "💆 Services" → give a short services overview and ask what concern they have; "📸 Skin Check" → ask them to send a clear face (or scalp) photo right here; "Skin" / "Hair" (the opener's buttons) → one line asking what exactly, with up to 3 buttons.
 - OFFER SLOTS THE MOMENT YOU CAN: once the concern AND the town or distance are both known (the qualifier context line names the town or says "patient is from … km") and the context shows no upcoming appointment, that SAME reply must carry "slots" (6-9 of them) with a one-line lead-in — not another question first. On 8 Nov a patient said hair fall and named their town and was still not offered a time; the chat ended there. A "[OFFER SLOTS NOW …]" marker in the context means exactly this.
+- WHEN IT IS SETTLED, STOP ASKING (owner, 27 Nov 2026): once a time is fixed and the patient says ok / yes / I'll come / thanks / 👍, answer in ONE short warm line and ask NOTHING more — no "raagalara?", no "reminder pampamantara?", no repeating the time they just confirmed. On 26 Nov a patient said "I'll come today" six times and was asked "8:30 ki raagalara?" six times. Never say the same confirmation twice in a chat. If they say an appointment is NOT needed ("repu avasaram ledu", "tomorrow not needed"), believe them: offer once to cancel it ("cancel cheyyana?") — never answer that it is still on.
 - When the patient asks WHERE the clinic is / address / directions / how to reach, set "send_location": true in your output (a live map pin is sent automatically along with your reply).
 
 - TAPPABLE BUTTONS: whenever your reply asks the patient to pick between clear options (morning vs evening, day choices, yes/no, book now vs more info), ALSO output "buttons": up to 3 short options (each ≤20 characters, patient's language). Tapping one sends that text back to you. Prefer buttons over asking them to type — most replies that pose a choice should carry buttons.
@@ -469,6 +470,15 @@ const LOCATION_ASK = /(address|location|direction|reach|route|map|ekkad|yekkad|d
 // The shared clock lives in _facts.js — every agent gets the same one.
 const nowIstCtx = facts.nowIstCtx;
 
+// TODAY / TOMORROW beside the patient's own appointment. A slot booked
+// yesterday as "repu 11:00 AM" was, on 27 Nov, still called "repu" in the
+// morning it fell on — the model copied yesterday's word from the chat.
+function dayWord(ms) {
+  const day = (t) => Math.floor((t + 330 * 60000) / 86400000);
+  const d = day(ms) - day(Date.now());
+  const w = d === 0 ? "TODAY (ivala)" : d === 1 ? "TOMORROW (repu)" : "";
+  return w ? ` — that is ${w}; older messages may call it by another day word, use this one` : "";
+}
 function apptFmtIst(ms) {
   const d = new Date(ms + 330 * 60000);
   const mo = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"][d.getUTCMonth()];
@@ -517,7 +527,7 @@ async function apptCtx(cfg, digits) {
       if (win.length) blocked = `[CLOSED / doctor leave — NEVER offer or accept these times, suggest the next free day instead: ${win.join(" · ")}] `;
     } catch (e) {}
 
-    return (mine ? `[This patient's upcoming appointment: ${apptFmtIst(mine)}] ` : "")
+    return (mine ? `[This patient's upcoming appointment: ${apptFmtIst(mine)}${dayWord(mine)}] ` : "")
       // "FULL slots: Wed 6:30 PM" alone was read, on 18 Nov, as this
       // patient's own appointment. Whose slots they are is said outright.
       + (full.length ? `[Times already filled by OTHER patients — never offer these, and they are NOT this patient's appointment: ${full.join(", ")}] ` : "")
@@ -1037,6 +1047,58 @@ async function overtaken(cfg, phone, myTs) {
     && !MEDIA_LINE.test(String(m.text || "")) && !require("./_staffask.js").isAsk(m.text) && !lint.asksToStop(m.text));
 }
 
+// A photo and words sent together. On 26 Nov a patient sent a photo and
+// "Skin brightening and pores" in the same minute: the words were answered
+// at once, and the photo analysis a few seconds later opened "mee problem
+// cheppandi" as if nothing had been said. Now the photo's reply reads the
+// words that came with it (within a minute, nothing from us in between), and
+// those words stay quiet if the photo's reply answered them.
+async function threadRows(cfg, phone, n) {
+  const r = await guard.kvCommand(cfg, ["LRANGE", `ib:m:${phone}`, "0", String(n)]).catch(() => ({}));
+  return ((r && r.result) || []).map((x) => { try { return JSON.parse(x); } catch (e) { return null; } }).filter(Boolean).reverse();   // oldest first
+}
+function burstAround(rows, i) {
+  const at = Number(rows[i].ts), out = [];
+  for (let j = i - 1; j >= 0 && rows[j].dir === "in" && at - Number(rows[j].ts) <= 60000; j--) out.unshift(rows[j]);
+  for (let j = i + 1; j < rows.length && rows[j].dir === "in" && Number(rows[j].ts) - at <= 60000; j++) out.push(rows[j]);
+  return out;
+}
+async function photoWords(cfg, phone, photoTs) {
+  const rows = await threadRows(cfg, phone, 15);
+  const i = rows.findIndex((m) => m.dir === "in" && Number(m.ts) === Number(photoTs));
+  if (i < 0) return { text: "", upTo: 0 };
+  const words = burstAround(rows, i).filter((m) => !MEDIA_LINE.test(String(m.text || "")) && String(m.text || "").trim());
+  return { text: words.map((m) => String(m.text)).join("\n").slice(0, 600), upTo: words.reduce((a, m) => Math.max(a, Number(m.ts)), 0) };
+}
+// The photo, if any, that these words came with and that is still waiting
+// for its answer (nothing from us after it yet).
+async function photoWith(cfg, phone, myTs) {
+  const rows = await threadRows(cfg, phone, 15);
+  const i = rows.findIndex((m) => m.dir === "in" && Number(m.ts) === Number(myTs));
+  if (i < 0) return 0;
+  const ph = burstAround(rows, i).find((m) => /^\[📷/.test(String(m.text || "")));
+  if (!ph) return 0;
+  const k = rows.indexOf(ph);
+  return rows.slice(k + 1).some((m) => m.dir === "out") ? 0 : Number(ph.ts);
+}
+// Waits (up to WA_PHOTO_WAIT_MS, 25 s) for the photo's answer; true when that
+// answer took these words in, so they need no reply of their own.
+async function coveredByPhoto(cfg, phone, myTs, photoTs) {
+  const limit = Number(process.env.WA_PHOTO_WAIT_MS == null ? 25000 : process.env.WA_PHOTO_WAIT_MS);
+  const step = Number(process.env.WA_PHOTO_STEP_MS == null ? 1500 : process.env.WA_PHOTO_STEP_MS);
+  const until = Date.now() + limit;
+  for (;;) {
+    const c = await guard.kvCommand(cfg, ["GET", `wa:pcov:${phone}`]).catch(() => ({}));
+    let cov = null; try { cov = c && c.result ? JSON.parse(c.result) : null; } catch (e) {}
+    const rows = await threadRows(cfg, phone, 15);
+    const k = rows.findIndex((m) => m.dir === "in" && Number(m.ts) === Number(photoTs));
+    const answered = k >= 0 && rows.slice(k + 1).some((m) => m.dir === "out");
+    if (cov && Number(cov.photo) === Number(photoTs) && Number(cov.upTo) >= Number(myTs)) return true;
+    if (answered || Date.now() >= until) return false;
+    await new Promise((r) => setTimeout(r, step));
+  }
+}
+
 // Meta errors that stop every message from the number, in the owner's words.
 const ACCOUNT_WIDE = {
   131042: "Meta Business lo WhatsApp billing / currency set avvaledu — Billing & payments lo payment method + currency (INR) pettandi",
@@ -1471,6 +1533,13 @@ module.exports = async (req, res) => {
       if (mg.text) text = mg.text;
     } catch (e) { console.error("wa: merge", e && e.message); }
   }
+  // Words that came with a photo: the photo's answer takes them in.
+  if (isMeta && cfg && loggedAt && text && !imageId && !audioId && !videoId && !docId) {
+    try {
+      const ph = await photoWith(cfg, digits, loggedAt);
+      if (ph && await coveredByPhoto(cfg, digits, loggedAt, ph)) return res.status(200).json({ ok: true, merged: true, withPhoto: true });
+    } catch (e) { console.error("wa: photo words", e && e.message); }
+  }
 
   const histKey = `wa:h:${digits}`;
   const hist = cfg ? await getHistory(cfg, histKey) : [];
@@ -1640,6 +1709,18 @@ module.exports = async (req, res) => {
       const media = await fetchMedia(imageId);
       if (media && media.tooBig) return respond("Photo chala pedda undi 🙏 — normal quality photo malli pampandi.\n· ఫోటో చాలా పెద్దగా ఉంది — మామూలు క్వాలిటీలో పంపండి.");
       if (!media) return respond("Photo download avvaledu 🙏 — konchem sepu agi malli pampandi, leda text type cheyandi.\n· ఫోటో డౌన్‌లోడ్ కాలేదు — మళ్ళీ ప్రయత్నించండి.");
+      // Words sent with the photo (see photoWords): give them a moment to land.
+      if (isMeta && cfg && loggedAt) {
+        try {
+          const gap = Number(process.env.WA_MERGE_MS == null ? 2500 : process.env.WA_MERGE_MS) + 500 - (Date.now() - loggedAt);
+          if (gap > 0) await new Promise((r) => setTimeout(r, gap));
+          const pw = await photoWords(cfg, digits, loggedAt);
+          if (pw.text) {
+            if (!text || pw.text.indexOf(text) < 0) text = [text, pw.text].filter(Boolean).join("\n");
+            await guard.kvCommand(cfg, ["SET", `wa:pcov:${digits}`, JSON.stringify({ photo: loggedAt, upTo: pw.upTo }), "EX", "300"]).catch(() => {});
+          }
+        } catch (e) { console.error("wa: photo words", e && e.message); }
+      }
       out = await askClaudeVision(hist, media, text, profileName, extraCtx, ownerRules + abRule);
       text = "[📷 photo]" + (text ? " " + text : "");
     } else {
@@ -1710,6 +1791,13 @@ module.exports = async (req, res) => {
     // The editor: a deterministic read of the reply before it goes out.
     try { out = await lint.check(cfg, out, text, hist.slice(-3).map((t) => t.a), { profileName, channel: "wa", analysis: !!imageId, academy: !!acadLine, booked: /upcoming appointment/.test(apptLine) }); }
     catch (e) { console.error("wa: lint", e && e.message); }
+    // Once more just before it goes: the reply and the editor take seconds,
+    // and on 26 Nov "Ok" and "I'll come today" eleven seconds apart got two
+    // answers each saying the same thing.
+    if (isMeta && loggedAt && text && !imageId && !audioId && !videoId && !docId && await overtaken(cfg, digits, loggedAt)) {
+      console.log("wa: reply dropped late — the patient wrote again", digits.slice(-4));
+      return res.status(200).json({ ok: true, merged: true, overtaken: true });
+    }
     // The hard price block (owner, 9 Nov), after the editor: a treatment price
     // of ₹500 or more leaves the reply with its sentence, text and photo
     // replies alike. The owner's "bands" policy and an academy enquiry (its
